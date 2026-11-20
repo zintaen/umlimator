@@ -111,6 +111,8 @@ export function diff(before, after) {
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
   const keyed = l => { const k = lineKeys(l); return new Map(Array.from(l, (e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
+  // a line whose end moved (re-pointed) is said as changed, never as put in or taken out of a view (audit 58)
+  const moved1 = new Set([...keyed(E1)].filter(([e, k]) => e && typeof e === 'object' && line0.has(k) && (line0.get(k).from !== e.from || line0.get(k).to !== e.to)).map(([, k]) => k));
   // a view as mapContext reads one: an object with an id; any other entry stays as it is, neither added nor removed (audit 57:
   // a string view read as an added view {0:'w'}, "adds the view undefined", and diff().views listed undefined)
   const isView = v => !!v && typeof v === 'object' && !!v.id;
@@ -193,6 +195,9 @@ export function diff(before, after) {
       w.containers = v.containers.map(c => { const back = left.filter(id => c && arr(o.containers).some(b => b && b.id === c.id && arr(b.nodeIds).includes(id))); return back.length ? { ...c, nodeIds: [...arr(c.nodeIds), ...back] } : c; });
     if (left.length && v.layout && o.layout) { const L = idTable(v.layout), taken = new Set(Object.values(L).map(String));
       left.forEach(id => { const p = o.layout[id]; if (Array.isArray(p) && !taken.has(String(p))) { L[id] = p; taken.add(String(p)); } }); w.layout = plain(L); }
+    // and drawn as the view drew it (audit 58: a removed ball interface came back a rectangle, its socket a «use» line)
+    { const back = left.filter(id => Object.hasOwn(P0, id) && !Object.hasOwn(P1, id));
+      if (back.length && (v.present == null || tb(v.present))) { const Q = idTable(v.present || {}); back.forEach(id => { Q[id] = P0[id]; }); w.present = plain(Q); } }
     // a box the view gained is said and marked added; one it lost is said and comes back, removed, in its place, round the cards
     // it held that no box holds now (audit 52: neither was said or drawn; an empty box is not drawn)
     { const nb = new Set(arr(v.containers).filter(Boolean).map(c => c.id)), lost = arr(o.containers).filter(c => c && typeof c === 'object' && c.id != null && !nb.has(c.id));
@@ -205,7 +210,7 @@ export function diff(before, after) {
         w.containers = res.map(c => c && c.change === 'removed' && c.parent != null && !has.has(c.parent) ? (({ parent, ...r }) => r)(c) : c); } }
     // a model line the view hid or showed (its ends staying), and a sequence's steps in a new order: said, and marked in a list
     const shown = (m, x) => { const K = keyed(arr(m.edges));
-      return linesOf(m, x).filter(e => line0.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
+      return linesOf(m, x).filter(e => line0.has(K.get(e)) && !moved1.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
     const ln = id => { const e = line0.get(id); return `the line from ${labelOr((at.get(e.from) || {}).label, e.from)} to ${labelOr((at.get(e.to) || {}).label, e.to)}${labelOr(e.label, null) != null ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));

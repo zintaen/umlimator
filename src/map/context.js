@@ -513,13 +513,21 @@ function mapContext(model, opts = {}) {
       if (typeof x.id === 'string' && !(x.id in into)) into[x.id] = c; if (Array.isArray(x.members)) x.members.forEach(m => s.push([m, c === 'changed' || c === 'modified' || c === 'planned' ? null : c])); }
     return into; };
   let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
+  // the element a member (a state's region) is a member of, at any depth: the first of its id
+  let memberTop; const topOf = id => { if (!memberTop) { memberTop = O(); const s = nodes.map(n => [n, n && n.id]);
+    for (let i = 0; i < s.length; i++) { const [x, t] = s[i]; if (!x || typeof x !== 'object' || !Array.isArray(x.members)) continue;
+      x.members.forEach(m => { if (m && typeof m === 'object' && typeof m.id === 'string' && !(m.id in memberTop)) { memberTop[m.id] = t; s.push([m, t]); } }); } }
+    return memberTop[id] ?? null; };
   const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
   // a timing view's constraints are its own too (audit 49)
   const ownLists = v => [v.edges, v.fragments, ...(v.timeline && typeof v.timeline === 'object' ? [v.timeline.constraints, v.timeline.changes] : [])]; // and its changes (audit 51: a removed lifeline's, drawn back)
   function marks(g, vid) { const v = V[vid] || {}, own = ownCh(ownLists(v)), ev = O(), lines = new Set();
     (D.edges || []).forEach(e => { if (e && typeof e.id === 'string') { lines.add(e.id); if (chOf(e)) ev[e.id] ??= chOf(e); } });
     // a shape a type draws for a model line (a communication view's message row) takes the line's change (audit 46)
-    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id) || ev[id] || null);
+    // a member drawn as its own box goes or comes with the element it is a member of, which the view alone took out or put in
+    // (audit 58: a composite state taken out of the view, its regions drawn live inside it)
+    const viaTop = id => { const t = topOf(id), c = t != null && N[t] ? chOf(nodeIn(t, vid)) : null; return came(c) || gone(c) ? c : null; };
+    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : (m => came(m) || gone(m) ? m : viaTop(id) || m)(memberOf(id) || ev[id] || null));
     const came = c => !!c && CHG_IS.added.includes(c), gone = c => !!c && CHG_IS.removed.includes(c), diffCh = c => came(c) || gone(c) || c === 'changed' || c === 'modified';
     // a shape a type draws for a member on another, <part>-><port> (no element id holds '->', model.md rule 5): removed with the
     // part it sits on or its own member, else added with either (audit 46: the ports on a removed or added part drawn live)
