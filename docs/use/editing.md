@@ -86,6 +86,8 @@ Undo is a snapshot of the model before (`history()`), so undo and redo give back
 | a property | edit the field | Enter (a text field), Space, arrows | `set` of `props.<key>` |
 | show an element here | Show (outline) | Enter on it | `set` of the view's `nodeIds` (or `edges`) |
 
+A pin never draws one thing over another. `Alt + arrows` steps over a cell another card is pinned to. A pin that would sit on another pin's cell, on or inside a box its card is not in, or that would grow its own box over a card or box it does not hold is drawn in the nearest clean slot instead; the model keeps the pin as written.
+
 A typed view with `editable` shows panels over the map's left side: the palette of the type's elements, the selected
 element's properties, the problems `validate()` finds, and an outline of the model. Each diagram type adds its own
 gestures (members as one line of UML text, messages moved in time, a port's side, a state's region, a BPMN lane);

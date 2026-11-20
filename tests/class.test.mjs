@@ -707,3 +707,18 @@ test('audit 53: a realization from a port whose owner has type "" passes the cla
     assert.deepEqual(validate(m).filter(p => p.rule === 'realization-target'), [], JSON.stringify(type));
     assert.equal(diagramOf(v).edits.connect(m, v, 'svc.api', 'i', null, { type: 'uml.InterfaceRealization' }), null, JSON.stringify(type)); }
 });
+
+// audit 58: Alt + Left on Customer in the shipped class example pinned it to the cell Order is pinned to, and two cards pinned to
+// one cell were drawn one over the other (on every typed view); the second goes to the nearest free slot (settlePins)
+test('two cards pinned to one cell are drawn apart (audit 58)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap|no room/.test(s));
+  const m = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url))), v = m.views.find(x => x.id === 'domain');
+  v.layout = { ...v.layout, customer: [...v.layout.order] };
+  assert.deepEqual(bad(m, 'domain'), []);
+  for (const [d, t] of [['uml.class', 'uml.Class'], ['uml.package', 'uml.Package']]) {
+    const two = { schemaVersion: 2, root: 'v', nodes: ['Alpha', 'Beta', 'Gamma'].map(l => ({ id: l.toLowerCase(), type: t, label: l })), edges: [],
+      views: [{ id: 'v', diagram: d, nodeIds: ['alpha', 'beta', 'gamma'], layout: { alpha: [1, 0], beta: [1, 0] } }] };
+    assert.deepEqual(bad(two, 'v'), [], d);
+    const g = layout(two, 'v'), at = id => g.nodes.find(n => n.id === id);
+    assert.deepEqual([at('alpha').col, at('alpha').row], [1, 0], `${d}: the first pin keeps its cell`); }
+});

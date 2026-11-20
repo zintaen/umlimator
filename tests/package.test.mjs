@@ -264,9 +264,10 @@ test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s
   // both pinned there: Money, with no pin and the first card of shared placed, goes clear of payments (audit 42: it kept its
   // auto-layout place inside payments' cells, and payments grew over shared)
   m.views[0].layout = { payment: [3, 3], payable: [1, 1] }; assert.deepEqual(check(m, 'packages'), []);
-  m.views[0].layout = { payment: [3, 3], payable: [1, 1], money: [3, 1.5] }; // Money pinned there too: payments grows over shared and its card, which the check reports
-  const said = check(m, 'packages').map(p => p.message);
-  for (const s of ['view packages: families "payments" and "shared" overlap', 'view packages: family "payments" lies over "Money", which it does not hold']) assert.ok(said.includes(s), said.join(' | '));
+  // Money pinned there too, in payments' cells: it goes to the nearest clean slot, so payments no longer grows over shared and
+  // its card (audit 58; up to then the check reported both)
+  m.views[0].layout = { payment: [3, 3], payable: [1, 1], money: [3, 1.5] };
+  assert.deepEqual(check(m, 'packages').map(p => p.message).filter(s => /overlap|lies over/.test(s)), []);
   const memos = {}, run = x => mapContext(x, { memos }).buildGeo('packages');
   run(PKG); run(apply(PKG, [{ op: 'set', id: 'catalog-imports-shared', path: 'props.visibility', value: 'public' }])); // a prop that draws nothing new
   assert.equal(memos.packages.runs, 1);

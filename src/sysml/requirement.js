@@ -156,7 +156,7 @@ function rqGeo({ model, view, pos: pins, memo }) {
   // ranked: a relationship's supplier, a containment's owner and what a comment is about first; a pin wins, and a card on its cell goes down a row
   const at = rqRank(frame, boxes, [...lines.map(({ e, from, to }) => [to, from]), ...owned.map(id => [I.at.get(id).parent, id])]);
   const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null), taken = [];
-  // ponytail: a pin is a cell of the frame's grid, not of a box's block, so a card pinned inside another box's block can overlap it; ranking pins into blocks would lift that
+  // ponytail: a pin is a cell of the frame's grid, not of a box's block, so a card pinned inside another box's block can overlap it; buildGeo's pinsClear (src/map/context.js) then moves the pin to a cell clear of it, a layout per try (audit 58); ranking pins into blocks would need none
   [...ids.filter(pinOf), ...ids.filter(id => !pinOf(id))].forEach(id => { let [c, r] = pinOf(id) || at[id]; while (taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; at[id] = [c, r]; taken.push([c, r]); });
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
   const down = view.direction == null || view.direction === 'down', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); a direction neither right nor down is drawn right, as the core warns (audit 12); laid out right, the class type's room for labels

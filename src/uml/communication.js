@@ -3,7 +3,7 @@ import { copyOf, usedIds, jsonText, labelOr, elName, isGone } from '../core/mode
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { rowsFor, untangle } from '../layout/layered.js';
+import { rowsFor, settlePins, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
@@ -112,7 +112,8 @@ function cmPlace(ids, links, pins) {
   mains.forEach((c, k) => c.forEach(id => { at[id] = [ranks[k], row[id]]; }));
   const loose = ids.filter(id => !lined.has(id)), per = Math.max(2, mains.length), under = Math.max(-1, ...Object.values(at).map(p => p[1])) + 1;
   loose.forEach((id, k) => { at[id] = [k % per, under + Math.floor(k / per)]; });
-  if (pins.size) { // pinned first, then each other node at its place or the nearest free one below it
+  if (pins.size) { // pinned first (two on one cell: the later to the nearest free one, settlePins), then each other node at its place or the nearest free one below it
+    const S = settlePins([...pins], {}, () => []); ids.forEach(id => { if (pins.has(id)) pins.set(id, S[id]); });
     const taken = [...pins.values()], free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
     ids.forEach(id => { if (pins.has(id)) { at[id] = pins.get(id); return; } let [c, r] = at[id]; while (!free(c, r)) r++; at[id] = [c, r]; taken.push([c, r]); });
   }

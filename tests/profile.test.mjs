@@ -8,6 +8,7 @@
 // stereotype (decision 21), so 6.6's move and revision break nothing here.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -646,4 +647,18 @@ test('a stereotype dropped into a state or a partition by a moveTo hook is refus
     // anything else the hook moves as before
     assert.ok(run(other).cmds.some(c => c.op === 'reparent' && c.id === other && c.parent === into), D);
   }
+});
+
+// audit 58: Alt + Down on Order (in package sales) in the shipped profile example pinned it a column over, and the sales box,
+// grown to reach it, lay over the profile beside it: a tall row reaches over the half row after it, which the cells do not
+// see, so the drawn picture is checked and the pin moved to the nearest cell that clears it (pinsClear, src/map/context.js)
+test('a class pinned out of its package\'s column keeps every box clear of the others (audit 58)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const g = JSON.parse(readFileSync(new URL('../examples/types/uml-profile.json', import.meta.url)));
+  for (const vid of ['conventions-view', 'conventions-right']) for (const [id, p] of [['order', [1, 4]], ['payments', [1, 3]]]) {
+    const m = structuredClone(g); m.views.find(x => x.id === vid).layout = { [id]: p };
+    assert.deepEqual(bad(m, vid), [], `${vid}: ${id} pinned at [${p}]`); }
+  const two = { schemaVersion: 2, root: 'v', nodes: ['Alpha', 'Beta', 'Gamma'].map(l => ({ id: l.toLowerCase(), type: 'uml.Class', label: l })), edges: [],
+    views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['alpha', 'beta', 'gamma'], layout: { alpha: [1, 0], beta: [1, 0] } }] };
+  assert.deepEqual(bad(two, 'v'), [], 'two pins on one cell');
 });

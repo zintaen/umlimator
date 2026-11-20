@@ -122,6 +122,37 @@ function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
   cols.forEach(c => !c.every(id => id in fixed) && c.forEach((id, i) => { row[id] = Math.round((row[id] - low) * 2) / 2; if (i) row[id] = Math.max(row[id], row[c[i - 1]] + h(c[i - 1])); }));
   return row;
 }
+/* A typed view's pins, settled (audit 58): two pins on one cell, a pin on the cell of a card in a box it is not in or in such
+   a box's cells, or one that grows its own box over a card or box it does not hold, drew one thing over another (Alt + an
+   arrow, or a drag, onto any of them). The pins are taken in order, each kept where it is clean, else moved to the nearest
+   clean slot: a row down, then up, then across, then a ring further out. pins: [[id, [col, row]]]; at: the other cards that
+   hold a place (by id); up(id): the boxes a card, or a box, lies in, innermost first; fixed: those of them whose cell no pin
+   shares, in a box or not. A box's cells run from its cards' first column and row to their last, a card more than half a row
+   (column) into them in it (as boxFit, src/map/context.js) */
+function settlePins(pins, at, up, fixed = null, rows = .5) { // rows: how far past a box's last row a card is in it (1: a whole row)
+  const pos = Object.assign(Object.create(null), at), out = Object.create(null), mine = [], ups = Object.create(null), upOf = x => (ups[x] ||= up(x) || []);
+  const boxes = [...new Set([...Object.keys(pos), ...pins.map(p => p[0])].flatMap(upOf))];
+  const span = (b, skip) => { let R = null; for (const j in pos) { if (j === skip || !upOf(j).includes(b)) continue; const [c, r] = pos[j];
+    R = R ? { c0: Math.min(R.c0, c), c1: Math.max(R.c1, c), r0: Math.min(R.r0, r), r1: Math.max(R.r1, r) } : { c0: c, c1: c, r0: r, r1: r }; } return R; };
+  const over = (R, c, r) => !!R && c > R.c0 - .5 && c < R.c1 + .5 && r > R.r0 - rows && r < R.r1 + rows, meet = (A, B) => !!A && !!B && A.c0 < B.c1 + .5 && B.c0 < A.c1 + .5 && A.r0 < B.r1 + rows && B.r0 < A.r1 + rows;
+  const clean = (i, c, r) => { const ui = upOf(i);
+    if (mine.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) return false; // an earlier pin's cell
+    for (const j in pos) { if (j !== i && pos[j][0] === c && Math.abs(pos[j][1] - r) < 1 && (fixed && fixed.has(j) || upOf(j).some(b => !ui.includes(b)))) return false; } // a card of a box it is not in
+    const R = Object.create(null); boxes.forEach(b => { R[b] = span(b, i); });
+    for (const b of boxes) { if (ui.includes(b)) continue; if (over(R[b], c, r)) return false; } // in such a box's cells
+    for (const b of ui) { const R0 = R[b], R1 = R0 ? { c0: Math.min(R0.c0, c), c1: Math.max(R0.c1, c), r0: Math.min(R0.r0, r), r1: Math.max(R0.r1, r) } : { c0: c, c1: c, r0: r, r1: r };
+      for (const j in pos) if (j !== i && !upOf(j).includes(b) && over(R1, ...pos[j]) && !over(R0, ...pos[j])) return false; // its box grown over a card it does not hold
+      for (const o of boxes) if (o !== b && !ui.includes(o) && !upOf(o).includes(b) && meet(R1, R[o]) && !meet(R0, R[o])) return false; } // or over another box
+    return true; };
+  pins.forEach(([i, p]) => { let q = p; delete pos[i];
+    if (!clean(i, p[0], p[1])) { const lim = pins.length + Object.keys(pos).length + 4, neg = (v, v0) => v < 0 && v0 >= 0; q = null;
+      for (let m = 1; !q && m <= lim; m++) { const ring = []; for (let dc = -m; dc <= m; dc++) { const k = m - Math.abs(dc); ring.push([dc, k]); if (k) ring.push([dc, -k]); }
+        ring.sort((a, b) => Math.abs(a[0]) - Math.abs(b[0]) || (a[1] < 0) - (b[1] < 0) || (a[0] < 0) - (b[0] < 0));
+        for (const [dc, dr] of ring) { const c = p[0] + dc, r = p[1] + dr; if (neg(c, p[0]) || neg(r, p[1])) continue; if (clean(i, c, r)) { q = [c, r]; break; } } }
+      q ||= p; }
+    out[i] = pos[i] = q; mine.push(q); });
+  return out;
+}
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
@@ -1172,4 +1203,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
+export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins };

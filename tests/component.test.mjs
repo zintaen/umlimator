@@ -666,3 +666,21 @@ test('audit 53: two lineless ports pinned to a side where four or more lines rea
     assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
     assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => /overlap/.test(x)), [], `${np} ports, ${nl} lines`); }
 });
+
+// audit 58: a pin on a cell the ranking gives a box's contents (a drag, or Alt + an arrow, on the gallery example) drew the box
+// round the pinned card it does not hold; two cards pinned to one cell were drawn one over the other. A pin that would goes to
+// the nearest clean slot (settlePins, src/layout/layered.js), and a card a pin moves down keeps its box off what it does not hold
+test('a pin on a box\'s cell or on another pin\'s cell: no box over a card it does not hold, no two cards over each other (audit 58)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'api', type: 'uml.Component', label: 'Shop API' }, { id: 'a', type: 'uml.Component', label: 'Basket', parent: 'api' },
+    { id: 'b', type: 'uml.Component', label: 'Checkout', parent: 'api' }, { id: 'x', type: 'uml.Component', label: 'Payment provider' }],
+    edges: [{ id: 'ab', type: 'uml.Connector', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['api', 'a', 'b', 'x'], layout: { x: [1, 0] } }] };
+  assert.deepEqual(bad(m, 'v'), []);
+  const two = structuredClone(m); two.views[0].layout = { a: [3, 0], x: [3, 0] };
+  assert.deepEqual(bad(two, 'v'), [], 'two pins on one cell');
+  const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url)));
+  for (const [vid, id, p] of [['components', 'payment-provider', [4, 2]], ['components', 'payment-provider', [3, 2]], ['components', 'basket', [4, 1.5]], ['components', 'shop-api-jar', [3, 2]],
+    ['components', 'accounts', [1, 1]], ['components', 'order-worker', [0, 0]], ['components-down', 'accounts', [1, 1]], ['components-down', 'order-worker', [0, 0]], ['components-down', 'shop-api-jar', [3, 2]]]) {
+    const c = structuredClone(g), v = c.views.find(x => x.id === vid); v.layout = { ...v.layout, [id]: p };
+    assert.deepEqual(bad(c, vid), [], `${vid}: ${id} pinned at [${p}]`); }
+});
