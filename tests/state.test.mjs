@@ -972,3 +972,20 @@ test('audit 60: a pseudostate pinned where its composite would lie over another 
   const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'parcel-start'], value: [at.col, at.row] }]);
   assert.deepEqual(check(m, vid).map(p => p.message).filter(x => /overlap|lies over/.test(x)), []);
 });
+
+// audit 61: with that pin in the model (dropped, as above), a drag of a state in the composite's other region to a cell it can
+// take was ignored: every pin in the composite that clashed was dropped with it. The pins are dropped one at a time first
+test('audit 61: a clean drag in a composite holding a pin that cannot be met is kept', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id, at = layout(g, vid).byId.enquiry;
+  const m1 = apply(g, [{ op: 'set', view: vid, path: ['layout', 'parcel-start'], value: [at.col, at.row] }]);
+  const m2 = apply(m1, [{ op: 'set', view: vid, path: ['layout', 'captured'], value: [6, 1] }]), n = layout(m2, vid).byId.captured;
+  assert.deepEqual([n.col, n.row], [6, 1]); assert.deepEqual(check(m2, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
+});
+
+// audit 61: the Payment region's initial pseudostate dragged right of (or under) its composite kept its pin, and its line ran
+// through the region's title and along its border: pinsClear weighs those as check() does, past what the view says with no pin
+test('audit 61: a region\'s initial pseudostate pinned outside its composite leaves no line across a title or along a border', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id;
+  for (const q of [[7, 2], [5, 2]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'payment-start'], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], JSON.stringify(q)); }
+});

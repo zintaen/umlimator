@@ -1016,19 +1016,23 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // ports at both cards, else at one: their tie in the port order on a side is the model's edge order, which need not match where
   // each turns. Kept when the issues drop; the pairs are found by card pair, so it costs little more than the lines it looks at.
   // A typed view's only: a map's repair:false is its author's, no repair at all
+  // the pair's routes moved onto each other's ports are kept only with no more lines along a box's border or across its title
+  // (issueCount sees no box): else the two are routed again, the grid keeping off borders (audit 61: laid out right, a call each
+  // way between two services beside an account group, one moved route ran 4 px under the group's border)
+  const rims = (...l) => families.length ? routeAudit({ edges: l, families, byId }, '').filter(s => / runs along the border | header crossed by /.test(s)).length : 0;
   if (issues && dg.typed && dg.repair === false && !dg.noSwap) { const by = new Map(); free.forEach(e => { if (e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner) return; /* a port's end stays on its port */ const k = [e.s.id, e.t.id].sort().join('\n'); by.set(k, [...(by.get(k) || []), e]); });
     by.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => {
       if (!xing(a, b)) return;
       const ks = [a.s, a.t].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
       if (ks.length !== 2) return;
-      const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()], ab = new Set([a, b]), was = issueCount(ab);
+      const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()], ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b);
       const undo = () => { snap.forEach(([e, p, lb, hw, p1, p2]) => { Object.assign(e, { pts: p, lbl: lb, how: hw, p1, p2 }); restub(e); });
         routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); };
       for (const sw of [ks, [ks[0]], [ks[1]]]) {
         ripUp(a); ripUp(b);
         let ma = a.pts, mb = b.pts; sw.forEach(([ka, kb]) => { [a[ka], b[kb]] = [b[kb], a[ka]]; ma = ma && moved(a, ka, ma); mb = mb && moved(b, kb, mb); }); restub(a); restub(b);
         let now = Infinity;
-        if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); now = issues - was + issueCount(ab); if (now >= issues) { ripUp(a); ripUp(b); } }
+        if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); now = issues - was + issueCount(ab); if (now >= issues || rims(a, b) > b0) { ripUp(a); ripUp(b); now = Infinity; } }
         if (now >= issues) { routeOne(a); routeOne(b); now = issues - was + issueCount(ab); }
         if (now < issues) { issues = now; swapped = rrSwap = true; return; }
         undo();
@@ -1104,7 +1108,13 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // two that took the one track under its title; its end moved to the card's side clears both). headRect: the title as laid
   // out, turned or not, which check() measures on the picture turned back
   const issuesOf = e => { const ps = routeAudit({ edges, families, byId }, '', new Set([e])), hd = dg.typed ? families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)))).length : 0;
-    return [ps.filter(p => / share a line$/.test(p)).length + hd, ps.filter(p => !/ header crossed by /.test(p)).length + hd]; };
+    return [ps.filter(p => / share a line$/.test(p)).length + hd, ps.filter(p => !/ header crossed by /.test(p)).length + hd, ps.filter(p => / lies on edge /.test(p)).length + lateOn(e)]; };
+  // a labelled line with no spot for its label yet: 1 when the first spot the late tries find (placeLabel, the labels before it
+  // left where they are) lies on another line, or there is none
+  const lateOn = e => { if (e.lbl || (!e.label && e.step == null)) return 0; const full = fullOf(e), tries = [full, ...(e.step != null && e.label && !dg.abs ? [String(e.step)] : [])];
+    for (const pass of [0, 4, 3, 5, 1, 2]) for (const text of tries) { if (!pass && text === full) continue; const s = fits(e, text, pass).next().value; if (!s) continue;
+      const r = { x: s.box.x + 1, y: s.box.y + 1, w: s.box.w - 2, h: s.box.h - 2 }; return edges.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, b]) => segHitsRect(a, b, r))) ? 1 : 0; }
+    return 1; };
   const heads = P => dg.typed && families.some(f => segsOf(P).some(([a, b]) => segHitsRect(a, b, headRect(f))));
   const lastR = dg.quick ? [] : free.filter(e => e.how === 'fallback');
   // a line the search brought in from the side rather than head on (audit 60's rule) is routed head on too, and that way kept when
@@ -1138,14 +1148,23 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
         [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
     if (best) { e[k] = best[2]; e[fk] = best[3]; restub(e); e.pts = best[1]; e.how = 'grid'; } else { e.pts = was[4]; e.how = was[5]; }
     e.lbl = null; routed.push(e); placeLabel(e); });
-  // then each of them that runs along another line, its end moved (onTB), when that leaves it none and no more issues
+  // then each of them that runs along another line, its end moved (onTB), when that leaves it none and no more issues, nor a label
+  // more on a line (its own or another's on it) or with no spot (audit 61: laid out down, the second of two lines from one service
+  // to another moved out of its side found no spot for its label, which the late tries then put on the first)
   if (dg.typed) lastR.forEach(e => { const k0 = issuesOf(e); if (!k0[0]) return;
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; ripUp(e);
-    if (onTB(e) || (heads(e.pts) && onTB(e, 2))) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1]) return; ripUp(e); }
+    if (onTB(e) || (heads(e.pts) && onTB(e, 2))) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); }
     // else the last resort again, round what the lines before it moved: kept when it runs along fewer
     [e.p1, e.p2, e.fs, e.ts, e.pts, e.how] = was; restub(e); const P = wide(e, 2);
-    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1]) return; ripUp(e); e.pts = was[4]; }
+    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); e.pts = was[4]; }
     e.lbl = null; routed.push(e); placeLabel(e); });
+  // (a typed view with repair off) then each line the grid routed that runs along another, routed again round every other line,
+  // kept on the same terms (audit 61: laid out down, a line into the top of a card under its source, its port level with another
+  // line's port on the card's other side, ran on that line, routed earlier, for the 6 px where it turned into its end's track)
+  if (dg.typed && dg.repair === false && !NEST && !dg.quick) free.filter(e => e.how === 'grid' && !e.fixed && e.s !== e.t).forEach(e => { const k0 = issuesOf(e); if (!k0[0] || !routeAudit({ edges }, '', new Set([e])).some(p => / share a line$/.test(p))) return;
+    const was = [e.pts, e.lbl]; ripUp(e); e.lbl = null; const P = wide(e, false);
+    if (P) { e.pts = P; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); }
+    const L = e.lbl = was[1]; e.pts = was[0]; routed.push(e); if (L) { placed.push(L); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); } });
   // (NEST) then each line that crosses a box's title, runs along a box's border, runs through a box that holds neither of its
   // ends (drawn so it seems to enter the box and leave it, and a region's title, which state.js draws later, may lie on its
   // way) or runs along a line the last resort drew into a box or along a loop (audit 44: laid out right, the last resort's turn
