@@ -168,7 +168,7 @@ interface MapView {
   edges?: (string | MapEdge | Element)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   subAndChips?: boolean;
   kindsFromLabels?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string; change?: 'added' | 'new' | 'modified' | 'changed' | 'removed' | 'planned' }[];
   [key: string]: unknown;
 }
 ```
@@ -181,7 +181,7 @@ interface MapView {
 | `edges` | The lines it draws: model edge ids, or lines of its own. Without it, every model edge between two of its cards. A typed view draws its own kinds of line; most draw a listed line of another kind too, and a state machine, requirement, sequence, timing, communication, interaction overview, mindmap or cloud view leaves it out, which `validate()` warns of. A C4 dynamic view leaves it out too: its lines are its steps, each a relationship of the model, so `validate()` reports any other line it lists as a `c4-steps` error. |
 | `layout` | A `[col, row]` place per card id. |
 | `repair` | `false` turns off port repair for this map view. A typed view ignores it: its lines are never port-repaired. |
-| `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, and a `tone` that tints the region behind it. |
+| `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, a `tone` that tints the region behind it, and a `change` mark, as a card's, that [`diff()`](./apply-and-commands.md#diff) sets on a box the view gained or lost, written in lower case (`validate()` warns on another case or a value with no mark). |
 | `subAndChips` | Cards 80 px tall that show their sub-line, then their chips. |
 | `kindsFromLabels` | Guess a line's kind from its label's words when its edges name none. The standalone page always guesses. |
 

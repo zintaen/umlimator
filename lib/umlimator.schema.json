@@ -1397,6 +1397,17 @@
     "tone": {
      "$ref": "#/$defs/tone",
      "description": "A tinted region behind the box, as a badge's tone names it (--um-<tone>): the box's border is dashed and its title in the tone."
+    },
+    "change": {
+     "enum": [
+      "added",
+      "new",
+      "modified",
+      "changed",
+      "removed",
+      "planned"
+     ],
+     "description": "A NEW, CHANGED, REMOVED or PLANNED tab on the box, as a card's; a removed box is faded and dashed. diff() writes added or removed on a map's boxes. validate() and the renderer read it in any letter case; this schema lists the lower-case words."
     }
    }
   },

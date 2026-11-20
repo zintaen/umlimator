@@ -513,22 +513,28 @@ export function diff(before, after) {
     const onPart = id => { const j = id.lastIndexOf('->'); return j > 0 && elId(id.slice(0, j)) && elId(id.slice(j + 2)) ? id.slice(0, j) : null; };
     const derivedL = (e, k) => Array.isArray(e.implied) || (k.includes('->') && !modelLine.has(k));
     views.forEach(v => { if (!v || !typedV(v) || !V0.has(v.id)) return; const T = diagramOf(v); let listed = changed.has(v.id);
+      // and a card this view alone marks, one taken out of it or put into it (its nodeOverrides' change, as diff() wrote it): a shape
+      // that reads it (an information flow's conveyed item) and draws as it did is "none" too (audit 53: both flows marked changed).
+      // Only that: one that read it and reads it no more is marked by what the type draws, as before
+      const ov = x => x && typeof x.nodeOverrides === 'object' && x.nodeOverrides ? x.nodeOverrides : {}, ov0 = ov(V0.get(v.id)), ov1 = ov(v);
+      const mine = Object.keys(ov1).filter(id => ov1[id] && typeof ov1[id] === 'object' && ov1[id].change != null && ov1[id].change !== (Object.hasOwn(ov0, id) && ov0[id] && typeof ov0[id] === 'object' ? ov0[id].change : undefined));
+      const vh = mine.length ? new Set([...hit, ...mine]) : hit, hitsV = l => Array.isArray(l) && l.some(r => typeof r === 'string' && vh.has(r));
       if (!T || !listed && typeof T.drawn !== 'function' && typeof T.touches !== 'function') return;
       const g1 = lay(1, v.id); if (!g1) return; const S1 = shapes(g1), L1 = linesG(g1);
-      const reading = [...S1.values(), ...L1.values()].some(x => hits(x.reads) || hits(x.implied));
+      const reading = [...S1.values(), ...L1.values()].some(x => hitsV(x.reads) || hits(x.implied));
       if (!listed && !reading) return;
       const g0 = lay(0, v.id); if (!g0) return; const S0 = shapes(g0), L0 = linesG(g0), marks = Object.create(null), gone = [];
       // listed for what it draws from others (refs, drawn, touches), with the same picture before and after: not listed (audit 47)
       if (listed && !sure.has(v.id) && picture(g0) === picture(g1)) { changed.delete(v.id); listed = false; }
       const same = (x, y) => y && sig(x) === sig(y);
       S1.forEach((x, id) => { const y = S0.get(id), part = onPart(id);
-        if (hits(x.reads) && same(x, y)) marks[id] = 'none';
+        if (hitsV(x.reads) && same(x, y)) marks[id] = 'none';
         else if (listed && part != null && !y && S0.has(part)) marks[id] = 'added';
         // one that read a marked element before and draws otherwise now, reading it no more (audit 48: a constraint property whose
         // block was renamed names no block, and draws no expression)
         else if (listed && y && !hits(x.reads) && hits(y.reads) && !same(x, y)) marks[id] = 'changed'; });
       L1.forEach((x, k) => { if (!derivedL(x, k) && !Array.isArray(x.reads)) return; const y = L0.get(k);
-        if (same(x, y)) { if (hits(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
+        if (same(x, y)) { if (hitsV(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
         // an implied line that came, or stands for other relationships, with none of them marked (audit 48: one it stood for removed,
         // or a direct relationship removed between its ends): added, or changed. One drawn before too is changed, though every one
         // it stands for now is new (audit 49: the only relationship behind it replaced by one of another label read as added).
