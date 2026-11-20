@@ -5,9 +5,9 @@ import { goneLines, layoutTyped } from '../typed/layout.js';
 import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn } from '../typed/draw.js';
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -90,12 +90,11 @@ const C4_LOOK = { boxTypes: ['c4.SoftwareSystem', 'c4.Container'], qualify: fals
 // a card diff() draws back removed because the view no longer shows it (its nodeOverrides' change): it opens no box, and no
 // relationship is lifted to it or stops at it, as in the model after, whose relationships stay (audit 54: the diff page drew no
 // implied line where the model after does). A deleted one is not: its relationships went with it, and its box holds what went too
-const c4Ghost = view => { const ov = C4_OBJ(view) && C4_OBJ(view.nodeOverrides) ? view.nodeOverrides : {};
-  return id => Object.hasOwn(ov, id) && C4_OBJ(ov[id]) && typeof ov[id].change === 'string' && ov[id].change.toLowerCase() === 'removed'; };
+const c4Ghost = view => goneIn(view, () => null);
 function c4Pic(model, view) {
   const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...C4_LOOK, ghost }), I = c4Index(model);
   // counted as the model after counts them: not a card diff() drew back removed (audit 55)
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).filter(id => !pic.gone(id)).map(id => pic.at.get(id)), k = new Map();
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.counted(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = c4Word(y).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
     return { ...boxHead({ ...b, title: `${c4Name(x)} [${C4_TAG[x.type]}]` }), aria: `${c4Word(x)} ${c4Name(x)}, a boundary holding ${[...k].map(([w, c]) => c4Plural(c, w)).join(', ') || 'nothing'}` }; });
   return { ...pic, I, boxes, ghost };
@@ -117,7 +116,7 @@ function c4Lines(model, view, pic) {
   // a relationship diff() brings back removed is gone from the model after: it joins no pair and is lifted into no implied line
   // (audit 48: the diff page drew no implied line where the model after does, and a "[+1]" for a relationship that is gone); it
   // still draws as its own ghost between two shown ends
-  const gone = e => typeof e.change === 'string' && e.change.toLowerCase() === 'removed', live = pic.I.rels.filter(e => !gone(e));
+  const gone = isGone, live = pic.I.rels.filter(e => !gone(e));
   // and one with an end diff() draws back removed (pic.ghost) is lifted as the model after lifts it, beside its own ghost (audit 54)
   const lit = pic.ghost ? new Set([...ends].filter(id => !pic.ghost(id))) : ends;
   const joined = new Set([...own.filter(e => e.type === 'c4.Relationship' && !gone(e)), ...live].filter(e => lit.has(e.from) && lit.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();

@@ -1,5 +1,6 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr, propTextProblems } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, propTextProblems, isGone } from '../core/model.js';
+import { goneIn } from '../typed/draw.js';
 import { everyOwn, heldBy, registerDiagramType } from '../core/registry.js';
 import { esc, trimDash } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -109,31 +110,38 @@ function bzPic(model, view) {
     .filter(l => l.f && l.t && !(l.f.pool && l.t.pool) && !(l.f.at != null && l.f.at === l.t.at && (l.f.port || l.t.port)));
   const bandOf = id => { const l = I.laneIn(id); if (l != null && band.has(l)) return l; const p = I.poolOf(id); return p != null && band.has(p) ? p : null; };
   // decision 23: data and annotations in the lane of the first flow node they are associated with, else their pool's own run
-  const dataLane = new Map();
-  items.forEach(id => { if (!BZ_DATA.includes(I.ty(id)) && I.ty(id) !== BZ_NOTE) return; const p = I.poolOf(id);
-    const by = lines.filter(l => l.e.type === BZ_ASSOC || l.e.type === BZ_DATA_ASSOC).map(l => (l.f.at === id && !l.f.port ? l.t : l.t.at === id && !l.t.port ? l.f : null))
-      .map(o => o && o.at).find(o => o != null && BZ_FLOW.includes(I.ty(o)) && bandOf(o) != null && ((p == null && I.ty(id) === BZ_NOTE) || I.poolOf(o) === p));
-    dataLane.set(id, by != null ? { lane: bandOf(by), by } : { lane: p != null && band.has(p) ? p : null }); });
+  const dataOf = ls => { const m = new Map();
+    items.forEach(id => { if (!BZ_DATA.includes(I.ty(id)) && I.ty(id) !== BZ_NOTE) return; const p = I.poolOf(id);
+      const by = ls.filter(l => l.e.type === BZ_ASSOC || l.e.type === BZ_DATA_ASSOC).map(l => (l.f.at === id && !l.f.port ? l.t : l.t.at === id && !l.t.port ? l.f : null))
+        .map(o => o && o.at).find(o => o != null && BZ_FLOW.includes(I.ty(o)) && bandOf(o) != null && ((p == null && I.ty(id) === BZ_NOTE) || I.poolOf(o) === p));
+      m.set(id, by != null ? { lane: bandOf(by), by } : { lane: p != null && band.has(p) ? p : null }); });
+    return m; };
+  const dataLane = dataOf(lines);
   const lo = new Map(), laneOf = id => (lo.has(id) ? lo.get(id) : lo.set(id, dataLane.has(id) ? dataLane.get(id).lane : bandOf(id)).get(id));
   // each lane's and pool's element count: what it draws (laneOf, so data and notes too), its nested lanes' with it
-  // not one diff() drew back removed: the model after's count on the diff page (audit 55)
-  const gone = i => { const c = (I.el(i) || {}).change; return typeof c === 'string' && c.toLowerCase() === 'removed'; };
-  const inLane = new Map(); [...items, ...open].filter(i => !gone(i)).forEach(i => { const l = laneOf(i); if (l != null) [l, ...I.chain(l)].forEach(p => inLane.set(p, (inLane.get(p) || 0) + 1)); });
+  // not one diff() drew back removed: the model after's count on the diff page (audit 55), nor one taken out of the view (audit 56)
+  const gone = goneIn(view, I.el);
+  // data and a note counted in the lane the model after draws them in: by their live associations alone (audit 56)
+  const liveData = dataOf(lines.filter(l => !isGone(l.e) && ![l.f.at, l.t.at].some(a => a != null && gone(a)))), countLane = i => (liveData.has(i) ? liveData.get(i).lane : laneOf(i));
+  // a boundary event on an activity taken out stands alone in the model after's view, so it counts there (audit 56)
+  const loose = [...be].filter(([b, a]) => gone(a) && !gone(b)).map(([b]) => b);
+  const inLane = new Map(); [...items, ...open, ...loose].filter(i => !gone(i)).forEach(i => { const l = countLane(i); if (l != null) [l, ...I.chain(l)].forEach(p => inLane.set(p, (inLane.get(p) || 0) + 1)); });
   const held = new Map(); [...items, ...open].forEach(x => { const o = owner(x); held.has(o) ? held.get(o).push(x) : held.set(o, [x]); });
   const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);
     return boxHead({ id, label: bzLabel(x), title: bzLabel(x), nodeIds: holds(id).filter(k => !open.has(k)), ...(o != null ? { parent: o } : {}), shape: 'bpmn-frame', aria: bpmnName(bzLook(x, true)) }); });
-  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, foreign, laneOf, dataLane, holds, boxes, inLane };
+  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, foreign, laneOf, dataLane, holds, boxes, inLane, gone };
 }
 
 // accessible names (§9.4): "Service task Take payment, in Sales"; "Timer boundary event No answer, on Take payment"; "Pool
 // Bookshop, 2 lanes, 17 elements"; "Lane Sales of Bookshop, 12 elements"; "Group Dispatch, round 3 elements"
 function bzNodeName(P, id) {
   const { I } = P, x = I.el(id); if (!x) return String(id);
-  if (x.type === BZ_POOL) { const ls = I.lanesOf(id).length, k = P.inLane.get(id) || 0;
+  // the model after's counts on the diff page (audits 55, 56): its live lanes, live elements, a group's live members
+  if (x.type === BZ_POOL) { const ls = I.lanesOf(id).filter(l => !isGone(I.el(l))).length, k = P.inLane.get(id) || 0;
     return `Pool ${bzLabel(x)}${ls ? ', ' + bzPlural(ls, 'lane') : ''}${!ls && !k ? ', a black box' : ', ' + bzPlural(k, 'element')}`; }
   if (I.L.has(id)) return `Lane ${bzLabel(x)} of ${bzLabel(I.el(I.L.get(id).pool))}, ${bzPlural(P.inLane.get(id) || 0, 'element')}`;
-  if (x.type === BZ_GROUP) return `Group ${bzLabel(x)}, round ${bzPlural(P.ids.filter(i => bzRefs(I.el(i)).includes(id)).length, 'element')}`;
+  if (x.type === BZ_GROUP) return `Group ${bzLabel(x)}, round ${bzPlural(P.ids.filter(i => !P.gone(i) && bzRefs(I.el(i)).includes(id)).length, 'element')}`;
   const name = bpmnName(bzLook(x, P.open.has(id))), lane = P.laneOf(id);
   if (P.be.has(id)) return `${name}, on ${I.called(P.be.get(id))}`;
   return name + (lane != null ? `, in ${bzLabel(I.el(lane))}` : '');

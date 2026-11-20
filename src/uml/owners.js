@@ -2,7 +2,7 @@ import { jsonText, labelOr } from '../core/model.js';
 import { TYPED, aKind, diagramOf } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
+import { brLines, goneIn, liveOf } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
 
 /* ---------- owners on the picture (work package 2.2, notes/stage-2.md §4 to §7) ----------
    What the class, package and object views share: which shown package is a box and what it holds (§4.1), the names drawn
@@ -92,12 +92,13 @@ function ownersOn(model, view, look = {}) {
   // was not marked when sales was renamed)
   // the count in a box's name is the model after's on the diff page: a card diff() drew back removed is not counted, and a box
   // holding only such cards says no count, as the model after's card says none (audit 55, as the overview's since audit 53)
-  const ov = OWN_OBJ(view) && OWN_OBJ(view.nodeOverrides) ? view.nodeOverrides : {}, gone1 = y => OWN_OBJ(y) && typeof y.change === 'string' && y.change.toLowerCase() === 'removed';
-  const gone = id => (gh ? gh(id) : false) || gone1(at.get(id)) || (Object.hasOwn(ov, id) && gone1(ov[id]));
-  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id), n = held.filter(x => !gone(x)).length;
+  // a removed box counts what it still holds live, which the model after holds in its owner (audit 56)
+  const gone0 = goneIn(view, id => at.get(id)), gone = id => (gh ? gh(id) : false) || gone0(id), liveHeld = id => liveOf(holds(id), gone, holds); // the live ones a box holds
+  const counted = id => (gone(id) ? holds(id) : liveHeld(id)); // what its name counts: a removed box's, what it held, the model before's
+  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id), n = counted(id).length;
     return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p), ...(rd.length ? { reads: rd } : {}),
       aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}${n ? `, holding ${n} element${n === 1 ? '' : 's'}` : ''}` }); });
-  return { ids, owner, holds, boxes, name, full, via, open, chain, at, gone };
+  return { ids, owner, holds, boxes, name, full, via, open, chain, at, gone, counted };
 }
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order

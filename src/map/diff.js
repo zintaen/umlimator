@@ -252,8 +252,11 @@ export function diff(before, after) {
     // listed, as it draws them; a typed one, whose type picks the lines it draws, a mark by line in view.diffMarks (below)
     // And a line to a card it now shows, drawn now and not before: added (audit 54: an instance put back into a deployment view
     // drew its line unmarked, where the model before drew an implied line)
-    const hidL = left.filter(id => how.get(at.get(id)) !== 'removed'), hidS = new Set(hidL), hidOn = e => e && typeof e === 'object' && !e.change && (hidS.has(e.from) || hidS.has(e.to));
-    const camL = came.filter(id => at.get(id) && how.get(at.get(id)) !== 'added'), camS = new Set(camL), camOn = e => e && typeof e === 'object' && !e.change && (camS.has(e.from) || camS.has(e.to));
+    // a line the diff marked changed (its label edited) goes or comes with the card too, as in a view that lists its lines
+    // (audit 56: it stayed live, amber, to the card's ghost)
+    const free = e => e && typeof e === 'object' && (!e.change || how.get(e) === 'changed');
+    const hidL = left.filter(id => how.get(at.get(id)) !== 'removed'), hidS = new Set(hidL), hidOn = e => free(e) && (hidS.has(e.from) || hidS.has(e.to));
+    const camL = came.filter(id => at.get(id) && how.get(at.get(id)) !== 'added'), camS = new Set(camL), camOn = e => free(e) && (camS.has(e.from) || camS.has(e.to));
     const lineNow = e => hidOn(e) ? line(e, 'removed') : camOn(e) ? line(e, 'added') : null;
     if ((hidL.length || camL.length) && !Array.isArray(v.edges)) { const byId = new Map(arr(out.edges).filter(e => e && typeof e === 'object' && e.id != null).map(e => [String(e.id), e]));
       if (Array.isArray(w.edges)) w.edges = w.edges.map(x => { const e = typeof x === 'string' ? byId.get(x) : x; return lineNow(e) || x; });
@@ -590,7 +593,7 @@ export function diff(before, after) {
       return out.edges.filter(e => e && typeof e === 'object' && typeof e.id === 'string' && ok(how.get(e))
         && [e.from, e.to, ...['from', 'to'].map(k => (((e.props && e.props.ends) || {})[k] || {}).part)].some(on)).map(e => e.id); };
     // a line to a card put into it: added, where it has no change of its own and none to a card that left (audit 54)
-    hidIn.forEach(([v, L, C]) => { const rm = touching(L, h => h !== 'removed'); gone(v, touching(C, h => h == null).filter(k => !rm.includes(k)), 'added'); gone(v, rm); });
+    hidIn.forEach(([v, L, C]) => { const rm = touching(L, h => h !== 'removed'); gone(v, touching(C, h => h == null || h === 'changed').filter(k => !rm.includes(k)), 'added'); gone(v, rm); });
     rmTyped.forEach(v => { let g = null; try { g = held(() => ctx0().buildGeo(v.id))[0]; } catch { g = null; } if (!g) return;
       gone(v, [...new Set([...arr(g.nodes), ...arr(g.families), ...arr(g.edges)].map(x => x && (x._id ?? x.id)).filter(k => typeof k === 'string'))]); }); }
   return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };

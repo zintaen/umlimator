@@ -17,13 +17,27 @@ const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test
     ? '<ul>' + b.split(/\n/).map(l => '<li>' + inline(l.replace(/^\s*[-*] /, '')) + '</li>').join('') + '</ul>'
     : '<p>' + inline(b).replace(/\n/g, '<br>') + '</p>').join('');
 /* a text's first sentence: up to a period and the white space after it, where the word the period ends is no abbreviation (audit
-   54: "Carries orders, e.g. book orders" was cut at "e.g.", "Approx. 100 calls" at "Approx."), no capital initial or letter chain ("J.",
-   "U.S.", "p.m.") and no list number ("1.") (audit 55: a what of "1. Validates the basket." read "1."). A sentence may open in
-   lower case (a model's "play() returns null." or "tour() starts one"), so what follows is not read */
-const ABBR = /(?:^|[^\p{L}\p{N}.])(?:approx|vs|cf|incl|esp|viz|ca|dr|mr|mrs|ms|prof|\p{L}(?:\.\p{L}){1,3})\.$/iu;
-const NOCUT = /(?:^|[^\p{L}\p{N}.])(?:\p{Lu}|\p{N}{1,3})\.$/u;
-const firstSentence = s => { s = String(s ?? ''); for (const m of s.matchAll(/(?<=\.)\s+/g)) { const h = s.slice(0, m.index), e = h.slice(-9);
-  if (!ABBR.test(e) && !NOCUT.test(e)) return h; } return s; }; // the longest abbreviation with its period is 8 characters ("a.b.c.d."), 9 with its boundary: ^ is true only at the text's start, and each test stays constant time
+   54: "Carries orders, e.g. book orders" was cut at "e.g.", "Approx. 100 calls" at "Approx.") and no letter chain ("U.S.", "p.m.").
+   Audit 55 ran on past a title, a capital initial and a list number too, but read each anywhere, so "within 200 ms.", "service
+   A." and "port 443." never ended a sentence (audit 56). Now: a title (Dr. Mr. Mrs. Ms. Prof., capitalised as written) and "ca."
+   only before the word they lead to (a capital; a digit); a capital initial only before a capitalised word, and only after the
+   text's start, another initial, a capitalised word inside the sentence ("John F. Kennedy") or a word that leads to a name ("by
+   J. Smith"); a list number only at the text's or a line's start ("1. Validates the basket."). A sentence may open in lower
+   case (a model's "play() returns null." or "tour() starts one"), so what follows is read only for those */
+const ABBR = /(?:^|[^\p{L}\p{N}.])(?:approx|vs|cf|incl|esp|viz|\p{L}(?:\.\p{L}){1,3})\.$/iu;
+const TITLE = /(?:^|[^\p{L}\p{N}.])(?:Dr|Mr|Mrs|Ms|Prof)\.$/u, CIRCA = /(?:^|[^\p{L}\p{N}.])ca\.$/iu;
+const LISTNO = /(?:^|\n)[ \t]{0,8}\p{N}{1,3}\.$/u; // on a 14-character tail: ^ holds only where the text is that short
+const INITIAL = /(?:^|[^\p{L}\p{N}.])\p{Lu}\.$/u, NAMEWORD = /^(?:by|from|with|and|for|of|cc)$/i;
+// a capital initial ends h, and a capitalised word follows: does a name lead to it? The 40-character tail holds the words before it
+const leadsToName = h => { const w = h.slice(-40).trim().split(/\s+/), p = w[w.length - 2];
+  if (p === undefined) return h.length <= 40; // the text's own start ("J. Smith wrote it")
+  if (/^\p{Lu}\.$/u.test(p) || NAMEWORD.test(p)) return true; // "J. R. Tolkien", "by J. Smith"
+  const q = w[w.length - 3]; // a capitalised word inside its sentence ("John F. Kennedy"), not the sentence's own first word ("Calls A.")
+  return /^\p{Lu}\p{Ll}+$/u.test(p) && (q !== undefined ? !/[.!?:]$/.test(q) : h.length > 40); };
+const firstSentence = s => { s = String(s ?? ''); for (const m of s.matchAll(/(?<=\.)\s+/g)) { const h = s.slice(0, m.index), e = h.slice(-9), nx = s[m.index + m[0].length] ?? '';
+  const cap = /\p{Lu}/u.test(nx);
+  if (ABBR.test(e) || LISTNO.test(h.slice(-14)) || (cap && TITLE.test(e)) || (/\p{N}/u.test(nx) && CIRCA.test(e)) || (cap && INITIAL.test(e) && leadsToName(h))) continue;
+  return h; } return s; }; // the longest abbreviation with its period is 8 characters ("a.b.c.d."), 9 with its boundary: ^ is true only at the text's start, and each test stays constant time
 /* a text without the period that closes it, as the text a clause follows (", opens ...", "; " before the next item): an
    abbreviation's or a letter chain's own period stays ("gift cards etc., opens ...", audit 55), and so does an ellipsis */
 const ETC = /(?:^|[^\p{L}\p{N}.])etc\.$/iu;
@@ -77,7 +91,7 @@ function fit(s, px, max, words) { s = String(s ?? ''); if (fits(s, px, max)) ret
 
 // A model's icon glyph (icons[k].g) as inert vector shapes (risks.md S2: an icon's SVG may carry script and is never
 // inlined as it comes). Kept: the shape elements and their geometry and presentation attributes, each tag as written when
-// all of it passes (a Lucide glyph comes back unchanged); a value holds plain characters only (no url(), entity or quote).
+// all of it passes, its values quoted (a Lucide glyph comes back unchanged); a value holds plain characters only (no url(), entity or quote).
 // Dropped: every other element and attribute (an event handler, href, style; image, use, foreignObject, script, a comment)
 // and text, which a glyph never draws. A tag left open is closed, so a glyph never swallows the card's own marks (audit 18).
 const GLYPH_EL = new Set(['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon', 'g']);
@@ -98,12 +112,13 @@ function glyph(g) {
     if (!m) { i++; continue; }
     i = GLYPH_TAG.lastIndex; const [tag, close, el, attrs, self] = m;
     if (!GLYPH_EL.has(el)) continue;
-    if (close) { if (open[open.length - 1] === el) { open.pop(); o += tag; } continue; }
+    if (close) { if (open[open.length - 1] === el) { open.pop(); o += `</${el}>`; } continue; } // never as written: an end tag's attributes are no XML (audit 56)
     // an attribute with no value, or one named again in the same tag, is dropped: either made the SVG no well-formed XML (audit 55)
     const all = [...attrs.matchAll(GLYPH_ATTR)], seen = new Set();
     const kept = all.map(([, k, v]) => [k, v == null ? null : /^["']/.test(v) ? v.slice(1, -1) : v])
       .filter(([k, v]) => v != null && GLYPH_AT.has(k) && /^[\w\s.,#%+\-()]*$/.test(v) && !/url\s*\(/i.test(v) && !seen.has(k) && seen.add(k));
-    o += kept.length === all.length ? tag : `<${el}${kept.map(([k, v]) => ` ${k}="${v}"`).join('')}${self ? '/' : ''}>`;
+    // as written only when every attribute is kept and quoted: an unquoted value (stroke-width=2) is no XML either (audit 56)
+    o += kept.length === all.length && all.every(x => x[2] == null || /^["']/.test(x[2])) ? tag : `<${el}${kept.map(([k, v]) => ` ${k}="${v}"`).join('')}${self ? '/' : ''}>`;
     if (!self) open.push(el);
   }
   o += open.reverse().map(el => `</${el}>`).join('');

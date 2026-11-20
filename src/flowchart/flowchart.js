@@ -6,6 +6,7 @@ import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's loo
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { goneIn, liveLine } from '../typed/draw.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -111,7 +112,12 @@ function fcIndex(model, view) {
       else { while (f.i < f.o.length && seen.has(f.o[f.i].to)) f.i++; to = f.i < f.o.length ? f.o[f.i++].to : undefined; }
       if (to === undefined) st.pop(); else enter(to); } };
   starts.forEach(visit); const reached = new Set(seen); ids.forEach(visit);
-  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, isStart: new Set(starts), isEnd: new Set(ends) };
+  // what a card's name says on the diff page, as the model after says it: its flows but one diff() drew back removed, or one to
+  // or from a card it drew back removed; a card itself removed says what it had, the model before's (audit 56)
+  const gone = goneIn(view, id => N.get(id)), liveIn = new Map(), liveOut = new Map();
+  flows.forEach(e => { if (liveLine(e, gone)) { add(liveIn, e.to, e); add(liveOut, e.from, e); } });
+  const said = id => (gone(id) ? { i: inBy, o: outBy } : { i: liveIn, o: liveOut });
+  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, said };
 }
 const fcName = elName;
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
@@ -120,9 +126,9 @@ const fcPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 // accessible names (A1): "Decision Fit for resale?, exits yes to Refund the payment, no to Rejection letter"; "Terminator Return closed, an end"
 function fcNodeName(I, x) {
   if (x.type === 'uml.Comment') return 'Comment: ' + fcName(x);
-  const [, word] = fcLook(x), head = fcSaid({ label: fcName(x) }, word), o = I.outs(x.id);
+  const [, word] = fcLook(x), head = fcSaid({ label: fcName(x) }, word), s = I.said(x.id), o = s.o.get(x.id) || [];
   if (x.type === 'flow.Decision') return `${head}, ${o.length ? 'exits ' + o.map(e => `${FC_TXT(e.label) ? FC_TXT(e.label) + ' ' : ''}to ${fcCalled(I.N.get(e.to))}`).join(', ') : 'no exits'}`;
-  if (x.type === 'flow.Terminator') return `${head}, ${I.isStart.has(x.id) ? 'a start' : I.isEnd.has(x.id) ? 'an end' : 'flows in and out'}`;
+  if (x.type === 'flow.Terminator') return `${head}, ${!s.i.has(x.id) ? 'a start' : !o.length ? 'an end' : 'flows in and out'}`;
   return head;
 }
 function fcLineName(I, e) {

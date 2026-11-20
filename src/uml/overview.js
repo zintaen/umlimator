@@ -5,7 +5,7 @@ import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, markShape, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn, liveLine } from '../typed/draw.js';
 import { commentConnect } from './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
@@ -51,7 +51,8 @@ function ovIndex(model, view) {
   const both = list.filter(e => OV_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
   const lines = both.filter(e => OV_LINES.includes(e.type)), stray = both.filter(e => !OV_LINES.includes(e.type)); // stray: not drawn, warned of
   const el = id => (N.get(id) || [])[0];
-  return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow') };
+  // gone: what the diff page drew back removed, so a node's name counts the flows the model after draws (audit 56)
+  return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow'), gone: goneIn(view, el) };
 }
 // a node's name as drawn: a control node or a comment its label only; a use, an inline interaction or another kind (drawn as an
 // action) by its id when it has no label, as the sequence and activity views draw it (elName; audit 37)
@@ -179,10 +180,12 @@ function ovGeo({ model, view, pos, memo }) {
   const I = ovIndex(model, view), down = view.direction === 'down', at = id => ovOwn(pos || {}, id) || [0, 0];
   const ins = new Map(), outs = new Map(), bump = (m, id) => m.set(id, (m.get(id) || 0) + 1);
   I.flows.forEach(e => { bump(outs, e.from); bump(ins, e.to); });
+  // what a name counts: the flows the model after draws; a removed node, all it had, the model before's (audit 56)
+  const sIn = new Map(), sOut = new Map(); I.flows.forEach(e => { if (liveLine(e, I.gone) || I.gone(e.from)) bump(sOut, e.from); if (liveLine(e, I.gone) || I.gone(e.to)) bump(sIn, e.to); });
   const bar = id => I.el(id).type === 'uml.ForkNode' || I.el(id).type === 'uml.JoinNode';
   const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: [...(['diamond', 'ov-use', 'ov-inline'].includes(shape) ? ovStereo(x).map(t => `«${t}»`) : []), ...(ovLabel(x) ? [ovLabel(x)] : [])].join(' '), type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
     const sd = x.type === 'uml.Interaction' ? ovInline(model, I, x) : null;
-    d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
+    d.aria = ovNodeName(model, I, x, sIn.get(id) || 0, sOut.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;

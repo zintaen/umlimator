@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -28,6 +28,8 @@ const cpPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const CP_LINES = ['uml.InterfaceRealization', 'uml.ComponentRealization', 'uml.Usage', 'uml.Connector', 'uml.Dependency', 'uml.Manifestation', 'uml.CommentLink'];
 const CP_SIDE = { L: 'left', R: 'right', T: 'top', B: 'bottom' }, CP_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' }, CP_TURN = { L: 'T', T: 'L', R: 'B', B: 'R' };
 const cpPortsOf = n => CP_ARR(n && n.members).filter(m => CP_OBJ(m) && m.type === 'uml.Port' && typeof m.id === 'string');
+// the ports a name counts: on the diff page not one diff() drew back removed, as the model after counts them (audit 56)
+const cpLivePorts = n => cpPortsOf(n).filter(p => isGone(n) || !isGone(p)).length; // a removed one: all it had, the model before's
 
 /* ---- the model read: every node, every port and its owner, each node's owners up the chain ---- */
 function cpIndex(model) {
@@ -85,7 +87,7 @@ function cpPic(model, view) {
     if (f.at === t.at && (f.port || t.port)) return;
     lines.push({ e, f, t, inner, kind: cpKind(I, view, e) }); });
   const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (cpKindOf(x) !== 'uml.Component') return b;
-    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).filter(id => !pic.gone(id)).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
+    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpLivePorts(x), holds: pic.counted(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
     return { ...b, aria: x.type ? s : snKindName(x.type) + s.slice('Component'.length) }; }); // of no type: "Element Shop, 1 port, holding 1 component", as cpNodeName names it
   return { ...pic, boxes, I, lines, inside };
 }
@@ -101,12 +103,12 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
   // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
-  if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
+  if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
   if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
   // another kind (a class) with the ports drawn on its border, "Class Shop, 1 port", as a component is named (audit 31)
-  return snKindName(x.type) + SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }).slice('Component'.length);
+  return snKindName(x.type) + SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }).slice('Component'.length);
 }
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"

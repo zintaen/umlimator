@@ -1098,7 +1098,7 @@ def diff_since(a):
         done.append({"file": name, **({"movedFrom": was} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
         md += [f"**{fname}**: " + flat(", ".join(r["views"])) if r["views"] else f"**{fname}**", ""]
         try:  # a sketch that fails costs this file its sketch, never the summary of the rest (audit 54)
-            drawn = sketch(r["model"])
+            drawn = sketch(r["model"], after=after or {})
         except Exception as e:
             drawn = [f"_No sketch: {flat(str(e))}._"]
         md += [f"- {flat(s)}" for s in r["summary"]] + [""] + drawn + [""]
@@ -1162,11 +1162,17 @@ def title_of(m, path):
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
 
 
-def sketch(m, most=60):
+def sketch(m, most=60, after=None):
     """The cards a diff marks, and the cards next to them, as a mermaid flowchart: GitHub draws it in a comment or a
-    job summary, so the picture needs no hosting. The map's own pictures are the stills."""
+    job summary, so the picture needs no hosting. The map's own pictures are the stills. after: the model after the
+    change, whose views tell the ones the diff removed."""
     lst = lambda x: x if isinstance(x, list) else []
     views = [v for v in m.get("views") or [] if isinstance(v, dict)]
+    # a view the diff removed comes back with its cards marked removed there and copies of its model lines marked removed
+    # (so the diff page draws it gone): its cards and those lines stay in the model, so they mark nothing here; what was
+    # its own (its cards, its lines) went with it (audit 56: a removed view drew its shared cards and lines as removed)
+    kept = None if not isinstance(after, dict) else {v.get("id") for v in lst(after.get("views")) if isinstance(v, dict)}
+    gone = lambda v: kept is not None and v.get("id") not in kept
     cards = {n["id"]: n for n in [*(m.get("nodes") or []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict) and "id" in n}
     owner, todo = {}, [(x, i) for i, n in cards.items() for x in lst(n.get("members"))]
     while todo:  # a member (a port, a part) at any depth stands for the card it is on, as the stills draw it (audit 34); a stack, not recursion
@@ -1179,6 +1185,10 @@ def sketch(m, most=60):
     # lifted: an end was a member, drawn on its card; a line from a card to itself (a self-transition, a reflexive call) is not
     lines = [({**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}, w, e)
              for w, es in enumerate([m.get("edges") or [], *(v.get("edges") or [] for v in views)]) for e in es if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
+    whose = lambda e: (e.get("id"), e.get("from"), e.get("to")) if isinstance(e.get("id"), (str, int, float)) and not isinstance(e.get("id"), bool) else \
+        json.dumps({k: v for k, v in e.items() if k not in ("change", "style", "edited")}, sort_keys=True, default=repr)
+    model = {whose(e) for e in lst(m.get("edges")) if isinstance(e, dict)}
+    lines = [x for x in lines if not (x[1] and gone(views[x[1] - 1]) and whose(x[2]) in model)]
     # a change the sketch draws: a mark, as a string; a list or object an author wrote is no mark and is left out, as the
     # module's own pictures leave it (audit 54: `[1] in MARKS` raised TypeError and the diff Action wrote no summary)
     mark = lambda x: x["change"] if isinstance(x, dict) and isinstance(x.get("change"), str) and x["change"] in MARKS else None
@@ -1203,7 +1213,7 @@ def sketch(m, most=60):
     # own mark wins, and two different marks from two views are 'changed'
     viewmark = {}
     for v in views:
-        ov = v.get("nodeOverrides") if isinstance(v.get("nodeOverrides"), dict) else {}
+        ov = v.get("nodeOverrides") if isinstance(v.get("nodeOverrides"), dict) and not gone(v) else {}
         for i, o in ov.items():
             if i in cards and mark(o):
                 viewmark[i] = mark(o) if viewmark.get(i) in (None, mark(o)) else "changed"

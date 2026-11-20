@@ -140,3 +140,40 @@ test('audit 55: a first sentence runs past a list number, a capital initial, a l
   assert.ok(titles.includes('Checkout \u00b7 1. Validates the basket.') && titles.includes('Gateway \u00b7 Run by J. Smith in the U.S. office.'), titles.join(' | '));
   assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Checkout to Gateway, Charges the card; Sends the receipt.');
 });
+
+test('audit 56: a first sentence ends after "ms.", a capital or a short number, a title, initial or list number only where it leads to a name or opens a line', async () => {
+  const { firstSentence, unstop, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Times out after 500 ms. Retries twice.', 'Times out after 500 ms.'], ['Calls service A. Returns the total.', 'Calls service A.'],
+    ['Listens on port 443. Accepts TLS only.', 'Listens on port 443.'], ['Runs on Python 3. Ships as a wheel.', 'Runs on Python 3.'], ['Speaks HTTP/2. Falls back to 1.1.', 'Speaks HTTP/2.'],
+    ['a CA. Then signs them.', 'a CA.'], ['Talks to service B. Then retries.', 'Talks to service B.'], ['Calls A. Then B.', 'Calls A.'],
+    // still not cut: a title before a name, "ca." before a number, initials that lead to a name, a list number that opens a line
+    ['Sends 3 copies to Dr. Smith. Then waits.', 'Sends 3 copies to Dr. Smith.'], ['Takes ca. 100 ms. More.', 'Takes ca. 100 ms.'], ['J. R. R. Tolkien wrote it. More.', 'J. R. R. Tolkien wrote it.'],
+    ['Built by Ada and John F. Kennedy for us. More.', 'Built by Ada and John F. Kennedy for us.'], ['Steps:\n1. Validate.\n2. Pay.', 'Steps:\n1. Validate.']]) assert.equal(firstSentence(t), f, t);
+  assert.equal(unstop('Answers in 200 ms.'), 'Answers in 200 ms');
+  assert.equal(mdPlain('- Answers in 200 ms.\n- Retries twice.'), 'Answers in 200 ms; Retries twice.');
+  // drawn: a weighted line's title and name, and a card's sub-line, hold only the first sentence
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Shoppers', what: 'Buy at shop A. They pay later.' }, { id: 'b', label: 'Cache' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: 'Answers in under 5 ms. Falls back to the database on a miss, which takes 40 ms.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v'));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Shoppers to Cache, Answers in under 5 ms.');
+  assert.ok(s.includes('Buy at shop A.') && !/>[^<]*They pay later/.test(s), s.match(/Buy at[^<"]*/g)?.join(' | '));
+});
+
+// audit 56: a line's title and accessible name say its edit mark, as a card's name does, and only the change marks a line is
+// drawn with ('planned' is drawn unmarked, as validate() warns)
+test('audit 56: an edited map line says (edited) in its title and name; a planned line says nothing it does not draw', () => {
+  const name = s => /class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], title = s => /<g class="edge-g[\s\S]*?<title>([^<]*)<\/title><\/g>/.exec(s)[1];
+  const one = e => svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'API', edited: true }, { id: 'b', label: 'Database' }],
+    edges: [{ id: 'e', from: 'a', to: 'b', label: 'reads, writes', ...e }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v'));
+  const ed = one({ edited: true });
+  assert.match(ed, /data-id="a"[^>]*aria-label="API[^"]*\(edited\)"/);
+  assert.equal(name(ed), 'Line from API to Database: reads, writes (edited)'); assert.equal(title(ed), 'API → Database: reads, writes (edited)');
+  assert.equal(name(one({})), 'Line from API to Database: reads, writes');
+  assert.equal(name(one({ edited: true, weight: 2 })), 'Line from API to Database: reads, writes (edited), weight 2 of 3');
+  for (const c of ['planned', 'Planned']) { const s = one({ change: c });
+    assert.equal(name(s), 'Line from API to Database: reads, writes', c); assert.equal(title(s), 'API → Database: reads, writes', c); }
+  assert.equal(name(one({ change: 'removed' })), 'Line from API to Database: reads, writes, removed');
+  assert.equal(name(one({ change: 'added' })), 'Line from API to Database: reads, writes, new');
+  // the card keeps its planned word: a planned card is drawn planned
+  assert.match(svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', change: 'planned' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v')), /aria-label="A[^"]*, planned"/);
+});
