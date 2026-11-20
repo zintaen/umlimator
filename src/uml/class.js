@@ -481,7 +481,8 @@ const describeAs = look => (model, viewId) => {
       else if (f !== id) return;
       else { const verb = lineVerb(e) || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
         said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
-    out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
+    // each said once: two lines alike, one from the box and one from its port to one interface, read as one (audit 64)
+    const once = [...new Set(said)]; out.push(nodeName(at.get(id).x, pic, look) + (once.length ? '; ' + once.join('; ') : '') + '.'); });
   return out.join('\n');
 };
 const classDescribe = describeAs(CLASS_LOOK);
