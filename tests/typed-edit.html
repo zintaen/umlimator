@@ -86,7 +86,8 @@ try {
   card('c'); key('ArrowDown', { altKey: true });
   gives('Alt + ↓ sets the card\'s pin a row down', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [1, 2] }], m => same(V(m).layout.c, [1, 2]) && same(V(m).layout.a, [0, 0]));
   key('ArrowRight', { altKey: true });
-  gives('Alt + → a column right', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [2, 1] }], m => same(V(m).layout.c, [2, 1]));
+  // the host has not updated, so c is still at [1, 1]; a column right is d's pinned cell [2, 1], which Alt + an arrow steps over (audit 58)
+  gives('Alt + → a column right, over d\'s pinned cell', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [3, 1] }], m => same(V(m).layout.c, [3, 1]));
   const n0 = ed.length, to = [centre('.node[data-id="d"] .n-body')[0], centre('.node[data-id="b"] .n-body')[1]], from = centre('.node[data-id="c"] .n-body');
   ptr(pick('.node[data-id="c"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to);
   check('a drag is one transaction', ed.length === n0 + 1, ed.length - n0);
