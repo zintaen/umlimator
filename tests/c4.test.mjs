@@ -81,8 +81,8 @@ test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shape
 });
 test('audit 21: the guide\'s C4 row, the C4 conformance note and the schema name the shapes C4 draws (C4_SHAPES, not node) and the default for any other name', () => {
   const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), names = t => [...t.matchAll(/`?\b([a-z]+)\b`?/g)].map(m => m[1]);
-  const guide = /a C4 element's [^|]*?`shape` \((.*?)\), an instance's/.exec(read('../docs/guide/model.md'))[1];
-  const note = read('../docs/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
+  const guide = /a C4 element's [^|]*?`shape` \((.*?)\), an instance's/.exec(read('../docs/maps/model.md'))[1];
+  const note = read('../docs/diagrams/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
   const schema = JSON.parse(read('../lib/umlimator.schema.json'));
   let desc; JSON.stringify(schema, (k, v) => { if (k === 'shape' && v && typeof v.description === 'string' && v.description.startsWith('A C4 element')) desc = v.description; return v; });
   const vocab = /`shape` \((.*?)\)\. Relationship:/.exec(read('../docs/diagrams/model.md').split('\n').find(l => l.startsWith('| 23 |')))?.[1]; // audit 22: the vocabulary row c4.md cites
@@ -138,7 +138,7 @@ test('23-c4.json\'s static views draw: people and boxes, external grey, the subj
   assert.deepEqual(got, pinned, 'no overlap, overflow, line through a node or label over a node; the crossings and one label on a line pinned (repair and reroute off, §11)');
   // the conformance note states the container view's labels on lines laid out down as counted here (audit 27: it said 8 after audit 25 made it 6)
   const onLine = parseInt(got['c4-containers down'].find(k => / label on a line$/.test(k)), 10);
-  assert.ok(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8').replace(/\s+/g, ' ').includes(`the container view's on a looser spot, ${onLine} labels on lines, which \`check()\` names`), `the C4 note says ${onLine} labels on lines`);
+  assert.ok(readFileSync(new URL('../docs/diagrams/conformance/c4.md', import.meta.url), 'utf8').replace(/\s+/g, ' ').includes(`the container view's on a looser spot, ${onLine} labels on lines, which \`check()\` names`), `the C4 note says ${onLine} labels on lines`);
   const g = layout(C4, 'c4-containers'), f = g.families;
   assert.deepEqual(f.map(x => [x.id, x.title, x.shape]), [['c4-bookshop', 'Bookshop [Software System]', 'c4-boundary']]);
   ['c4-storefront', 'c4-api', 'c4-worker', 'c4-db', 'c4-queue'].forEach(id => assert.ok(inside(g.byId[id], f[0]), id));
@@ -442,7 +442,7 @@ test('audit 1: D leaves a container reached with its system to it; c4-relationsh
     ['c4-relationship: r3 joins "Shop", a software system, and "a note", a comment: a relationship joins two static elements or two deployment elements']);
   const cv = { ...m, edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'C', subject: 's', nodeIds: ['s', 'a', 'c2'] }] };
   assert.deepEqual(validate(cv).filter(p => p.rule === 'c4-level'), [], 'another system\'s container on a container view');
-  assert.match(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
+  assert.match(readFileSync(new URL('../docs/diagrams/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
 });
 
 test('audit 5: lines go round the cards on a typed view, however wide the host font (bookshop-c4 containers), and check() reports one drawn through a card', () => {

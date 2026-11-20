@@ -4,7 +4,7 @@
 // laid out right and down with no line through a node but its own two ends (a port's line may run into its owner's box,
 // not through a card), no line end off its port's square (by 1 px), no port off its owner's border, no port name over a
 // node or a line, and what check() finds pinned here: the crossings that turning port repair off leaves (§14) and the
-// few other findings, each stated in its type's conformance note (docs/conformance/uml-*.md). The six-level width is
+// few other findings, each stated in its type's conformance note (docs/diagrams/conformance/uml-*.md). The six-level width is
 // pinned. Then §14's budgets in CPU time, best of seven after a warm-up: a full layout and its SVG under 1 s; the common
 // edit and an edit that moves nothing under a 1 s ceiling, their time printed against the 100 ms target (the
 // repository's rule for CI timing). tests/stage5.html draws every view in Chrome under three fonts and both themes.

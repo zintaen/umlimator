@@ -1,49 +1,54 @@
-// The documentation site (docs/, VitePress): the diagram types page shows each of the 28 types with its own example and
-// conformance note, and every page the sidebar names is there. The build itself, with its dead-link check, is CI's
-// docs job (npm --prefix docs run build).
+// The documentation site (docs/, VitePress): one connected Docs with one sidebar (the maintainer's decision, 20 Nov 2026).
+// Each of the 28 types has one page, its conformance note its last part, and every page the sidebar names is there, every
+// site page is in the sidebar, and the top nav is Docs, Atlas and the version menu. On the built site every link, frame and
+// anchor resolves. The build itself, with its dead-link check, is CI's docs job (npm --prefix docs run build).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { promisify } from 'node:util';
+import { posix } from 'node:path';
 import { MOVED } from '../docs/diagrams/examples/check.mjs';
+import { typeIds } from '../tools/types.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8');
-const notes = readdirSync(new URL('docs/conformance/', root)).filter(f => f.endsWith('.md')).map(f => f.slice(0, -3)).sort();
+const notes = readdirSync(new URL('docs/diagrams/conformance/', root)).filter(f => f.endsWith('.md')).map(f => f.slice(0, -3)).sort();
 
-test('the types page shows each of the 28 types with its example (MOVED), still and conformance note', () => {
+test('each of the 28 types has one page holding its conformance note, and each note is a type\'s, with its example (MOVED)', () => {
   assert.equal(notes.length, 28);
-  const want = {}; // conformance slug -> [example, its root view]
+  assert.deepEqual([...typeIds()].sort(), notes, 'a note for each type');
+  const want = {}; // conformance slug -> its example
   for (const to of Object.values(MOVED)) {
     const n = to.match(/examples\/([\w-]+)\.json$/)[1], m = JSON.parse(read(`examples/${n}.json`));
     const d = m.views.find(v => v.id === m.root).diagram;
-    want[d.startsWith('c4.') ? 'c4' : d.replace('.', '-')] = [n, m.root];
+    want[d.startsWith('c4.') ? 'c4' : d.replace('.', '-')] = n;
   }
   assert.deepEqual(Object.keys(want).sort(), notes, 'MOVED holds one example per conformance note');
-  const cards = read('docs/types.md').split('<div class="type">').slice(1);
-  assert.equal(cards.length, 28);
-  const seen = cards.map(c => {
-    const slug = c.match(/href="\.\/conformance\/([\w-]+)\.html"/)[1], [n, view] = want[slug] || [];
-    assert.ok(n, `${slug}: no such conformance note`);
-    assert.match(c, new RegExp(`href="/umlimator/examples/${n}\\.html" target="_self">Live example`), `${slug}: links ${n}.html`);
-    assert.ok(c.includes(`/umlimator/examples/stills/${n}/${view}.svg`), `${slug}: shows ${n}'s ${view} still`);
-    return slug;
-  });
-  assert.deepEqual(seen.sort(), notes, 'each type once');
+  for (const t of notes) {
+    const page = read(`docs/types/${t}.md`);
+    assert.match(page, new RegExp(`<!-- the conformance note, as written: docs/diagrams/conformance/${t}\\.md -->`), t);
+    assert.ok(page.includes(`examples/${want[t]}.json`), `${t}: its page names its example, ${want[t]}.json`);
+  }
 });
 
-test('every page the sidebar and nav name exists', () => {
-  const config = read('docs/.vitepress/config.mts');
-  const list = name => config.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\];`))[1];
-  const pages = [...list('guide').matchAll(/\['[^']+', '([\w-]+)'\]/g)].map(m => `guide/${m[1]}.md`);
-  pages.push(...[...list('api').matchAll(/\['[^']+', '([\w-]+)'\]/g)].map(m => `api/${m[1]}.md`));
-  assert.equal(pages.length, 19);
-  assert.deepEqual([...list('conformance').matchAll(/'([\w-]+)'/g)].map(m => m[1]).sort(), notes);
-  pages.push('guide/index.md', 'types.md', 'changelog.md', 'module-api.md', 'index.md');
-  for (const p of pages) assert.ok(existsSync(new URL(`docs/${p}`, root)), `docs/${p}`);
-  assert.deepEqual(readdirSync(new URL('docs/guide/', root)).filter(f => f.endsWith('.md')).sort(),
-    [...pages.filter(p => p.startsWith('guide/')).map(p => p.slice(6))].sort(), 'the sidebar lists every guide page');
+const SITE = p => p.endsWith('.md') && !/^(diagrams\/|editing\.md$|module-api\.md$|node_modules\/|\.vitepress\/)/.test(p);
+const walk = (dir = '') => readdirSync(new URL(`docs/${dir}`, root), { withFileTypes: true }).flatMap(e =>
+  e.isDirectory() ? (e.name === 'node_modules' || e.name.startsWith('.') ? [] : walk(`${dir}${e.name}/`)) : [`${dir}${e.name}`]);
+
+test('the top nav is Docs, Atlas and the version menu; the one sidebar names every site page once, and each exists', () => {
+  const config = read('docs/.vitepress/config.mts'), nav = config.slice(config.indexOf('nav: ['), config.indexOf('\n    sidebar,'));
+  assert.deepEqual([...nav.matchAll(/^      \{ text: ([^,]+),/gm)].map(m => m[1]), [`'Docs'`, `'Atlas'`, '`v${version}`']);
+  assert.match(nav, /\{ text: 'Docs', link: '\/', activeMatch: '\^\/\(\?!atlas\/\)' \}/);
+  assert.match(nav, /\{ text: 'Atlas', link: '\/atlas\/', activeMatch: '\^\/atlas\/' \}/);
+  for (const t of ['Changelog', 'npm', 'Releases']) assert.match(nav, new RegExp(`text: '${t}'`));
+  const flat = items => items.flatMap(i => i.items ? flat(i.items) : [i.link]);
+  const links = flat(JSON.parse(read('docs/.vitepress/sidebar.json')));
+  const file = l => l.endsWith('/') ? `${l.slice(1)}index.md` : `${l.slice(1)}.md`;
+  assert.equal(new Set(links).size, links.length, 'each page once');
+  for (const l of links) assert.ok(existsSync(new URL(`docs/${file(l)}`, root)), `docs/${file(l)}`);
+  assert.deepEqual(walk().filter(SITE).sort(), links.map(file).sort(), 'the sidebar lists every page of the site');
+  assert.ok(links.includes('/changelog') && existsSync(new URL('docs/module-api.md', root)));
 });
 
 test('the built changelog starts at the first release and names no host application', { skip: !existsSync(new URL('docs/.vitepress/dist/changelog.html', root)) && 'the site is not built (npm --prefix docs run build)' }, () => {
@@ -89,14 +94,14 @@ test('each "28 diagram types" list names all 28: UML\'s 14 and its information f
 test('the API docs send the field list to a page that exists, not the README\'s gone Model section (audit 17)', () => {
   const api = read('docs/api/model-and-schema.md');
   assert.doesNotMatch(api, /README's Model section/); // the README has no Model section since the guide split
-  assert.match(api, /\]\(\.\.\/guide\/model\.md\)/);
+  assert.match(api, /\]\(\.\.\/maps\/model\.md\)/);
 });
 
 test('the guide says timelapse keeps the latest 30 versions, and names --limit (audit 17)', () => {
-  const action = read('docs/guide/github-action.md').replace(/\s+/g, ' ');
+  const action = read('docs/use/github-action.md').replace(/\s+/g, ' ');
   assert.doesNotMatch(action, /every version of the model/);
   assert.match(action, /latest 30 versions[^.]*--limit N/);
-  assert.match(read('docs/guide/cli.md'), /timelapse model\.json[^\n]*latest 30[^\n]*--limit N/);
+  assert.match(read('docs/use/cli.md'), /timelapse model\.json[^\n]*latest 30[^\n]*--limit N/);
 });
 
 test('umlimator.py\'s usage names the timelapse --limit default the option has (audit 21)', async () => {
@@ -185,4 +190,29 @@ test('the built site\'s 404 page, drawn in the browser, has one main landmark (a
     assert.equal((dom.match(/<main[ >]/g) || []).length, 1, 'one main landmark');
     assert.match(dom, /<main[^>]*>\s*<div[^>]*class="NotFound"/, 'the 404 content is inside it');
   } finally { server.close(); }
+});
+
+// every link, frame and picture of the built site names a page or file it has, and an anchor that page has: the pages the
+// maintainer's one-sidebar revamp (20 Nov 2026) moved left no link behind. The rendered examples (/umlimator/examples/) are
+// built beside the site by CI's site job: tests/gallery.test.mjs checks those
+test('the built site\'s links, frames and pictures each name a page or file it has, and an anchor on it', { skip: !built && 'the site is not built (npm --prefix docs run build)' }, () => {
+  const dist = new URL('docs/.vitepress/dist/', root), names = pages().map(p => p.pathname.split('/dist/')[1]);
+  const ids = Object.fromEntries(names.map(n => [n, new Set([...readFileSync(new URL(n, dist), 'utf8').matchAll(/ id="([^"]+)"/g)].map(m => m[1]))]));
+  const bad = [];
+  let n = 0;
+  for (const p of names.filter(n => n !== '404.html')) {
+    for (const [, raw] of readFileSync(new URL(p, dist), 'utf8').matchAll(/<(?:a|iframe|img)\b[^>]*? (?:href|src)="([^"]*)"/g)) {
+      const href = raw.replace(/&amp;/g, '&'), [path, hash = ''] = href.split('#');
+      if (/^(https?|mailto|data):/.test(path) || path.startsWith('/umlimator/examples/')) continue;
+      n++;
+      if (path.startsWith('/') && !path.startsWith('/umlimator/')) { bad.push(`${p}: ${href} (outside the base)`); continue; }
+      let file = !path ? p : path.startsWith('/') ? path.slice('/umlimator/'.length) : posix.normalize(posix.join(posix.dirname(p), path));
+      if (file === '' || file.endsWith('/')) file += 'index.html';
+      if (!file.endsWith('.html')) { if (!existsSync(new URL(file, dist))) bad.push(`${p}: ${href} (no file)`); continue; }
+      if (!ids[file]) { bad.push(`${p}: ${href} (no page)`); continue; }
+      if (hash && !ids[file].has(decodeURIComponent(hash))) bad.push(`${p}: ${href} (no #${hash})`);
+    }
+  }
+  assert.ok(n > 2000, `${n} links`);
+  assert.deepEqual(bad, []);
 });

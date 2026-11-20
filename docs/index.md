@@ -1,55 +1,22 @@
 ---
-layout: home
-title: umlimator
-titleTemplate: Architecture maps and diagrams from one JSON model
-
-hero:
-  name: umlimator
-  text: Architecture maps you can click through
-  tagline: Layered maps and 28 diagram types from one JSON model. An ES module with no dependencies, a CLI and a GitHub Action.
-  actions:
-    - theme: brand
-      text: Get started
-      link: /guide/getting-started
-    - theme: alt
-      text: Examples
-      link: /examples
-    - theme: alt
-      text: GitHub
-      link: https://github.com/zintaen/umlimator
-
-features:
-  - title: Maps with drill-down
-    details: A view per level, from the system down to its components. A stacked card opens the view inside it. Lines are laid out automatically and never run through a card.
-    link: /guide/views-and-layers
-    linkText: Views and layers
-  - title: 28 diagram types
-    details: UML's 14 and its information flow diagram, SysML's four, C4, ER, flowchart, data flow, BPMN, mindmaps, and Google Cloud, Azure and AWS architecture diagrams, each with a conformance note.
-    link: /types
-    linkText: See the types
-  - title: Embed anywhere
-    details: One ES module with no dependencies and no build step. Call render(), or write a umlimator-map element in plain HTML, VitePress or Docusaurus.
-    link: /guide/embedding
-    linkText: Embedding
-  - title: Editing with apply()
-    details: Opt-in gestures emit events. Your code decides, and apply() turns an edit into the next model, with undo.
-    link: /guide/editing
-    linkText: Editing
-  - title: Diffs in pull requests
-    details: A GitHub Action posts what a change does to your maps, marked and in words. Rules fail CI, and drift compares the map with real traffic.
-    link: /guide/github-action
-    linkText: GitHub Action
-  - title: Import and export
-    details: Read Structurizr, C4-PlantUML, Mermaid, DBML, BPMN XML, docker compose and kubectl. Write SVG, PNG, PDF, animated PNG and BPMN XML.
-    link: /guide/import-export
-    linkText: Import and export
+title: What umlimator is
+titleTemplate: umlimator, architecture maps and diagrams from one JSON model
+description: Layered architecture maps and 28 diagram types you can click through, from one JSON model.
 ---
 
-## A live map
+# What umlimator is
 
-This is the Umlimator atlas, umlimator's own model, drawn on this page by `<umlimator-map>`. Click a card to select
-it, and open a stacked card to go one level down. [Open it full size](/examples/umlimator-atlas.html), or browse the
-examples: [every diagram type](./examples.md#diagrams) and [the Atlas](./examples.md#atlas).
+umlimator draws layered architecture maps you can click through, and 28 diagram types besides them, from one JSON model. The 28 diagram types are UML's 14 and its information flow diagram, SysML's four, C4, entity-relationship, flowchart, data flow, BPMN, mindmaps, and AWS, Google Cloud and Azure architecture diagrams. One model drives all of it:
+
+- an ES module with no dependencies and no build step, that any page embeds with `render()` or the `<umlimator-map>` element;
+- a CLI that writes a self-contained HTML page, still pictures (SVG, PNG) and a PDF, and checks the layout;
+- a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants.
+
+The layout is automatic: you name what is connected, umlimator places the cards and routes the lines, and the same model always gives the same picture.
+
+## A live atlas
+
+This is the Umlimator atlas, umlimator's own model, drawn on this page by `<umlimator-map>`. Click a card to select it, and open a stacked card to go one level down. [Open it full size](/examples/umlimator-atlas.html), or read [its page](./atlas/umlimator.md).
 
 ```umlimator
 src: /umlimator/examples/umlimator-atlas.json
@@ -58,58 +25,18 @@ wheel: ctrl
 height: 520
 ```
 
-## Install
+## How these docs read
 
-::: code-group
+The sidebar runs in reading order.
 
-```bash [npm]
-npm install umlimator
-```
-
-```html [CDN]
-<script type="module">
-  import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@@@VERSION@@/lib/umlimator.js';
-</script>
-```
-
-```bash [CLI]
-# Python 3.9+; Chrome or Chromium for pictures and checks
-git clone --depth 1 --branch v@@VERSION@@ https://github.com/zintaen/umlimator.git
-python3 umlimator/umlimator.py render model.json --out page.html
-```
-
-```yaml [GitHub Action]
-# .github/workflows/maps.yml: what each pull request changes in your maps, posted on it
-on: pull_request
-permissions: { contents: read, pull-requests: write }
-jobs:
-  maps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v@@VERSION@@
-```
-
-```bash [MCP]
-# an MCP server over stdio, for an AI assistant such as Claude Code
-claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.json
-```
-
-:::
-
-Then draw a model into any element:
-
-```js
-import { render } from 'umlimator';
-import 'umlimator/theme.css';
-
-const map = render(document.getElementById('map'), model);
-map.update(nextModel);   // redraws only what changed, keeping the view, camera and selection
-```
-
-[Getting started](/guide/getting-started) walks through a first model, and the [API reference](/api/) lists every
-export.
+| Part | What it covers |
+|---|---|
+| Start | this page, [Install](./start/install.md), and [A first diagram](./start/first-diagram.md): a first model and a map in a page |
+| [Diagrams](./types/index.md) | the 28 diagram types, each on one page: a live example and a checklist of what to find in it, how to write the type in the model, and what of its notation is drawn and left out |
+| Maps and atlases | [the model](./maps/model.md), [views and layers](./maps/views-and-layers.md), [stories, lenses and live data](./maps/stories-lenses-live.md), then [the atlases](./atlas/index.md): whole businesses in one model each, the Bookshop's overview the map's showcase |
+| Use it | the [command line](./use/cli.md), [embedding](./use/embedding.md), [the standalone page](./use/standalone-page.md), the [MCP server](./use/mcp.md), the [GitHub Action](./use/github-action.md), [import and export](./use/import-export.md), [icon packs](./use/icon-packs.md) and [editing](./use/editing.md) |
+| Reference | the [API](./api/index.md): every export, its options and its events, and the [changelog](./changelog.md) |
 
 ## Support
 
-umlimator is free and MIT licensed. Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), and if it saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).
+umlimator is free and MIT licensed. It is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft. Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), and if it saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).

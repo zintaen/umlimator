@@ -2,7 +2,7 @@
 
 Status: draft. It is the starting point for stage 1's design note, and the examples in [`examples/`](examples/) follow
 it; the class diagram's moved to [`../../examples/`](../../examples/) when it drew. From 0.18.0 the library reads the
-`uml.class` rows (`docs/conformance/uml-class.md`); the other types' fields are kept, not drawn yet. Why the model looks like this: [`proposal.md`](proposal.md) §4.
+`uml.class` rows (`docs/diagrams/conformance/uml-class.md`); the other types' fields are kept, not drawn yet. Why the model looks like this: [`proposal.md`](proposal.md) §4.
 
 Check the examples against this page with `node docs/diagrams/examples/check.mjs`.
 

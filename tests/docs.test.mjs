@@ -70,14 +70,14 @@ test('every page in examples/ has a main landmark, around its map (axe landmark-
 });
 
 test('the standalone-page guide claims for its links only what page.js writes to the hash: no selected line or box (audit 16)', () => {
-  const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8');
+  const guide = readFileSync(new URL('../docs/use/standalone-page.md', import.meta.url), 'utf8');
   assert.doesNotMatch(guide, /Every state the page shows can be linked/);
   assert.match(guide, /A selected line or box is not kept in the link/);
 });
 
 // audit 31: the guide's Export row listed SVG, PNG and Record a story; the menu also has Copy link to view and Map model (JSON)
 test('audit 31: the standalone-page guide lists every entry of the page\'s Export menu, and says what Map model (JSON) gives back', () => {
-  const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8');
+  const guide = readFileSync(new URL('../docs/use/standalone-page.md', import.meta.url), 'utf8');
   const menu = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8').match(/id="m-export-pop"[^`]*?<\/div>/)[0];
   const entries = [...menu.matchAll(/<button data-x="\w+">([^<]+)<\/button>/g)].map(m => m[1]), row = guide.match(/^\| Export \|(.*)\|$/m)[1];
   assert.ok(entries.length >= 5, menu);
@@ -86,7 +86,7 @@ test('audit 31: the standalone-page guide lists every entry of the page\'s Expor
 });
 
 test('audit 32: the file names the standalone-page guide gives for the Umlimator atlas\'s exports are the ones page.js makes of examples/umlimator-atlas.json', () => {
-  const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8'), src = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8');
+  const guide = readFileSync(new URL('../docs/use/standalone-page.md', import.meta.url), 'utf8'), src = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8');
   const namePart = new Function(src.slice(src.indexOf('function namePart('), src.indexOf('/* ================= the standalone viewer')) + '; return namePart;')();
   const shop = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8')), base = namePart(shop.title);
   const said = guide.match(/- \*\*Map model \(JSON\)\*\*:[^\n]*/)[0];
@@ -101,12 +101,12 @@ test('conformance notes and the examples README agree with the code they describ
   const { writeMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
   const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8'), json = p => JSON.parse(doc(p));
   const n = Object.keys(diagramOf({ diagram: 'uml.state-machine' }).rules).length;
-  assert.match(doc('../docs/conformance/uml-state-machine.md'), new RegExp(`its ${n} rules`));
-  const obj = doc('../docs/conformance/uml-object.md');
+  assert.match(doc('../docs/diagrams/conformance/uml-state-machine.md'), new RegExp(`its ${n} rules`));
+  const obj = doc('../docs/diagrams/conformance/uml-object.md');
   for (const r of Object.keys(diagramOf({ diagram: 'uml.object' }).rules)) assert.ok(obj.includes('`' + r + '`'), r);
   // the flowchart writer's bracket lines (a process is `id[label]`) are named so in the note
   assert.match(writeMermaidFlowchart(json('../examples/returns-flowchart.json')), /^\s*\S+\[[^/[(]/m);
-  assert.match(doc('../docs/conformance/flowchart.md'), /Each symbol in Mermaid's bracket form/);
+  assert.match(doc('../docs/diagrams/conformance/flowchart.md'), /Each symbol in Mermaid's bracket form/);
   const views = new Set(json('../examples/sales-classes.json').views.map(v => v.id));
   for (const [, id] of doc('../examples/README.md').matchAll(/sales-classes `([^`]+)`/g)) assert.ok(views.has(id), id);
   for (const [, id] of doc('../examples/README.md').matchAll(/sales-classes `domain` and `([^`]+)`/g)) assert.ok(views.has(id), id);
@@ -118,7 +118,7 @@ test('audit 14: the sequence and communication notes say a self-line is in the P
   for (const [f, vid] of [['checkout-sequence', 'checkout-sequence'], ['checkout-communication', 'checkout-communication']]) {
     const ctx = mapContext(JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8'))), rows = tablesOf(ctx, ctx.V[vid], ctx.buildGeo(vid))[1].rows.map(r => r.replace(/<[^>]+>/g, ''));
     assert.ok(rows.some(r => /api : ShopApi\s*→\s*api : ShopApi/.test(r)), f);
-    const note = readFileSync(new URL(`../docs/conformance/uml-${f.split('-')[1]}.md`, import.meta.url), 'utf8');
+    const note = readFileSync(new URL(`../docs/diagrams/conformance/uml-${f.split('-')[1]}.md`, import.meta.url), 'utf8');
     assert.doesNotMatch(note, /left out of the lines table/, f); assert.match(note, /listed in the lines table/, f);
   }
 });
@@ -149,19 +149,19 @@ test('audit 11: the schema names the flowchart\'s default direction; the informa
   const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description;
   const at = d => { const m = structuredClone(fc); m.views.forEach(v => { if (d) v.direction = d; else delete v.direction; }); return JSON.stringify(layout(m, m.views[0].id).byId); };
   assert.equal(at(), at('down'), 'a flowchart with no direction lays out down'); assert.match(dirs, /down for a flowchart/);
-  assert.doesNotMatch(doc('../docs/conformance/uml-information-flow.md'), /actors and information items/, 'an information item is never a flow end');
+  assert.doesNotMatch(doc('../docs/diagrams/conformance/uml-information-flow.md'), /actors and information items/, 'an information item is never a flow end');
   for (const [t, f] of [['uml.component', 'uml-component'], ['uml.deployment', 'uml-deployment'], ['uml.composite-structure', 'uml-composite-structure']]) {
-    const note = doc(`../docs/conformance/${f}.md`);
+    const note = doc(`../docs/diagrams/conformance/${f}.md`);
     for (const r of Object.keys(diagramOf({ diagram: t }).rules)) assert.ok(note.includes('`' + r + '`'), `${f}: ${r}`);
   }
-  assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
+  assert.match(doc('../docs/diagrams/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
   // audit 15: a duration with ends on two lanes sits under the lower one (src/layout/timeruler.js, notes/stage-6.md §6.6)
-  assert.match(doc('../docs/conformance/uml-timing.md'), /with ends on two lanes, under the lower of the two/);
+  assert.match(doc('../docs/diagrams/conformance/uml-timing.md'), /with ends on two lanes, under the lower of the two/);
 });
 
 test('audit 14: the cloud notes do not say an icons-only update() keeps the picture (lifted in 0.28.0); AWS is in the editing guide, the examples README and the schema', () => {
   const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
-  for (const f of ['gcp', 'azure']) assert.doesNotMatch(read(`../docs/conformance/${f}.md`), /changes only the `icons` table keeps/, f);
+  for (const f of ['gcp', 'azure']) assert.doesNotMatch(read(`../docs/diagrams/conformance/${f}.md`), /changes only the `icons` table keeps/, f);
   const editing = read('../docs/editing.md');
   for (const s of ['AWS (`aws`)', '`aws.Connection`', '`pack fetch aws`']) assert.ok(editing.includes(s), s);
   assert.match(read('../examples/README.md'), /`aws-`/);
@@ -169,7 +169,7 @@ test('audit 14: the cloud notes do not say an icons-only update() keeps the pict
 });
 
 test('audit 15: the import and export guide names every Mermaid writer as internal, and says export writes BPMN only', () => {
-  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), guide = read('../docs/guide/import-export.md');
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), guide = read('../docs/use/import-export.md');
   const words = { class: 'class', sequence: 'sequence', state: 'state machine', requirement: 'requirement', er: 'entity-relationship', flowchart: 'flowchart', mindmap: 'mindmap' };
   const writers = readdirSync(new URL('../src/readers/', import.meta.url)).filter(f => /^mermaid-.*\.js$/.test(f) && /function writeMermaid/.test(read(`../src/readers/${f}`))).map(f => f.slice(8, -3)).sort();
   assert.deepEqual(writers, Object.keys(words).sort());
@@ -182,10 +182,10 @@ test('audit 15: the import and export guide names every Mermaid writer as intern
 test('audit 15: a Google Cloud product the pin has no icon of draws its category\'s icon, as the note, the examples README and the gallery say', async () => {
   const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), packs = JSON.parse(read('../icons/packs.json'));
   for (const id of ['Cloud-DNS', 'Cloud-Load-Balancing', 'Cloud-CDN', 'Pub-Sub']) assert.ok(packs.gcp.category[id], id);
-  assert.doesNotMatch(read('../docs/conformance/gcp.md'), /draw a glyph/);
-  assert.match(read('../docs/conformance/gcp.md'), /draw their\s+category's icon/);
+  assert.doesNotMatch(read('../docs/diagrams/conformance/gcp.md'), /draw a glyph/);
+  assert.match(read('../docs/diagrams/conformance/gcp.md'), /draw their\s+category's icon/);
   assert.doesNotMatch(read('../examples/README.md'), /The site draws it with no icon pack|Glyphs and full names on the site/);
-  assert.doesNotMatch(read('../docs/examples.md'), /a glyph where the pinned pack lacks one/);
+  assert.doesNotMatch(read('../docs/types/gcp.md'), /a glyph where the pinned pack lacks one/);
 });
 
 test('audit 15: the API page states the typed views\' default direction as the schema does', () => {
@@ -205,16 +205,16 @@ test('audit 53: the API page says a timing view is always drawn right and anothe
 });
 
 test('audit 18: the composite note says Delete on the subject is refused; the sequence and communication notes count self-lines on the cover', () => {
-  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), cs = read('../docs/conformance/uml-composite-structure.md');
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), cs = read('../docs/diagrams/conformance/uml-composite-structure.md');
   assert.doesNotMatch(cs, /hiding it from the view,\s+leaves it|Hiding the subject \(Delete\) keeps/);
   assert.match(cs, /Delete on the subject is refused/);
-  for (const f of ['uml-sequence', 'uml-communication']) { const t = read(`../docs/conformance/${f}.md`);
+  for (const f of ['uml-sequence', 'uml-communication']) { const t = read(`../docs/diagrams/conformance/${f}.md`);
     assert.doesNotMatch(t, /left out of the cover's/, f); assert.match(t, /listed in the lines table and counted on the cover/, f); }
   assert.match(read('../docs/editing.md'), /\| a member row \| edit its row; ↑ ↓; ✕; the new row \|/);
 });
 
 test('audit 19: the CLI guide says check exits 1 on a broken rule or a failed check, as cmd_check does, and 0 on layout problems alone', () => {
-  const guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8'), py = readFileSync(new URL('../umlimator.py', import.meta.url), 'utf8');
+  const guide = readFileSync(new URL('../docs/use/cli.md', import.meta.url), 'utf8'), py = readFileSync(new URL('../umlimator.py', import.meta.url), 'utf8');
   const body = py.slice(py.indexOf('def cmd_check'), py.indexOf('\ndef ', py.indexOf('def cmd_check') + 1)), exits = [...body.matchAll(/sys\.exit\(f?"([^"]*)/g)].map(x => x[1]);
   assert.ok(exits.some(x => /broken rule/.test(x)) && exits.some(x => /reported errors/.test(x)) && !exits.some(x => /crossing|detour|overflow/.test(x)), 'cmd_check exits 1 only on rules and errors');
   const para = guide.split('\n\n').find(p => p.startsWith('`check` reports'));
@@ -233,14 +233,14 @@ test('audit 25: the hide docs say an element only one view holds is refused, as 
   const api = doc('../docs/api/apply-and-commands.md');
   assert.match(api, /It also refuses an element that lives only in that view \(the view's own node or line/);
   assert.match(api, /\| `hide` \|[^\n]*for an element that lives only in that view/);
-  for (const p of ['../docs/guide/editing.md', '../docs/editing.md']) assert.match(doc(p), /An element only this view holds \(its own node or line\)[^|]*sends `delete`|So is an element only this view holds \(its own node or line\)[^|]*sends `delete`/i, p);
+  for (const p of ['../docs/use/editing.md', '../docs/editing.md']) assert.match(doc(p), /An element only this view holds \(its own node or line\)[^|]*sends `delete`|So is an element only this view holds \(its own node or line\)[^|]*sends `delete`/i, p);
 });
 
 // audit 25: the keyboard guides said one Enter opens a card's view; the canvas selects the focused card on the first Enter
 // and opens its view on the next (docs/module-api.md, the design notes), and Esc or Backspace first clears a selection
 test('audit 25: the keyboard guides say Enter selects a card, and Enter on the selected card opens its view', () => {
   const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' ');
-  const page = doc('../docs/guide/standalone-page.md'), views = doc('../docs/guide/views-and-layers.md');
+  const page = doc('../docs/use/standalone-page.md'), views = doc('../docs/maps/views-and-layers.md');
   assert.doesNotMatch(page, /Enter opens a card's view/); assert.doesNotMatch(views, /double-click \(or Enter\) opens it/);
   assert.match(page, /Enter selects the focused card, and Enter on the selected card opens its view\. Esc or Backspace clears the selection, and with nothing selected goes back up/);
   assert.match(views, /double-click \(or Enter on the selected card\) opens it/);
@@ -255,7 +255,7 @@ test('audit 26: each cloud conformance note gives the full-name rule as the clou
   const packs = JSON.parse(readFileSync(new URL('../icons/packs.json', import.meta.url), 'utf8'));
   const { layout } = await import('../lib/umlimator-all.js');
   for (const fam of ['aws', 'gcp', 'azure']) {
-    const note = doc(`../docs/conformance/${fam}.md`), names = packs[fam].names || {};
+    const note = doc(`../docs/diagrams/conformance/${fam}.md`), names = packs[fam].names || {};
     assert.ok(!/hyphens as spaces/.test(note), `${fam}.md: the id is split on hyphens and underscores`);
     assert.ok(/`names` entry[^|]{0,160}?else the id with hyphens and underscores as spaces/.test(note), `${fam}.md: the names row, then the id`);
     for (const [id, name] of Object.entries(names)) {
@@ -282,8 +282,8 @@ test('audit 32: the design notes say Delete hides a model message the view lists
   assert.match(s6, /\| S17 \|[^\n]*Amended in audit 31: a model message the view lists by id is hidden from this view by Delete/);
   assert.match(s6, /### 8\.3 Hiding \(S17\)[^#]*Amended in audit 31: option \(a\) holds for a change, a constraint and a message the view holds/);
   // each `docs/...` P12-style citation in a conformance note names a file with that row
-  for (const f of readdirSync(new URL('../docs/conformance/', import.meta.url)).filter(f => f.endsWith('.md')))
-    for (const [, p, row] of doc(`../docs/conformance/${f}`).matchAll(/`(docs\/[^`]+\.md)` ([A-Z]\d+)\b/g))
+  for (const f of readdirSync(new URL('../docs/diagrams/conformance/', import.meta.url)).filter(f => f.endsWith('.md')))
+    for (const [, p, row] of doc(`../docs/diagrams/conformance/${f}`).matchAll(/`(docs\/[^`]+\.md)` ([A-Z]\d+)\b/g))
       assert.match(doc(`../${p}`), new RegExp(`^\\| ${row} \\|`, 'm'), `${f}: ${p} ${row}`);
 });
 
@@ -309,7 +309,7 @@ test('audit 33: the composite and internal block notes name a part in a Lines ro
     return tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id))[1].rows.map(r => r.replace(/<[^>]+>/g, ' ')).join('\n'); };
   for (const [note, f, d, drawn, id] of [['uml-composite-structure.md', 'order-service-structure.json', 'uml.composite-structure', 'checkout : CheckoutFlow [1]', 'order-service.checkout'],
     ['sysml-internal-block.md', 'ebike-structure.json', 'sysml.internal-block', 'battery : Battery [1]', 'ebike.battery']]) {
-    const said = doc(`../docs/conformance/${note}`), rows = lines(f, d);
+    const said = doc(`../docs/diagrams/conformance/${note}`), rows = lines(f, d);
     assert.ok(rows.includes(drawn) && !rows.includes(id), `${f}: ${rows}`);
     assert.doesNotMatch(said, /named by its id/, note);
     assert.ok(said.includes(`named as drawn (\`${drawn}\`, since audit 32`), note);
@@ -324,10 +324,10 @@ test('the state machine and component notes\' layout limits name what check() fi
   const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
   const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   const sm = json('../examples/order-states.json'), crossings = d => check(turned(sm, sm.views[0].id, d), sm.views[0].id).filter(p => / cross$/.test(p.message)).length;
-  assert.match(doc('../docs/conformance/uml-state-machine.md'), new RegExp(`Example 10 has ${words[crossings('right')]} crossing laid out right \\([^)]*\\) and ${words[crossings('down')]} laid out down`));
+  assert.match(doc('../docs/diagrams/conformance/uml-state-machine.md'), new RegExp(`Example 10 has ${words[crossings('right')]} crossing laid out right \\([^)]*\\) and ${words[crossings('down')]} laid out down`));
   const found = check(turned(json('./component-stress.json'), 'all', 'down'), 'all').map(p => p.message).filter(p => !/ cross$/.test(p));
   assert.deepEqual(found.map(p => / share a line$/.test(p) ? 'share' : /: header crossed by edge /.test(p) ? 'header' : p).sort(), ['header', 'share']);
-  assert.match(doc('../docs/conformance/uml-component.md'), /Laid out down: one pair of lines sharing a line and one line across a box's header/);
+  assert.match(doc('../docs/diagrams/conformance/uml-component.md'), /Laid out down: one pair of lines sharing a line and one line across a box's header/);
 });
 
 // audit 39: the note's count of labels drawn on a looser spot named one on a region's border in the stress file, which check()
@@ -335,7 +335,7 @@ test('the state machine and component notes\' layout limits name what check() fi
 test('the state machine note\'s labels on a looser spot are the ones check() names, in example 10 and the stress file (audit 39)', async () => {
   await import('../src/map/typed.js'); await import('../src/uml/state.js');
   const { check } = await import('../src/map/api.js');
-  const doc = readFileSync(new URL('../docs/conformance/uml-state-machine.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+  const doc = readFileSync(new URL('../docs/diagrams/conformance/uml-state-machine.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
   const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   const said = (m, vid) => ['right', 'down'].flatMap(d => check(turned(m, vid, d), vid).map(p => p.message));
   const ex = json('../examples/order-states.json'), st = json('./state-stress.json'), all = said(st, 'all'), both = [...all, ...said(st, 'edge-cases')];
@@ -363,7 +363,7 @@ test('audit 47: the 0.43.0 notes do not credit 0.43.0 with the later d.ts and sc
 // the titles of a view's chain (mapContext's chain(), which print.js heads each page with), not a title no view has
 test('audit 48: the CLI guide\'s example PDF page heading is a view path of the Umlimator atlas it links', async () => {
   const { mapContext } = await import('../src/map/context.js');
-  const guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const guide = readFileSync(new URL('../docs/use/cli.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
   const said = guide.match(/under its path \("([^"]+)"\)/)[1];
   const atlas = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8')), ctx = mapContext(atlas);
   const paths = atlas.views.map(v => ctx.chain(v.id).map(id => ctx.V[id].title).join(' › '));
@@ -377,7 +377,7 @@ test('audit 51: the diff() summary the docs quote is what diff() says for the Um
   const { diff } = await import('../lib/umlimator-all.js');
   const after = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8'));
   let n = 0;
-  for (const p of ['../docs/api/apply-and-commands.md', '../docs/guide/github-action.md']) {
+  for (const p of ['../docs/api/apply-and-commands.md', '../docs/use/github-action.md']) {
     for (const [, said, label] of readFileSync(new URL(p, import.meta.url), 'utf8').matchAll(/"(adds ([^",]+?)(?:,| between)[^"]*)"/g)) {
       const card = after.nodes.find(x => x.label === label); assert.ok(card, `${p}: ${label}`);
       const before = structuredClone(after);
@@ -397,7 +397,7 @@ test('audit 51: a parameter\'s direction is documented as the class diagram draw
   await import('../src/map/typed.js'); await import('../src/uml/class.js');
   const { layout } = await import('../src/map/api.js'), { svgOf } = await import('../src/draw/svg.js');
   const texts = (m, v) => [...svgOf(layout(m, v), { title: '' }).matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map(x => x[1].replace(/<[^>]+>/g, ''));
-  const row = readFileSync(new URL('../docs/conformance/uml-class.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| 9.6 Operation, Parameter'));
+  const row = readFileSync(new URL('../docs/diagrams/conformance/uml-class.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| 9.6 Operation, Parameter'));
   const drawn = /`(\+ place\([^`]*)`/.exec(row)[1], out = /`(out was: Money)`/.exec(row)[1];
   const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'Order', members: [
     { id: 'o.place', type: 'uml.Operation', label: 'place', props: { visibility: 'public', returnType: 'Order', parameters: [{ name: 'at', valueType: 'Date' }, { name: 'qty', valueType: 'Int', direction: 'in' }] } },
@@ -417,7 +417,7 @@ test('audit 51: a parameter\'s direction is documented as the class diagram draw
 // umlimator.py's own pick() on the page that block's render line writes.
 test('audit 49: every --views in the CLI guide names views of the page its render line writes', async () => {
   const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
-  const root = new URL('..', import.meta.url).pathname, guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8');
+  const root = new URL('..', import.meta.url).pathname, guide = readFileSync(new URL('../docs/use/cli.md', import.meta.url), 'utf8');
   const cmds = [...guide.matchAll(/```bash\n([\s\S]*?)```/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/\s+#.*$/, '').trim()).filter(l => l.startsWith('python3 umlimator.py'));
   const src = /^python3 umlimator\.py render (\S+) --out page\.html/.exec(cmds.find(l => / --out page\.html\b/.test(l)) || '');
   assert.ok(src, 'a render line writes page.html');
@@ -443,6 +443,6 @@ test('audit 49: the types, the schema and the example texts say a line\'s weight
   assert.doesNotMatch(w, /drawn as its width/); assert.match(w, /at one width at rest[\s\S]*on hover, selection and keyboard[\s\S]*focus/);
   const schema = JSON.parse(read('../lib/umlimator.schema.json')).$defs.edge.properties.weight.description;
   assert.doesNotMatch(schema, /drawn as its width/); assert.match(schema, /one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus/);
-  for (const p of ['../tools/types.json', '../examples/bookshop-atlas.json', '../docs/gallery/bookshop-atlas.md', '../examples/README.md', '../examples/monorepo.py', '../tests/fixtures/integration/shop.json', '../tests/fixtures/integration.json'])
+  for (const p of ['../tools/types.json', '../examples/bookshop-atlas.json', '../docs/atlas/bookshop.md', '../examples/README.md', '../examples/monorepo.py', '../tests/fixtures/integration/shop.json', '../tests/fixtures/integration.json'])
     assert.doesNotMatch(read(p), /heavier with more imports|weights 1 to 3 as widths|main path drawn heavier/, p);
 });

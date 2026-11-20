@@ -63,7 +63,7 @@ function clean(m, vid) {
 }
 
 // what each view keeps, right and down: [crossings, check()'s other findings, what clean() calls wrong]. Every view is clean
-// but for its crossings (S16: repair and reroute off), stated in docs/conformance/bpmn.md; edge-cases' cross-pool sequence
+// but for its crossings (S16: repair and reroute off), stated in docs/diagrams/conformance/bpmn.md; edge-cases' cross-pool sequence
 // flow (an error in the JSON, refused by connect) is drawn, and left out of the band check, which is for flows in one pool
 const PINNED = {
   'bpmn-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
@@ -133,7 +133,7 @@ test('bpmn-stress.json, edge-cases: each case of §13, and what the rules say of
   assert.match(describe(m, 'edge-cases'), /^Edge cases: a BPMN diagram of /);
 });
 
-// Table 2.1, row by row (docs/conformance/bpmn.md), and the extras S1 and decision 21 name: each in edge-cases, drawn, each
+// Table 2.1, row by row (docs/diagrams/conformance/bpmn.md), and the extras S1 and decision 21 name: each in edge-cases, drawn, each
 // element's type checked with every attribute its line lists (an id is every element's; a name its label)
 const is = (m, id, type, label, props = {}) => { const n = node(m, id); return !!n && n.type === 'bpmn.' + type && (label === undefined || n.label === label)
   && Object.entries(props).every(([k, v]) => (n.props || {})[k] === v) && V(m, 'edge-cases').nodeIds.includes(id); };
@@ -180,12 +180,12 @@ const TABLE = {
 test('Table 2.1, row by row, and the six extras: each in edge-cases, drawn there with its marker', () => {
   const m = FIX['bpmn-stress'];
   for (const [row, has] of Object.entries(TABLE)) assert.ok(has(m), row);
-  assert.equal(Object.keys(TABLE).length, 18 + 6, 'Table 2.1\'s 24 rows in 18 lines of docs/conformance/bpmn.md, and six extras');
+  assert.equal(Object.keys(TABLE).length, 18 + 6, 'Table 2.1\'s 24 rows in 18 lines of docs/diagrams/conformance/bpmn.md, and six extras');
   const marks = [...mapContext(m).buildView('edge-cases').markup.matchAll(/data-mark="([a-z]+)"/g)].map(x => x[1]);
   for (const k of ['user', 'service', 'message', 'timer', 'terminate', 'exclusive', 'parallel']) assert.ok(marks.includes(k), k);
   // each row the conformance note claims names its line here
-  const note = readFileSync(new URL('../docs/conformance/bpmn.md', import.meta.url), 'utf8');
-  for (const row of Object.keys(TABLE)) assert.ok(note.includes(`| ${row} |`), `docs/conformance/bpmn.md's row ${row}`);
+  const note = readFileSync(new URL('../docs/diagrams/conformance/bpmn.md', import.meta.url), 'utf8');
+  for (const row of Object.keys(TABLE)) assert.ok(note.includes(`| ${row} |`), `docs/diagrams/conformance/bpmn.md's row ${row}`);
   assert.match(note, /Descriptive conformance sub-class \(BPMN 2\.0\.2, 2\.2\.2, Table 2\.1\)/);
   assert.doesNotMatch(note, /claims? (the )?Analytic/);
 });

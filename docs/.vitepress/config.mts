@@ -1,6 +1,7 @@
-// The documentation site (GitHub Pages, under /umlimator/). Its Examples page (examples.md) and a page per diagram type
-// and for the Atlas (gallery/) are written by tools/gallery.mjs; the rendered example pages, their pictures and PDFs are
-// built beside it by CI's site job, at /umlimator/examples/, and links to them leave the site's router (target="_self").
+// The documentation site (GitHub Pages, under /umlimator/): one Docs with one sidebar (sidebar.json), in reading order:
+// Start, Diagrams, Maps and atlases, Use it, Reference. The Diagrams pages (types/) and the atlases' (atlas/) and the
+// sidebar are written by tools/gallery.mjs; the rendered example pages, their pictures and PDFs are built beside the site
+// by CI's site job, at /umlimator/examples/, and links to them leave the site's router (target="_self").
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
@@ -10,8 +11,8 @@ import umlimator from '../../lib/umlimator-markdown-it.js';
 const REPO = 'https://github.com/zintaen/umlimator';
 const BASE = '/umlimator/';
 const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-// the examples' pages (examples.md, gallery/*.md) and their sidebar: written by tools/gallery.mjs
-const gallery = JSON.parse(readFileSync(new URL('./gallery.json', import.meta.url), 'utf8'));
+// the one sidebar: written by tools/gallery.mjs
+export const sidebar = JSON.parse(readFileSync(new URL('./sidebar.json', import.meta.url), 'utf8'));
 // docs/ files the site leaves out: their links go to GitHub
 const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md's releases are shown by changelog.md
 const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md' || p === 'module-api.md';
@@ -49,7 +50,6 @@ function links(md) {
     } else if (href && !/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) {
       const [path, hash = ''] = href.split(/(?=#)/), to = posix.normalize(posix.join(posix.dirname(env.relativePath), path));
       if (to === 'module-api.md' && !hash) t.attrSet('href', '/changelog.md');   // with an anchor: the design note's, on GitHub
-      else if (to === 'conformance' || to === 'conformance/') t.attrSet('href', '/types.md');   // the notes' folder: the types page lists them
       else if (to.startsWith('../')) t.attrSet('href', `${REPO}/blob/main/${to.slice(3)}${hash}`);
       else if (!to.endsWith('.md') || excluded(to)) t.attrSet('href', `${REPO}/blob/main/docs/${to}${hash}`);
     }
@@ -57,9 +57,11 @@ function links(md) {
   };
 }
 
-// The changelog (module-api.md's releases) and the conformance notes are written for GitHub and shown here as they are: a placeholder such as
-// "<label>" in their prose is text, not a tag, and nothing in them is a Vue template (v-pre).
-const asIs = (p: string) => p === 'changelog.md' || p.startsWith('conformance/');
+// The changelog (module-api.md's releases) and the conformance notes (the last part of each type's page, from its marker
+// on) are written for GitHub and shown here as they are: a placeholder such as "<label>" in their prose is text, not a
+// tag, and nothing in them is a Vue template (v-pre).
+const NOTE = '<!-- the conformance note, as written:';
+const asIs = (p: string) => p === 'changelog.md' || /^types\/(?!index\.md$)[\w-]+\.md$/.test(p);
 // docs/module-api.md from its first release section (the API reference covers the design note above it), read at each
 // build since the file grows at its end; the host application an early release was checked in is not named here.
 const RELEASES = '<!-- the releases: docs/module-api.md from its first "## 0." section, put here by config.mts -->';
@@ -75,50 +77,16 @@ function changelog(md) {
 function plain(md) {
   md.core.ruler.push('as-is', s => {
     if (!asIs(s.env.relativePath || '')) return;
-    for (const t of s.tokens) for (const c of t.children || []) if (c.type === 'html_inline' && c.content.startsWith('<')) c.type = 'text';
+    const from = s.env.relativePath === 'changelog.md' ? 0 : s.tokens.findIndex(t => t.type === 'html_block' && t.content.startsWith(NOTE));
+    if (from < 0) return;
+    for (const t of s.tokens.slice(from)) for (const c of t.children || []) if (c.type === 'html_inline' && c.content.startsWith('<')) c.type = 'text';
     const open = new s.Token('html_block', '', 0), close = new s.Token('html_block', '', 0);
     open.content = '<div v-pre>\n';
     close.content = '</div>\n';
-    s.tokens.unshift(open);
+    s.tokens.splice(from, 0, open);
     s.tokens.push(close);
   });
 }
-
-const guide = [
-  ['Getting started', 'getting-started'], ['The model', 'model'], ['Views and layers', 'views-and-layers'],
-  ['Embedding', 'embedding'], ['The standalone page', 'standalone-page'], ['Editing', 'editing'],
-  ['Stories, lenses and live data', 'stories-lenses-live'], ['Command line', 'cli'], ['GitHub Action and diff', 'github-action'],
-  ['MCP server', 'mcp'], ['Import and export', 'import-export'], ['Icons and icon packs', 'icon-packs'],
-];
-const api = [
-  ['Overview', 'index'], ['render', 'render'], ['Model and schema', 'model-and-schema'], ['Apply and commands', 'apply-and-commands'],
-  ['Events and state', 'events-and-state'], ['Element and plugins', 'element-and-plugins'], ['Typed diagrams', 'typed-diagrams'],
-];
-const conformance = [
-  'uml-class', 'uml-object', 'uml-package', 'uml-composite-structure', 'uml-component', 'uml-deployment', 'uml-profile',
-  'uml-use-case', 'uml-activity', 'uml-state-machine', 'uml-sequence', 'uml-communication', 'uml-interaction-overview',
-  'uml-timing', 'uml-information-flow', 'sysml-requirement', 'sysml-block-definition', 'sysml-internal-block',
-  'sysml-parametric', 'er', 'flowchart', 'dfd', 'c4', 'bpmn', 'mindmap', 'aws', 'gcp', 'azure',
-];
-const NAMES = { er: 'ER', dfd: 'Data flow', c4: 'C4', bpmn: 'BPMN', aws: 'AWS', gcp: 'Google Cloud', azure: 'Azure', uml: 'UML', sysml: 'SysML' };
-const label = (slug: string) => slug.split('-').map((w, i) => NAMES[w] || (i ? w : w[0].toUpperCase() + w.slice(1))).join(' ');
-
-export const sidebar = {
-  '/guide/': [
-    { text: 'Guide', items: [{ text: 'Overview', link: '/guide/' }, ...guide.map(([text, s]) => ({ text, link: `/guide/${s}` }))] },
-    { text: 'Reference', items: [{ text: 'API', link: '/api/' }, { text: 'Diagram types', link: '/types' }, { text: 'Changelog', link: '/changelog' }] },
-  ],
-  '/api/': [
-    { text: 'API', items: api.map(([text, s]) => ({ text, link: s === 'index' ? '/api/' : `/api/${s}` })) },
-    { text: 'Reference', items: [{ text: 'Diagram types', link: '/types' }, { text: 'Changelog', link: '/changelog' }] },
-  ],
-  '/examples': gallery,   // the examples' index, examples.md (a key matches the paths it starts)
-  '/gallery/': gallery,
-  '/conformance/': [
-    { text: 'Diagram types', items: [{ text: 'All 28 types', link: '/types' }] },
-    { text: 'Conformance notes', items: conformance.map(s => ({ text: label(s), link: `/conformance/${s}` })) },
-  ],
-};
 
 export default defineConfig({
   title: 'umlimator',
@@ -132,7 +100,7 @@ export default defineConfig({
   // links to the gallery and its pages, built beside the site by CI
   ignoreDeadLinks: [/^\/examples\//],
   // one contentinfo landmark per page: a doc page has its own footer (VPDocFooter), and the site footer (themeConfig.footer)
-  // shows beside it on a page with no sidebar (types, changelog), so the site footer is the home page's only (audit 17)
+  // shows beside it on a page with no sidebar, so the site footer is a home page's only (audit 17)
   transformPageData(page) { if (page.frontmatter.layout !== 'home') page.frontmatter.footer ??= false; },
   markdown: {
     // code blocks at WCAG AA (4.5:1) on VitePress's block background in both themes: Shiki's default github-light and
@@ -156,9 +124,8 @@ export default defineConfig({
   themeConfig: {
     logo: '/logo.svg',
     nav: [
-      { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/' },
-      { text: 'API', link: '/api/', activeMatch: '^/api/' },
-      { text: 'Examples', link: '/examples', activeMatch: '^/(examples$|gallery/)' },
+      { text: 'Docs', link: '/', activeMatch: '^/(?!atlas/)' },
+      { text: 'Atlas', link: '/atlas/', activeMatch: '^/atlas/' },
       { text: `v${version}`, items: [
         { text: 'Changelog', link: '/changelog' },
         { text: 'npm', link: 'https://www.npmjs.com/package/umlimator' },

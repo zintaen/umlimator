@@ -432,7 +432,7 @@ test(`P1 (S15): a state machine of 50 states, 60 transitions, composites three d
   const best = timeEdit(M, 7);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   // a CI runner is 2 to 5 times slower than an idle machine, where this edit takes about 87 ms: CI holds the 1 s ceiling
-  // and prints the edit against S15's 100 ms; docs/conformance records the idle machine's figure
+  // and prints the edit against S15's 100 ms; docs/diagrams/conformance records the idle machine's figure
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   console.log(`# P1 wired: a label edit ${best('label').toFixed(1)} ms (target 100 ms), full layout ${best('full').toFixed(1)} ms`);
 });

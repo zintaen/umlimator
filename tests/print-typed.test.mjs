@@ -116,7 +116,7 @@ test('a type\'s text is a line\'s Label cell, escaped; with none from it, the li
 });
 
 test('no conformance note says a typed view\'s table heading reads "Cards": it reads "Elements" (audit 1)', () => {
-  const dir = new URL('../docs/conformance/', import.meta.url);
+  const dir = new URL('../docs/diagrams/conformance/', import.meta.url);
   const stale = readdirSync(dir).filter(f => /heading (still )?says "Cards"/.test(readFileSync(new URL(f, dir), 'utf8')));
   assert.deepEqual(stale, []);
 });
@@ -135,7 +135,7 @@ test('a typed view\'s Lines table lists the lines its type draws, not every mode
 });
 
 test('no conformance note says Tab stops on a box: a box is reached through the outline of elements, as in the package note (audit 2)', () => {
-  const dir = new URL('../docs/conformance/', import.meta.url);
+  const dir = new URL('../docs/diagrams/conformance/', import.meta.url);
   const stale = readdirSync(dir).filter(f => /Tab\s+reads\s+(each box and|a box,|the subject and|the actors, then each subject and)/.test(readFileSync(new URL(f, dir), 'utf8')));
   assert.deepEqual(stale, []);
 });

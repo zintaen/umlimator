@@ -1,6 +1,6 @@
 // Types for lib/umlimator.js (hand-written; the module is plain JavaScript). docs/module-api.md explains the API.
 
-/** A map model: engine/references/schema.md § Map model, plus the umlimator fields in docs/guide/model.md. Never mutated. */
+/** A map model: engine/references/schema.md § Map model, plus the umlimator fields in docs/maps/model.md. Never mutated. */
 export interface MapModel {
   /** 1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer
    *  version is an error: validate() says so and migrate() throws (0.17.0). */
@@ -58,7 +58,7 @@ export interface Element {
   [key: string]: unknown;
 }
 /** The class diagram's vocabulary (a view with `diagram: 'uml.class'`, drawn by umlimator/all from 0.18.0;
- *  docs/conformance/uml-class.md). These describe what `type` and `props` hold; validate() reports what breaks the type's
+ *  docs/diagrams/conformance/uml-class.md). These describe what `type` and `props` hold; validate() reports what breaks the type's
  *  rules, and a field written otherwise is kept as it is. */
 export type UmlClassElementType = 'uml.Class' | 'uml.Interface' | 'uml.Enumeration' | 'uml.DataType' | 'uml.PrimitiveType' | 'uml.Package' | 'uml.Comment';
 export type UmlClassMemberType = 'uml.Property' | 'uml.Operation' | 'uml.EnumerationLiteral';
@@ -80,7 +80,7 @@ export interface UmlAssociationEnd { role?: string; multiplicity?: string; aggre
 /** A line's props: an association's two ends, and stereotypes («use» on a dependency). */
 export interface UmlLineProps { ends?: { from?: UmlAssociationEnd; to?: UmlAssociationEnd }; stereotypes?: string[]; [key: string]: unknown }
 /** The object diagram's vocabulary (a view with `diagram: 'uml.object'`, umlimator/all from 0.19.0;
- *  docs/conformance/uml-object.md). An instance with no `label` is anonymous (drawn `: Order`); a slot's `label` is the
+ *  docs/diagrams/conformance/uml-object.md). An instance with no `label` is anonymous (drawn `: Order`); a slot's `label` is the
  *  feature it gives a value. A classifier node an object view shows is drawn as in a class view. */
 export type UmlObjectElementType = 'uml.InstanceSpecification' | 'uml.Package' | 'uml.Comment';
 export type UmlObjectMemberType = 'uml.Slot';
@@ -92,7 +92,7 @@ export interface UmlSlotProps { value?: string; [key: string]: unknown }
 /** A link's props: the association it is an instance of, by name, and the roles at its ends. */
 export interface UmlLinkProps { association?: string; ends?: { from?: { role?: string }; to?: { role?: string } }; stereotypes?: string[]; [key: string]: unknown }
 /** The package diagram's vocabulary (a view with `diagram: 'uml.package'`, umlimator/all from 0.19.0;
- *  docs/conformance/uml-package.md): packages and the class diagram's classifiers, drawn by their names. An import or
+ *  docs/diagrams/conformance/uml-package.md): packages and the class diagram's classifiers, drawn by their names. An import or
  *  a merge runs from the importing or merging package. */
 export type UmlPackageElementType = 'uml.Package' | 'uml.Class' | 'uml.Interface' | 'uml.Enumeration' | 'uml.DataType' | 'uml.PrimitiveType' | 'uml.Comment';
 export type UmlPackageLineType = 'uml.PackageImport' | 'uml.PackageMerge' | 'uml.Dependency' | 'uml.CommentLink';
@@ -102,7 +102,7 @@ export interface UmlPackageImportProps { visibility?: 'public' | 'private'; ster
  *  all, and at most `rows` rows in each, then "+k more". */
 export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals' | 'activities')[]; rows?: number }
 /** The sequence diagram's vocabulary (a view with `diagram: 'uml.sequence'`, umlimator/all from 0.20.0;
- *  docs/conformance/uml-sequence.md). Lifelines are model nodes the view lists in `nodeIds`, left to right. Messages and
+ *  docs/diagrams/conformance/uml-sequence.md). Lifelines are model nodes the view lists in `nodeIds`, left to right. Messages and
  *  interaction uses are inline in the view's `edges`, in time order; a fragment's content is one run there, operand by
  *  operand. Combined fragments are in the view's `fragments`, each with its operands as `members`; an occurrence's or a
  *  fragment's `parent` is the operand that holds it. Activations and message numbers are derived, never stored. */
@@ -123,13 +123,13 @@ export interface UmlInteractionUseProps { covers?: string[]; refersTo?: string; 
 export type UmlInteractionOperator = 'alt' | 'opt' | 'loop' | 'par' | 'break';
 export interface UmlCombinedFragmentProps { operator?: UmlInteractionOperator; [key: string]: unknown }
 /** The communication diagram's vocabulary (a view with `diagram: 'uml.communication'`, umlimator/all from 0.20.0;
- *  docs/conformance/uml-communication.md): lifelines; connectors and messages are model edges the view's `edges` lists,
+ *  docs/diagrams/conformance/uml-communication.md): lifelines; connectors and messages are model edges the view's `edges` lists,
  *  connectors first. Only the messages' order means anything; their numbers (1, 1.1, 1.1.2) are derived. A message's
  *  props are UmlMessageProps; a message needs a connector between its two lifelines. */
 export type UmlCommunicationElementType = 'uml.Lifeline';
 export type UmlCommunicationLineType = 'uml.Connector' | 'uml.Message';
 /** The use case diagram's vocabulary (a view with `diagram: 'uml.use-case'`, umlimator/all from 0.21.0;
- *  docs/conformance/uml-use-case.md). A use case's `parent` is a subject (drawn as a box holding it) or a package. An
+ *  docs/diagrams/conformance/uml-use-case.md). A use case's `parent` is a subject (drawn as a box holding it) or a package. An
  *  extend runs from the extending use case to the one it extends; an include from the including one. */
 export type UmlUseCaseElementType = 'uml.Actor' | 'uml.UseCase' | 'uml.Subject' | 'uml.Comment';
 export type UmlUseCaseMemberType = 'uml.ExtensionPoint';
@@ -137,7 +137,7 @@ export type UmlUseCaseLineType = 'uml.Association' | 'uml.Include' | 'uml.Extend
 /** An extend's props: the ids of the extended use case's extension points (one at least), and its condition, as text. */
 export interface UmlExtendProps { extensionPoints?: string[]; condition?: string; stereotypes?: string[]; [key: string]: unknown }
 /** The activity diagram's vocabulary (a view with `diagram: 'uml.activity'`, umlimator/all from 0.21.0;
- *  docs/conformance/uml-activity.md). A node's `parent` is its partition, drawn as a lane; a partition's is the
+ *  docs/diagrams/conformance/uml-activity.md). A node's `parent` is its partition, drawn as a lane; a partition's is the
  *  partition it is nested in. A call behaviour action's `opensView` names an activity view. */
 export type UmlActivityElementType = 'uml.InitialNode' | 'uml.ActivityFinalNode' | 'uml.FlowFinalNode' | 'uml.Action' | 'uml.CallBehaviorAction'
   | 'uml.SendSignalAction' | 'uml.AcceptEventAction' | 'uml.DecisionNode' | 'uml.MergeNode' | 'uml.ForkNode' | 'uml.JoinNode'
@@ -146,7 +146,7 @@ export type UmlActivityLineType = 'uml.ControlFlow' | 'uml.ObjectFlow' | 'uml.Co
 /** A flow's props (activity and interaction overview): its guard, as text, drawn `name [guard]`; its label is its name. */
 export interface UmlFlowProps { guard?: string; stereotypes?: string[]; [key: string]: unknown }
 /** The state machine diagram's vocabulary (a view with `diagram: 'uml.state-machine'`, umlimator/all from 0.21.0;
- *  docs/conformance/uml-state-machine.md). A substate's or pseudostate's `parent` is a state, or a region (a member) of
+ *  docs/diagrams/conformance/uml-state-machine.md). A substate's or pseudostate's `parent` is a state, or a region (a member) of
  *  one; a state with shown substates is drawn as a box, each region that holds something shown as a box inside it. */
 export type UmlStateMachineElementType = 'uml.State' | 'uml.Pseudostate' | 'uml.FinalState' | 'uml.Comment';
 export type UmlStateMachineMemberType = 'uml.Region' | 'uml.InternalTransition';
@@ -157,14 +157,14 @@ export interface UmlPseudostateProps { kind?: UmlPseudostateKind; stereotypes?: 
 /** A transition's or an internal transition's props, each text, drawn `trigger [guard] / effect`. */
 export interface UmlTransitionProps { trigger?: string; guard?: string; effect?: string; stereotypes?: string[]; [key: string]: unknown }
 /** The interaction overview diagram's vocabulary (a view with `diagram: 'uml.interaction-overview'`, umlimator/all from
- *  0.21.0; docs/conformance/uml-interaction-overview.md): the activity's control nodes and flows (UmlFlowProps), and
+ *  0.21.0; docs/diagrams/conformance/uml-interaction-overview.md): the activity's control nodes and flows (UmlFlowProps), and
  *  interaction uses (drawn `ref`) and inline interactions (drawn `sd` with their content), whose `opensView` names a
  *  `uml.sequence` view of the same model. */
 export type UmlInteractionOverviewElementType = 'uml.InitialNode' | 'uml.ActivityFinalNode' | 'uml.FlowFinalNode' | 'uml.DecisionNode'
   | 'uml.MergeNode' | 'uml.ForkNode' | 'uml.JoinNode' | 'uml.InteractionUse' | 'uml.Interaction' | 'uml.Comment';
 export type UmlInteractionOverviewLineType = 'uml.ControlFlow' | 'uml.CommentLink';
 /** The component diagram's vocabulary (a view with `diagram: 'uml.component'`, umlimator/all from 0.22.0;
- *  docs/conformance/uml-component.md). A component's `parent` is a component (drawn nested, a box) or a package; its
+ *  docs/diagrams/conformance/uml-component.md). A component's `parent` is a component (drawn nested, a box) or a package; its
  *  ports (a class's too) are members, drawn on its border. A provided interface is always an `uml.Interface` node, joined
  *  to its provider (a component, a class or a port) by a realization and to its requirers by usages; `present.<id>.as:
  *  'ball'` draws it as a ball, a usage to it ending in a socket. */
@@ -181,14 +181,14 @@ export interface UmlConnectorProps { kind?: 'assembly' | 'delegation'; ends?: { 
  *  side; on a part, each of its type's ports' sides. */
 export interface UmlStructurePresent { as?: 'ball'; side?: 'left' | 'right' | 'top' | 'bottom'; ports?: Record<string, { side?: 'left' | 'right' | 'top' | 'bottom' }> }
 /** The deployment diagram's vocabulary (a view with `diagram: 'uml.deployment'`, umlimator/all from 0.22.0;
- *  docs/conformance/uml-deployment.md). A node, device or execution environment that holds something shown is a box drawn
+ *  docs/diagrams/conformance/uml-deployment.md). A node, device or execution environment that holds something shown is a box drawn
  *  as a cube; an artifact or deployment specification whose `parent` is one is deployed on it, a `uml.Deployment` line
  *  from it to one is the other form. */
 export type UmlDeploymentElementType = 'uml.Node' | 'uml.Device' | 'uml.ExecutionEnvironment' | 'uml.Artifact' | 'uml.DeploymentSpecification'
   | 'uml.Component' | 'uml.Comment';
 export type UmlDeploymentLineType = 'uml.Deployment' | 'uml.Manifestation' | 'uml.CommunicationPath' | 'uml.Dependency' | 'uml.CommentLink';
 /** The composite structure diagram's vocabulary (a view with `diagram: 'uml.composite-structure'`, umlimator/all from
- *  0.22.0; docs/conformance/uml-composite-structure.md). The view's `subject` (a class, component or collaboration, listed
+ *  0.22.0; docs/diagrams/conformance/uml-composite-structure.md). The view's `subject` (a class, component or collaboration, listed
  *  in `nodeIds`) is drawn as a box holding its parts (`uml.Property` members) and collaboration uses (`parent` the
  *  subject); a part shows the ports of the class or component its `valueType` names by label, each drawn under the id
  *  `<part>-><port>`. An open collaboration (listed in `nodeIds`) is a dashed ellipse round its roles. A role binding runs
@@ -202,12 +202,12 @@ export interface UmlPartProps { valueType?: string; multiplicity?: string; aggre
 export interface UmlCollaborationUseProps { collaboration?: string; stereotypes?: string[]; [key: string]: unknown }
 /** Any UML element's tagged values (0.23.0): by stereotype (as written in `stereotypes`, `Profile::name` when qualified, or
  *  a required stereotype's name), then by tag name, each value as text. Checked against the profiles applied to the
- *  element's packages (docs/conformance/uml-profile.md); edited in the properties panel on every typed view. */
+ *  element's packages (docs/diagrams/conformance/uml-profile.md); edited in the properties panel on every typed view. */
 export type UmlTags = Record<string, Record<string, string>>;
 /** The props any UML element may hold from 0.23.0: its stereotypes (a name, or `Profile::name`) and their tags. */
 export interface UmlStereotypedProps { stereotypes?: string[]; tags?: UmlTags; [key: string]: unknown }
 /** The profile diagram's vocabulary (a view with `diagram: 'uml.profile'`, umlimator/all from 0.23.0;
- *  docs/conformance/uml-profile.md). A stereotype's and a metaclass reference's `parent` is a profile; an enumeration's
+ *  docs/diagrams/conformance/uml-profile.md). A stereotype's and a metaclass reference's `parent` is a profile; an enumeration's
  *  (a tag's type) may be. A metaclass reference's `label` names a UML metaclass (Class, Property, Classifier, …). A
  *  stereotype's tag definitions are `uml.Property` members (`name : Type [multiplicity] = default`). Any element that
  *  applies a stereotype may be shown, with a compartment of tags for each stereotype it has. */
@@ -221,7 +221,7 @@ export interface UmlStereotypeProps { isAbstract?: boolean; [key: string]: unkno
 /** An extension's props: required (the stereotype is applied to every element of the metaclass in its profile's scope). */
 export interface UmlExtensionProps { isRequired?: boolean; [key: string]: unknown }
 /** The timing diagram's vocabulary (a view with `diagram: 'uml.timing'`, umlimator/all from 0.23.0;
- *  docs/conformance/uml-timing.md). Lifelines are model nodes the view lists in `nodeIds`, top to bottom; messages are inline
+ *  docs/diagrams/conformance/uml-timing.md). Lifelines are model nodes the view lists in `nodeIds`, top to bottom; messages are inline
  *  in the view's `edges`; changes and constraints are in its `timeline`. `present.<lifeline>.as: 'values'` draws a value
  *  lifeline. The scale is derived, never stored. */
 export type UmlTimingElementType = 'uml.Lifeline';
@@ -241,7 +241,7 @@ export interface UmlTimeline { unit?: string; changes?: UmlTimingChange[]; const
 /** What a timing view shows of a lifeline, in its `present`: drawn as a value lifeline. */
 export interface UmlTimingPresent { as?: 'values' }
 /** The entity-relationship diagram's vocabulary (a view with `diagram: 'er'`, umlimator/all from 0.24.0;
- *  docs/conformance/er.md). An entity's columns are `er.Column` members, each read and printed as one row,
+ *  docs/diagrams/conformance/er.md). An entity's columns are `er.Column` members, each read and printed as one row,
  *  `name type [PK] [FK table.column] [UK] [NULL]`. A relationship runs from the referenced entity to the referring one. The
  *  view's `notation` is `crowsfoot` (the default) or `idef1x`, a repaint on one geometry. */
 export type ErElementType = 'er.Entity' | 'uml.Comment';
@@ -251,12 +251,12 @@ export type ErLineType = 'er.Relationship' | 'uml.CommentLink';
 export interface ErColumnProps { dataType?: string; primaryKey?: boolean; foreignKey?: boolean; references?: string; nullable?: boolean; unique?: boolean; [key: string]: unknown }
 /** A relationship's props: identifying (solid) or not (dashed), and each end's multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text). */
 export interface ErRelationshipProps { identifying?: boolean; ends?: { from?: { multiplicity?: string }; to?: { multiplicity?: string } }; [key: string]: unknown }
-/** The flowchart's vocabulary (a view with `diagram: 'flowchart'`, umlimator/all from 0.24.0; docs/conformance/flowchart.md).
+/** The flowchart's vocabulary (a view with `diagram: 'flowchart'`, umlimator/all from 0.24.0; docs/diagrams/conformance/flowchart.md).
  *  A decision's exits are labelled flows; a connector with flows in and out is a junction. Laid out down by default. */
 export type FlowchartElementType = 'flow.Terminator' | 'flow.Process' | 'flow.Decision' | 'flow.InputOutput' | 'flow.PredefinedProcess' | 'flow.Document'
   | 'flow.Database' | 'flow.ManualInput' | 'flow.Delay' | 'flow.Connector' | 'uml.Comment';
 export type FlowchartLineType = 'flow.Flow' | 'uml.CommentLink';
-/** The data flow diagram's vocabulary (a view with `diagram: 'dfd'`, umlimator/all from 0.24.0; docs/conformance/dfd.md).
+/** The data flow diagram's vocabulary (a view with `diagram: 'dfd'`, umlimator/all from 0.24.0; docs/diagrams/conformance/dfd.md).
  *  A process's `opensView` names its level, a `dfd` view whose `parent` is the view the process is on; numbers are stored
  *  and checked under their parent's. The view's `notation` is `yourdon` (the default) or `gane-sarson`, a repaint. */
 export type DfdElementType = 'dfd.Process' | 'dfd.DataStore' | 'dfd.ExternalEntity' | 'uml.Comment';
@@ -264,14 +264,14 @@ export type DfdLineType = 'dfd.DataFlow' | 'uml.CommentLink';
 /** A process's or a store's props: its number (1, 1.2, D1). */
 export interface DfdNumberProps { number?: string; [key: string]: unknown }
 /** The information flow diagram's vocabulary (a view with `diagram: 'uml.information-flow'`, umlimator/all from 0.24.0;
- *  docs/conformance/uml-information-flow.md). A flow is a dashed «flow» line labelled with what it conveys. */
+ *  docs/diagrams/conformance/uml-information-flow.md). A flow is a dashed «flow» line labelled with what it conveys. */
 export type UmlInformationFlowElementType = 'uml.Class' | 'uml.Interface' | 'uml.Component' | 'uml.Actor' | 'uml.InformationItem' | 'uml.Comment';
 export type UmlInformationFlowLineType = 'uml.InformationFlow' | 'uml.CommentLink';
 /** An information flow's props: the ids of the information items or classifiers it conveys (a declared reference: a
  *  deleted id is dropped). Its `label`, when given, is its name, drawn before what it conveys. */
 export interface UmlInformationFlowProps { conveyed?: string[]; [key: string]: unknown }
 /** C4's vocabulary (views with `diagram` one of `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic`
- *  and `c4.deployment`, umlimator/all from 0.24.0; docs/conformance/c4.md). Ownership is `parent`: a container's is a software
+ *  and `c4.deployment`, umlimator/all from 0.24.0; docs/diagrams/conformance/c4.md). Ownership is `parent`: a container's is a software
  *  system, a component's a container, a deployment node's a deployment node or none, an instance's a deployment node. A
  *  view's `subject` is drawn as a boundary when `nodeIds` lists it; a dynamic view's `edges` are relationship ids, each once,
  *  in time order, numbered when drawn. A relationship whose end a view does not show is drawn between the nearest shown
@@ -286,7 +286,7 @@ export interface C4ElementProps { description?: string; technology?: string; ext
 /** A C4 relationship's props: its technology (its `label` is its description). */
 export interface C4RelationshipProps { technology?: string; [key: string]: unknown }
 /** SysML v1.7's vocabulary (views with `diagram` one of `sysml.requirement`, `sysml.block-definition`,
- *  `sysml.internal-block` and `sysml.parametric`, umlimator/all from 0.25.0; docs/conformance/sysml-*.md). Every SysML view
+ *  `sysml.internal-block` and `sysml.parametric`, umlimator/all from 0.25.0; docs/diagrams/conformance/sysml-*.md). Every SysML view
  *  is drawn in a frame whose header names the view's `subject`: a package (requirement, block definition), a block
  *  (internal block, parametric) or a constraint block (parametric); with none, `[Model]` and the model's title. A
  *  requirement's owner (`parent`) is a requirement or a package; containment between requirements is drawn as a crosshair
@@ -312,11 +312,11 @@ export interface SysmlFlowPropertyProps { direction?: 'in' | 'out' | 'inout'; va
 export interface SysmlItemFlow { item: string; direction: 'from-to' | 'to-from' }
 /** A connector's or binding's props: an end through a part or constraint property (`ends.to.part`), and an item flow. */
 export interface SysmlConnectorProps { ends?: { from?: { part?: string }; to?: { part?: string } }; itemFlow?: SysmlItemFlow; [key: string]: unknown }
-/** The mindmap (a view with `diagram: 'mindmap'`, umlimator/all from 0.26.0; docs/conformance/mindmap.md): topics only, the
+/** The mindmap (a view with `diagram: 'mindmap'`, umlimator/all from 0.26.0; docs/diagrams/conformance/mindmap.md): topics only, the
  *  tree by `parent`, children in the view's `nodeIds` order; a first-level topic's half in `present.<id>.side`. No lines. */
 export type MindmapElementType = 'mindmap.Topic';
 /** Google Cloud, Azure and AWS architecture diagrams (views with `diagram: 'gcp'`, `'azure'` or `'aws'`, umlimator/all from
- *  0.26.0; docs/conformance/gcp.md, azure.md, aws.md): groups own what they hold by `parent`; a service's icon is drawn from the host's
+ *  0.26.0; docs/diagrams/conformance/gcp.md, azure.md, aws.md): groups own what they hold by `parent`; a service's icon is drawn from the host's
  *  `icons` table at `<pack>/<props.icon>`, else as a glyph with its full name. */
 export type GcpElementType = 'gcp.Zone' | 'gcp.Product' | 'gcp.User';
 export type GcpLineType = 'gcp.Path';
@@ -331,7 +331,7 @@ export interface CloudElementProps {
   groupType?: 'subscription' | 'resource-group' | 'region' | 'virtual-network' | 'subnet' | 'generic'
     | 'cloud' | 'account' | 'availability-zone' | 'vpc' | 'public-subnet' | 'private-subnet' | 'security-group';
   icon?: string; [key: string]: unknown }
-/** BPMN's vocabulary (a view with `diagram: 'bpmn'`, umlimator/all from 0.27.0; docs/conformance/bpmn.md): Table 2.1 of
+/** BPMN's vocabulary (a view with `diagram: 'bpmn'`, umlimator/all from 0.27.0; docs/diagrams/conformance/bpmn.md): Table 2.1 of
  *  BPMN 2.0.2 and six extras. A pool (`bpmn.Participant`) owns its lanes as members (`bpmn.Lane`, a lane's `parent` another
  *  lane of its pool); a flow node's `parent` is its innermost lane, its pool, its sub-process or none. A sub-process is drawn
  *  expanded when the view lists something it holds, else collapsed, opening its `opensView`. A boundary event sits on the

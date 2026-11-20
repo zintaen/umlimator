@@ -1,62 +1,65 @@
-// Writes the examples' pages of the documentation site (VitePress, docs/), so that they share the Guide's and the API's
-// layout, top nav and themes:
-//   docs/examples.md (the site's /umlimator/examples.html), the index, in three parts:
-//     Diagrams: one card per diagram type, the 28 in docs/types.md's order under their families. Each card shows the still
-//       of the type's main view and the first items of what it shows, and opens the type's docs page. The map is no type:
-//       its example is the first layer of every atlas, the Bookshop atlas's overview first (tools/gallery.json's map);
-//     Atlas: whole businesses, each one multi-view model using many diagram types (tools/gallery.json's atlases, in order);
-//     In an app: the module inside host pages;
-//   docs/gallery/<type>.md, a page per type (the 28): its title and intro, its type page
+// Writes the pages of the documentation site (VitePress, docs/) that come from the models, and its one sidebar:
+//   docs/types/index.md, Diagrams: a card for each of the 28 diagram types, under its family (tools/types.json's families,
+//     in order). Each card shows the still of the type's main view and the first items of what it shows, and opens the
+//     type's page. The map is no type: its showcase is the Bookshop atlas's overview (tools/gallery.json's map);
+//   docs/types/<type>.md, a page per type that holds all the site says of it: its intro, its type page
 //     (examples/types/<type>.html, tools/types.mjs: one comprehensive example of the type) live in a frame, opened on its
-//     main view, then the checklist of what the diagram shows and the alternatives (the same example in another setting);
-//   docs/gallery/<page>.md, each atlas's page: its model live in a frame, then its views (the map's example view with the
-//     checklist of what it draws);
-//   docs/.vitepress/gallery.json, the sidebar of those pages (config.mts reads it);
-//   examples/index.html, the old address (/umlimator/examples/): a redirect to /umlimator/examples.html that keeps the
-//     #fragment, so that a link to a card (#type-<id>) lands on it.
+//     main view, the checklist of what the diagram shows and the alternatives (the same example in another setting), how to
+//     write it in the model (tools/types.md's section) and what is drawn and left out (its conformance note,
+//     docs/diagrams/conformance/<type>.md, as written: its links made relative to the page);
+//   docs/atlas/index.md, the atlases (tools/gallery.json's atlases, in order), whole businesses each one model of many
+//     types; docs/atlas/<page>.md, each atlas's page: its model live in a frame, then its views (the map's showcase view
+//     with the checklist of what it draws);
+//   docs/.vitepress/sidebar.json, the site's one sidebar (config.mts reads it): Start, Diagrams, Maps and atlases, Use it
+//     and Reference, the hand-written pages from tools/gallery.json's docs.
 // The rendered pages, their stills and PDFs are not VitePress pages: the site job (.github/workflows/check.yml) builds them
 // under /umlimator/examples/, and the docs pages link them with plain hrefs (target="_self", past the router). No
 // dependency. `node tools/gallery.mjs` writes the files; tests/gallery.test.mjs fails when a committed file is not what
 // this writes, and when a link, picture or frame names a file the site does not serve.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { spec as typeSpec, model as typeModel } from './types.mjs';
+import { posix } from 'node:path';
+import { spec as typeSpec, model as typeModel, families } from './types.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const stop = msg => { throw new Error(`tools/gallery.mjs: ${msg}`); };
 // tools/types.json's text: plain, with `code` in backticks
 const prose = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+const HEAD = '<!-- Written by tools/gallery.mjs from the models, tools/gallery.json, tools/types.json, tools/types.md and docs/diagrams/conformance/: edit those, not this file. -->';
 
-// a view's diagram type as the gallery groups it: C4's six view kinds are one type, a map view (no diagram) is the map
+// a view's diagram type as the pages group it: C4's six view kinds are one type, a map view (no diagram) is the map
 export const groupOf = view => { const d = view && view.diagram; return !d || d === 'map' ? 'map' : d.startsWith('c4.') ? 'c4' : d.replace('.', '-'); };
-// the types, in docs/types.md's order, under its section headings: [{ family, id, name, text }]
+// the types, in tools/types.json's families' order: [{ family, id, name, text }]
 export function types() {
-  const out = [];
-  for (const part of read('docs/types.md').split(/^## /m).slice(1)) {
-    const family = part.slice(0, part.indexOf('\n')).trim();
-    for (const [, id, name, text] of part.matchAll(/<h3 id="([\w-]+)">([^<]+)<\/h3>\s*<p>([^<]*)<\/p>/g)) out.push({ family, id, name, text });
+  const S = typeSpec().types;
+  return families().flatMap(f => f.types.map(id => ({ family: f.name, id, name: S[id].name, text: S[id].text })));
+}
+
+// the conformance notes, the source of each type page's last part
+export const NOTES = 'docs/diagrams/conformance/';
+// tools/types.md's sections, by type id: "## <id> <id> ..." heads a section of those types
+export function writing() {
+  const out = {};
+  for (const part of read('tools/types.md').split(/^## /m).slice(1)) {
+    const nl = part.indexOf('\n'), body = part.slice(nl + 1).trim();
+    for (const id of part.slice(0, nl).trim().split(/\s+/)) out[id] = body;
   }
   return out;
 }
 
-// the examples' families: docs/types.md's, with UML's split in two (the structure diagrams, then the behaviour ones)
-const UML_STRUCTURE = new Set(['uml-class', 'uml-object', 'uml-package', 'uml-composite-structure', 'uml-component', 'uml-deployment', 'uml-profile']);
-const familyOf = t => t.family !== 'UML' ? t.family : UML_STRUCTURE.has(t.id) ? 'UML structure' : 'UML behaviour';
-
-// each type with its page: [{ family, id, name, text, covers, alt, title, intro, main, mainTitle, shows,
-//   alternatives: [{ view, title, setting }] }]
+// each type with its page: [{ family, id, name, text, alt, title, intro, main, mainTitle, shows,
+//   alternatives: [{ view, title, setting }], model, note }]
 export function inventory() {
-  const G = json('tools/gallery.json'), S = typeSpec();
-  const T = types().map(t => ({ ...t, family: familyOf(t), covers: `docs/conformance/${t.id}.md` }));
-  return T.map(t => {
+  const G = json('tools/gallery.json'), S = typeSpec(), W = writing();
+  return types().map(t => {
     const s = S.types[t.id] || stop(`tools/types.json has no type ${t.id}`), m = typeModel(t.id);
     const title = id => (m.views.find(v => v.id === id) || stop(`examples/types/${t.id}.json has no view ${id}`)).title || id;
     return { ...t, title: s.title, intro: s.intro, main: s.main, mainTitle: title(s.main), shows: s.shows,
       alternatives: (s.alternatives || []).map(a => ({ view: a.view, title: title(a.view), setting: a.setting })),
-      alt: G.alts[t.id] || stop(`tools/gallery.json has no alt for the ${t.id} card`) };
+      alt: G.alts[t.id] || stop(`tools/gallery.json has no alt for the ${t.id} card`),
+      model: W[t.id] || stop(`tools/types.md has no section for ${t.id}`), note: `${NOTES}${t.id}.md` };
   });
 }
 // the atlases, in order
@@ -69,94 +72,73 @@ const out = (path, text, cls = '') => `<a${cls ? ` class="${cls}"` : ''} href="$
 // each link carries its card's name, hidden but read out, so that a links list tells the many Open, PDF and Model apart
 const hidden = name => `<span class="visually-hidden"> (${esc(name)})</span>`;
 const links = (xs, name) => `<div class="ex-links">${xs.map(([t, h, own]) => own ? `<a href="${esc(h)}">${esc(t)}${hidden(name)}</a>` : out(h, `${esc(t)}${hidden(name)}`)).join('')}</div>`;
-// a docs page's other links: the conformance note or the model guide, from docs/gallery/ (up) or docs/ (here)
-const docLink = (covers, up) => `${up ? '../' : './'}${covers.slice(5).replace(/\.md$/, '.html')}`;
-
-function index() {
-  const inv = inventory();
-  const families = [...new Set(inv.map(t => t.family))];
-  const nav = families.map(f => `<li><b>${esc(f)}</b> ${inv.filter(t => t.family === f).map(t => `<a href="#type-${t.id}">${esc(t.name)}</a>`).join(' ')}</li>`).join('\n');
-  // a family's cards under its heading; a card's picture is its type page's main view, its list the first things it shows
-  const SHOWN = 3;
-  const card = t => `<article class="ex-card" id="type-${t.id}">
-<a class="ex-still" href="./gallery/${t.id}.html" tabindex="-1" aria-hidden="true"><img :src="'${EX}types/stills/${t.id}/${t.main}.png'" alt="${esc(t.alt)}" loading="lazy" width="640" height="320"></a>
-<h4><a href="./gallery/${t.id}.html">${esc(t.name)}</a></h4>
-<p>${esc(t.text)}</p>
-<ul class="ex-shows-short">${t.shows.slice(0, SHOWN).map(s => `<li>${prose(s)}</li>`).join('')}${t.shows.length > SHOWN ? `<li><a href="./gallery/${t.id}.html#shows">${t.shows.length - SHOWN} more</a></li>` : ''}</ul>
-<p class="ex-views">Opens on ${out(`types/${t.id}.html#view=${t.main}`, esc(t.mainTitle))}${t.alternatives.length ? `; also ${t.alternatives.map(a => out(`types/${t.id}.html#view=${a.view}`, esc(a.title))).join(', ')}` : ''}</p>
-${links([['Open', `./gallery/${t.id}.html`, true], ['Conformance', docLink(t.covers), true], ['PDF', `types/${t.id}.pdf`], ['Model', `types/${t.id}.json`]], t.name)}
-</article>`;
-  const groups = families.map(f => `### ${esc(f)} {#family-${slug(f)}}
-
-<div class="ex-grid">
-${inv.filter(t => t.family === f).map(card).join('\n')}
-</div>`).join('\n\n');
-  const atlasCard = A => { const atlas = json(`examples/${A.file}.json`);
-    const byType = [...new Set(atlas.views.map(groupOf))].map(g => { const t = g === 'map' ? { name: 'Map' } : inv.find(x => x.id === g) || stop(`${A.file}: no type ${g}`);
-      return `${esc(t.name)} (${atlas.views.filter(v => groupOf(v) === g).map(v => out(`${A.file}.html#view=${v.id}`, esc(v.title))).join(', ')})`; });
-    return `<article class="ex-card ex-wide" id="atlas-${A.file}">
-<a class="ex-still" href="./gallery/${A.page}.html" tabindex="-1" aria-hidden="true"><img :src="'${EX}stills/${A.file}/${atlas.root}.png'" alt="${esc(A.alt)}" loading="lazy" width="640" height="320"></a>
-<div>
-<h3><a href="./gallery/${A.page}.html">${esc(A.name)}</a></h3>
-<p>${A.text}</p>
-<p class="ex-views">Its views, by type: ${byType.join('; ')}.</p>
-${links([['Open', `./gallery/${A.page}.html`, true], ...(A.stories || []).map(([t, id]) => [t, `${A.file}.html#story=${id}&step=1`]), ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]], A.name)}
-</div>
-</article>`; };
-  const apps = [
-    ['playground.html', 'Playground', 'Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.'],
-    ['element.html', 'The element', '<code>&lt;umlimator-map src="..."&gt;</code>: a map from HTML alone, its still shown until it is drawn; the block a docs site (VitePress, Docusaurus, MkDocs) turns into it.'],
-    ['embed.html', 'A host page', '<code>render()</code> with the standalone page\'s pieces (views list, details panel, legend, hint line), views loaded when opened, SVG and PNG export, themes and the minimap.'],
-    ['live.html', 'Live traffic', '<code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.'],
-    ['ask.html', 'Ask the map', 'Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.'],
-    ['replay.html', 'Trace replay', 'An OpenTelemetry trace played on the map: each call along its line at its time, with its duration.'],
-    ['edit.html', 'Editing', 'The map emits <code>change</code> events; the host applies them and keeps an undo history.'],
-    ['class-editor.html', 'A class diagram editor', 'A class diagram emits <code>edit</code> events, each a transaction of commands; the host applies them with <code>apply()</code> and keeps <code>history()</code> for undo and redo.'],
-    ['timelapse.html', 'A time-lapse', 'Four releases on a slider: new cards fade in, removed ones fade out, moved ones glide; <code>diff()</code> says what changed.'],
-    ['drift.html', 'Drawn vs. seen', '<code>drift()</code>: the map against a week of traffic; lines that ran undrawn come in, idle ones fade.'],
-  ].map(([h, t, d]) => `<tr><th scope="row">${out(h, t)}</th><td>${d}</td></tr>`);
-  apps.push('<tr><th scope="row"><a href="https://github.com/zintaen/umlimator/blob/main/examples/layout.mjs">In Node</a></th><td><code>layout()</code> without a browser, as a check a host can run in CI on maps it generates.</td></tr>');
-  return `---
-title: Examples
-description: "Every diagram type umlimator draws, each as one example that shows all it draws, and the Atlas: whole businesses modelled in many views."
+const frame = (path, title) => `<div class="ex-frame"><iframe src="${esc(EX + path)}" title="${esc(title)}, live" loading="lazy"></iframe></div>`;
+const front = (title, description) => `---
+title: ${JSON.stringify(title)}
+description: ${JSON.stringify(description)}
 aside: false
-pageClass: examples-page
+pageClass: gallery-page
 ---
 
-<!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
+${HEAD}
+`;
 
-# Examples
+// Diagrams: the families, each a heading and its cards
+function index() {
+  const inv = inventory(), fams = families();
+  const nav = fams.map(f => `<li><b>${esc(f.name)}</b> ${f.types.map(id => `<a href="./${id}.html">${esc(inv.find(t => t.id === id).name)}</a>`).join(' ')}</li>`).join('\n');
+  const SHOWN = 3;
+  const card = t => `<article class="ex-card" id="type-${t.id}">
+<a class="ex-still" href="./${t.id}.html" tabindex="-1" aria-hidden="true"><img :src="'${EX}types/stills/${t.id}/${t.main}.png'" alt="${esc(t.alt)}" loading="lazy" width="640" height="320"></a>
+<h3><a href="./${t.id}.html">${esc(t.name)}</a></h3>
+<p>${esc(t.text)}</p>
+<ul class="ex-shows-short">${t.shows.slice(0, SHOWN).map(s => `<li>${prose(s)}</li>`).join('')}${t.shows.length > SHOWN ? `<li><a href="./${t.id}.html#shows">${t.shows.length - SHOWN} more</a></li>` : ''}</ul>
+<p class="ex-views">Opens on ${out(`types/${t.id}.html#view=${t.main}`, esc(t.mainTitle))}${t.alternatives.length ? `; also ${t.alternatives.map(a => out(`types/${t.id}.html#view=${a.view}`, esc(a.title))).join(', ')}` : ''}</p>
+${links([['Open', `./${t.id}.html`, true], ['PDF', `types/${t.id}.pdf`], ['Model', `types/${t.id}.json`]], t.name)}
+</article>`;
+  const groups = fams.map(f => `## ${f.name} {#${f.id}}
 
-Diagrams has a card for each of the 28 diagram types. Each opens the type's page: one example, live, that shows everything the type draws in one picture, with a checklist of what to find in it. Atlas shows whole businesses, each modelled as one model in many views of many types that open into each other, each opening on a map. In an app, at the end, shows the module inside host pages. On any diagram you can pan, zoom, select and go into the cards that stack.
+${f.text}
 
-## Diagrams {#diagrams}
+<div class="ex-grid">
+${f.types.map(id => card(inv.find(t => t.id === id))).join('\n')}
+</div>`).join('\n\n');
+  return `${front('Diagram types', 'The 28 diagram types umlimator draws besides its maps, each with one live example that shows all it draws.')}
+# Diagram types
 
-The 28 types in the order of the [Diagram types](./types.md) page. Each card opens the type's page; its list names the first things the diagram shows. The layered map is not one of them: every [atlas](#atlas) opens on one, and the [Bookshop atlas's overview](./gallery/bookshop-atlas.md#view-overview) shows everything a map draws.
+umlimator draws 28 diagram types besides its layered maps. Each is a model of schema version 2 with \`"diagram"\` set on its views, drawn by \`umlimator/all\` ([Typed diagrams](../api/typed-diagrams.md) has what they share). Each type has a page: one example, live, made up for an online bookshop and its delivery cargo e-bike, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own (a layout direction, a notation); then how to write the type in the model, and what of its notation is drawn and left out, and why. The map is not one of them: every [atlas](../atlas/index.md) opens on one, and the [Bookshop atlas's overview](../atlas/bookshop.md#view-overview) shows everything a map draws.
 
 <nav class="ex-jump" aria-label="Diagram types"><ul>
 ${nav}
 </ul></nav>
 
 ${groups}
-
-## Atlas {#atlas}
-
-Whole businesses, each one model in many views of the types above, joined by cards that open them. Each opens on a map, its first layer.
-
-<div class="ex-grid">
-${atlases().map(atlasCard).join('\n')}
-</div>
-
-## In an app {#apps}
-
-<table class="ex-apps">
-${apps.join('\n')}
-</table>
 `;
 }
 
-// a type's page, or the atlas's: the live page in a frame, with a link to it full screen, then its views
-const frame = (path, title) => `<div class="ex-frame"><iframe src="${esc(EX + path)}" title="${esc(title)}, live" loading="lazy"></iframe></div>`;
+// a link in a conformance note, made relative to the type's page: a note's link to a note goes to that type's page
+function relink(text, id) {
+  const from = posix.dirname(`${NOTES}${id}.md`);
+  return text.replace(/\]\(([^)\s]+)\)/g, (all, href) => {
+    if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return all;
+    const [path, hash = ''] = href.split(/#(.*)/s);
+    if (!path) return all;
+    let to = posix.normalize(posix.join(from, path)), h = hash;
+    const note = to.startsWith(NOTES) && /^docs\/diagrams\/conformance\/([\w-]+)\.md$/.exec(to);
+    if (note) { to = `docs/types/${note[1]}.md`; h = h || 'conformance'; } else if (to === NOTES.slice(0, -1)) to = 'docs/types/index.md';
+    let rel = posix.relative('docs/types', to);
+    if (!rel.startsWith('.')) rel = `./${rel}`;
+    return `](${rel}${h ? `#${h}` : ''})`;
+  });
+}
+// a conformance note under the page's last heading: its title dropped, its headings one level down (not in code)
+function note(t) {
+  const lines = read(t.note).split('\n');
+  if (!/^# /.test(lines[0])) stop(`${t.note} does not start with its title`);
+  let fence = false;
+  const body = lines.slice(1).map(l => { if (/^\s*(```|~~~)/.test(l)) fence = !fence; return !fence && /^#{1,5} /.test(l) ? `#${l}` : l; });
+  return relink(body.join('\n').trim(), t.id);
+}
 
 function typePage(t) {
   const shows = t.shows.map(x => `<li>${prose(x)}</li>`).join('\n');
@@ -164,21 +146,13 @@ function typePage(t) {
 <h3>${out(`types/${t.id}.html#view=${a.view}`, esc(a.title))}</h3>
 <p>${prose(a.setting)}</p>
 </article>`).join('\n');
-  return `---
-title: ${JSON.stringify(t.title)}
-description: ${JSON.stringify(`${t.text.replace(/\.$/, '')}: one example that shows all it draws, live.`)}
-aside: false
-pageClass: gallery-page
----
-
-<!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
-
+  return `${front(t.title, `${t.text.replace(/\.$/, '')}: one example that shows all it draws, live, how to write it, and what is drawn and left out.`)}
 # ${esc(t.title)}
 
-<p class="ex-lead">${prose(t.intro)} The page below opens on it, ${out(`types/${t.id}.html#view=${t.main}`, esc(t.mainTitle))}, live: pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">${esc(t.text)} ${prose(t.intro)} The page below opens on it, ${out(`types/${t.id}.html#view=${t.main}`, esc(t.mainTitle))}, live: pan, zoom, select and go into the cards that stack.</p>
 
 ${frame(`types/${t.id}.html`, t.title)}
-${links([['Open full screen', `types/${t.id}.html`], ['Conformance', docLink(t.covers, true), true], ['PDF', `types/${t.id}.pdf`], ['Model', `types/${t.id}.json`]], t.name)}
+${links([['Open full screen', `types/${t.id}.html`], ['PDF', `types/${t.id}.pdf`], ['Model', `types/${t.id}.json`]], t.name)}
 
 ## What it shows {#shows}
 
@@ -195,7 +169,48 @@ ${alts ? `
 <div class="ex-variants">
 ${alts}
 </div>
-` : ''}`;
+` : ''}
+## How to write it {#model}
+
+The view's \`diagram\`, the types its elements, members and lines may have, and its props types, which describe \`props\` (every field in them is optional). The element envelope, typed views and the props all UML types share are on [Typed diagrams](../api/typed-diagrams.md).
+
+${t.model}
+
+## What is drawn and left out {#conformance}
+
+<!-- the conformance note, as written: docs/diagrams/conformance/${t.id}.md -->
+
+${note(t)}
+`;
+}
+
+// an atlas's views, by type, with links into its page
+function atlasCard(A) {
+  const atlas = json(`examples/${A.file}.json`), inv = inventory();
+  const byType = [...new Set(atlas.views.map(groupOf))].map(g => { const t = g === 'map' ? { name: 'Map' } : inv.find(x => x.id === g) || stop(`${A.file}: no type ${g}`);
+    return `${esc(t.name)} (${atlas.views.filter(v => groupOf(v) === g).map(v => out(`${A.file}.html#view=${v.id}`, esc(v.title))).join(', ')})`; });
+  return `<article class="ex-card ex-wide" id="atlas-${A.file}">
+<a class="ex-still" href="./${A.page}.html" tabindex="-1" aria-hidden="true"><img :src="'${EX}stills/${A.file}/${atlas.root}.png'" alt="${esc(A.alt)}" loading="lazy" width="640" height="320"></a>
+<div>
+<h2><a href="./${A.page}.html">${esc(A.name)}</a></h2>
+<p>${A.text}</p>
+<p class="ex-views">Its views, by type: ${byType.join('; ')}.</p>
+${links([['Open', `./${A.page}.html`, true], ...(A.stories || []).map(([t, id]) => [t, `${A.file}.html#story=${id}&step=1`]), ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]], A.name)}
+</div>
+</article>`;
+}
+
+function atlasIndex() {
+  const M = json('tools/gallery.json').map, show = atlases().find(A => A.file === M.atlas) || stop(`no atlas ${M.atlas}`);
+  return `${front('Atlases', 'Whole businesses, each modelled as one model in many views of many diagram types that open into each other.')}
+# Atlases
+
+An atlas is one model of a whole business in many views of many diagram types, joined by cards that open them. Each opens on a map, its first layer: the [${esc(show.name)} atlas's overview](./${show.page}.md#view-${M.main}) is the map's showcase, with a checklist of everything a map draws. On any of them you can pan, zoom, select and go into the cards that stack.
+
+<div class="ex-grid">
+${atlases().map(atlasCard).join('\n')}
+</div>
+`;
 }
 
 function atlasPage(A) {
@@ -204,22 +219,14 @@ function atlasPage(A) {
   const list = atlas.views.map(v => { const g = groupOf(v), t = g === 'map' ? { name: 'Map' } : inv.find(x => x.id === g) || stop(`${A.file}: no type ${g}`);
     return `<article class="ex-variant" id="view-${esc(v.id)}">
 <h3>${out(`${A.file}.html#view=${v.id}`, esc(v.title))}</h3>
-<p class="ex-sub">${esc(t.name)}</p>
+<p class="ex-sub">${g === 'map' ? 'Map' : `<a href="../types/${g}.html">${esc(t.name)}</a>`}</p>
 <p>${(A.views || {})[v.id] || stop(`tools/gallery.json has no text for ${A.file}'s view ${v.id}`)}</p>
-${mapOf(v) ? `<p>The map's example: what it shows, in the order you find it in the picture:</p>
+${mapOf(v) ? `<p>The map's showcase: what it shows, in the order you find it in the picture:</p>
 <ol class="ex-shows">
 ${M.shows.map(x => `<li>${prose(x)}</li>`).join('\n')}
 </ol>
 ` : ''}</article>`; }).join('\n');
-  return `---
-title: ${JSON.stringify(A.name)}
-description: ${JSON.stringify(A.description)}
-aside: false
-pageClass: gallery-page
----
-
-<!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
-
+  return `${front(A.name, A.description)}
 # ${esc(A.name)}
 
 <p class="ex-lead">${A.text}</p>
@@ -235,49 +242,39 @@ ${list}
 `;
 }
 
-// the sidebar of the examples' pages: the index, the types by family, the atlas
+// the site's one sidebar: Start, Diagrams (a family of one type is its page), Maps and atlases, Use it, Reference
 export function sidebar() {
-  const inv = inventory();
+  const D = json('tools/gallery.json').docs, inv = inventory(), items = xs => xs.map(([text, link]) => ({ text, link }));
+  const type = id => ({ text: inv.find(t => t.id === id).name, link: `/types/${id}` });
   return [
-    { text: 'Examples', items: [{ text: 'All examples', link: '/examples' }] },
-    ...[...new Set(inv.map(t => t.family))].map(f => ({ text: f, collapsed: false,
-      items: inv.filter(t => t.family === f).map(t => ({ text: t.name, link: `/gallery/${t.id}` })) })),
-    { text: 'Atlas', items: atlases().map(A => ({ text: A.name, link: `/gallery/${A.page}` })) },
+    { text: 'Start', items: items(D.start) },
+    { text: 'Diagrams', items: [{ text: 'All 28 types', link: '/types/' },
+      ...families().map(f => f.types.length === 1 ? type(f.types[0]) : { text: f.name, collapsed: true, items: f.types.map(type) })] },
+    { text: 'Maps and atlases', items: [...items(D.maps), { text: 'Atlases', link: '/atlas/' }, ...atlases().map(A => ({ text: A.name, link: `/atlas/${A.page}` }))] },
+    { text: 'Use it', items: items(D.use) },
+    { text: 'Reference', items: items(D.reference) },
   ];
 }
 
-// the old address of the examples: kept, as a redirect that keeps the #fragment (a script; a meta refresh and a link
-// without it)
-export const redirect = () => `<!doctype html>
-<html lang="en">
-<!-- Written by tools/gallery.mjs: the examples are on the documentation site's Examples page (docs/examples.md). -->
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>umlimator examples</title>
-<link rel="canonical" href="../examples.html">
-<script>location.replace('../examples.html' + location.hash);</script>
-<meta http-equiv="refresh" content="0; url=../examples.html">
-<main>
-  <h1>umlimator examples</h1>
-  <p>The examples are on the <a href="../examples.html">Examples page</a>.</p>
-</main>
-`;
-
 // every file this writes: { path: text }
 export function files() {
-  const f = { 'docs/examples.md': index(), 'docs/.vitepress/gallery.json': JSON.stringify(sidebar(), null, 1) + '\n', 'examples/index.html': redirect() };
-  for (const t of inventory()) f[`docs/gallery/${t.id}.md`] = typePage(t);
+  const f = { 'docs/types/index.md': index(), 'docs/atlas/index.md': atlasIndex(), 'docs/.vitepress/sidebar.json': JSON.stringify(sidebar(), null, 1) + '\n' };
+  for (const t of inventory()) f[`docs/types/${t.id}.md`] = typePage(t);
   for (const A of atlases()) {
-    if (f[`docs/gallery/${A.page}.md`]) stop(`the atlas ${A.file}'s page ${A.page} is taken`);
-    f[`docs/gallery/${A.page}.md`] = atlasPage(A);
+    if (f[`docs/atlas/${A.page}.md`]) stop(`the atlas ${A.file}'s page ${A.page} is taken`);
+    f[`docs/atlas/${A.page}.md`] = atlasPage(A);
   }
   return f;
 }
+// the folders whose every file this writes
+export const DIRS = ['docs/types/', 'docs/atlas/'];
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const f = files();
-  mkdirSync(new URL('docs/gallery/', ROOT), { recursive: true });
-  for (const old of readdirSync(new URL('docs/gallery/', ROOT))) if (!f[`docs/gallery/${old}`]) rmSync(new URL(`docs/gallery/${old}`, ROOT));
+  for (const d of DIRS) {
+    mkdirSync(new URL(d, ROOT), { recursive: true });
+    for (const old of readdirSync(new URL(d, ROOT))) if (!f[`${d}${old}`]) rmSync(new URL(`${d}${old}`, ROOT));
+  }
   for (const [p, s] of Object.entries(f)) writeFileSync(new URL(p, ROOT), s);
   console.log(`${Object.keys(f).length} files written: ${Object.keys(f).join(', ')}`);
 }

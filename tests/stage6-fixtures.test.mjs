@@ -39,7 +39,7 @@ function profileClean(m, vid) {
   return [found.filter(p => / cross$/.test(p)).length, found.filter(p => !/ cross$/.test(p)), bad];
 }
 // [crossings, check()'s other findings, lines through nodes]: only the generated view all crosses (§12's repair and
-// rerouting off), stated in docs/conformance/uml-profile.md
+// rerouting off), stated in docs/diagrams/conformance/uml-profile.md
 const PINNED = {
   'profile-minimal': { v: { right: [0, [], []], down: [0, [], []] } },
   'profile-stress': { 'edge-cases': { right: [0, [], []], down: [0, [], []] }, all: { right: [17, [], []], down: [30, [], []] } },
@@ -77,7 +77,7 @@ function timingUnclean(m, vid) {
 
 // the generated view all crowds 100 messages on 12 lanes: three labels of messages sent at 0 to 20 ms sit over the state
 // column's names, and two over a step, which the ruler's label search (§6.5) does not count; stated in
-// docs/conformance/uml-timing.md as limits of a crowded view, not of the examples or edge-cases
+// docs/diagrams/conformance/uml-timing.md as limits of a crowded view, not of the examples or edge-cases
 const CROWDED = ["m0's label meets L0->Waiting", "m1's label meets L3->Waiting", "m2's label meets L6->Idle", "m42's label meets a step or a value", "m78's label meets a step or a value"];
 test('every timing view: §11\'s timing predicate holds (on all, but its five crowded labels, pinned); the ruler\'s own problems only as pinned (a value cut, the capped view, the stress view\'s labels it could not place)', () => {
   const seen = {};

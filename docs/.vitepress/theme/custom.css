@@ -28,30 +28,7 @@ umlimator-map {
   border-radius: 8px;
 }
 
-/* the diagram types grid (types.md) */
-.types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 24px; }
-.types-grid .type {
-  display: flex; flex-direction: column; padding: 16px 18px; border: 1px solid var(--vp-c-bg-soft);
-  border-radius: 12px; background: var(--vp-c-bg-soft);
-}
-.types-grid .type h3 { margin: 0; padding: 0; border: 0; font-size: 16px; line-height: 24px; }
-.types-grid .type p { margin: 6px 0 12px; flex: 1; font-size: 14px; line-height: 22px; color: var(--vp-c-text-2); }
-.types-grid .type .links { display: flex; gap: 16px; font-size: 14px; font-weight: 500; }
-.types-grid .type .links a { text-decoration: none; }
-.types-grid .type .links a:hover { text-decoration: underline; }
-.types-grid .type code { font-size: 12px; }
-.types-grid .still {
-  display: block; margin: -4px -6px 14px; height: 160px; border-radius: 8px; overflow: hidden;
-  background: var(--vp-c-bg); border: 1px solid var(--vp-c-divider);
-}
-.types-grid .still img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
-.dark .types-grid .still img { filter: invert(.88) hue-rotate(180deg); } /* the stills are drawn light */
-
-/* the types page is a gallery: as wide as the home page */
-.types-page .VPDoc .container, .types-page .VPDoc .content, .types-page .VPDoc .content-container { max-width: 1152px !important; }
-
-/* the examples (examples.md and gallery/*.md, written by tools/gallery.mjs): cards in the docs' colours, both themes */
-.examples-page .VPDoc .container, .examples-page .VPDoc .content, .examples-page .VPDoc .content-container,
+/* the Diagrams and atlas pages (types/ and atlas/, written by tools/gallery.mjs): cards in the docs' colours, both themes */
 .gallery-page .VPDoc .container, .gallery-page .VPDoc .content, .gallery-page .VPDoc .content-container { max-width: 1152px !important; }
 .ex-jump ul { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
 .ex-jump li { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; }
@@ -62,9 +39,9 @@ umlimator-map {
   border-radius: 12px; background: var(--vp-c-bg-soft); scroll-margin-top: calc(var(--vp-nav-height) + 16px);
 }
 .ex-card.ex-wide { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0 20px; align-items: start; }
-.ex-card h3, .ex-card h4 { margin: 0; padding: 0; border: 0; font-size: 16px; line-height: 24px; }
-.ex-card h3 a, .ex-card h4 a, .ex-variant h3 a { text-decoration: none; color: var(--vp-c-text-1); }
-.ex-card h3 a:hover, .ex-card h4 a:hover, .ex-variant h3 a:hover { color: var(--vp-c-brand-1); }
+.ex-card h2, .ex-card h3, .ex-card h4 { margin: 0; padding: 0; border: 0; font-size: 16px; line-height: 24px; }
+.ex-card h2 a, .ex-card h3 a, .ex-card h4 a, .ex-variant h3 a { text-decoration: none; color: var(--vp-c-text-1); }
+.ex-card h2 a:hover, .ex-card h3 a:hover, .ex-card h4 a:hover, .ex-variant h3 a:hover { color: var(--vp-c-brand-1); }
 .ex-card p { margin: 6px 0 0; font-size: 14px; line-height: 22px; color: var(--vp-c-text-2); overflow-wrap: anywhere; }
 .ex-card > p:first-of-type { flex: 1; }
 .ex-card p.ex-views { font-size: 13px; line-height: 20px; }

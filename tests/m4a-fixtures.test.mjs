@@ -79,7 +79,7 @@ function cloudBad(m, vid, g) {
 
 // what each view keeps: [crossings, check()'s other findings, what the picture gets wrong, lines left unrouted]. A mindmap has
 // one direction; a cloud view right and down. Every view is clean but for its crossings (repair and reroute off, §11),
-// stated in docs/conformance/gcp.md and azure.md; the line between a group and what it holds, which cannot be drawn
+// stated in docs/diagrams/conformance/gcp.md and azure.md; the line between a group and what it holds, which cannot be drawn
 // (line-inside, an error the JSON holds and connect refuses); and on the cloud stress view all laid out down, one path's
 // label on another path (the 80 paths' crossings and that label are what repair and reroute off leave, decision 20)
 const PINNED = {
@@ -245,9 +245,9 @@ test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema
   }
   assert.ok(S.properties.iconPacks && /iconPacks\?: Record<string, string>/.test(dts));
   assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'AwsElementType', 'AwsLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
-  const all = readFileSync(new URL('../docs/guide/embedding.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
+  const all = readFileSync(new URL('../docs/use/embedding.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
   assert.ok(['mindmap', 'Google Cloud', 'Azure', 'AWS'].every(w => all.includes(w)), 'the guide\'s Embedding page: its umlimator/all line names the 0.26.0 types');
-  const model = readFileSync(new URL('../docs/guide/model.md', import.meta.url), 'utf8').split('\n').find(l => l.includes('`"gcp"`'));
+  const model = readFileSync(new URL('../docs/maps/model.md', import.meta.url), 'utf8').split('\n').find(l => l.includes('`"gcp"`'));
   assert.ok(['`"gcp"`', '`"azure"`', '`"aws"`'].every(w => model.includes(w)), 'the guide\'s Model page lists every 0.26.0 diagram value (audit 2)');
 });
 

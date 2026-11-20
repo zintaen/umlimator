@@ -6,6 +6,6 @@
 
 - [ ] Tests added or updated for the change, and the ones it touches pass locally
 - [ ] `lib/` rebuilt with `node tools/build.mjs` and committed with `src/` (if `src/` changed)
-- [ ] Docs updated (`docs/guide/`, `docs/api/`, a conformance note), if behaviour or the API changed
+- [ ] Docs updated (`docs/start/`, `docs/maps/`, `docs/use/`, `docs/api/`, a type's `tools/types.md` section or its conformance note, then `node tools/gallery.mjs`), if behaviour or the API changed
 - [ ] `bench/expected.json` refreshed with `--write-expected` only for lines moved on purpose, said why above
 - [ ] No edits to the upstream copies (`engine/scripts/`, `engine/references/`, `tools/fetch_icons.py`)

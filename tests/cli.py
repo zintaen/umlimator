@@ -1293,10 +1293,10 @@ with tempfile.TemporaryDirectory() as tmp:
         # types' tests and stated in their conformance notes; nothing else
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
-        # counts them (tests/integration.test.mjs counts Node's in the integration fixture's views); stated in docs/conformance/c4.md and dfd.md
+        # counts them (tests/integration.test.mjs counts Node's in the integration fixture's views); stated in docs/diagrams/conformance/c4.md and dfd.md
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
-        # docs/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
-        # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
+        # docs/diagrams/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
+        # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/diagrams/conformance/bpmn.md
         crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 8, "bookshop-data-flow": 2, "bookshop-gcp": 1, "bookshop-azure": 2, "bookshop-order-to-shipment": 5}.get(name, 0)
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
            r is not None and len(r.get("problems") or []) <= crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
@@ -2412,7 +2412,7 @@ if part("audit 51"):
                     said.append((line, page in pages and bool(u.pick(str(pages[page]), v.group(1)))))
                 except SystemExit as e:
                     said.append((line, str(e)))
-    ok("docs/guide/cli.md · every --views value names views of the page its block renders (audit 51)",
+    ok("docs/use/cli.md · every --views value names views of the page its block renders (audit 51)",
        len(said) >= 2 and all(r is True for _, r in said), said)
 if part("audit 54 tools"):
     # audit 54: a card's or a line's change an author wrote as a list or an object ended diff --base (and the diff Action) in

@@ -9,7 +9,7 @@ Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types yo
 [![docs](https://img.shields.io/badge/docs-zintaen.github.io%2Fumlimator-blue)](https://zintaen.github.io/umlimator/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/cyberskill)
 
-One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
+One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Diagram types](https://zintaen.github.io/umlimator/types/) | [Atlases](https://zintaen.github.io/umlimator/atlas/) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
 
 [![The Umlimator atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](https://raw.githubusercontent.com/zintaen/umlimator/main/examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
@@ -46,7 +46,7 @@ python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # th
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 ```
 
-The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-started.html) walks through a first model.
+[A first diagram](https://zintaen.github.io/umlimator/start/first-diagram.html) walks through a first model.
 
 ## What it does
 
@@ -54,8 +54,8 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
   view, or unfolds in place. Automatic layout with orthogonal lines that never run through a card, the same picture for
   the same model, and a layout check.
 - **28 diagram types**: UML's 14 and its information flow diagram, ER, flowchart, data flow, C4's six views, SysML v1.7's four, mindmaps, Google
-  Cloud, Azure and AWS architecture diagrams and BPMN, each with a [conformance note](https://github.com/zintaen/umlimator/tree/main/docs/conformance) saying what it
-  covers.
+  Cloud, Azure and AWS architecture diagrams and BPMN, each on [its own page](https://zintaen.github.io/umlimator/types/): a live example, how to write it, and what of its
+  notation is drawn and left out.
 - **Editing with `apply()`**: opt-in gestures emit events; the host decides, and `apply()` turns a typed diagram's
   `edit` into the next model, with undo.
 - **Stories, lenses and live data**: step-by-step walk-throughs, saved ways to look at a map by team or data flow, and
@@ -74,11 +74,12 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 
 | | |
 |---|---|
-| [Docs](https://zintaen.github.io/umlimator/) | the documentation site |
-| [Guide](https://zintaen.github.io/umlimator/guide/getting-started.html) | the model, embedding, editing, the CLI, the Action, MCP, import and icons ([as Markdown](https://github.com/zintaen/umlimator/tree/main/docs/guide)) |
+| [Docs](https://zintaen.github.io/umlimator/) | the documentation site, one sidebar in reading order: Start, Diagrams, Maps and atlases, Use it, Reference ([as Markdown](https://github.com/zintaen/umlimator/tree/main/docs)) |
+| [Start](https://zintaen.github.io/umlimator/start/install.html) | install, and [a first diagram](https://zintaen.github.io/umlimator/start/first-diagram.html) |
+| [Diagram types](https://zintaen.github.io/umlimator/types/) | the 28 types, each on one page: a live example, how to write it, and what is drawn and left out |
+| [Atlases](https://zintaen.github.io/umlimator/atlas/) | whole businesses, each one model in many views (each opens on a map: the [Bookshop atlas's overview](https://zintaen.github.io/umlimator/atlas/bookshop.html#view-overview) shows everything a map draws) |
+| [Use it](https://zintaen.github.io/umlimator/use/cli.html) | the CLI, embedding, the standalone page, MCP, the GitHub Action, import and export, icon packs and editing, with [host pages](https://zintaen.github.io/umlimator/use/embedding.html#host-pages) for embedding, live updates and editing ([what each example shows](https://github.com/zintaen/umlimator/blob/main/examples/README.md)) |
 | [API](https://zintaen.github.io/umlimator/api/) | every export, its options and events (`lib/umlimator.d.ts`) |
-| [Diagram types](https://zintaen.github.io/umlimator/types.html) | the 28 types, each with a live example and its conformance note |
-| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, the atlases (each opens on a map: the [Bookshop atlas's overview](https://zintaen.github.io/umlimator/gallery/bookshop-atlas.html#view-overview) shows everything a map draws), host pages for embedding, live updates and editing ([what each one shows](https://github.com/zintaen/umlimator/blob/main/examples/README.md)) |
 | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | try a model in the browser |
 | [Changelog](https://github.com/zintaen/umlimator/blob/main/docs/module-api.md) | each release's changes, and the decisions behind the API |
 

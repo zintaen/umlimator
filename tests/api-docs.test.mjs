@@ -1,5 +1,7 @@
-// The API reference (docs/api/*.md) against the types it documents: every name lib/*.d.ts exports appears on some page,
-// every exported function's signature is quoted as the .d.ts has it, and every relative link and anchor resolves.
+// The API reference (docs/api/*.md) against the types it documents: every name lib/*.d.ts exports appears on some page
+// (each diagram type's own vocabulary on its Diagrams page, docs/types/<type>.md, whose "How to write it" part is
+// tools/types.md's section), every exported function's signature is quoted as the .d.ts has it, and every relative link
+// and anchor resolves.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -9,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..'), api = join(root, 'docs/api');
 const read = p => readFileSync(p, 'utf8');
 const pages = Object.fromEntries(readdirSync(api).filter(f => f.endsWith('.md')).map(f => [f, read(join(api, f))]));
-const all = Object.values(pages).join('\n');
+const types = read(join(root, 'tools/types.md'));   // the "How to write it" parts of the type pages
+const all = [...Object.values(pages), types].join('\n');
 const dts = readdirSync(join(root, 'lib')).filter(f => f.endsWith('.d.ts')).map(f => read(join(root, 'lib', f)));
 
 test('the API reference has its seven pages', () => {
@@ -17,11 +20,11 @@ test('the API reference has its seven pages', () => {
     'model-and-schema.md', 'render.md', 'typed-diagrams.md']);
 });
 
-test('every name lib/*.d.ts exports appears on some API page', () => {
+test('every name lib/*.d.ts exports appears on some API page or type page', () => {
   const names = dts.flatMap(s => [...s.matchAll(/^export\s+(?:declare\s+)?(?:function|interface|type|class|const)\s+(\w+)/gm)].map(m => m[1]));
   assert.ok(names.length > 100, `only ${names.length} exports found`);
   const missing = [...new Set(names)].filter(n => !new RegExp(`\\b${n}\\b`).test(all));
-  assert.deepEqual(missing, [], `not in docs/api/*.md: ${missing.join(', ')}`);
+  assert.deepEqual(missing, [], `not in docs/api/*.md or tools/types.md: ${missing.join(', ')}`);
 });
 
 test('every exported function of lib/umlimator.d.ts is quoted with its signature as the .d.ts has it', () => {
@@ -54,6 +57,8 @@ test('the Element doc comment names every diagram type umlimator/all draws (audi
 const anchors = md => {
   const seen = {}, out = new Set();
   for (const [, h] of md.replace(/^(```|````)[\s\S]*?^\1/gm, '').matchAll(/^#{1,6} (.+)$/gm)) {
+    const own = /\{#([\w-]+)\}$/.exec(h);   // an id the heading sets ({#model})
+    if (own) { out.add(own[1]); continue; }
     const base = h.replace(/`/g, '').trim().toLowerCase().replace(/[^\w\- ]/g, '').replace(/ /g, '-');
     out.add(seen[base] ? `${base}-${seen[base]}` : base); seen[base] = (seen[base] || 0) + 1;
   }
@@ -74,10 +79,10 @@ test('every relative link on the API pages names a file that exists, and an anch
   assert.deepEqual(broken, []);
 });
 
-test('audit 20: every prop the sequence, communication and timing panels offer on a message is declared in its .d.ts props and listed in docs/api/typed-diagrams.md', async () => {
+test('audit 20: every prop the sequence, communication and timing panels offer on a message is declared in its .d.ts props and listed on its type page (tools/types.md)', async () => {
   const { diagramOf } = await import('../src/core/registry.js'); await import('../src/map/typed.js');
   for (const f of ['sequence', 'communication', 'timing']) await import(`../src/uml/${f}.js`);
-  const d = read(join(root, 'lib/umlimator.d.ts')), doc = pages['typed-diagrams.md'];
+  const d = read(join(root, 'lib/umlimator.d.ts')), doc = types;
   for (const [diagram, name] of [['uml.sequence', 'UmlMessageProps'], ['uml.communication', 'UmlMessageProps'], ['uml.timing', 'UmlTimingMessageProps']]) {
     const keys = diagramOf({ diagram }).props['uml.Message'].map(f => f.key), decl = (d.match(new RegExp(`interface ${name} \\{([^}]*)\\}`)) || [])[1] || '';
     const row = doc.split('\n').find(l => l.startsWith(`| \`${name}\` |`)) || '';
@@ -105,7 +110,7 @@ test('audit 24: delete\'s rows say that a model element under a node one view al
   const row = (page, cell) => (page.split('\n').find(l => l.startsWith(cell)) || '');
   assert.match(row(pages['apply-and-commands.md'], '| `delete` |'), /kept: it moves to its nearest owner left, else to none/);
   assert.match(row(pages['apply-and-commands.md'], '| `reparent` |'), /under it throws, and `validate\(\)` warns/);
-  assert.match(row(read(join(root, 'docs/guide/editing.md')), '| `delete` (Shift + Delete) |'), /except a model element under a node only this view holds: it moves to its nearest owner left/);
+  assert.match(row(read(join(root, 'docs/use/editing.md')), '| `delete` (Shift + Delete) |'), /except a model element under a node only this view holds: it moves to its nearest owner left/);
 });
 
 // audit 26: render.md said render() replaced the container's content and destroy() left it empty; render() appends the
@@ -175,7 +180,7 @@ test('audit 43: risks.md M11 and C10 and the diff Action guide say a map view\'s
   assert.deepEqual([diff(a, b).summary, diff(a, b).views], [['moves B to the start in the view V'], ['v']]);
   const c = structuredClone(a); c.views[0].nodeIds = ['e', 'd', 'c', 'b', 'a'];
   assert.match(diff(a, c).summary.join(), /^reorders \d+ cards in the view V$/);
-  const risks = read(join(root, 'docs/diagrams/risks.md')), guide = read(join(root, 'docs/guide/github-action.md'));
+  const risks = read(join(root, 'docs/diagrams/risks.md')), guide = read(join(root, 'docs/use/github-action.md'));
   const row = id => risks.split('\n').find(l => l.startsWith(`| ${id} |`));
   assert.doesNotMatch(row('M11'), /Maps are diffed as before/);
   assert.match(row('M11'), /a map's included, reads "moves `X` after `Y`" \(or "to the start"\), or "reorders `N` cards"/);

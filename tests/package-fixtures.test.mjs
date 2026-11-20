@@ -91,7 +91,7 @@ test('the stress fixture: 50 nodes over three levels of packages and 60 lines, w
 });
 
 test('the stress fixture lays out clean, right and down; its crossings are the ones the conformance note states', () => {
-  // the counts docs/conformance/uml-package.md and risks.md L4 state: a change of layout that moves them updates both
+  // the counts docs/diagrams/conformance/uml-package.md and risks.md L4 state: a change of layout that moves them updates both
   // audit 27: a line out of a box keeps out of that box once it has left it. Right, imp3 no longer runs 6,000 px out and back
   // through catalog-core to reach its near side, and crosses once more; down, merge0 no longer winds through billing-core,
   // and d56, whose port lies on billing-core's border line, now runs 27 px down it before it turns, clear of merge0

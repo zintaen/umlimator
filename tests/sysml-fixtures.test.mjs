@@ -5,7 +5,7 @@
 // type's own test times, written out. Each view is laid out right and down with no line through a node but its own two
 // ends, every line end within 1 px of its node's box, no line label over a node, every port centred on its owner's border
 // (a part's, or the frame's), and what check() finds pinned: the crossings that repair and reroute off leave (§14, S18) and
-// the few other findings, each stated in its type's conformance note (docs/conformance/sysml-*.md). Then §14's budgets on
+// the few other findings, each stated in its type's conformance note (docs/diagrams/conformance/sysml-*.md). Then §14's budgets on
 // each fixture's all, in CPU time, best of seven after a warm-up: a full layout and its SVG under 1 s; the common edits under
 // CI's 1 s ceiling, their time printed against the 100 ms target. tests/sysml.html draws every view in Chrome under three
 // fonts and both themes, with the same checks on every view but the generated alls.
@@ -55,7 +55,7 @@ function clean(m, vid) {
 // what each view keeps, laid out right and down, counted: [crossings, check()'s other findings, what clean() calls wrong].
 // The edge-cases views and the minimal ones are clean but for the crossings counted here and one finding: laid out down, a
 // constraint block subject's parameter on the frame's top crosses its header band (M3.5's gap, stated in
-// docs/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
+// docs/diagrams/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
 // lines share a track, and labels that found no spot and were left off with nothing said, drawn now on a looser spot (audit 6),
 // lie on lines. Each is stated in its type's conformance note
 const PINNED = {
@@ -86,7 +86,7 @@ test('every view of the eight fixtures, right and down: a line through a node, a
 // audit 25 lowered the pin to 22
 test('each SysML conformance note states its generated `all` view\'s crossings, and the parametric note its findings, as pinned', () => {
   for (const t of TYPES) {
-    const note = readFileSync(new URL(`../docs/conformance/sysml-${t}.md`, import.meta.url), 'utf8').replace(/\s+/g, ' '), { right, down } = PINNED[`${t}-stress`].all;
+    const note = readFileSync(new URL(`../docs/diagrams/conformance/sysml-${t}.md`, import.meta.url), 'utf8').replace(/\s+/g, ' '), { right, down } = PINNED[`${t}-stress`].all;
     assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down`), t);
     if (t === 'parametric') assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down, with ${right[1]} and ${down[1]} findings`), t);
   }

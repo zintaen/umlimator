@@ -366,9 +366,9 @@ test('audit 17: the PDF\'s Lines table lists a self-reference, as er.md says', (
   const ctx = mapContext(m), [, lines] = tablesOf(ctx, ctx.V[vid], { nodes: [], edges: layout(m, vid).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
   const rows = lines.rows.map(r => cells(r).slice(0, 2).map(c => c.replace(/<[^>]*>/g, '')));
   assert.ok(rows.some(([a, b]) => a === 'customer → customer' && b === 'referred: 0..1 to 0..*, non-identifying'), rows.join('\n'));
-  const doc = readFileSync(new URL('../docs/conformance/er.md', import.meta.url), 'utf8');
+  const doc = readFileSync(new URL('../docs/diagrams/conformance/er.md', import.meta.url), 'utf8');
   assert.ok(doc.includes('a self-reference is listed too') && doc.includes('`customer -> customer referred: 0..1 to 0..*, non-identifying`'));
-  assert.match(readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8'), /the PDF's lines table lists it/); // the same for a flow to itself
+  assert.match(readFileSync(new URL('../docs/diagrams/conformance/uml-information-flow.md', import.meta.url), 'utf8'), /the PDF's lines table lists it/); // the same for a flow to itself
 });
 
 test('audit 19: a column is deleted from the panel\'s Members row, as er.md and editing.md say; only the notation switch is a host\'s', () => {
@@ -378,7 +378,7 @@ test('audit 19: a column is deleted from the panel\'s Members row, as er.md and 
   const after = apply(m, [{ op: 'delete', id: 'er-customer.id' }]), cols = id => after.nodes.flatMap(n => n.members || []).find(c => c.id === id);
   assert.equal(cols('er-customer.id'), undefined);
   assert.equal(cols('er-order.customer_id').props.references, undefined, 'a column that referenced it loses references');
-  const doc = readFileSync(new URL('../docs/conformance/er.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), ed = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8');
+  const doc = readFileSync(new URL('../docs/diagrams/conformance/er.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), ed = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8');
   assert.ok(!/no canvas gesture[^.]*deleting a column/.test(doc) && doc.includes('A column is deleted with the ✕ on its Members row in the properties panel'), 'er.md');
   assert.ok(!ed.includes('| a column deleted, the notation switched |') && ed.includes('| | a column deleted | the ✕ on its Members row in the properties panel |'), 'editing.md');
 });

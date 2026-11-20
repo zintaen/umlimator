@@ -1,0 +1,135 @@
+---
+title: "Azure diagram"
+description: "Subscriptions, resource groups, virtual networks and the services in them: one example that shows all it draws, live, how to write it, and what is drawn and left out."
+aside: false
+pageClass: gallery-page
+---
+
+<!-- Written by tools/gallery.mjs from the models, tools/gallery.json, tools/types.json, tools/types.md and docs/diagrams/conformance/: edit those, not this file. -->
+
+# Azure diagram
+
+<p class="ex-lead">Subscriptions, resource groups, virtual networks and the services in them. A bookshop's production system on Azure: the storefront and API behind Front Door, the order queue and worker, the database with a standby in a second region, and the monitoring beside them, each in its subscription, resource group, region, virtual network and subnet. The page below opens on it, <a href="/umlimator/examples/types/azure.html#view=on-azure" target="_self">Bookshop on Azure</a>, live: pan, zoom, select and go into the cards that stack.</p>
+
+<div class="ex-frame"><iframe src="/umlimator/examples/types/azure.html" title="Azure diagram, live" loading="lazy"></iframe></div>
+<div class="ex-links"><a href="/umlimator/examples/types/azure.html" target="_self">Open full screen<span class="visually-hidden"> (Azure)</span></a><a href="/umlimator/examples/types/azure.pdf" target="_self">PDF<span class="visually-hidden"> (Azure)</span></a><a href="/umlimator/examples/types/azure.json" target="_self">Model<span class="visually-hidden"> (Azure)</span></a></div>
+
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>Groups as boxes nested by ownership, each titled with its kind: a subscription, a resource group, a region (dashed), a virtual network and subnets</li>
+<li>Service cards: the vendor icon on its tile (a plain square where no icon pack was fetched), the label, and the full service name under it in a smaller muted line (CDN and routing, Front Door and CDN Profiles)</li>
+<li>Connectors, solid with an open arrow and a label (storefront, /api, paid order)</li>
+<li>A label the author broke into two lines, kept as written (Order worker / queue trigger)</li>
+<li>Lines leaving a subnet and its virtual network to reach services in the region (baskets, secrets)</li>
+<li>A generic group holding services (Operations)</li>
+<li>A service whose label is its full service name, drawn once (Application Insights)</li>
+<li>A line starting at a group, drawn from its border (snet-apps: logs, metrics to Logs and alerts)</li>
+<li>A group holding nothing the view shows, drawn as a closed card with its title, and a line ending on it (geo-replica to North Europe [Region])</li>
+</ol>
+
+## How to write it {#model}
+
+The view's `diagram`, the types its elements, members and lines may have, and its props types, which describe `props` (every field in them is optional). The element envelope, typed views and the props all UML types share are on [Typed diagrams](../api/typed-diagrams.md).
+
+`diagram: 'gcp'`, `'azure'` or `'aws'`. Groups own what they hold by `parent`. A service's icon is drawn from the model's `icons` table at `<pack>/<props.icon>`, else as a glyph with its full name; the module never fetches an icon.
+
+| Type | Values |
+|---|---|
+| `GcpElementType` | `gcp.Zone`, `gcp.Product`, `gcp.User` |
+| `GcpLineType` | `gcp.Path` |
+| `AzureElementType` | `azure.Group`, `azure.Service` |
+| `AzureLineType` | `azure.Connector` |
+| `AwsElementType` | `aws.Group`, `aws.Service`, `aws.Resource` |
+| `AwsLineType` | `aws.Connection` |
+| `CloudElementProps` | `zoneType` (on `gcp.Zone`), `groupType` (on `azure.Group` and `aws.Group`), `icon` (the pinned pack's own id, such as `Cloud-Run`) |
+
+## What is drawn and left out {#conformance}
+
+<!-- the conformance note, as written: docs/diagrams/conformance/azure.md -->
+
+Release 0.26.0 (milestone 4a, `docs/diagrams/notes/milestone-4a.md`). Support is claimed by level (decision D3): **render**
+and **edit** on the subset below. There is no reader.
+
+A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"azure"` is an Azure architecture
+diagram. It is drawn by `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what
+a map host loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 28; the
+example is [`examples/bookshop-azure.json`](../../examples/bookshop-azure.json).
+
+Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.
+
+### The subset
+
+| Piece | In the model | Drawn as |
+|---|---|---|
+| Group | `azure.Group`, its kind in `props.groupType`: `subscription`, `resource-group`, `region`, `virtual-network`, `subnet`, `generic` | a box holding what it owns by `parent`, at any depth, titled "<label> [<kind>]" ("West Europe [Region]"); dashed for a region, solid otherwise; no group icon (decision 10). A group holding nothing shown is a closed card of that title |
+| Service | `azure.Service`, its icon in `props.icon`, the pinned pack's own id (`Front-Door-and-CDN-Profiles`) | a card 180 to 280 px wide and 56 px tall at least on the map's box outline: the icon, 32 px, on a 39 px tile (dark under a white icon), from the host's `icons` table at `azure/<id>`; beside it the label (13 px, two lines of 180 px, or one per line the author broke it into) and under it the full service name (11 px, muted), from the table's `name`, else the row's `names` entry in `icons/packs.json`, else the id with hyphens and underscores as spaces; a label equal to the name drawn once. With no icon in the table, a 24 px outlined square, the glyph |
+| Line | `azure.Connector` | solid, an open arrow at `to`, its label cut at 280 px. It may start or end at a group, drawn to the group's border |
+
+An icon is drawn only through `<image>` from a `data:image/` URL, with `preserveAspectRatio="xMidYMid meet"`, never cropped,
+filtered, masked, faded or transformed, in screen, print or PDF; any other entry (another address, markup) draws the glyph.
+The module never fetches an icon: the CLI builds the table from a pack the user fetched after reading Microsoft's terms
+(`umlimator.py pack fetch azure`, the guide's [Icons and icon packs](../use/icon-packs.md)), and a host gives its own the same way.
+
+Rules (`src/cloud/cloud.js`): errors `group-kind` (the kind is one of the row's) and `line-inside` (no line between a
+group and what it holds: it cannot be drawn, and connecting one is refused); warnings `group-nesting` (a resource group in a subscription; a region in a subscription or a resource group; a virtual network in a region or a resource group; a subnet in a virtual network; `generic` anywhere), `icon-set` (a service has an icon) and `icon-missing` (where the host gave the pack, the service's icon is in it). `umlimator.py check` names an id the pack lacks with its three nearest ids, and an id an alias moved.
+
+**Departures:** no claim to follow Microsoft Azure's architecture diagram guidelines; groups are drawn in the typed
+look, not the vendor's colours; the full service name is drawn under the label, derived from the pack's id where the
+pack gives no other.
+
+### Left out
+
+`notes/milestone-4a.md` §13: the vendor's group icons and colours (decision 10); icon search in the editor beyond the
+properties panel's field (decision 9); older pack versions side by side; a reader. Drawing a line from or to a group by
+pointer or `L` (the canvas's handle ends on cards: such a line is written in the model, §5.7's As built). And XMI, copy and paste, per-type `diff()` writers.
+
+Layout limits, with port repair and rerouting off (`repair: false`, `reroute: false`, §11), measured on the example and
+`tests/cloud-stress.json`:
+
+- The example crosses twice laid out right (once before audit 27, when the apps subnet's line to Logs and alerts ran back through its own box) and 3 times down; no line runs through a node.
+- `tests/m4a-fixtures.test.mjs` pins the stress file's `az-edge-cases` view (five levels of groups, a generic group, a
+  subnet in a resource group, a line from a subnet to a service in a sibling group), clean both ways.
+- A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis. A label or full name the author broke (a Mermaid `<br>`, a newline) keeps each of its lines as written, however many, and the card grows to hold them (audit 23); only unbroken text is wrapped and cut. Both are in the card's accessible name, `describe()` and the PDF.
+
+### Writers: what each shows of a Azure diagram
+
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+|---|---|---|---|
+| Cards, groups, lines and their labels | Yes | Yes | Yes, in vectors |
+| The vendor's icons | Those the host's `icons` table gave, as `<image>` from data URLs, scaled only; without the table, glyphs | The same, as pixels | The same, in the picture |
+| The legend | No: the legend is a piece of the page | No | Yes, under the picture: each icon drawn with its full name, the group kinds, the line |
+| Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |
+| Accessible names | Each card's and group's `aria-label` kept | None | None |
+| Tables | None | None | "Elements": a service's and a group's kind; a service's full name, icon id and group. "Lines": each line's ends and label |
+
+A picture made where no pack was fetched, or with `UMLIMATOR_NO_PACKS=1` (every page and still committed to this
+repository), carries glyphs and full names only. Since 16 Nov 2026 the GitHub Pages site is built with the pack fetched, its
+terms accepted, so the example there shows the real icons and the not-affiliated line
+(`docs/diagrams/notes/milestone-4a.md` §16).
+
+The pin (0.26.0): Microsoft's `Azure_Public_Service_Icons_V25.zip`, 643 ids, its `Microsoft_Terms_of_Use.pdf` checked by
+its own hash. `Service-Bus` is an alias of V25's `Azure-Service-Bus`.
+
+### Accessibility
+
+Every piece has a name: "Service Shop API, App Services"; "Region West Europe, holding 4 elements"; a card drawn
+with a glyph ends ", icon not available". The reading order is the groups and what they hold, depth first, then the
+lines; `describe()` is the groups as an outline, each service with its full name, then the lines.
+Text reads at 4.5:1, outlines and glyphs at 3:1 in both themes (`tests/cloud.html`, `tests/m4a.html`). Every gesture has a
+key (`docs/editing.md`).
+
+### Performance (P1)
+
+The family's stress view is Google Cloud's (`docs/diagrams/conformance/gcp.md`): the two types share one layout and card,
+`src/cloud/cloud.js`'s `CL_FAM`.
+
+### Tests
+
+`tests/cloud.test.mjs` and `tests/cloud.html` (the definitions, the card, groups, icons, glyphs, the rules each passing and
+failing, every gesture by pointer and key, a 30-step session); `tests/cloud-minimal.json` and `tests/cloud-stress.json` with
+`tests/m4a-fixtures.test.mjs` and `tests/m4a.html`; `tests/packs.py` (the packs, on a synthetic pack: no vendor icon is
+committed or fetched by CI); `tests/cli.py` (render, check, stills, pdf, the diff Action, map-repo's CLI); `tests/mcp.py`;
+`tests/notation.html` (the open arrow, groups dashed by kind).

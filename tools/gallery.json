@@ -1,11 +1,110 @@
 {
- "about": "What tools/gallery.mjs writes into docs/examples.md, docs/gallery/ and examples/index.html besides what it reads from docs/types.md, tools/types.json and the models: each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), the Atlas's entries, and the checklist of what the map draws on the atlas view that is the map's example. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
+ "about": "What tools/gallery.mjs writes into the documentation site's Diagrams pages (docs/types/), its atlas pages (docs/atlas/) and its sidebar (docs/.vitepress/sidebar.json) besides what it reads from tools/types.json, tools/types.md, the conformance notes (docs/diagrams/conformance/) and the models: the hand-written pages the sidebar lists (docs), each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), the atlases' entries, and the checklist of what the map draws on the atlas view that is the map's showcase. tests/gallery.test.mjs fails when a committed page is not what the tool writes.",
+ "docs": {
+  "about": "The hand-written pages of the documentation site, as the sidebar lists them around the pages tools/gallery.mjs writes (Diagrams, and the atlases under Maps and atlases): each [text, link], link the page's path on the site without .md. Each group is a part of the sidebar, in reading order.",
+  "start": [
+   [
+    "What umlimator is",
+    "/"
+   ],
+   [
+    "Install",
+    "/start/install"
+   ],
+   [
+    "A first diagram",
+    "/start/first-diagram"
+   ]
+  ],
+  "maps": [
+   [
+    "The model",
+    "/maps/model"
+   ],
+   [
+    "Views and layers",
+    "/maps/views-and-layers"
+   ],
+   [
+    "Stories, lenses and live data",
+    "/maps/stories-lenses-live"
+   ]
+  ],
+  "use": [
+   [
+    "Command line",
+    "/use/cli"
+   ],
+   [
+    "Embedding",
+    "/use/embedding"
+   ],
+   [
+    "The standalone page",
+    "/use/standalone-page"
+   ],
+   [
+    "MCP server",
+    "/use/mcp"
+   ],
+   [
+    "GitHub Action and diff",
+    "/use/github-action"
+   ],
+   [
+    "Import and export",
+    "/use/import-export"
+   ],
+   [
+    "Icons and icon packs",
+    "/use/icon-packs"
+   ],
+   [
+    "Editing",
+    "/use/editing"
+   ]
+  ],
+  "reference": [
+   [
+    "API overview",
+    "/api/"
+   ],
+   [
+    "render",
+    "/api/render"
+   ],
+   [
+    "Apply and commands",
+    "/api/apply-and-commands"
+   ],
+   [
+    "Events and state",
+    "/api/events-and-state"
+   ],
+   [
+    "Element and plugins",
+    "/api/element-and-plugins"
+   ],
+   [
+    "Model and schema",
+    "/api/model-and-schema"
+   ],
+   [
+    "Typed diagrams",
+    "/api/typed-diagrams"
+   ],
+   [
+    "Changelog",
+    "/changelog"
+   ]
+  ]
+ },
  "retired": {
   "about": "Models of examples/ the gallery does not show: none. The test models live in tests/fixtures/ and the bench's in bench/models/ (the maintainer's decision, 20 Nov 2026); the real-world models that left the gallery on 19 Nov 2026 were deleted.",
   "files": []
  },
  "map": {
-  "about": "The map is not one of the 28 diagram types and has no card in Diagrams: its example is the first layer every atlas opens on, the Bookshop atlas's overview first (atlas, the file in examples/; main, the view). shows is the checklist of what that view draws, which the atlas's page lists under it.",
+  "about": "The map is not one of the 28 diagram types and has no page of its own: its example is the first layer every atlas opens on, the Bookshop atlas's overview first (atlas, the file in examples/; main, the view). shows is the checklist of what that view draws, which the atlas's page lists under it.",
   "atlas": "bookshop-atlas",
   "main": "overview",
   "shows": [
@@ -62,10 +161,10 @@
   "azure": "An Azure architecture diagram of a bookshop: the subscription Bookshop production and resource group rg-bookshop-prod holding CDN and routing, the West Europe region with storefront files, the order queue, the basket cache and secrets, the virtual network with the snet-apps subnet (Shop API, Order worker) and the snet-data subnet (Database), the Operations group with Application Insights and Logs and alerts, and the closed North Europe region the database replicates to"
  },
  "atlases": {
-  "about": "The Atlas section: whole businesses modelled as one multi-view model each, many diagram types joined by cards that open them, in this order. Each entry: file (examples/<file>.json), page (docs/gallery/<page>.md), name, text (HTML), alt (the root view's still), description (the docs page's), stories ([title, story id]) and views (a text per view of the model, in the model's order).",
+  "about": "The Atlas section: whole businesses modelled as one multi-view model each, many diagram types joined by cards that open them, in this order. Each entry: file (examples/<file>.json), page (docs/atlas/<page>.md), name, text (HTML), alt (the root view's still), description (the docs page's), stories ([title, story id]) and views (a text per view of the model, in the model's order).",
   "list": [
    {
-    "page": "atlas",
+    "page": "umlimator",
     "file": "umlimator-atlas",
     "name": "Umlimator",
     "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
@@ -97,7 +196,7 @@
     "description": "Umlimator's own model, drawn with umlimator, in many views that open into each other."
    },
    {
-    "page": "bookshop-atlas",
+    "page": "bookshop",
     "file": "bookshop-atlas",
     "name": "Bookshop",
     "text": "An online bookshop modelled end to end as one model: a map of its systems and the people around them, which shows everything a map draws, opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.",

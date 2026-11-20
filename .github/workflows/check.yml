@@ -596,7 +596,7 @@ jobs:
             done
           done
           # each diagram type's page (tools/types.mjs): one hand-authored model drawing one comprehensive example of the
-          # type, opened on its main view, with its alternatives; the gallery's Diagrams part has a card for each
+          # type, opened on its main view, with its alternatives; the docs site's page of the type frames it (docs/types/)
           mkdir -p _site/examples/types
           cp examples/types/*.json _site/examples/types/
           for m in examples/types/*.json; do
@@ -606,7 +606,7 @@ jobs:
             python3 umlimator.py pdf "_site/examples/types/$n.html" --out "_site/examples/types/$n.pdf"
           done
 
-      # the documentation site (VitePress, docs/) at the root, around the examples: the gallery stays at /examples/
+      # the documentation site (VitePress, docs/) at the root, around the rendered examples at /examples/
       - name: Build the documentation site
         run: |
           npm ci --prefix docs
