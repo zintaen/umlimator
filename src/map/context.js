@@ -1,4 +1,4 @@
-import { esc, fit, measured, sansW, textW } from '../core/text.js';
+import { esc, fit, measured, sansW, textW, unstop } from '../core/text.js';
 import { copyOf, labelOr, migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
@@ -575,7 +575,7 @@ function mapContext(model, opts = {}) {
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
         // a name that ends a sentence (a C4 description) drops its period before the suffix: never ".," (audit 52)
-        n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = a => `${a.replace(/(?<!\.)\.\s*$/, '')}, opens ${n.opensTo}`; if (n.aria) n.aria = t(String(n.aria)); if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn = t(n.ariaOwn); });
+        n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = a => `${unstop(a)}, opens ${n.opensTo}`; if (n.aria) n.aria = t(String(n.aria)); if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn = t(n.ariaOwn); });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return marks(g, vid);
     }
