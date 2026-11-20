@@ -520,3 +520,9 @@ test('a %% comment line inside a "string" over lines is taken out, as Mermaid\'s
   assert.deepEqual(r.model.nodes[0].props, { reqId: '1', text: 'first\n    second' });
   assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[5, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
 });
+
+test('audit 54: a requirement whose name holds a run of 200,000 dashes and a space is read in linear time (before: 16 s), its id keeping the run (timed)', () => {
+  const d = '-'.repeat(200000), t = performance.now(), r = read(`requirementDiagram\nrequirement "a${d}b x-" {\nid: 1\n}\n`);
+  assert.ok(performance.now() - t < 1000, `${Math.round(performance.now() - t)} ms`);
+  assert.equal(r.model.nodes[0].id, `a${d}b-x`);
+});

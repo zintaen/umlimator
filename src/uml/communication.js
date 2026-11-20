@@ -1,7 +1,7 @@
 import { apply } from '../core/apply.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -323,7 +323,7 @@ function commRename(model, view, id, text) {
 }
 function commAdd(model, view, entry, label, at) {
   if (!CM_OBJ(view) || !CM_OBJ(entry) || entry.type !== 'uml.Lifeline') return null;
-  const id = cmFreshId(model, String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'lifeline');
+  const id = cmFreshId(model, trimDash(String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-')) || 'lifeline');
   return [{ op: 'add', element: { id, type: 'uml.Lifeline', label: String(label ?? '') }, view: view.id, ...(CM_OBJ(at) && Number.isInteger(at.index) ? { index: at.index } : {}) }];
 }
 

@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { aKind, everyOwn, registerDiagramType, idTable } from '../core/registry.js';
-import { esc, fit } from '../core/text.js';
+import { esc, fit, trimDash } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { laneBands, laneRows } from '../layout/lanes.js';
@@ -269,7 +269,7 @@ function actDescribe(model, viewId) {
    hint line, and never a transaction that breaks a rule (S5) ---- */
 function acFreshId(model, base) {
   const used = new Set(); usedIds(model, used);
-  const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'node'; // ids never hold "->" (M2)
+  const b = trimDash(String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-')) || 'node'; // ids never hold "->" (M2)
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;
 }

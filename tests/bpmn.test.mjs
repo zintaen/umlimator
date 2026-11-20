@@ -1008,3 +1008,14 @@ test('audit 52: Delete of a lane keeps a flow node another view holds as its own
   // Shift + Delete of the pool: s, t and v2's own two go
   assert.match(bzRemove(m, m.views[0], ['pool'], true).say, /deleted pool Shop and the 4 elements it holds/i);
 });
+
+test('audit 54: 26 expanded sub-processes nested, each holding a start event, lay out in about linear time (before: the reading order\'s rank worked each box out twice per child, 2^depth, 7 s here, over 60 s at 30); a task named with 200,000 dashes is added in linear time (timed)', () => {
+  const nodes = [N('p', 'Participant', 'P')];
+  for (let i = 0, par = 'p'; i < 26; par = 'sp' + i++) nodes.push(N('sp' + i, 'SubProcess', 'S' + i, { parent: par }), N('st' + i, 'StartEvent', null, { parent: 'sp' + i }));
+  const m = one(nodes, []); let t = performance.now(); const g = layout(m, 'v');
+  assert.ok(performance.now() - t < 1000, `${Math.round(performance.now() - t)} ms`);
+  assert.deepEqual(nodes.map(n => n.id).filter(id => !g.order.includes(id)), []);
+  const d = '-'.repeat(200000); t = performance.now();
+  const [c] = bzAdd(one([], []), one([], []).views[0], { type: 'bpmn.Task' }, `-a${d}b-`, null);
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`); assert.equal(c.element.id, `a${d}b`);
+});
