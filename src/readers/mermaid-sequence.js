@@ -125,7 +125,7 @@ function msParticipant(rest) {
 // when that is an earlier call the reply goes back along (the writer's `%% reply-to:`). occ: [{ x, id, from, to, sort,
 // parent, want }] in time order; fragments: [{ parent, props: { operator }, members: [{ id }] }]. Returns
 // [Map reply -> call, Set of the replies (their x) whose call is their want and not the latest unanswered one].
-// ponytail: an operand's chain stops at 64 levels and one reply looks at 256 earlier answers at most, so hostile text
+// ponytail: an operand's chain stops at 64 levels and one reply looks at 256 earlier calls and answers at most, so hostile text
 // stays linear (R2); past that a reply finds no call, which the reader reports. Raise both if real diagrams need it
 function msMatch(occ, fragments) {
   const fragOf = new Map();
@@ -151,6 +151,7 @@ function msMatch(occ, fragments) {
       let budget = 256, found;
       if (st) for (let k = open(st, st.calls.length - 1); k >= 0 && budget > 0; k = open(st, k - 1)) {
         const call = st.calls[k];
+        if (--budget < 0) break; // each call passed is charged, so a reply walks past 256 at most, apart or not (R2)
         if (apart(call.ops)) continue; // the call itself never happens with the reply: a break it lies in, which the reply follows (audit 56)
         if (call.answers.some(a => --budget < 0 || !apart(a))) continue;
         found = call; break;

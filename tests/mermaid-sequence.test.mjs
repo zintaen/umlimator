@@ -457,3 +457,10 @@ test('audit 56: a reply after a break does not answer a call inside it, nor one 
     assert.deepEqual(validate(model).filter(p => p.level !== 'info'), []);
   }
 });
+
+test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged', () => {
+  const N = 6000, text = 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(N) + 'B-->>A: r\n'.repeat(N);
+  const t = performance.now(), { model } = read(text), ms = performance.now() - t;
+  assert.ok(ms < 250, `${ms} ms`);
+  assert.equal(model.views[0].edges.filter(e => e.props?.replyTo != null).length, 0); // every call is in a break the replies follow
+});
