@@ -173,9 +173,11 @@ print(json.dumps({"nodes": [n["id"] for n in m["nodes"]], "edges": [[e["id"], e[
   // the importer draws a line to a subgraph's box; the typed flowchart has no box, so the reader reports it (pinned above)
   assert.deepEqual(edges.filter(e => py.edges.some(p => p[0] === e[0])), py.edges.filter(([, a, b]) => !boxes.has(a) && !boxes.has(b)));
   assert.deepEqual(py.edges.filter(([, a, b]) => boxes.has(a) || boxes.has(b)), [['one-three', 'one', 'three'], ['three-c2', 'three', 'c2']]);
-  // what it reads besides: Mermaid's @{ } forms, the second flow of o--o and x--x; an edge id both read, as the line's id (audit 29)
+  // what it reads besides: Mermaid's @{ } forms; an edge id both read, as the line's id (audit 29). The second flow of o--o
+  // and x--x both read since audit 61, when the importer drew it as for <-->
   assert.deepEqual(nodes.filter(id => !py.nodes.includes(id)), [...Array.from({ length: 18 }, (_, k) => `sh${k + 1}`), 'icon', 'img']);
-  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), [['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
+  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), []);
+  assert.deepEqual(['Q-P', 'S-R'].map(id => py.edges.find(p => p[0] === id)), [['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
   assert.deepEqual(py.edges.find(p => p[0] === 'e1'), ['e1', 'K', 'L']);
 });
 
