@@ -710,3 +710,26 @@ test('audit 61: one pin of a card in the AWS view leaves no line along a border 
     const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
     assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
 });
+
+// audit 62: laid out down, the last resort's line from a GCP service into one that two lines from another reach came in from the
+// side (the round-60 rule) and ran down the stub track of one of those two; the way in head on, which crosses it once, is kept
+// when it shares fewer lines and has no more issues (the label on a line is 0.44.0's too)
+test('audit 62: laid out down, a third path into a product two paths from one other product reach shares no track', () => {
+  const z = (id, k, parent) => ({ id, type: 'gcp.Zone', label: `${k} ${id}`, props: { zoneType: k }, ...(parent ? { parent } : {}) });
+  const p = (id, parent) => ({ id, type: 'gcp.Product', label: `Service ${id.slice(1)}`, props: { icon: 'X' }, parent });
+  const m = { schemaVersion: 2, nodes: [z('g0', 'project'), z('g1', 'region', 'g0'), z('g2', 'network', 'g1'), p('s1', 'g0'), p('s2', 'g2'), p('s3', 'g2'), p('s4', 'g0')],
+    edges: [{ id: 'e1', type: 'gcp.Path', from: 's2', to: 's4' }, { id: 'e2', type: 'gcp.Path', from: 's2', to: 's3', label: 'HTTPS' }, { id: 'e4', type: 'gcp.Path', from: 's1', to: 's4', label: 'HTTPS' }, { id: 'e5', type: 'gcp.Path', from: 's1', to: 's4', label: 'HTTPS' }],
+    views: [{ id: 'v', diagram: 'gcp', direction: 'down', nodeIds: ['g0', 'g1', 'g2', 's1', 's2', 's3', 's4'] }] };
+  assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => / share a line$/.test(x)), [], 'down');
+  m.views[0].direction = 'right'; assert.deepEqual(check(m, 'v').map(p => p.message), [], 'right');
+});
+
+// audit 62: Alt + Right on the AWS gallery view's CDN pins it a column right, where a label then lay on a group's border;
+// pinsClear settled the pin back on the card's own cell (the round-61 weighing), so the key changed the model and not the
+// picture. A pin one step from where its card goes with no pin is never settled back there, nor short of it on that way
+test('audit 62: one Alt + arrow on a card of the AWS gallery view never draws it back where it was', () => {
+  const ex = read('../examples/types/aws.json'), vid = 'on-aws', at = (m, id) => { const n = layout(m, vid).byId[id]; return [n.col, n.row]; };
+  const [c, r] = at(ex, 'cdn'), m = apply(ex, [{ op: 'set', view: vid, path: ['layout', 'cdn'], value: [c + 1, r] }]), q = at(m, 'cdn');
+  assert.ok(q[0] >= c + 1, JSON.stringify([[c, r], q]));
+  assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
+});

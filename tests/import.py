@@ -479,6 +479,15 @@ ok("mermaid · no arrowhead, circle and cross ends are said, as the typed reader
           (7, "A === G: no arrowhead: read as a line"), (8, "A x--x H: a cross end, an arrowhead at each end: read as two lines"),
           (10, "A -- ... --o J: a circle end: read as a line")]
    and all(line(m, b, "A") for b in "EHI") and not any(line(m, b, "A") for b in "BCDFGJK"), un)
+# audit 62: a link whose start marker did not match its end (x-->, <--o, o--x, <--x) came in as two lines; Mermaid draws one
+m, un = imp.read("mermaid", "flowchart LR\n A x--> B\n C <--o D\n E o--x F\n G <--x H\n I <--- J\n", "x")
+ok("mermaid · a start marker that does not match the end is one line, as in Mermaid, and said",
+   un == [(2, "A x--> B: the x at its start is not drawn, as in Mermaid: read as a line"),
+          (3, "C <--o D: a circle end, the < at its start is not drawn, as in Mermaid: read as a line"),
+          (4, "E o--x F: a cross end, the o at its start is not drawn, as in Mermaid: read as a line"),
+          (5, "G <--x H: a cross end, the < at its start is not drawn, as in Mermaid: read as a line"),
+          (6, "I <--- J: no arrowhead, the < at its start is not drawn, as in Mermaid: read as a line")]
+   and ends(m) == [("A", "B", None), ("C", "D", None), ("E", "F", None), ("G", "H", None), ("I", "J", None)], (ends(m), un))
 t0 = time.time()
 ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
    imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)

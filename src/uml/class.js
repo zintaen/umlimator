@@ -303,7 +303,7 @@ function lineName(e, at, pic) {
    look's own types) whose ends, a member's taken to its owner, the view both shows. A line between a package and something it
    holds is among them: it is drawn by none (holdsLine), and rule line-inside warns of it */
 function drawnLines(model, view, own) {
-  const at = classIndex(model), pic = ownersOn(model, view), shown = new Set(pic.ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
+  const at = classIndex(model), pic = ownersOn(model, view), shown = new Set(pic.ids), top = id => { let c = id; for (let r = at.get(c); r && r.owner; r = at.get(c)) c = r.owner.id; return c; }; // a loop: members thousands deep (audit 62)
   const list = Array.isArray(view.edges) ? [...new Set(view.edges.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)))] : UML_ARR(model.edges).filter(e => !own || (UML_OBJ(e) && own.includes(e.type)));
   const lines = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
     .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ e, from, to }) => shown.has(from) && shown.has(to) && !(from === to && e.from !== e.to)); // two members of one owner: no loop on it

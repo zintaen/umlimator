@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { diff, drift, validate, layout } from '../lib/umlimator.js';
 import { svgOf } from '../src/draw/svg.js';
 // the integration fixture holds typed views: the full bundle validates them, as the page draws them
-import { validate as validateAll } from '../lib/umlimator-all.js';
+import { validate as validateAll, diff as diffAll, apply as applyAll } from '../lib/umlimator-all.js';
 
 // an example by its name, or the integration fixture by 'integration'
 const modelUrl = f => new URL(f === 'integration' ? './fixtures/integration.json' : `../examples/${f}.json`, import.meta.url);
@@ -1954,4 +1954,40 @@ test('audit 61: diff() marks only what changed: a card, line, box, member or ove
   const atlas = JSON.parse(readFileSync(modelUrl('bookshop-atlas'))), same = diff(atlas, atlas).model;
   const marked = [...same.nodes.filter(n => n.change && n.change !== 'planned'), ...same.edges.filter(e => e.change && e.change !== 'planned' || e.edited || e.style === 'added' || e.style === 'removed')];
   assert.deepEqual(marked.map(x => x.id), []);
+});
+
+test('audit 62: a map line re-pointed while its old end leaves the view, taken out or deleted, is drawn back removed there, said with the card; put back, the card brings it', () => {
+  const m = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase() })), edges: [{ id: 'l1', from: 'a', to: 'b', label: 'calls' }, { id: 'l2', from: 'b', to: 'd' }],
+    views: [{ id: 'all', nodeIds: ['a', 'b', 'c', 'd'] }, { id: 'ab', title: 'AB', nodeIds: ['a', 'b', 'd'] }, { id: 'ac', title: 'AC', nodeIds: ['a', 'c'] }] };
+  const drawn = (x, id) => layout(x, id).edges.map(e => [e.from, e.to, e.change ?? null]);
+  const hidden = edit(m, x => { x.edges[0].to = 'c'; x.views[1].nodeIds = ['a', 'd']; });
+  const deleted = edit(m, x => { x.edges[0].to = 'c'; x.nodes.splice(1, 1); x.edges.pop(); x.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== 'b'); }); });
+  for (const [after, said] of [[hidden, 'takes B out of the view AB'], [deleted, 'removes B']]) { const d = diff(m, after);
+    assert.deepEqual(drawn(d.model, 'ab'), [['a', 'b', 'removed'], ['b', 'd', 'removed']], said);
+    assert.ok(d.summary.includes(said) && d.summary.includes('changes the line from A to C (to)'), JSON.stringify(d.summary));
+    assert.ok(!d.summary.some(t => /out of the view AB/.test(t) && /line/.test(t)), JSON.stringify(d.summary)); // with the card, not on its own
+    assert.deepEqual(validate(d.model).filter(x => x.level === 'error'), [], said); }
+  // the other way: the card put back and the line re-pointed onto it, drawn added and said with the card
+  const back = diff(hidden, m);
+  assert.deepEqual(drawn(back.model, 'ab'), [['a', 'b', 'added'], ['b', 'd', 'added']]);
+  assert.deepEqual(back.summary, ['changes the line from A to B (to)', 'puts B in the view AB', 'takes the line from A to C (calls) out of the view AC']);
+});
+
+test('audit 62: a renamed card whose member carries an author\'s change mark is said renamed, its members unchanged', () => {
+  const m = JSON.parse(readFileSync(new URL('./class-minimal.json', import.meta.url)));
+  m.nodes[0].members[0].change = 'added';
+  const d = diffAll(m, edit(m, x => { x.nodes[0].label = 'Purchase'; }));
+  assert.deepEqual(d.summary, ['renames Order to Purchase']);
+  assert.equal(d.model.nodes[0].members[0].change, undefined);
+  const plain = { nodes: [{ id: 'a', label: 'A', members: [{ id: 'a.x', label: 'x', change: 'removed' }] }] };
+  assert.deepEqual(diff(plain, edit(plain, x => { x.nodes[0].label = 'B'; })).summary, ['renames A to B']);
+});
+
+test('audit 62: a lifeline hidden from a sequence view comes back in the covers of the interaction use that covered it; the diff model passes validate()', () => {
+  const m = JSON.parse(readFileSync(modelUrl('checkout-sequence'))), a = applyAll(m, { op: 'hide', id: 'lifeline-payments', view: 'checkout-sequence' }), d = diffAll(m, a);
+  const f3 = x => x.views[0].edges.find(e => e && e.id === 'f3');
+  assert.deepEqual(f3(a).props.covers, ['lifeline-api', 'receipt']);
+  assert.deepEqual(f3(d.model).props.covers, ['lifeline-api', 'lifeline-payments', 'receipt']);
+  assert.deepEqual(validateAll(d.model).filter(x => x.level === 'error').map(x => x.message), []);
+  assert.deepEqual(f3(a).props.covers, ['lifeline-api', 'receipt']); // the input is not changed
 });

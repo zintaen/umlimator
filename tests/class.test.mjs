@@ -728,3 +728,24 @@ test('audit 58: a comment with no spaces (Chinese) wraps at 220 px between two c
   const ls = [...mapContext(m).buildView('v').markup.matchAll(/data-shape="note"[\s\S]*?<\/g><\/g>/g)].flatMap(g => [...g[0].matchAll(/<text[^>]*>([^<]*)</g)].map(x => x[1]));
   assert.ok(ls.length > 1 && ls.join('') === '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', JSON.stringify(ls));
 });
+
+// audit 62: a line from a member nested thousands deep threw RangeError from validate(), layout(), check() and describe():
+// drawnLines took the member to its owner by recursion, on every view that draws its lines (class, package, profile, object)
+test('audit 62: a line from a member 12000 deep is drawn to its owner on the class, package, profile and object views', async () => {
+  const { validate, check, layout, describe } = await import('../lib/umlimator-all.js'); // every family's views registered
+  const D = 12000, root = { id: 'C', type: 'uml.Class', label: 'C', members: [] };
+  let cur = root;
+  for (let i = 0; i < D; i++) { const x = { id: 'm' + i, type: 'uml.Property', label: 'p' + i, members: [] }; cur.members.push(x); cur = x; }
+  for (const [diagram, type] of [['uml.class', 'uml.Dependency'], ['uml.package', 'uml.Dependency'], ['uml.profile', 'uml.Dependency'], ['uml.object', 'uml.Link']]) {
+    const m = { schemaVersion: 2, nodes: [root, { id: 'B', type: 'uml.Class', label: 'B' }], edges: [{ id: 'e1', type, from: 'm' + (D - 1), to: 'B' }], views: [{ id: 'v', diagram, nodeIds: ['C', 'B'] }] };
+    validate(m); check(m, 'v');
+    const g = layout(m, 'v');
+    assert.deepEqual(g.edges.map(e => [e.from, e.to]), [['C', 'B']], diagram);
+    assert.equal(typeof describe(m, 'v'), 'string', diagram);
+  }
+  // a view of a type this build does not know draws the model as a map, the member's line taken to its owner the same way
+  const m = { schemaVersion: 2, nodes: [root, { id: 'B', type: 'uml.Class', label: 'B' }], edges: [{ id: 'e1', type: 'uml.Dependency', from: 'm' + (D - 1), to: 'B' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['C', 'B'] }, { id: 'u', diagram: 'acme.unknown', nodeIds: ['C', 'B'] }] };
+  validate(m);
+  assert.deepEqual(layout(m, 'u').edges.map(e => [e.from, e.to]), [['C', 'B']]);
+});

@@ -506,3 +506,23 @@ m, unread = imp.read("mermaid", sys.stdin.read(), "flowchart")
 print(json.dumps([[n["id"], n["label"]] for n in m["nodes"]]))`], { input: src, encoding: 'utf8' }));
   assert.deepEqual(py, want.map(([id, l]) => [id, l.trim()]));
 });
+
+test('a link whose start marker does not match its end (x-->, <--o, o--x, <--x, <---) is one flow, as Mermaid\'s destructEndLink reads it, in this reader and the map importer alike (audit 62)', () => {
+  // Mermaid makes a link double_ only when its first character matches its last: < with >, o with o, x with x
+  const src = ['flowchart LR', 'A x--> B', 'C <--o D', 'E o--x F', 'G <--x H', 'I <--> J', 'K o--o L', 'M x--x N', 'O <--- P', 'Q x-- t --> R'].join('\n');
+  const want = [['A', 'B'], ['C', 'D'], ['E', 'F'], ['G', 'H'], ['I', 'J'], ['J', 'I'], ['K', 'L'], ['L', 'K'], ['M', 'N'], ['N', 'M'], ['O', 'P'], ['Q', 'R']];
+  const { model, report } = read(src);
+  assert.deepEqual(model.edges.map(e => [e.from, e.to]), want);
+  assert.deepEqual(report.map(r => r.message), ['A x--> B: the x at its start is not drawn, as in Mermaid: read as a flow',
+    'C <--o D: a circle end, the < at its start is not drawn, as in Mermaid: read as a flow', 'E o--x F: a cross end, the o at its start is not drawn, as in Mermaid: read as a flow',
+    'G <--x H: a cross end, the < at its start is not drawn, as in Mermaid: read as a flow', 'I <--> J: an arrowhead at each end: read as two flows',
+    'K o--o L: a circle end, an arrowhead at each end: read as two flows', 'M x--x N: a cross end, an arrowhead at each end: read as two flows',
+    'O <--- P: no arrowhead, the < at its start is not drawn, as in Mermaid: read as a flow', 'Q x-- t --> R: the x at its start is not drawn, as in Mermaid: read as a flow']);
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const py = JSON.parse(execFileSync('python3', ['-I', '-c', `import json, sys
+sys.path.insert(0, ${JSON.stringify(root)})
+import umlimator_import as imp
+m, unread = imp.read("mermaid", sys.stdin.read(), "flowchart")
+print(json.dumps([[e["from"], e["to"]] for e in m["edges"]]))`], { input: src, encoding: 'utf8' }));
+  assert.deepEqual(py, want);
+});
