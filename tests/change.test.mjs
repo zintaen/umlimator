@@ -1893,3 +1893,20 @@ test('audit 59: a C4 view whose implied line stands for a relabelled relationshi
   const d = U.diff(m, U.apply(m, [{ op: 'set', id: 'r1', path: 'label', value: 'Looks' }]));
   assert.deepEqual(d.views, ['ctx']); assert.equal(U.layout(d.model, 'ctx').edges.find(e => e.from === 'p').change, 'changed');
 });
+test('audit 60: a re-pointed line a view drew and no longer draws, its new end not on the view, is said taken out and drawn back removed there, listed or not', async () => {
+  const { validate: check } = await import('../src/map/validate.js');
+  const N = [['web', 'Web'], ['api', 'API'], ['db', 'DB'], ['q', 'Queue']].map(([id, label]) => ({ id, label, kind: 'service' }));
+  const m = { nodes: N, edges: [{ id: 'wa', from: 'web', to: 'api', label: 'calls' }, { id: 'ad', from: 'api', to: 'db', label: 'reads' }],
+    views: [{ id: 'all', nodeIds: ['web', 'api', 'db', 'q'] }, { id: 'back', title: 'Back', nodeIds: ['api', 'db', 'web'] }] };
+  for (const list of [null, ['ad', 'wa'], ['wa', 'ad']]) {
+    const a = edit(m, x => { if (list) x.views[1].edges = list; }), b = edit(a, x => { x.edges[1].to = 'q'; }), d = diff(a, b), tag = JSON.stringify(list);
+    assert.deepEqual(d.summary, ['changes the line from API to Queue (to)', 'takes the line from API to DB (reads) out of the view Back'], tag);
+    assert.deepEqual(d.views, ['all', 'back'], tag);
+    const drawn = layout(d.model, 'back').edges.map(e => [e.from, e.to, e.change ?? null]), at = list ? list.indexOf('ad') : 1;
+    assert.deepEqual(drawn[at], ['api', 'db', 'removed'], tag); assert.deepEqual(drawn[1 - at], ['web', 'api', null], tag); assert.equal(drawn.length, 2, tag);
+    assert.deepEqual(check(d.model).filter(p => p.level === 'error'), [], tag); // the copy between its old ends is no second line under the model line's id
+    // the other way round: put in by its new ends, drawn
+    const r = diff(b, a); assert.deepEqual(r.summary, ['changes the line from API to DB (to)', 'puts the line from API to DB (reads) in the view Back'], tag);
+    assert.ok(layout(r.model, 'back').edges.some(e => e.from === 'api' && e.to === 'db' && e.change), tag);
+  }
+});

@@ -455,3 +455,22 @@ test('audit 58: module-api.md says destroy() leaves the rest of the container, i
   assert.match(head, /destroy\(\): void; +\/\/ removes the map's element, listeners, observers, timers; the rest of the container stays/);
   assert.match(head, /\n5\. The map's element is removed; anything else in the container stays\./);
 });
+
+// audit 60 finding 7: the section after the last release names what a host sees change since, the round 58 and 59 changes
+// to an import, a reader, diff() and editing included, and the 0.44.0 note keeps only what 0.44.0 shipped
+test('audit 60: module-api.md\'s section after the last release names the behaviour changes of rounds 51 to 59; the 0.44.0 note claims none of them', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version, from = doc.indexOf('\n## ', at(version + ':') + 4);
+  assert.ok(at(version + ':') > 0 && from > 0, 'a section after the last release');
+  const after = doc.slice(from).replace(/\s+/g, ' '), rel = doc.slice(at(version + ':'), from).replace(/\s+/g, ' ');
+  for (const [what, re] of [['the DBML one-to-one foreign key end', /`Ref: a\.id - b\.a_id` gives `b\.a_id` the `foreignKey`/], ['the ER comparison in brackets', /`CHECK \(amount > 0\)`/],
+    ['re-pointed lines said per view', /A re-pointed line is said as changed, and as taken out of a view/], ['diffMarks.listed', /`view\.diffMarks\.listed`/],
+    ['describe() of a communication view on a diff model', /communication view numbers its messages as the model after does/], ['BPMN Delete of a view-own activity with its boundary event', /Delete of such an activity deletes it and its event/],
+    ['the docs pages that moved', /`docs\/guide\/`, `docs\/gallery\/`, `docs\/examples\.md`, `docs\/types\.md` and `examples\/index\.html` are gone/], ['diff models that validate', /The model `diff\(\)` returns passes `validate\(\)`/],
+    ['the pins settled', /\(`settlePins`\)/], ['XML-illegal characters', /as U\+FFFD/]])
+    assert.match(after, re, what);
+  for (let n = 51; n <= 59; n++) assert.match(after, new RegExp(`audits? [^)]*\\b${n}\\b`), `audit ${n} is named`);
+  // the map example, the atlas names and the one-sidebar docs came after the 0.44.0 tag (c78fc3e5, ef2c0271)
+  assert.doesNotMatch(rel, /`examples\/types\/map\.json` and `docs\/gallery\/map\.md` are gone/);
+  assert.match(rel, /Diagrams \(the map and the 28 types\)/);
+});
