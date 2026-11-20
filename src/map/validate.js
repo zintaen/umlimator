@@ -1,4 +1,4 @@
-import { jsonText, labelOr, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { jsonText, labelOr, labelProblem, lineNames, listOf, removedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
@@ -107,10 +107,8 @@ export function validate(model) {
   const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
   // a view's own line is in that id space too: an id another view's own line or a model line holds sends apply()'s set or delete, and
   // references(), to the first of them, not the line selected (audit 30). lineAt: each line id -> where it is first
-  // A view's removed copy of a model line, with its id and its ends, is that line drawn back removed, as diff() writes it for a line
-  // taken out of a view, or with a card or a view (audit 53): it names the model line, so it is no second line
-  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => { const l = modelL.get(e.id);
-    return !!l && typeof l === 'object' && l !== e && typeof e.change === 'string' && e.change.toLowerCase() === 'removed' && l.from === e.from && l.to === e.to; };
+  // a view's removed copy of a model line (core/model.js removedCopy, as diff() writes it) names the model line: no second line
+  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => removedCopy(modelL, e);
   const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null || ghostOf(e)) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
@@ -277,7 +275,8 @@ export function validate(model) {
      another problem is said of already (a gap that is no number), and what it holds, is not said again */
   { const said = new Set(out.map(q => q.path)), s = [[m, '']], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (seen.has(y)) continue; seen.add(y);
       const list = Array.isArray(y); for (const key of Object.keys(y)) { const x = y[key], at = list ? `${p}[${key}]` : p ? `${p}.${key}` : key; if (said.has(at)) continue;
-        if (typeof x === 'string') { if (XML_BAD.test(x)) warn(at, 'holds a character XML cannot hold (a control character, U+FFFE, U+FFFF or a lone surrogate): drawn as U+FFFD'); }
+        // an icon's glyph (text.js glyph) reads one as a space, which its markup holds as white space (audit 54)
+        if (typeof x === 'string') { if (XML_BAD.test(x)) warn(at, `holds a character XML cannot hold (a control character, U+FFFE, U+FFFF or a lone surrogate): ${key === 'g' && p.startsWith('icons.') && m.icons && typeof m.icons === 'object' && m.icons[p.slice(6)] === y ? 'read as a space' : 'drawn as U+FFFD'}`); }
         else if (x && typeof x === 'object') s.push([x, at]); } } }
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry

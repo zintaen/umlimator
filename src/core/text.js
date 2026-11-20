@@ -16,10 +16,21 @@ const inline = s => esc(s)
 const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test(b)
     ? '<ul>' + b.split(/\n/).map(l => '<li>' + inline(l.replace(/^\s*[-*] /, '')) + '</li>').join('') + '</ul>'
     : '<p>' + inline(b).replace(/\n/g, '<br>') + '</p>').join('');
+/* a text's first sentence: up to a period and the white space after it, where the word the period ends is no abbreviation (audit
+   54: "Carries orders, e.g. book orders" was cut at "e.g.", "Approx. 100 calls" at "Approx."). A sentence may open in lower case
+   (a model's "play() returns null." or "tour() starts one"), so what follows is not read */
+const ABBR = /(?:^|[^\p{L}.])(?:e\.g|i\.e|approx|vs|cf|incl|esp|viz|ca)\.$/iu;
+const firstSentence = s => { s = String(s ?? ''); for (const m of s.matchAll(/(?<=\.)\s+/g)) { const h = s.slice(0, m.index);
+  if (!ABBR.test(h)) return h; } return s; };
 // a Markdown text (md()'s: `code`, **bold**, ==mark==, [links](https://…), - bullets, blank-line paragraphs) as plain words, its
-// first sentence only: what a tooltip and an accessible name say for it (audit 49: a weighted line read its markers aloud)
-const mdPlain = s => String(s ?? '').replace(/^\s*[-*] /gm, '').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '$1').replace(/`([^`]+)`/g, '$1')
-  .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/==([^=]+)==/g, '$1').replace(/\s+/g, ' ').trim().split(/(?<=\.)\s/)[0];
+// first sentence only: what a tooltip and an accessible name say for it (audit 49: a weighted line read its markers aloud).
+// Its first paragraph only, and a bullet list's items each after a "; ", or a ":" that leads in to them (audit 54: they ran on
+// into one phrase, "orders refunds")
+const mdPlain = s => { const b = String(s ?? '').split(/\n[ \t\r]*\n/).find(p => p.trim()) ?? '';
+  const t = b.split(/\r?\n/).filter(l => l.trim()).map((l, i) => { const li = /^\s*[-*] /.test(l), x = li ? l.replace(/^\s*[-*] /, '') : l; return i && li ? '\0' + x : x; })
+    .join(' ').replace(/(:?)\s*\0/g, (_, c) => c ? ': ' : '; ');
+  return firstSentence(t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '$1').replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/==([^=]+)==/g, '$1').replace(/\s+/g, ' ').trim()); };
 const textW = (s, px) => measureText ? measureText(String(s ?? ''), px) : String(s ?? '').length * px * 0.6;
 // a text's lines where its author broke it (a Mermaid <br>, F2's Shift+Enter), one line where it has none: each drawn on its
 // own line, not as a space (audit 22, as flowWrap since audit 21); a broken text is as wide as its widest line (audit 24)
@@ -71,10 +82,12 @@ const GLYPH_ATTR = /\s+([^\s"'<>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?
 const glyphs = new Map();
 function glyph(g) {
   const s = typeof g === 'string' ? g : ''; let o = glyphs.get(s); if (o !== undefined) return o;
-  const open = []; o = '';
-  for (let i = 0; i < s.length;) {
-    if (s[i] !== '<') { if (/\s/.test(s[i])) o += s[i]; i++; continue; }
-    GLYPH_TAG.lastIndex = i; const m = GLYPH_TAG.exec(s);
+  // a character no XML document may hold (a vertical tab or form feed, which JS's \s takes for white space, any other control
+  // character, a lone surrogate) is read as a space: kept as written, it reached the SVG raw (audit 54)
+  const open = [], t = s.replace(XML_BADS, ' '); o = '';
+  for (let i = 0; i < t.length;) {
+    if (t[i] !== '<') { if (/\s/.test(t[i])) o += t[i]; i++; continue; }
+    GLYPH_TAG.lastIndex = i; const m = GLYPH_TAG.exec(t);
     if (!m) { i++; continue; }
     i = GLYPH_TAG.lastIndex; const [tag, close, el, attrs, self] = m;
     if (!GLYPH_EL.has(el)) continue;
@@ -91,4 +104,4 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, XML_BAD, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+export { measureText, measured, esc, XML_BAD, inline, md, firstSentence, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

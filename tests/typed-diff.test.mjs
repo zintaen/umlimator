@@ -389,3 +389,22 @@ test('audit 52: an extension point renamed marks the extend that draws its name 
   const other = structuredClone(base); other.nodes.find(n => n.id === 'check-out').props = { ...(other.nodes.find(n => n.id === 'check-out').props || {}), documentation: 'new words' };
   assert.equal(all.layout(all.diff(base, other).model, 'shopping').edges.find(x => x.id === 'voucher-extends-checkout').change ?? null, null);
 });
+
+test('audit 54: a typed view whose edges list drops a line: the diff model validates, its removed copy no second element', () => {
+  const errs = m => all.validate(m).filter(p => p.level === 'error').map(p => p.path + ' ' + p.message);
+  const pk = { schemaVersion: 2, nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'uml.Package', label: id.toUpperCase() })),
+    edges: [{ id: 'ab', type: 'uml.PackageImport', from: 'a', to: 'b', members: [{ id: 'ab.note', type: 'uml.Comment' }] }, { id: 'bc', type: 'uml.PackageImport', from: 'b', to: 'c', members: [{ id: 'bc.note', type: 'uml.Comment' }] }],
+    views: [{ id: 'p', diagram: 'uml.package', title: 'P', nodeIds: ['a', 'b', 'c'], edges: ['ab', 'bc'] }] };
+  const d = all.diff(pk, edit(pk, m => { m.views[0].edges = ['ab']; }));
+  assert.equal(d.model.views[0].edges[1].change, 'removed');
+  assert.deepEqual(errs(d.model), []);
+  // an own line of the same id that is no removed copy (other ends, or not removed) is still a second element
+  assert.match(errs(edit(d.model, m => { m.views[0].edges[1].to = 'a'; })).join('\n'), /id "bc" is used twice/);
+  assert.match(errs(edit(d.model, m => { delete m.views[0].edges[1].change; })).join('\n'), /id "bc" is used twice/);
+  // every typed view of the examples that lists its lines, each line dropped in turn (a C4 dynamic view, a communication view, ...)
+  for (const f of ['examples/bookshop-c4.json', 'examples/checkout-communication.json', 'examples/bookshop-packages.json', 'examples/bookshop-atlas.json']) {
+    const m = load(f);
+    m.views.forEach((v, i) => { if (!v.diagram || v.diagram === 'map' || !Array.isArray(v.edges)) return;
+      v.edges.forEach((e, j) => { if (typeof e !== 'string') return; const a = edit(m, x => { x.views[i].edges.splice(j, 1); }), before = new Set(errs(a));
+        assert.deepEqual(errs(all.diff(m, a).model).filter(x => !before.has(x)), [], `${f} ${v.id} without ${e}`); }); }); }
+});

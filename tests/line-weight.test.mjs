@@ -91,10 +91,25 @@ test('every description of a line\'s weight says it shows on hover, selection an
 // audit 49: a weighted line's `what` is Markdown for the details panel; its title and accessible name read its markers aloud
 test("a weighted line's title and accessible name say its Markdown what as plain words, its first sentence only", () => {
   const whats = [['Carries **every** ride.\n\nSee [the runbook](https://example.com/runbook) and `rides.v2`.\n\n- MQTT\n- REST', 'Carries every ride.'],
-    ['- `rides.v2` over ==MQTT==\n- REST', 'rides.v2 over MQTT REST'], ['See [the runbook](https://example.com/r) first', 'See the runbook first'], ['60 imports', '60 imports'], ['- ', 'weight 2 of 3']];
+    ['- `rides.v2` over ==MQTT==\n- REST', 'rides.v2 over MQTT; REST'], ['See [the runbook](https://example.com/r) first', 'See the runbook first'], ['60 imports', '60 imports'], ['- ', 'weight 2 of 3']];
   for (const [what, said] of whats) {
     const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', weight: 2, what }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
     const s = svgOf(layout(m, 'v'));
     assert.equal(/<g class="edge-g[\s\S]*?<title>([\s\S]*?)<\/title>/.exec(s)[1], `A → B\n${said}`, what);
     assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], `Line from A to B, ${said}`, what); }
+});
+
+test("audit 54: a weighted line's first sentence ends at no abbreviation, its first paragraph only, a list's items each after a \"; \"", () => {
+  const whats = [['Carries orders, e.g. book orders and refunds, to the queue.', 'Carries orders, e.g. book orders and refunds, to the queue.'],
+    ['Approx. 100 calls/s at peak.', 'Approx. 100 calls/s at peak.'], ['Roughly 1,000 calls a second, i.e. most of the traffic. More here.', 'Roughly 1,000 calls a second, i.e. most of the traffic.'],
+    ['Every order\n\nRetried twice by the worker', 'Every order'], ['- orders\n- refunds\n- stock moves', 'orders; refunds; stock moves'], ['Carries:\n- orders\n- refunds', 'Carries: orders; refunds'],
+    ['play() returns null. tour() starts one.', 'play() returns null.']];
+  for (const [what, said] of whats) {
+    const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', weight: 3, what }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+    const s = svgOf(layout(m, 'v'));
+    assert.equal(/<g class="edge-g[\s\S]*?<title>([\s\S]*?)<\/title>/.exec(s)[1], `A \u2192 B\n${said}`, what);
+    assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], `Line from A to B, ${said}`, what); }
+  // a card's sub-line, which the line's words match, ends its first sentence at no abbreviation either
+  const c = svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', what: 'Stores orders, e.g. book orders. Also refunds.' }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v'));
+  assert.ok(c.includes('e.g. book') && !c.includes('Also refunds'), c.match(/Stores[^<]*/)?.[0]);
 });

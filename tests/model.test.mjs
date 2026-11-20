@@ -140,6 +140,18 @@ test('a model\'s icon glyph (icons[k].g) draws as inert shapes only: no event at
   for (const [k, g] of lucide) assert.ok(t.includes(`stroke-linejoin="round">${g}</g>`), k);
 });
 
+test('audit 54: an icon glyph holding a vertical tab, form feed or other character XML forbids draws XML-clean, as validate() says', () => {
+  const gs = ['<path d="M2 2\u000bL20 20"/>\u000c<circle cx="12" cy="12" r="4"/>', '<path\u000bd="M1 1"/>', '<rect width="2\u0001"/>\ud800<line x2="3"/>', '<g>\u000c<path d="M1 1"/>\u000b</g>'];
+  const m = { icons: Object.fromEntries(gs.map((g, i) => ['h' + i, { g }])), nodes: gs.map((_, i) => ({ id: 'n' + i, label: 'N', icon: 'h' + i })), views: [{ id: 'v', nodeIds: gs.map((_, i) => 'n' + i) }] };
+  const s = mapContext(m).buildView('v').markup;
+  assert.ok(!/[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u.test(s), JSON.stringify(s.match(/.{0,30}[\x0b\x0c\x01]/u)?.[0]));
+  // the shapes are still drawn: the bad character read as a space, as the path's own white space
+  assert.ok(s.includes('<path d="M2 2 L20 20"/>') && s.includes('<circle cx="12" cy="12" r="4"/>') && s.includes('<line x2="3"/>'));
+  for (const i of gs.keys()) assert.match(validate(m).find(p => p.path === `icons.h${i}.g`)?.message ?? '', /XML cannot hold.*: read as a space$/, `icons.h${i}.g`);
+  // a card's label still says U+FFFD, as it is drawn
+  assert.match(validate({ nodes: [{ id: 'a', label: 'A\u000bB' }], views: [{ id: 'v', nodeIds: ['a'] }] }).find(p => p.path === 'nodes[0].label').message, /drawn as U\+FFFD$/);
+});
+
 test('a cut label ends on whole characters: never half an emoji (audit 1)', () => {
   const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
   assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));
