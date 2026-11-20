@@ -20,7 +20,7 @@ async function header(width, view, node) {
   document.body.appendChild(f);
   await loaded;
   let ph = null;
-  for (let i = 0; i < 200 && !ph; i++) {
+  for (let i = 0; i < 600 && !ph; i++) { // up to 30 s: a loaded CI runner opens the integration page slowly
     await wait(50);
     const find = r => { for (const e of r.querySelectorAll('*')) { const p = e.matches('.panel:not([hidden]) .ph') ? e : e.shadowRoot && find(e.shadowRoot); if (p) return p; } return null; };
     ph = f.contentDocument && f.contentDocument.body && find(f.contentDocument);

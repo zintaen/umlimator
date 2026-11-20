@@ -459,9 +459,10 @@ test('audit 56: a reply after a break does not answer a call inside it, nor one 
 });
 
 test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged', () => {
-  const N = 6000, text = 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(N) + 'B-->>A: r\n'.repeat(N);
-  const t = performance.now(), { model } = read(text), ms = performance.now() - t;
-  assert.ok(ms < 250, `${ms} ms`);
+  const make = n => 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(n) + 'B-->>A: r\n'.repeat(n);
+  const time = text => { const t = performance.now(), r = read(text); return [performance.now() - t, r]; };
+  const [q] = time(make(1500)), [ms, { model }] = time(make(6000)); // linear by growth, not a wall clock: quadratic was 1.5 s and 16x a quarter
+  assert.ok(ms < 250 || (ms < 1000 && ms / Math.max(q, 1) < 8), `${ms} ms, a quarter ${q} ms`);
   assert.equal(model.views[0].edges.filter(e => e.props?.replyTo != null).length, 0); // every call is in a break the replies follow
 });
 
