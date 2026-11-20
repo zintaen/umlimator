@@ -308,14 +308,15 @@ function cpConnect(model, view, from, to, at, line) {
   if (kind === 'delegation' && !I.P.has(within(to, from) ? from : to)) return { error: 'Delegate from a port of the box' }; // drawn only from its port (cpPic)
   return [{ op: 'add', element: { id: cpNewId(model, 'connector'), type: 'uml.Connector', from, to, props: { kind } }, view: view.id }];
 }
-// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); along its own side, nothing, as said
+// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); an arrow names the side it goes to, so every
+// side a drag reaches is reached by keyboard (audit 64: Alt + Up or Down on a left port was refused); the side it is on, said
 function cpMoveTo(model, view, id, at) {
   const I = cpIndex(model); if (!I.P.has(id) || !CP_OBJ(at)) return null;
   const g = CP_OBJ(at.geo) ? at.geo : {}, me = CP_OWN(g.byId, id), o = CP_OWN(g.byId, I.P.get(id).owner) || CP_ARR(g.families).find(f => f.id === I.P.get(id).owner);
   let s = null;
-  if (Array.isArray(at.by)) { const [dx, dy] = at.by, v = me && (me.side === 'L' || me.side === 'R');
-    if (me && (v ? dy && !dx : dx && !dy)) return { commands: [], say: 'A port\'s order along its side follows its lines: Alt + arrows across it moves it to another side' };
-    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null; }
+  if (Array.isArray(at.by)) { const [dx, dy] = at.by;
+    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null;
+    if (me && s && s === me.side) return { commands: [], say: `The port is on its owner's ${CP_SIDE[s]} side already: its order along the side follows its lines` }; }
   else if (Array.isArray(at.pt) && o) { const [x, y] = at.pt, d = { L: Math.abs(x - o.x), R: Math.abs(x - o.x - o.w), T: Math.abs(y - o.y), B: Math.abs(y - o.y - o.h) };
     s = Object.keys(d).reduce((a, b) => (d[b] < d[a] ? b : a)); }
   return s ? [{ op: 'set', view: view.id, path: ['present', id, 'side'], value: CP_SIDE[s] }] : null;

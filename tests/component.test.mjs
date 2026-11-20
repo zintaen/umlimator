@@ -195,11 +195,14 @@ test('connect: a connector to something inside the other\'s owner is a delegatio
   assert.equal(T.edits.connect(CM, v, 'shop-api.orders', 'checkout-component', null, C)[0].element.props.kind, 'delegation', 'a box\'s port to what it holds');
 });
 
-test('moveTo: a port\'s side by Alt + arrows across it or a drop by a border; along its side nothing, as said; anything else the default', () => {
+test('moveTo: a port\'s side by Alt + an arrow, which names the side, or a drop by a border; its own side nothing, as said; anything else the default', () => {
   const v = CM.views[0], geo = layout(CM, V), side = geo.byId['payment-provider-component.charges'].side;
   assert.equal(side, 'L');
   assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [1, 0], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider-component.charges', 'side'], value: 'right' }]);
-  const r = T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, 1], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /order along its side follows its lines/);
+  // audit 64: Alt + Down or Up on a left port goes to the bottom or top, as a drag does (it was refused, "along its side")
+  assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, 1], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider-component.charges', 'side'], value: 'bottom' }]);
+  assert.equal(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, -1], geo })[0].value, 'top');
+  const r = T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [-1, 0], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /left side already: its order along the side follows its lines/);
   const o = geo.byId['payment-provider-component'];
   assert.equal(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { pt: [o.x + o.w / 2, o.y + o.h + 3], geo })[0].value, 'bottom');
   assert.equal(T.edits.moveTo(CM, v, 'storefront-component', { by: [1, 0], geo }), null);

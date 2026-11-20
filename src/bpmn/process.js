@@ -165,6 +165,22 @@ const bzLegend = types => [...BZ_KEYS.filter(([t]) => types.has(t)).map(([t, svg
 const BZ_OTHER_SAYS = 'a kind of line this view does not draw as its own';
 
 /* ---- the view laid out: { model, view, pos, memo } (§5, §6, §7.2, §8) ---- */
+/* The lane pass sets what a pin would: data drawn beside its flow node takes no pin at all, an item with no other item of its lane
+   in its columns keeps its row whatever its pin says. The canvas's Alt + an arrow writes no pin there and says
+   this (keepsRank, keepsRow), where it wrote one that moved nothing (audit 64) */
+function bzKeeps(model, view, id, geo, d) {
+  const P = bzPic(model, view), by = BZ_OBJ(geo) && BZ_OBJ(geo.byId) ? geo.byId : {}, top = P.holds(null);
+  if (!P.lanes.length || !top.includes(id) || !Object.hasOwn(by, id)) return null;
+  const beside = x => (P.dataLane.get(x) || {}).by, b = beside(id);
+  if (b != null) return `${P.I.called(id)} is drawn beside ${P.I.called(b)}, the flow node it is associated with`;
+  if (!Array.isArray(d) || !d[1]) return null;
+  const leaves = x => (P.open.has(x) ? P.holds(x).flatMap(leaves) : [x]), cols = x => leaves(x).map(i => (Object.hasOwn(by, i) ? by[i].col : NaN)).filter(Number.isFinite);
+  const mine = cols(id), l = P.laneOf(id); if (!mine.length) return null;
+  // only alone: a pin's row also feeds the ranking (cpPlace), so a first or last item stepped outward can still move others
+  const c0 = Math.min(...mine), c1 = Math.max(...mine);
+  if (top.some(x => x !== id && beside(x) == null && P.laneOf(x) === l && cols(x).some(c => c >= c0 && c <= c1))) return null;
+  return `${P.I.called(id)} is the only item of ${l == null ? 'no lane' : P.I.called(l)} here: the Owner field, or a drag into another lane, moves it to another lane`;
+}
 function bzGeo({ model, view, pos: pins, memo }) {
   const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
   const pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
@@ -686,7 +702,7 @@ const BZ_TYPE = registerDiagramType('bpmn', {
     [BZ_NOTE]: [BZ_DOC, BZ_GROUPS], [BZ_GROUP]: [BZ_DOC], [BZ_SEQ]: [BZ_DOC], [BZ_MSG]: [BZ_DOC], [BZ_ASSOC]: [BZ_DOC, { key: 'direction', label: 'Direction', kind: 'enum', options: ['none', 'one', 'both'] }], [BZ_DATA_ASSOC]: [BZ_DOC] },
   // an activity deleted takes its boundary events with it; a group deleted leaves the elements that named it
   refs: Object.fromEntries([...BZ_FLOW, ...BZ_DATA, BZ_NOTE].map(t => [t, { 'props.categoryValueRef': 'drop', ...(t === BZ_BE ? { 'props.attachedTo': 'cascade' } : {}) }])),
-  layout: Object.assign(bzGeo, { rank: false }), // bzGeo ranks the view itself (cpPlace): the host passes only the pins
+  layout: Object.assign(bzGeo, { rank: false, keepsRank: bzKeeps, keepsRow: bzKeeps }), // bzGeo ranks the view itself (cpPlace): the host passes only the pins
   boxes: (model, view) => bzPic(model, view).boxes,
   draw: bzDraw,
   owners: bzOwners,

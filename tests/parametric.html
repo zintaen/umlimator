@@ -151,7 +151,7 @@ try {
     check('Binding by the handle: from the value to the parameter, ends.to.part its constraint property', !!c && c.op === 'add' && c.element.type === 'sysml.BindingConnector' && c.element.from === 'ebike.ladenRange'
       && c.element.to === 'range-equation.consumption' && same(c.element.props.ends, { to: { part: 'ebike.empty' } }) && !errors(m).length, [e, m && errors(m)]); }
   click('.node[data-id="ebike.empty->range-equation.range"] .n-mask');
-  { const n = ed.length; for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) if (ed.length === n) key(k, { altKey: true }); // the arrows along its side move nothing
+  { const n = ed.length; for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) if (ed.length === n) key(k, { altKey: true }); // the arrow toward its own side moves nothing
     const e = ed.length > n ? last() : null, c = e && e.commands[0];
     check('Alt + an arrow across a parameter\'s side: its side, under its constraint property in the view', !!c && c.op === 'set' && same(c.path, ['present', 'ebike.empty', 'ports', 'range-equation.range', 'side']), e); }
   // a parameter dragged onto its constraint property's other side (its side now: the one the arrows left it on, or not the top)
