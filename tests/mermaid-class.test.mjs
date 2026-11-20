@@ -980,3 +980,17 @@ test('the class writer writes a carriage return as #13;, in a class, relation an
     assert.deepEqual([back.nodes.map(n => n.label), back.edges.map(e => e.label)], [[label, 'B', label], [label]]);
   }
 });
+
+// audit 59: the class writer's #13; came after 0.44.0, so the 0.30.0 note keeps the three writers it shipped, and the
+// section for what main holds past the last release (package.json's version) records the class writer
+test('docs/module-api.md records the class writer\'s #13; after the last release, not in the 0.30.0 note (audit 59)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'a\rb' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A'] }] };
+  assert.match(write(m), /a#13;b/, 'the class writer writes #13;');
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const section = h => doc.slice(at(h), doc.indexOf('\n## ', at(h) + 4) >>> 0 || undefined).replace(/\s+/g, ' ');
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.match(section('0.30.0:'), /the flowchart, state and sequence writers write a carriage return as `#13;`/);
+  const after = doc.slice(doc.indexOf('\n## ', at(version + ':') + 4)).replace(/\s+/g, ' ');
+  assert.ok(at(version + ':') > 0 && doc.indexOf('\n## ', at(version + ':') + 4) > 0, 'a section after the last release');
+  assert.match(after, /The Mermaid class writer writes a carriage return in a class, relation, cardinality, note or namespace label as `#13;`/);
+});

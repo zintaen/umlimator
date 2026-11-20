@@ -141,12 +141,7 @@ its rendered page. Each file was opened and looked at.
 
 ### Accessibility
 
-Every piece has a name: "Interaction use Find a book, opens Find a book", "Inline interaction Queue the order, 3
-lifelines, 3 messages", "Decision Payment accepted?, 2 exits", "Join, 2 branches". Tab reads the nodes by rank, then the
-flows; the inline interaction's markup has no node, hit area or key ring of its own, so the canvas sees one node.
-`describe()` starts at the initial nodes and follows the flows breadth first. Text reads at 4.5:1 and lines and
-outlines at 3:1 on the stage in both themes (`tests/overview.html`, `tests/stage4.html`). Every editing gesture has a
-key (`docs/editing.md`).
+Every piece has a name: "Interaction use Find a book, opens Find a book", "Inline interaction Queue the order, 3 lifelines, 3 messages, opens Queue the order", "Decision Payment accepted?, 2 exits", "Join, 2 branches". Tab reads the nodes by rank, then the flows; the inline interaction's markup has no node, hit area or key ring of its own, so the canvas sees one node. `describe()` starts at the initial nodes and follows the flows breadth first. Text reads at 4.5:1 and lines and outlines at 3:1 on the stage in both themes (`tests/overview.html`, `tests/stage4.html`). Every editing gesture has a key (`docs/editing.md`).
 
 ### Performance (P1)
 
