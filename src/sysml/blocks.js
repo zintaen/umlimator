@@ -1,5 +1,5 @@
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, closesCycle, commentConnect, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
+import { CLASS_DEF, RULES, classProblems, closesCycle, commentConnect, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, rowMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE, SYS_TEXT_PROBLEMS } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -156,7 +156,7 @@ function bdDescribe(model, viewId) {
 }
 const bdNodeOf = (model, id) => BD_ARR(model && model.nodes).find(n => BD_OBJ(n) && n.id === id);
 // a node's rows: each compartment's, as drawn, after its name ("parts: battery: Battery [1]")
-const bdRows = n => bdComps(n).flatMap(c => c.members.map(m => `${c.name}: ${m.id == null ? m.label : printMember({ ...m, type: m.type === 'uml.Operation' ? m.type : 'uml.Property' })}`));
+const bdRows = n => bdComps(n).flatMap(c => c.members.map(m => `${c.name}: ${m.id == null ? m.label : rowMember({ ...m, type: m.type === 'uml.Operation' ? m.type : 'uml.Property' })}`));
 // a line's text: its label, then each end's role and multiplicity
 function bdText(model, view, id) {
   const is = x => BD_OBJ(x) && x.id === id, e = BD_ARR(model && model.edges).find(is) || BD_ARR(BD_OBJ(view) ? view.edges : null).find(is); if (!e) return null; // the view's own line too (audit 23)

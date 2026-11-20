@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
@@ -418,7 +418,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
     const ports = () => cpPortsOf(x).filter(p => (pic.I.P.get(p.id) || {}).owner === id).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
     if (x.type === 'uml.Component' || !x.type) return ports(); // no type: drawn as a component, with its ports (audit 29)
     // an interface: the operations and attributes its box draws, none as a ball (audit 29)
-    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
+    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(rowMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
     return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });

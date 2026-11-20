@@ -775,3 +775,19 @@ test('a pile of pins on one cell lays out in about the time the view takes with 
   const req = p => pile(40, 'sysml.requirement', 'sysml.Requirement', 'sysml.DeriveReqt', p);
   assert.ok(U.check(req(true), 'v').length <= U.check(req(false), 'v').length, 'requirements piled on one cell: no more said of them than of the view with no pins');
 });
+
+test('audit 64: the PDF Members column prints an operation as its box draws it, a parameter\'s in (UML\'s default) left out, on the class, object, component and block views', async () => {
+  await Promise.all(['../src/uml/object.js', '../src/uml/component.js', '../src/sysml/blocks.js'].map(f => import(f)));
+  const { svgOf } = await import('../src/draw/svg.js');
+  const op = (id, ps) => ({ id, type: 'uml.Operation', label: 'pay', props: { visibility: 'public', parameters: ps, returnType: 'R' } });
+  const ps = [{ name: 'q', valueType: 'Int', direction: 'in' }, { name: 'w', direction: 'out' }];
+  for (const [diagram, type] of [['uml.class', 'uml.Class'], ['uml.object', 'uml.Class'], ['uml.component', 'uml.Interface'], ['sysml.block-definition', 'sysml.Block']]) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'o', type, label: 'Order', members: [op('o.pay', ps)] }], edges: [], views: [{ id: 'v', diagram, nodeIds: ['o'] }] };
+    const ctx = mapContext(m), geo = ctx.buildGeo('v'), drawn = [...String(svgOf(geo)).matchAll(/class="c-row"[^>]*>([^<]*pay[^<]*)</g)].map(x => x[1]);
+    assert.deepEqual(drawn, ['+ pay(q: Int, out w): R'], `${diagram}: the box draws no in`);
+    const rows = diagramOf({ diagram }).rows(m, m.views[0], 'o');
+    assert.deepEqual(rows.map(r => r.replace(/^operations: /, '')), drawn, `${diagram}: the PDF row is the drawn row`);
+    assert.match(tablesOf(ctx, ctx.V.v, geo)[0].rows[0], /<p>(?:operations: )?\+ pay\(q: Int, out w\): R<\/p>/, diagram);
+  }
+  assert.equal(printMember(op('x', ps)), '+ pay(in q: Int, out w): R', 'the edit text keeps the stored in, so it parses back the same');
+});

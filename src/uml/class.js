@@ -119,6 +119,11 @@ function printMember(m) {
   return head + (p.isDerived ? '/' : '') + label + (UML_HAS(p.valueType) ? ': ' + p.valueType : '') + (UML_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : '') + (UML_HAS(p.default) ? ' = ' + p.default : '');
 }
 
+// a member as its box draws it, for the PDF's Members: printMember's text with a parameter's in, UML's default, left out, as
+// the classifier draws it (typed/draw.js memberText, audit 64)
+const rowMember = m => printMember(UML_OBJ(m) && m.type === 'uml.Operation' && UML_OBJ(m.props) && UML_ARR(m.props.parameters).some(a => UML_OBJ(a) && a.direction === 'in')
+  ? { ...m, props: { ...m.props, parameters: m.props.parameters.map(a => (UML_OBJ(a) && a.direction === 'in' ? { ...a, direction: undefined } : a)) } } : m);
+
 /* a member edited as text: the commands that set it, one transaction; { error } when the text does not parse, and then
    nothing is applied (E3). Props the syntax does not write (stereotypes, a host's own) are kept */
 function memberEdit(m, text, owner) {
@@ -505,8 +510,8 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // the PDF's Members: what the box draws, its compartments' rows, so a port or a reception it does not draw is not listed as if
   // it were (audit 31, as the object type's since audit 30); null (a comment, a package): its members
   rows: (model, view, id) => { const x = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
-    return compartmentsOf(x).flatMap(c => c.members.map(printMember)); },
+    return compartmentsOf(x).flatMap(c => c.members.map(rowMember)); },
   edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
