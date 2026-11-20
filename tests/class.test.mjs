@@ -722,3 +722,9 @@ test('two cards pinned to one cell are drawn apart (audit 58)', () => {
     const g = layout(two, 'v'), at = id => g.nodes.find(n => n.id === id);
     assert.deepEqual([at('alpha').col, at('alpha').row], [1, 0], `${d}: the first pin keeps its cell`); }
 });
+
+test('audit 58: a comment with no spaces (Chinese) wraps at 220 px between two characters', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'n', type: 'uml.Comment', label: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['n'] }] };
+  const ls = [...mapContext(m).buildView('v').markup.matchAll(/data-shape="note"[\s\S]*?<\/g><\/g>/g)].flatMap(g => [...g[0].matchAll(/<text[^>]*>([^<]*)</g)].map(x => x[1]));
+  assert.ok(ls.length > 1 && ls.join('') === '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', JSON.stringify(ls));
+});

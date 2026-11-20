@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { aKind, ownNodes, registerDiagramType, idTable } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -32,11 +32,8 @@ const UC = { px: 12, lh: 16, max: 160, st: 10, sth: 13, ep: 11, eph: 15, head: 1
 // a text in lines of at most max px, at most k lines: the last holds the rest, cut when drawn. A line break in t (a Mermaid
 // <br>, F2's Shift+Enter) starts a new line where the author put it (audit 22, as flowWrap)
 function ucWrap(t, px, max, k) {
-  const out = []; brLines(t).forEach(part => { let fresh = true;
-    part.split(/\s+/).filter(Boolean).forEach(w => { const l = out.length && !fresh ? out[out.length - 1] : null;
-      if (l != null && (out.length === k || textW(l + ' ' + w, px) <= max)) out[out.length - 1] = l + ' ' + w;
-      else if (out.length === k) out[k - 1] += ' ' + w; else out.push(w);
-      fresh = false; }); });
+  // a line breaks between words, between two ideographs (Chinese, Japanese) and inside a word wider than max (audit 58)
+  const out = []; brLines(t).forEach(part => wrapLines(part, px, max).forEach(([l, gap], i) => { if (out.length === k) out[k - 1] += (i && !gap ? '' : ' ') + l; else out.push(l); }));
   return out.length ? out : [''];
 }
 // a use case's texts: its stereotypes, its name on at most three lines, then its extension points' heading and names

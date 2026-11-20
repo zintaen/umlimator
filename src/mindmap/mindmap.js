@@ -1,5 +1,5 @@
 import { TYPED, registerDiagramType, idTable, ownGuard, everyOwn } from '../core/registry.js';
-import { brLines, esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, joinWords, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
@@ -60,12 +60,11 @@ function mmSize(n, root, opens) {
   const S = root ? MM.root : MM.topic, out = [];
   // ponytail: text past 400 characters per paragraph is cut before wrapping (four lines hold about 130); fit's loop is quadratic in what it gets
   const paras = brLines(mmText(n)).map(p => p.trim().slice(0, 400).replace(/[\uD800-\uDBFF]$/, '')); // never half a letter
-  for (const p of paras) { let line = '';
-    for (const w of p.split(/\s+/).filter(Boolean)) { const t = line ? line + ' ' + w : w;
-      if (textW(t, S.px) <= MM.max || !line) line = t; else { out.push(line); line = w; } }
-    out.push(line);
+  // a line breaks between words, and between two ideographs (Chinese, Japanese: no spaces) or inside a word too wide for it (audit 58)
+  for (const p of paras) { const ls = wrapLines(p, S.px, MM.max);
+    out.push(...(ls.length ? ls : [['', true]]).map((l, i) => (i ? l : [l[0], true]))); // a paragraph's first line follows a space
     if (out.length > MM.lines) break; }
-  const lines = out.length > MM.lines ? [...out.slice(0, MM.lines - 1), out.slice(MM.lines - 1).join(' ')] : out;
+  const lines = out.length > MM.lines ? [...out.slice(0, MM.lines - 1).map(l => l[0]), joinWords(out.slice(MM.lines - 1))] : out.map(l => l[0]);
   const shown = lines.map(l => fit(l, S.px, MM.max, true)), tw = Math.max(1, widest(shown, l => Math.ceil(textW(l, S.px))));
   if (lines.length === MM.lines && out.length > MM.lines && !shown.at(-1).endsWith('…')) shown[MM.lines - 1] = fit(shown.at(-1) + '…', S.px, MM.max);
   return { lines: shown, tw, w: tw + 2 * S.pad + (opens ? MM.open : 0), h: shown.length * S.lh + 2 * S.pad };

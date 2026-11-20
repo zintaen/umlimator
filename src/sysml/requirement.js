@@ -1,5 +1,5 @@
 import { everyOwn, registerDiagramType } from '../core/registry.js';
-import { brLines, fit, textW } from '../core/text.js';
+import { brLines, wrapLines } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW, rowsFor, untangle } from '../layout/layered.js';
 import { goneLines, layoutTyped } from '../typed/layout.js';
@@ -68,10 +68,8 @@ const RQ_WRAP = 224, RQ_PX = 11; // the classifier's row font
 // a break the author put in the text breaks the line there, as flowWrap's (audit 27)
 function rqWrap(t) {
   const out = [];
-  brLines(t).forEach(par => { let line = '';
-    par.split(/\s+/).filter(Boolean).map(w => (textW(w, RQ_PX) > RQ_WRAP ? fit(w, RQ_PX, RQ_WRAP) : w)).forEach(w => { const next = line ? line + ' ' + w : w; // a word wider than 224 px is cut there
-      if (line && textW(next, RQ_PX) > RQ_WRAP) { out.push(line); line = w; } else line = next; });
-    if (line) out.push(line); });
+  // a line breaks between words, between two ideographs (Chinese, Japanese), and inside a word wider than 224 px (audit 58: cut there)
+  brLines(t).forEach(par => wrapLines(par, RQ_PX, RQ_WRAP).forEach(l => out.push(l[0])));
   return out;
 }
 const rqRows = x => { const p = RQ_PROPS(x);

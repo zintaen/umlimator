@@ -207,3 +207,18 @@ test('audit 57: a capital initial after a capitalised word or "from" ends a sent
   assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Orders to Payments, Checkout in steps: 1. Validates the basket.');
   assert.ok(s.includes('Sends the order to Service B.') && !/>[^<]*Waits for the reply/.test(s), s.match(/Sends the[^<"]*/g)?.join(' | '));
 });
+
+test('audit 58: a hard-wrapped what ends at a number that ends its sentence; a card\'s sub-line, title and name read its Markdown what as plain words', async () => {
+  const { mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Retries up to\n3. Then gives up.', 'Retries up to 3.'], ['Keeps orders for\n30. Older ones are archived.', 'Keeps orders for 30.'],
+    // still a list: after a lead-in or a sentence, or beside another numbered line
+    ['Steps:\n1. Validate.\n2. Pay.', 'Steps: 1. Validate.'], ['Totals\n1. a b\n2. c d', 'Totals 1. a b 2. c d'], ['1. Validates the basket.\n2. Takes payment.', '1. Validates the basket.']]) assert.equal(mdPlain(t), f, t);
+  for (const [what, plain] of [['See [the runbook](https://ex.com/rb) for paging. More.', 'See the runbook for paging.'], ['Takes ==all== orders. More.', 'Takes all orders.'], ['- takes orders\n- refunds', 'takes orders; refunds']]) {
+    const s = svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'Orders', kind: 'service', what }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v'));
+    const g = s.slice(s.indexOf('data-id="a"')), title = /<title>([^<]*)<\/title>/.exec(g)[1], name = /aria-label="([^"]*)"/.exec(g)[1];
+    assert.equal(title, `Orders · ${plain}`, what);
+    assert.ok(name.startsWith('Orders, ') && name.includes(plain.split(' ')[0]) && !/\]\(|==|- /.test(name), name);
+    const drawn = [...g.matchAll(/class="n-sub[^"]*"[^>]*>([\s\S]*?)<\/text>/g)].map(x => x[1].replace(/<[^>]*>/g, ' ')).join(' ');
+    assert.ok(drawn.trim() && !/\]\(|==|\[|- /.test(drawn), drawn);
+  }
+});

@@ -1,4 +1,4 @@
-import { esc, fit, textW, widest, wrap2 } from '../core/text.js';
+import { esc, fit, joinWords, textW, widest, wrap2, wrapLines } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { printTransition, transitionText, trScan } from './transition.js';
 
@@ -31,12 +31,10 @@ const flowBody = (d, fill) => `<path d="${d}" class="n-mask"/><path d="${d}" cla
 // line break in t (a Mermaid <br>, F2's Shift+Enter) starts a new line where the author put it (audit 21)
 function flowWrap(t, px, max, k) {
   const out = [];
-  String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/).forEach(part => { let line = '';
-    part.split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
-      if (line && textW(next, px) > max) { out.push(line); line = w; } else line = next; });
-    if (line) out.push(line); });
-  if (out.length > k) out.splice(k - 1, out.length, out.slice(k - 1).join(' '));
-  return out.map(l => fit(l, px, max, true));
+  // between words, between two ideographs (Chinese, Japanese) and inside a word wider than the line (audit 58: one cut line)
+  String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/).forEach(part => wrapLines(part, px, max).forEach((l, i) => out.push(i ? l : [l[0], true])));
+  if (out.length > k) out.splice(k - 1, out.length, [joinWords(out.slice(k - 1))]);
+  return out.map(l => fit(l[0], px, max, true));
 }
 
 /* ---- the circles: a filled one, a ring round a dot, one with an X ---- */

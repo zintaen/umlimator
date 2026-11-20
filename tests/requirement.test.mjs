@@ -108,7 +108,7 @@ test('a requirement: «requirement» over its name, one compartment of its id, i
   const long = 'word '.repeat(120).trim(), rows = rqWrap(`text = "${long}"`);
   assert.ok(rows.length > 10 && rows.every(r => textW(r, 11) <= 224), 'every row within 224 px');
   assert.equal(rows.join(' '), `text = "${long}"`, 'nothing lost');
-  const wide = rqWrap('x'.repeat(80)); assert.ok(wide.length === 1 && textW(wide[0], 11) <= 224 && wide[0].endsWith('…'), 'a word wider than 224 px is cut there');
+  const wide = rqWrap('x'.repeat(80)); assert.ok(wide.length > 1 && wide.every(r => textW(r, 11) <= 224) && wide.join('') === 'x'.repeat(80), 'a word wider than 224 px breaks there (audit 58)');
   const m = structuredClone(M16); Object.assign(m.nodes[0].props, { text: long, risk: 'high', verifyMethod: 'test' }); m.nodes[0].props.stereotypes = ['functionalRequirement'];
   const big = layout(m, V).byId.spec, members = big.compartments[0].members.map(r => r.label);
   assert.deepEqual([members.at(-2), members.at(-1)], ['risk = high', 'verifyMethod = test']);
@@ -454,4 +454,14 @@ test('audit 55: 150 sub-requirements of one requirement, with and without a deri
   for (const [chain, cap] of [[false, 4000], [true, 6000]]) { const t = performance.now(), g = layout(mk(chain), 'v'), ms = performance.now() - t;
     assert.ok(ms < cap, `${chain ? 'with' : 'without'} a derive chain: ${Math.round(ms)} ms`);
     assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, chain ? 299 : 150, 'every line drawn'); }
+});
+
+test('audit 58: a requirement text with no spaces (Chinese, a long URL) wraps at 224 px between two characters, nothing lost', () => {
+  for (const t of ['为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', 'https://example.com/specs/ebike/range/requirements/EB-1/acceptance-criteria/v2']) {
+    const rows = rqWrap(`text = "${t}"`);
+    assert.ok(rows.length > 1 && rows.every(r => textW(r, 11) <= 224), JSON.stringify(rows));
+    assert.equal(rows.join('').replace(/ /g, ''), `text="${t}"`, 'nothing lost');
+  }
+  const m = { schemaVersion: 2, nodes: [{ id: 'q', type: 'sysml.Requirement', label: '续航', props: { reqId: 'EB-1', text: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' } }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['q'] }] };
+  assert.ok(layout(m, 'v').byId.q.compartments[0].members.length > 2, 'the text takes more than one row');
 });

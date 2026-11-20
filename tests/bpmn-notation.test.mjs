@@ -220,3 +220,10 @@ test('performance (S16, risks.md P1): the labels outside of 200 events with two 
   console.log(`# P1 target 100 ms: ${best} ms, 200 labels outside (CPU ms ${runs.map(Math.round).join(', ')})`);
   assert.ok(best < 1000, `${best} ms`);
 });
+
+test('audit 58: a task named with no spaces (Chinese) wraps to more than one line, as an English name of its length does', () => {
+  const names = label => { const n = at('z', 'bpmn-task', { label }); return [...SHAPE['bpmn-task'].draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]); };
+  const zh = names('为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限');
+  assert.ok(zh.length > 1 && zh.every(l => textW(l, 12) <= 180), JSON.stringify(zh));
+  assert.ok(zh[0].startsWith('为书店') && !zh[0].endsWith('…'), zh[0]);
+});
