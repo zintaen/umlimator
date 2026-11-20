@@ -68,9 +68,15 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
   if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k);
     if (ps.length) cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
   const ins = Object.create(null), outs = Object.create(null); segs.forEach(([a, b, oa, ob]) => { (outs[a] ||= []).push([b, ob, oa]); (ins[b] ||= []).push([a, oa, ob]); });
-  const crossings = () => { const at = tops(); let n = 0;
-    for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) { const [a, b, oa, ob] = segs[i], [c, d, oc, od] = segs[j];
-      if (colOf[a] === colOf[c] && (at[a] + oa - at[c] - oc) * (at[b] + ob - at[d] - od) < 0) n++; }
+  // two lines out of one column cross when their order at its end is the other way round from their order at their start (a
+  // tie either end is no crossing): sorted by their start (ties by their end), the crossings are the pairs an earlier one ends
+  // below a later one, counted with a Fenwick tree over their ends. Each pair tested made a view of 150 lines into one card,
+  // which pass through some 30 columns, spend a second here (audit 55)
+  const crossings = () => { const at = tops(); let n = 0; const byCol = new Map();
+    for (const [a, b, oa, ob] of segs) { const k = colOf[a]; let L = byCol.get(k); if (!L) byCol.set(k, L = []); L.push([at[a] + oa, at[b] + ob]); }
+    for (const L of byCol.values()) { if (L.length < 2) continue; L.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+      const vs = [...new Set(L.map(p => p[1]))].sort((x, y) => x - y), rank = new Map(vs.map((v, i) => [v, i + 1])), bit = new Int32Array(vs.length + 1);
+      L.forEach(([, v], seen) => { const r = rank.get(v); let le = 0; for (let i = r; i > 0; i -= i & -i) le += bit[i]; n += seen - le; for (let i = r; i <= vs.length; i += i & -i) bit[i]++; }); }
     return n; };
   let best = segs.length > 1 ? crossings() : 0, keep = cols.map(c => c.slice()); // the order given, unless one crosses less
   for (let it = 0; it < 8 && best; it++) {
@@ -566,7 +572,20 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const onSegInterior = (p, a, b) => (a[0] === b[0] && Math.abs(p[0] - a[0]) < 0.5 && p[1] > Math.min(a[1], b[1]) && p[1] < Math.max(a[1], b[1]))
     || (a[1] === b[1] && Math.abs(p[1] - a[1]) < 0.5 && p[0] > Math.min(a[0], b[0]) && p[0] < Math.max(a[0], b[0]));
   let shut = false; // gridRoute shuts each box that holds neither end of its line (NEST's box pass)
+  // the work the last resort (a search that may cross or run along lines) may spend in this pass, in cells built and visited
+  // (audit 55: 150 lines into one card's side, too many for its tracks, each fell to the last resort, whose grid holds every
+  // line before it and whose search, its crossings dear, visits all of it: 30 s). Past it, the last resort keeps off cards,
+  // tags and labels but not other lines, whose grid is small and whose search goes nearly straight to its end.
+  // ponytail: 4e6 is some six times what the largest test model spends (requirement-stress: 0.66e6)
+  let anyWork = 0; const ANY_WORK = 4e6;
+  // a search near its ends (win) that fails for its start or end being shut in, where the grid near them is the whole grid's,
+  // fails the same on the whole grid: wide() then skips that search, whose grid of the whole view was most of the time a view
+  // of many lines into one card spent (audit 55). sealed: the last search so failed (as bare, or not)
+  let sealed = null;
+  const wide = (e, allowCross, spare) => gridRoute(e, allowCross, 320, spare)
+    || (sealed !== null && sealed === (allowCross >= 2 && anyWork > ANY_WORK) ? null : gridRoute(e, allowCross, 0, spare));
   function gridRoute(e, allowCross, win, spare, soft) {
+    sealed = null;
     const st = [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB];
     const en = [e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB];
     // ends that face each other closer than two stubs (a card 32 px beside a box) leave the grid no room: the plain
@@ -580,7 +599,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const p = fallback(e); if (clear(p, lines)) return p;
     }
     const W = win ? { x: Math.min(st[0], en[0]) - win, y: Math.min(st[1], en[1]) - win, x2: Math.max(st[0], en[0]) + win, y2: Math.max(st[1], en[1]) + win } : null;
-    const any = allowCross >= 2; // the last resort: only cards and tags stand in the way; crossing or running along a line, or a label, costs
+    const any = allowCross >= 2, bare = any && anyWork > ANY_WORK; // the last resort: only cards and tags stand in the way; crossing or running along a line, or a label, costs
     // past it (3, a typed view's line that would else run through a card, audit 21): a loop's corners cost as a crossing, and the
     // line may run round its own end
     // the name strip of a box the line enters (one that holds one of its ends itself, and not the other), shut to the last resort;
@@ -594,7 +613,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // (shut, the box pass below) and a box that holds neither end, as a card is
     const own = dg.typed && !loose && !e.inner ? [...[[e.s, e.t], [e.t, e.s]].filter(([b, o]) => b.box && !holds(b, o)).map(([b]) => ({ x: b.x, y: b.y, w: b.w, h: b.h })),
       ...(shut ? families.filter(f => !holds(boxEnd[f.id], e.s) && !holds(boxEnd[f.id], e.t)).map(f => ({ x: f.x, y: f.y, w: f.w, h: f.h })) : [])] : [];
-    const avoid = [...routed.flatMap(r => segsOf(r.pts)), ...free.filter(o => o !== e && !routed.includes(o)).flatMap(o => o.stubs || [])];
+    const avoid = bare ? [] : [...routed.flatMap(r => segsOf(r.pts)), ...free.filter(o => o !== e && !routed.includes(o)).flatMap(o => o.stubs || [])];
     const xs = new Set([st[0], en[0], ...gapLinesX]), ys = new Set([st[1], en[1], ...gapLinesY]);
     obs.forEach(r => { xs.add(r.x - 1); xs.add(r.x + r.w + 1); ys.add(r.y - 1); ys.add(r.y + r.h + 1); });
     avoid.forEach(([a, b]) => { if (a[0] === b[0]) { xs.add(a[0]); xs.add(a[0] - SEP); xs.add(a[0] + SEP); } else { ys.add(a[1]); ys.add(a[1] - SEP); ys.add(a[1] + SEP); } });
@@ -605,74 +624,98 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     let X = co([...xs]), Y = co([...ys]);
     if (families.length) { const far = (v, bs) => keep.has(v) || bs.every(u => Math.abs(v - u) >= 8);
       const fx = families.flatMap(f => [f.x, f.x + f.w]), fy = families.flatMap(f => [f.y, f.y + f.h]); X = X.filter(v => far(v, fx)); Y = Y.filter(v => far(v, fy)); } // once, not per line
+    const XF = X, YF = Y; // the whole grid's lines, which the window's are among
     if (W) { X = X.filter(v => keep.has(v) || (v >= W.x && v <= W.x2)); Y = Y.filter(v => keep.has(v) || (v >= W.y && v <= W.y2)); }
-    const nx = X.length, ny = Y.length, N = nx * ny;
+    const nx = X.length, ny = Y.length, N = nx * ny; if (any && !bare) anyWork += N;
     // an end that lies in an obstacle (or, without crossings, on an earlier line) fails the search: say so before building the grid
     const blockedAt = p => obs.some(r => inRect(p, r)) || (!allowCross && avoid.some(([a, b]) => onSegInterior(p, a, b)));
-    if (blockedAt(st) || blockedAt(en)) return null;
-    const P = grPool(N), U = (k, v = 0) => P.u8[k].subarray(0, N).fill(v);
-    // a cell is open (ok) until an obstacle covers it, or an earlier line runs through it and the route may not cross; one an
-    // earlier line runs through costs a crossing (crossAt, read only on an open cell)
-    const ok = U(0, 1), crossAt = U(1);
-    // each obstacle and earlier line marks only the cells and moves near it (found by binary search, then tested
-    // exactly as inRect, segHitsRect, onSegInterior and colinear do); every cell testing every obstacle and line
-    // made one route cost O(cells x obstacles)
-    const from = (A, v) => { let a = 0, b = A.length; while (a < b) { const m = (a + b) >> 1; if (A[m] < v) a = m + 1; else b = m; } return a; };
-    const blockH = U(2), blockV = U(3), alongH = any ? U(4) : blockH, alongV = any ? U(5) : blockV;
-    for (const r of [...obs, ...own]) {
-      const i0 = from(X, r.x - 1), j0 = from(Y, r.y - 1), qx = r.x + .5, qy = r.y + .5, qx2 = qx + (r.w - 1), qy2 = qy + (r.h - 1);
-      for (let i = i0; i < nx && X[i] <= r.x + r.w + 1; i++) for (let j = j0; j < ny && Y[j] <= r.y + r.h + 1; j++)
-        if (X[i] > r.x && X[i] < r.x + r.w && Y[j] > r.y && Y[j] < r.y + r.h) ok[i * ny + j] = 0;
-      const lx = Math.min(qx, qx2), hx = Math.max(qx, qx2), ly = Math.min(qy, qy2), hy = Math.max(qy, qy2), jl = from(Y, ly - 1);
-      for (let i = Math.max(0, from(X, lx - 1) - 1); i < nx - 1 && X[i] <= hx + 1; i++) for (let j = jl; j < ny && Y[j] <= hy + 1; j++)
-        if (X[i + 1] > qx && X[i] < qx2 && Y[j] > qy && Y[j] < qy2) blockH[i * ny + j] = 1;
-      for (let i = from(X, lx - 1); i < nx && X[i] <= hx + 1; i++) for (let j = Math.max(0, jl - 1); j < ny - 1 && Y[j] <= hy + 1; j++)
-        if (X[i] > qx && X[i] < qx2 && Y[j + 1] > qy && Y[j] < qy2) blockV[i * ny + j] = 1;
-    }
-    const onAv = allowCross ? crossAt : ok, onV = allowCross ? 1 : 0; // a cell on an earlier line: a crossing, or shut
-    for (const [c, d] of avoid) {
-      const x1 = Math.min(c[0], d[0]), x2 = Math.max(c[0], d[0]), y1 = Math.min(c[1], d[1]), y2 = Math.max(c[1], d[1]);
-      if (c[0] === d[0]) { // vertical: cells on its interior; vertical moves alongside it
-        const j1 = from(Y, y1 - 1);
-        for (let i = from(X, x1 - 1); i < nx && X[i] <= x2 + 1; i++) if (Math.abs(X[i] - c[0]) < 0.5) for (let j = j1; j < ny && Y[j] <= y2 + 1; j++)
-          if (Y[j] > y1 && Y[j] < y2) onAv[i * ny + j] = onV;
-        for (let i = from(X, x1 - SEP - 1); i < nx && X[i] <= x2 + SEP + 1; i++) if (Math.abs(X[i] - c[0]) < SEP - 1) for (let j = Math.max(0, j1 - 1); j < ny - 1 && Y[j] <= y2 + 1; j++)
-          if (Math.min(Y[j + 1], y2) - Math.max(Y[j], y1) > 0) alongV[i * ny + j] = 1;
+    if (blockedAt(st) || blockedAt(en)) { if (!soft) sealed = bare; return null; }
+    // the grid on lines X and Y: which cells are open, which moves are shut, and which cost a crossing or a run along a line
+    const grid = (X, Y) => { const nx = X.length, ny = Y.length, N = nx * ny;
+      const P = grPool(N), U = (k, v = 0) => P.u8[k].subarray(0, N).fill(v);
+      // a cell is open (ok) until an obstacle covers it, or an earlier line runs through it and the route may not cross; one an
+      // earlier line runs through costs a crossing (crossAt, read only on an open cell)
+      const ok = U(0, 1), crossAt = U(1);
+      // each obstacle and earlier line marks only the cells and moves near it (found by binary search, then tested
+      // exactly as inRect, segHitsRect, onSegInterior and colinear do); every cell testing every obstacle and line
+      // made one route cost O(cells x obstacles)
+      const from = (A, v) => { let a = 0, b = A.length; while (a < b) { const m = (a + b) >> 1; if (A[m] < v) a = m + 1; else b = m; } return a; };
+      const blockH = U(2), blockV = U(3), alongH = any ? U(4) : blockH, alongV = any ? U(5) : blockV;
+      for (const r of [...obs, ...own]) {
+        const i0 = from(X, r.x - 1), j0 = from(Y, r.y - 1), qx = r.x + .5, qy = r.y + .5, qx2 = qx + (r.w - 1), qy2 = qy + (r.h - 1);
+        for (let i = i0; i < nx && X[i] <= r.x + r.w + 1; i++) for (let j = j0; j < ny && Y[j] <= r.y + r.h + 1; j++)
+          if (X[i] > r.x && X[i] < r.x + r.w && Y[j] > r.y && Y[j] < r.y + r.h) ok[i * ny + j] = 0;
+        const lx = Math.min(qx, qx2), hx = Math.max(qx, qx2), ly = Math.min(qy, qy2), hy = Math.max(qy, qy2), jl = from(Y, ly - 1);
+        for (let i = Math.max(0, from(X, lx - 1) - 1); i < nx - 1 && X[i] <= hx + 1; i++) for (let j = jl; j < ny && Y[j] <= hy + 1; j++)
+          if (X[i + 1] > qx && X[i] < qx2 && Y[j] > qy && Y[j] < qy2) blockH[i * ny + j] = 1;
+        for (let i = from(X, lx - 1); i < nx && X[i] <= hx + 1; i++) for (let j = Math.max(0, jl - 1); j < ny - 1 && Y[j] <= hy + 1; j++)
+          if (X[i] > qx && X[i] < qx2 && Y[j + 1] > qy && Y[j] < qy2) blockV[i * ny + j] = 1;
       }
-      if (c[1] === d[1]) { // horizontal: the same, across
-        const i1 = from(X, x1 - 1);
-        for (let j = from(Y, y1 - 1); j < ny && Y[j] <= y2 + 1; j++) if (Math.abs(Y[j] - c[1]) < 0.5) for (let i = i1; i < nx && X[i] <= x2 + 1; i++)
-          if (X[i] > x1 && X[i] < x2) onAv[i * ny + j] = onV;
-        for (let j = from(Y, y1 - SEP - 1); j < ny && Y[j] <= y2 + SEP + 1; j++) if (Math.abs(Y[j] - c[1]) < SEP - 1) for (let i = Math.max(0, i1 - 1); i < nx - 1 && X[i] <= x2 + 1; i++)
-          if (Math.min(X[i + 1], x2) - Math.max(X[i], x1) > 0) alongH[i * ny + j] = 1;
+      const onAv = allowCross ? crossAt : ok, onV = allowCross ? 1 : 0; // a cell on an earlier line: a crossing, or shut
+      // each line marks whole runs of cells: a vertical one a run down a column, which lies in one piece in the arrays (a fill); a
+      // horizontal one a run along a row, noted only at its two ends (+1 where it starts, -1 past it) and summed column by column
+      // once every line is in. Cell by cell, the lines into one card's side (each beside the others and spanning the view) cost
+      // O(lines x cells) a route (audit 55). The runs are the cells the tests marked: upto finds the first value past v
+      const upto = (A, v) => { let a = 0, b = A.length; while (a < b) { const m = (a + b) >> 1; if (A[m] <= v) a = m + 1; else b = m; } return a; };
+      let onD = null, alD = null; const D = () => { if (!P.dn || P.dn < N + ny) { P.dn = Math.max(N + ny, 2 * (P.dn || 0)); P.d1 = new Int32Array(P.dn); P.d2 = new Int32Array(P.dn); }
+        onD = P.d1.subarray(0, N + ny).fill(0); alD = P.d2.subarray(0, N + ny).fill(0); };
+      for (const [c, d] of avoid) {
+        const x1 = Math.min(c[0], d[0]), x2 = Math.max(c[0], d[0]), y1 = Math.min(c[1], d[1]), y2 = Math.max(c[1], d[1]);
+        if (c[0] === d[0]) { // vertical: cells on its interior; vertical moves alongside it
+          const lo = upto(Y, y1), hi = from(Y, y2), alo = Math.max(0, lo - 1), ahi = Math.min(ny - 1, hi);
+          if (lo < hi) for (let i = from(X, x1 - 1); i < nx && X[i] <= x2 + 1; i++) if (Math.abs(X[i] - c[0]) < 0.5) onAv.fill(onV, i * ny + lo, i * ny + hi);
+          if (y2 > y1 && alo < ahi) for (let i = from(X, x1 - SEP - 1); i < nx && X[i] <= x2 + SEP + 1; i++) if (Math.abs(X[i] - c[0]) < SEP - 1) alongV.fill(1, i * ny + alo, i * ny + ahi);
+        }
+        if (c[1] === d[1]) { // horizontal: the same, across
+          const lo = upto(X, x1), hi = from(X, x2), alo = Math.max(0, lo - 1), ahi = Math.min(nx - 1, hi);
+          if (lo < hi) for (let j = from(Y, y1 - 1); j < ny && Y[j] <= y2 + 1; j++) if (Math.abs(Y[j] - c[1]) < 0.5) { if (!onD) D(); onD[lo * ny + j]++; onD[hi * ny + j]--; }
+          if (x2 > x1 && alo < ahi) for (let j = from(Y, y1 - SEP - 1); j < ny && Y[j] <= y2 + SEP + 1; j++) if (Math.abs(Y[j] - c[1]) < SEP - 1) { if (!onD) D(); alD[alo * ny + j]++; alD[ahi * ny + j]--; }
+        }
       }
-    }
-    // routed after a port swap, it keeps off the end of its partner's stub, where the partner, routed next, starts
-    if (spare) for (const p of [spare.stubs[0][1], spare.stubs[1][0]]) { const i = X.indexOf(p[0]), j = Y.indexOf(p[1]); if (i >= 0 && j >= 0) { if (allowCross) crossAt[i * ny + j] = 1; else ok[i * ny + j] = 0; } }
-    // a line never runs round one of its own ends: the grid behind each (past the side opposite its port) is shut to it, unless its
-    // other end is there. A route with no crossing went any length, round its own card too (clinic's reminder went over the
-    // patient, down its far side and under it to reach the port below the patient's other line), and port repair saw nothing
-    if (!loose) for (const [n, side, far] of [[e.s, e.fs, en], [e.t, e.ts, st]]) if (!behind(n, side, far)) {
-      const lr = side === 'R' || side === 'L';
-      (lr ? X : Y).forEach((v, a) => { if (behind(n, side, lr ? [v, n.y] : [n.x, v])) for (let b = 0; b < (lr ? ny : nx); b++) ok[lr ? a * ny + b : b * ny + a] = 0; });
-    }
-    if (any) for (const r of [...reserved, ...(loose ? corners : [])]) for (let i = from(X, r.x - 3); i < nx && X[i] < r.x + r.w + 3; i++) for (let j = from(Y, r.y - 3); j < ny && Y[j] < r.y + r.h + 3; j++) crossAt[i * ny + j] = 1;
+      if (onD) for (let i = 0; i < nx; i++) for (let j = 0, k = i * ny; j < ny; j++, k++) { // the runs along rows, summed
+        if (i) { onD[k] += onD[k - ny]; alD[k] += alD[k - ny]; } if (onD[k] > 0) onAv[k] = onV; if (alD[k] > 0) alongH[k] = 1; }
+      // routed after a port swap, it keeps off the end of its partner's stub, where the partner, routed next, starts
+      if (spare) for (const p of [spare.stubs[0][1], spare.stubs[1][0]]) { const i = X.indexOf(p[0]), j = Y.indexOf(p[1]); if (i >= 0 && j >= 0) { if (allowCross) crossAt[i * ny + j] = 1; else ok[i * ny + j] = 0; } }
+      // a line never runs round one of its own ends: the grid behind each (past the side opposite its port) is shut to it, unless its
+      // other end is there. A route with no crossing went any length, round its own card too (clinic's reminder went over the
+      // patient, down its far side and under it to reach the port below the patient's other line), and port repair saw nothing
+      if (!loose) for (const [n, side, far] of [[e.s, e.fs, en], [e.t, e.ts, st]]) if (!behind(n, side, far)) {
+        const lr = side === 'R' || side === 'L';
+        (lr ? X : Y).forEach((v, a) => { if (behind(n, side, lr ? [v, n.y] : [n.x, v])) for (let b = 0; b < (lr ? ny : nx); b++) ok[lr ? a * ny + b : b * ny + a] = 0; });
+      }
+      if (any) for (const r of [...reserved, ...(loose ? corners : [])]) for (let i = from(X, r.x - 3); i < nx && X[i] < r.x + r.w + 3; i++) for (let j = from(Y, r.y - 3); j < ny && Y[j] < r.y + r.h + 3; j++) crossAt[i * ny + j] = 1;
+      return { nx, ny, N, P, U, ok, crossAt, blockH, blockV, alongH, alongV }; };
+    const DI = [1, -1, 0, 0], DJ = [0, 0, 1, -1]; // the four moves: right, left, down, up
+    // a target shut in a small pocket that does not hold the start cannot be reached: flood out from it (moves work
+    // both ways) and give up at once, instead of letting the search visit every cell it can reach. 'shut' when it is so shut in;
+    // 'part' when, too, a cell of the pocket lies next to a line of this grid not next to it on the whole grid (XF, YF) or at
+    // this grid's edge and not the whole one's: on the whole grid the pocket may go on; '' when the target is not shut in
+    const at = (A, F) => { const g = new Int32Array(A.length); for (let a = 0, b = 0; a < A.length; a++) { while (F[b] !== A[a]) b++; g[a] = b; } return g; };
+    const same = (g, a, n, nf) => (a + 1 < n ? g[a + 1] === g[a] + 1 : g[a] === nf - 1) && (a ? g[a - 1] === g[a] - 1 : g[a] === 0);
+    const flood = (G, X, Y, s0, t0) => { const { nx, ny, ok, blockH, blockV } = G, gx = X === XF ? null : at(X, XF), gy = gx && at(Y, YF);
+      const seen = G.U(6), q = [t0]; seen[t0] = 1; let whole = true;
+      const passable = (i1, j1, i2, j2) => !(i1 !== i2 ? blockH[Math.min(i1, i2) * ny + j1] : blockV[i1 * ny + Math.min(j1, j2)]);
+      for (let h = 0; h < q.length && q.length < 4000; h++) { const c = q[h], i = Math.floor(c / ny), j = c % ny;
+        if (c === s0) break;
+        if (gx && whole && !(same(gx, i, nx, XF.length) && same(gy, j, ny, YF.length))) whole = false;
+        for (let nd = 0; nd < 4; nd++) { const i2 = i + DI[nd], j2 = j + DJ[nd]; if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
+          const c2 = i2 * ny + j2; if (!seen[c2] && ok[c2] && passable(i, j, i2, j2)) { seen[c2] = 1; q.push(c2); } } }
+      return q.length < 4000 && (s0 < 0 || !seen[s0]) ? whole ? 'shut' : 'part' : ''; };
+    // on a big grid, the pocket is first looked for on a small one round the target: when it lies the same on the whole grid
+    // (and so on this one, whose lines near the target are the whole grid's), the search fails without the big grid being built
+    // (audit 55: the lines into one card's side, each beside the others, shut most of them in by its port, each on a grid of
+    // the whole view)
+    if (N > 20000) { const lX = X.filter(v => Math.abs(v - en[0]) <= 160), lY = Y.filter(v => Math.abs(v - en[1]) <= 160), L = grid(lX, lY);
+      const li = v => lX.indexOf(v), lj = v => lY.indexOf(v), t = li(en[0]) * L.ny + lj(en[1]), s = li(st[0]) < 0 || lj(st[1]) < 0 ? -1 : li(st[0]) * L.ny + lj(st[1]);
+      if (!L.ok[t] || (s >= 0 && !L.ok[s]) || flood(L, lX, lY, s, t) === 'shut') { if (!soft) sealed = bare; return null; } }
+    const { P, U, ok, crossAt, blockH, blockV, alongH, alongV } = grid(X, Y);
     // a run within 8 px of a box's border costs ten times its length: the grid keeps a port's track and an earlier line's however
     // near a border, and a box levelled half a row from a card (#86) puts its border right by that card's ports
     const near = families.length ? P.near.subarray(0, 2 * N).fill(0) : null, nearY = families.length && Y.map(y => families.filter(f => Math.abs(y - f.y) < 8 || Math.abs(y - f.y - f.h) < 8)), nearX = families.length && X.map(x => families.filter(f => Math.abs(x - f.x) < 8 || Math.abs(x - f.x - f.w) < 8));
     const ix = v => X.indexOf(v), iy = v => Y.indexOf(v);
     const s0 = ix(st[0]) * ny + iy(st[1]), t0 = ix(en[0]) * ny + iy(en[1]);
-    if (!ok[s0] || !ok[t0]) return null;
-    const DI = [1, -1, 0, 0], DJ = [0, 0, 1, -1]; // the four moves: right, left, down, up
-    const passable = (i1, j1, i2, j2) => !(i1 !== i2 ? blockH[Math.min(i1, i2) * ny + j1] : blockV[i1 * ny + Math.min(j1, j2)]);
-    // a target shut in a small pocket that does not hold the start cannot be reached: flood out from it (moves work
-    // both ways) and give up at once, instead of letting the search visit every cell it can reach
-    { const seen = U(6), q = [t0]; seen[t0] = 1;
-      for (let h = 0; h < q.length && q.length < 4000; h++) { const c = q[h], i = Math.floor(c / ny), j = c % ny;
-        if (c === s0) break;
-        for (let nd = 0; nd < 4; nd++) { const i2 = i + DI[nd], j2 = j + DJ[nd]; if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
-          const c2 = i2 * ny + j2; if (!seen[c2] && ok[c2] && passable(i, j, i2, j2)) { seen[c2] = 1; q.push(c2); } } }
-      if (q.length < 4000 && !seen[s0]) return null; }
+    if (!ok[s0] || !ok[t0]) { if (!soft) sealed = bare; return null; }
+    { const f = flood({ nx, ny, ok, blockH, blockV, U }, X, Y, s0, t0); if (f) { if (!soft && (!W || f === 'shut')) sealed = bare; return null; } }
     // Dijkstra over (cell, incoming direction)
     const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]], dist = P.dist.subarray(0, N * 4).fill(Infinity), prev = P.prev.subarray(0, N * 4).fill(-1);
     // a binary heap in typed arrays, with the same sift steps as before, so equal keys pop in the same order (each sift moves
@@ -691,6 +734,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     let best = -1;
     const nearOf = (nd, i, j, i2, j2) => (nd < 2 ? nearY[j].some(f => Math.max(X[i], X[i2]) > f.x && Math.min(X[i], X[i2]) < f.x + f.w) : nearX[i].some(f => Math.max(Y[j], Y[j2]) > f.y && Math.min(Y[j], Y[j2]) < f.y + f.h)) ? 2 : 1;
     while (hn) {
+      if (any && !bare && ++anyWork > ANY_WORK) return gridRoute(e, allowCross, win, spare, soft); // past the budget: bare
       hpop(); const k = pk, cell = k >> 2, dir = k & 3, i = (cell / ny) | 0, j = cell - i * ny;
       if (pd > dist[k] + (hx[i] + hy[j])) continue;
       // (NEST) head on only for up to two bends more than the cheapest way in: a route that kept to it at any cost ran along a
@@ -756,12 +800,19 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   function* fits(e, text, pass) { const relax = pass === 2 || pass === 3 || pass === 5, sub = subOf(e, text);
     const segs = segsOf(e.pts).map((s, i) => ({ a: s[0], b: s[1], i, l: Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), h: s[0][1] === s[1][1] }));
     const order = [...segs].sort((p, q) => (q.h - p.h) * 40 + (q.l - p.l));
+    // the runs of the other routed lines, as boxes (for spots) and as their ends' least and most x and y (for a box a label would
+    // take), found once a call: routed does not change while it yields. Found for every spot, they made a view of 150 labelled
+    // lines into one card spend seconds here (audit 55)
+    let runs = null, ends = null;
+    const cards = nodeRects.map(r => relax ? { x: r.x, y: r.y - 10, w: r.w, h: r.h + 10 } : { x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 }); // each card and the room its stubs take
+    const lines = () => runs ||= [...routed.filter(r => r !== e).map(r => r.pts), e.pts].flatMap(P => segsOf(P).map(([p, q]) => ({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) })));
+    const onLine = g => { if (!ends) { const B = []; for (const r of routed) if (r !== e) for (const [a, b] of segsOf(r.pts)) B.push(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); ends = Float64Array.from(B); }
+      for (let k = 0; k < ends.length; k += 4) if (ends[k + 1] > g.x && ends[k] < g.x + g.w && ends[k + 3] > g.y && ends[k + 2] < g.y + g.h) return true; return false; }; // segHitsRect
     // the strict spots along a segment: the middle, a third and a fifth of the way, then those just clear of each card's stub room,
     // tag, label and line beside it, the middle's nearest first: where the label fits, one of them is in. The five alone missed a
     // gap 15 px wide, and the label sat on a box's border (clinic's "Queues reminders")
     const spots = (sg, w, hgt, off = 0) => { const v = sg.h ? 0 : 1, lo = sg.a[v], len = sg.b[v] - lo, half = (v ? hgt : w) / 2 + 3.5, mid = sg.a[1 - v] + off, across = (v ? w : hgt) / 2 + 3;
-      const span = r => [[r.x, r.x + r.w], [r.y, r.y + r.h]], rs = [...nodeRects.map(r => ({ x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 })), ...tagRects, ...placed,
-        ...[...routed.filter(r => r !== e).map(r => r.pts), e.pts].flatMap(P => segsOf(P).map(([p, q]) => ({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) })))];
+      const span = r => [[r.x, r.x + r.w], [r.y, r.y + r.h]], rs = [...nodeRects.map(r => ({ x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 })), ...tagRects, ...placed, ...lines()];
       return [.5, .32, .68, .2, .8, ...rs.map(span).filter(s => s[1 - v][0] < mid + across && s[1 - v][1] > mid - across).flatMap(s => [s[v][0] - half, s[v][1] + half])
         .map(u => (u - lo) / len).filter(f => f >= 0 && f <= 1).sort((p, q) => Math.abs(p - .5) - Math.abs(q - .5))]; };
     const { two, w, hgt } = sizeOf(e, text, sub), pill = map && e.step != null;
@@ -773,10 +824,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
         const lx = sg.a[0] + (sg.b[0] - sg.a[0]) * f + (sg.h ? 0 : off), ly = sg.a[1] + (sg.b[1] - sg.a[1]) * f + (sg.h ? off : 0);
         const box = { x: lx - w / 2, y: ly - hgt / 2, w, h: hgt };
         const grow = { x: box.x - 3, y: box.y - 3, w: box.w + 6, h: box.h + 6 };
-        if (nodeRects.some(r => hit(relax ? { x: r.x, y: r.y - 10, w: r.w, h: r.h + 10 } : { x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 }, box))) continue; // keep port stubs free
+        if (cards.some(r => hit(r, box))) continue; // keep port stubs free
         if (tagRects.some(r => hit(r, grow))) continue;
         if (placed.some(r => (pass === 0 || pass >= 3 || !r.band) && hit(r, grow))) continue;
-        if (!relax && routed.some(r => r !== e && segsOf(r.pts).some(([a, b]) => segHitsRect(a, b, grow)))) continue;
+        if (!relax && onLine(grow)) continue;
         if (!relax && segs.some(s2 => s2.i !== sg.i && segHitsRect(s2.a, s2.b, box))) continue;
         yield { box, grow, lbl: { ...box, text, ...(two ? { sub } : {}), step: map ? e.step : null, ...(pill ? { sw: stepW(e.step) } : {}) } };
       }
@@ -818,7 +869,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       placed.push(...[{ x: f.x, y: f.y - 3, w: f.w, h: 6 }, { x: f.x, y: f.y + f.h - 3, w: f.w, h: 6 }, { x: f.x - 3, y: f.y, w: 6, h: f.h }, { x: f.x + f.w - 3, y: f.y, w: 6, h: f.h }].map(r => ({ ...r, band: true }))); }); // lane headers and arrows stay clear
     edges.filter(e => e.fixed).forEach(e => { routed.push(e); if (e.under || e[OWN_ROUTE]) { placeLabel(e); stats[e.how] = (stats[e.how] || 0) + 1; return; } if (e.lbl) { placed.push(e.lbl); reserved.push({ x: e.lbl.x - 3, y: e.lbl.y - 3, w: e.lbl.w + 6, h: e.lbl.h + 6 }); } stats.comb = (stats.comb || 0) + 1; });
     order.forEach(e => {
-      let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320) || gridRoute(e, false, 0);
+      let how = 'grid'; e.lbl = null; e.pts = wide(e, false);
       if (!e.pts) { how = 'cross'; e.pts = gridRoute(e, true, 0); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
       stats[how] = (stats[how] || 0) + 1; e.how = how;
       routed.push(e); placeLabel(e);
@@ -867,7 +918,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const need = { x: {}, y: {} }, cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs));
     const gapAt = (v, vertical) => { if (vertical) return cs.find(c => colX[c] + (colW[c] || NW) < v && v < colX[c + 1]);
       for (let r = r0; r < r1; r++) if (rowY(r) + NH < v && v < rowY(r + 1)) return r; };
-    free.filter(e => e.how === 'fallback').forEach(e => { routed.splice(routed.indexOf(e), 1); const p = gridRoute(e, 2, 320) || gridRoute(e, 2, 0), mine = { x: new Set(), y: new Set() };
+    free.filter(e => e.how === 'fallback').forEach(e => { routed.splice(routed.indexOf(e), 1); const p = wide(e, 2), mine = { x: new Set(), y: new Set() };
       segsOf(p || []).forEach(([a, b]) => { if (!routed.some(o => segsOf(o.pts).some(([c, d]) => colinear(a, b, c, d)))) return;
         const v = a[0] === b[0], g = gapAt(v ? a[0] : a[1], v); if (g != null) mine[v ? 'x' : 'y'].add(g); });
       for (const k of ['x', 'y']) mine[k].forEach(g => { need[k][g] = (need[k][g] || 0) + 2 * SEP; }); });
@@ -894,7 +945,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a swapped edge tries a clean route near its ends, then one that may cross (near its ends, then anywhere); it
   // skips the clean whole-grid search, which mostly fails here and visits every cell when it does
   const routeOne = (e, spare) => { let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320, spare);
-    if (!e.pts) { how = 'cross'; e.pts = gridRoute(e, true, 320, spare) || gridRoute(e, true, 0, spare); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
+    if (!e.pts) { how = 'cross'; e.pts = wide(e, true, spare); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
     e.how = how; routed.push(e); placeLabel(e); return true; };
   let budget = 2 * free.length, swapped = false, rrSwap = false;
   // a route moved onto its end's new port: its last run follows it
@@ -983,14 +1034,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       if (n.box || e[fk] === 'T' || e[fk] === 'B') continue;
       for (const side of ['T', 'B']) { const y = side === 'T' ? n.y : n.y + n.h, taken = edges.filter(x => x !== e && x.pts).flatMap(x => [[x.s, x.fs, x.p1], [x.t, x.ts, x.p2]]).filter(([m, sd]) => m === n && sd === side).map(([, , q]) => q[0]);
         const lo = n.x + n.w * .08, hi = n.x + n.w * .92, ox = o.x + o.w / 2, xs = [0, -1, 1, -2, 2].map(j => n.x + n.w / 2 + j * PORT).filter(x => x >= lo && x <= hi && taken.every(t => Math.abs(t - x) >= PORT)).sort((a, b) => Math.abs(a - ox) - Math.abs(b - ox));
-        for (const x of xs) { if (tbBudget-- <= 0) break; e[k] = [x, y]; e[fk] = side; restub(e); const P = gridRoute(e, false, 320) || gridRoute(e, false, 0);
+        for (const x of xs) { if (tbBudget-- <= 0) break; e[k] = [x, y]; e[fk] = side; restub(e); const P = wide(e, false);
           if (P && (!best || lenOf(P) < lenOf(best[0]))) best = [P, k, [x, y], side];
           [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } } }
     if (!best) return false;
     const [P, k, q, side] = best; e[k] = q; e[k === 'p1' ? 'fs' : 'ts'] = side; restub(e); e.pts = P; e.how = 'grid'; return true; };
   const issuesOf = e => { const ps = routeAudit({ edges, families, byId }, '', new Set([e])); return [ps.filter(p => / share a line$/.test(p)).length, ps.length]; };
   const lastR = dg.quick ? [] : free.filter(e => e.how === 'fallback');
-  lastR.forEach(e => { ripUp(e); e.pts = gridRoute(e, 2, 320) || gridRoute(e, 2, 0) || (dg.typed && through(e.pts, e) && gridRoute(e, 3, 0)) || e.pts; e.lbl = null; routed.push(e); placeLabel(e); });
+  lastR.forEach(e => { ripUp(e); e.pts = wide(e, 2) || (dg.typed && through(e.pts, e) && gridRoute(e, 3, 0)) || e.pts; e.lbl = null; routed.push(e); placeLabel(e); });
   // then each of them whose route runs round one of its own ends (the last resort may: audit 21), that end tried on each other
   // side of its card, kept when the route there runs round neither end and has no more issues (audit 28: er-through2-min laid
   // out down left its source's bottom and went left of it, over it and down its right side, and crossed a line anyway)
@@ -1008,7 +1059,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const vs = [0, -1, 1, -2, 2].map(j => mid + j * PORT).filter(v => v >= lo && v <= hi && taken.every(t => Math.abs(t - v) >= PORT)).sort((a, b) => Math.abs(a - to) - Math.abs(b - to));
       for (const v of vs.slice(0, 1)) { if (tbBudget-- <= 0) break;
         e[k] = lr ? [side === 'L' ? n.x : n.x + n.w, v] : [v, side === 'T' ? n.y : n.y + n.h]; e[fk] = side; restub(e);
-        const P = gridRoute(e, 2, 320) || gridRoute(e, 2, 0) || gridRoute(e, 3, 0);
+        const P = wide(e, 2) || gridRoute(e, 3, 0);
         if (P && !roundOwn(e, P) && !through(P, e)) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e)[1];
           if (k1 <= k0 && (!best || k1 < best[0] || (k1 === best[0] && lenOf(P) < lenOf(best[1])))) best = [k1, P, e[k], side]; ripUp(e); }
         [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
@@ -1019,7 +1070,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; ripUp(e);
     if (onTB(e)) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1]) return; ripUp(e); }
     // else the last resort again, round what the lines before it moved: kept when it runs along fewer
-    [e.p1, e.p2, e.fs, e.ts, e.pts, e.how] = was; restub(e); const P = gridRoute(e, 2, 320) || gridRoute(e, 2, 0);
+    [e.p1, e.p2, e.fs, e.ts, e.pts, e.how] = was; restub(e); const P = wide(e, 2);
     if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1]) return; ripUp(e); e.pts = was[4]; }
     e.lbl = null; routed.push(e); placeLabel(e); });
   // (NEST) then each line that crosses a box's title, runs along a box's border, runs through a box that holds neither of its
