@@ -60,7 +60,7 @@ function clean(m, vid) {
 // lie on lines. Each is stated in its type's conformance note
 const PINNED = {
   'requirement-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [232, 4, 0] } },
+  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 0, 0], down: [232, 1, 0] } },
   'block-definition-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [49, 0, 0], down: [48, 0, 0] } },
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },

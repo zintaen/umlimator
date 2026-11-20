@@ -651,20 +651,28 @@ function mapContext(model, opts = {}) {
     const hit = i => { if (met.has(i)) return true; const st = [...(homes[i] || [])]; for (let k = 0; st.length && k <= 4096; k++) { const f = st.pop(); if (met.has(f)) return true; if (fam[f] && fam[f].parent != null) st.push(fam[f].parent); } return false; };
     const all = [...pinned].reverse(), pins = [...all.filter(hit), ...all.filter(i => !hit(i))]; // what they meet first, then the rest, last first
     if (!pins.length) return [g, said];
+    // a picture with nothing but what weighs less than a box over another or a shared line never settles a pin one step from the
+    // cell its card takes with no pin of its own (Alt + an arrow on a card with none) back on that cell, nor short of the pin on
+    // the way from it; beside it or past it is kept (audit 62: Alt + Right on the AWS view's CDN, a label then on a group's border,
+    // drew the card back where it was, and a row down at best: the model held the pin, and each further Alt + Right wrote it again)
+    const fr = O(), cell = (h, i) => { const n = (h.byId || {})[i] || (h.nodes || []).find(x => x.id === i); return n && Number.isFinite(n.col) ? [n.col, n.row] : null; };
+    const freeOf = i => { if (!Object.hasOwn(fr, i)) { const L2 = { ...v.layout }; delete L2[i]; const q = (L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true))[i]; fr[i] = Array.isArray(q) ? q : null; } return fr[i]; };
+    const back = (h, ids) => n0 < 100 && ids.some(i => { const p = v.layout[i], f = Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? freeOf(i) : null, q = f && cell(h, i);
+      if (!q) return false; const d = [p[0] - f[0], p[1] - f[1]], k = Math.abs(d[0]) + Math.abs(d[1]); return k > .01 && k <= 1.01 && (q[0] - f[0]) * d[0] + (q[1] - f[1]) * d[1] < k * k - .01; });
     let best = { g, n: n0, memo: null, said }, left = 12; const seen = new Set();
     for (const i of pins) { const n0 = (g.byId || {})[i] || (g.nodes || []).find(n => n.id === i), p = n0 && Number.isFinite(n0.col) ? [n0.col, n0.row] : v.layout[i];
       for (let m = 1; m <= 2 && best.n && left > 0; m++) for (let dc = -m; dc <= m && best.n && left > 0; dc++) for (const dr of new Set([m - Math.abs(dc), Math.abs(dc) - m])) {
         if (!best.n || left <= 0) break; const c = p[0] + dc, r = p[1] + dr; if (c < 0 || r < 0) continue;
         const L2 = { ...v.layout, [i]: [c, r] }, pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), key = JSON.stringify(pos); if (seen.has(key)) continue; seen.add(key); left--;
         const m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
-        if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; } }
+        if (k < best.n && !back(h, [i])) best = { g: h, n: k, memo: m2, said: w }; } }
     // none of those clean (a region's box reaches past the cells the pins settle by: audit 60, order-states' parcel-start dropped
     // right of Fulfilling, its box over In delivery): the pins that meet something dropped, so those cards take a slot as a card
     // with no pin does (boxFit), the pins the picture can keep kept. One at a time first, in that order (audit 61: a pin in the
     // composite's other region, which met nothing itself, went with the one that did, and a clean drag there did nothing), then all
     const hits = pins.filter(hit), drop = ids => { const L2 = { ...v.layout }; ids.forEach(i => { delete L2[i]; });
       const pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
-      if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; };
+      if (k < best.n && !back(h, ids)) best = { g: h, n: k, memo: m2, said: w }; };
     if (best.n && hits.length) { if (hits.length > 1) for (const i of hits.slice(0, 6)) { if (!best.n) break; drop([i]); } if (best.n) drop(hits); }
     if (best.memo) { Object.keys(memo).forEach(k => { delete memo[k]; }); Object.assign(memo, best.memo); }
     return [best.g, best.said];

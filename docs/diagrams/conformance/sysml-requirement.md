@@ -75,8 +75,8 @@ Layout limits, measured on `examples/ebike-requirements.json` and `tests/require
   a generalization between requirements, a 600-character text and one capped, a verify from a block, a «rationale», the
   five kinds, a 40-character name, a requirement with no text) crosses once, right and down; `ec-package` (the frame of a
   package subject) is clean. The generated `all` view (50 requirements, 60 relationships) crosses 204 times right and
-  232 down, with one finding right and four down (lines sharing a track, labels on lines: six «verify» and «satisfy»
-  labels found no spot and were left off with nothing said before audit 6, drawn now; one of them placed again off its line in audit 32); no line runs through a node.
+  232 down, with one finding down (two lines sharing a track; six «verify» and «satisfy»
+  labels found no spot and were left off with nothing said before audit 6, drawn now, one of them placed again off its line in audit 32; one finding right and four down till audit 62 brought a last-resort line in head on and routed the lines under a label left on them again round it); no line runs through a node.
 
 ## Writers: what each shows of a requirement diagram
 

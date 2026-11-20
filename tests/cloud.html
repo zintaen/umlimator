@@ -180,6 +180,17 @@ try {
   click('.node[data-id="gcp-dns"] .c-name'); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a product: delete it and its paths', [{ op: 'delete', id: 'gcp-dns' }], m => !m.nodes.some(n => n.id === 'gcp-dns') && !m.edges.some(e => e.id === 'gcp-users-dns'), BASE);
   h.destroy();
+  // audit 62: Alt + → on the AWS example's worker pins it a column right, where its box would lie over another, so the layout
+  // draws it where it was; a second Alt + → steps past the cell its own pin names, where it wrote that same pin again
+  h = mount(AWS, 'aws-on-aws', { editable: true });
+  click('.node[data-id="aws-worker"] .c-name'); const at0 = centre('.node[data-id="aws-worker"] .n-body'); key('ArrowRight', { altKey: true });
+  const w0 = last(), p0 = w0 && w0.commands[0] && w0.commands[0].value, w1 = w0 && apply(AWS, w0.commands);
+  check('Alt + → on the worker: its pin a column right', !!w1 && same(w0.commands, [{ op: 'set', view: 'aws-on-aws', path: ['layout', 'aws-worker'], value: p0 }]), w0);
+  h.update(w1); click('.node[data-id="aws-worker"] .c-name');
+  check('…drawn where it was (the pin settled back)', same(centre('.node[data-id="aws-worker"] .n-body'), at0), [at0, centre('.node[data-id="aws-worker"] .n-body')]);
+  key('ArrowRight', { altKey: true });
+  gives('a second Alt + → steps past the cell its own pin names', [{ op: 'set', view: 'aws-on-aws', path: ['layout', 'aws-worker'], value: [p0[0] + 1, p0[1]] }], m => true, w1);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
