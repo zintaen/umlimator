@@ -994,3 +994,21 @@ test('docs/module-api.md records the class writer\'s #13; after the last release
   assert.ok(at(version + ':') > 0 && doc.indexOf('\n## ', at(version + ':') + 4) > 0, 'a section after the last release');
   assert.match(after, /The Mermaid class writer writes a carriage return in a class, relation, cardinality, note or namespace label as `#13;`/);
 });
+
+test('a " inside a backtick class name is a plain character: the statements after it are read, and read(write(m)) keeps the ids (audit 60)', () => {
+  const r = read('classDiagram\n  class `Pipe 5"`\n  class Valve\n  class Pump\n  `Pipe 5"` --> Valve : feeds\n  Pump --> Valve : drives\n  class Tank\n');
+  assert.deepEqual(r.model.nodes.map(n => n.id), ['Pipe 5"', 'Valve', 'Pump', 'Tank']);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label]), [['Pipe 5"', 'Valve', 'feeds'], ['Pump', 'Valve', 'drives']]);
+  assert.deepEqual(r.report, []);
+  // a real string still goes on over the lines to its closing quote, and a ` inside it is plain
+  const s = read('classDiagram\n  class A["a `b\n  c"]\n  class B\n');
+  assert.deepEqual(s.model.nodes.map(n => [n.id, n.label]), [['A', 'a `b\n  c'], ['B', 'B']]);
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'Pipe 5"', type: 'uml.Class', label: 'Pipe', members: [{ id: 'Pipe 5".d', type: 'uml.Property', label: 'diameter', props: { valueType: 'int' } }] },
+    { id: 'Valve', type: 'uml.Class', label: 'Valve', members: [{ id: 'Valve.state-id', type: 'uml.Property', label: 'state', props: { valueType: 'string' } }] }],
+  edges: [{ id: 'feeds', type: 'uml.Association', from: 'Pipe 5"', to: 'Valve', label: 'feeds' }],
+  views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['Pipe 5"', 'Valve'] }] };
+  const back = read(write(m));
+  assert.deepEqual([back.model.nodes.flatMap(n => (n.members || []).map(c => c.id)), back.model.edges.map(e => e.id)], [['Pipe 5".d', 'Valve.state-id'], ['feeds']]);
+  assert.deepEqual(back.report, []);
+});

@@ -72,7 +72,7 @@ def visual_cmd(tmp, *args):
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
-           "v.write_page = lambda out, data: u.write_page(v, out, data)\n"
+           "v.write_page = lambda out, data: u.write_page(v, out, data); v.subprocess.run = u.soft_git(v.subprocess.run)\n"
            "e = v.embed_avatars; v.embed_avatars = lambda d: u.avatars(e, d)\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
@@ -262,6 +262,27 @@ def upstream_view(d):
     # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
     d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
+
+
+def soft_git(run):
+    """subprocess.run, but a git that is not installed is a run that printed nothing (status 127), as git outside any
+    checkout prints nothing: render, diff and drift need no git, which docs/use/cli.md does not ask for (audit 60).
+    It wraps the engine's subprocess.run too (visual_cmd), so visual.py's load_map takes the model's folder as its root."""
+    def soft(cmd, *a, **k):
+        try:
+            return run(cmd, *a, **k)
+        except FileNotFoundError:
+            if not (isinstance(cmd, (list, tuple)) and cmd and cmd[0] == "git"):
+                raise
+            empty = "" if k.get("text") or k.get("universal_newlines") or k.get("encoding") else b""
+            return subprocess.CompletedProcess(cmd, 127, empty, empty)
+    return soft
+
+
+def no_git(what):
+    """diff --base and timelapse read git's history: without git, one line, never a traceback (audit 60)"""
+    if not shutil.which("git"):
+        sys.exit(f"{what} needs git, and none is installed")
 
 
 def run(cmd, timeout=None, input=None):
@@ -548,7 +569,7 @@ def page_model(model_path, out, source=None):
     own_media(m, Path(model_path).resolve().parent, source or model_path)  # ENGINE_ONLY keys dropped there too
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
-    root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    root = soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
     base = Path(root or os.getcwd()).resolve()
     if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
@@ -934,6 +955,7 @@ def model_of(text, where=None):
 
 
 def diff_since(a):
+    no_git("diff --base")
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
@@ -1307,6 +1329,7 @@ def cmd_timelapse(a):
     the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
     # git run in the model's own folder, so its history is its repository's wherever the command runs (audit 28: from a
     # folder outside it, git said "not a git repository" or that the model is outside the repository)
+    no_git("timelapse")
     here = Path(a.model).absolute()
     # the model named as a literal path, never a pattern: map[v].json is no glob that takes in mapv.json's history (audit 29)
     git = lambda *x: subprocess.run(["git", "-C", str(here.parent), *x], capture_output=True, env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"})

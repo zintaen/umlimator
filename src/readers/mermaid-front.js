@@ -133,10 +133,15 @@ function mermaidOver(lines, say) {
     return { s: kept.join('\n').trim(), i: m, rest: kept.slice(1) };
   };
 }
-// whether a " opened in s is left open; stop(k) says where reading ends outside a string (a label's : say)
-function mermaidOpen(s, stop = () => false) {
+// whether a " opened in s is left open; stop(k) says where reading ends outside a string (a label's : say); with ticks, a
+// `name` outside a string is its own token, as in Mermaid's class lexer, so a " inside it is a plain character (audit 60)
+function mermaidOpen(s, stop = () => false, ticks = false) {
   let open = false;
-  for (let k = 0; k < s.length; k++) if (s[k] === '"') open = !open; else if (!open && stop(k)) break;
+  for (let k = 0; k < s.length; k++) {
+    if (s[k] === '"') open = !open;
+    else if (!open && ticks && s[k] === '`' && s.indexOf('`', k + 1) > k) k = s.indexOf('`', k + 1);
+    else if (!open && stop(k)) break;
+  }
   return open;
 }
 

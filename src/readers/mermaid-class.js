@@ -330,7 +330,7 @@ function readMermaidClass(text) {
     }
     // a "string" left open before any label's : (a class's or namespace's ["label"], a note, a cardinality, a link) goes on
     // over the lines to its closing quote, as Mermaid's string token; a member's text never does (audit 49)
-    if (stack.at(-1)?.kind !== 'class' && mermaidOpen(s, k => s[k] === ':')) { const o = over(i, s); if (o) ({ s, i } = o); }
+    if (stack.at(-1)?.kind !== 'class' && mermaidOpen(s, k => s[k] === ':', true)) { const o = over(i, s); if (o) ({ s, i } = o); }
     // Mermaid closes a block at any }, as a member is [^{}\n]*: a line that ends in one, with no { to open, is its
     // statement, then that } read again on its own on the same line (audit 15)
     if (s.length > 1 && s.endsWith('}') && !s.includes('{')) { lines[i--] = '}'; s = s.slice(0, -1).trim(); }
