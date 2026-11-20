@@ -46,7 +46,9 @@ test('diff() says what changed in words, marks it on the after model, and names 
 test('diff() of a model with itself changes nothing; from nothing, everything is new; to nothing, everything is gone', () => {
   const same = diff(fx, fx);
   assert.deepEqual([same.summary, same.views], [[], []]);
-  assert.deepEqual(same.model, fx);
+  // the model as it is, but for the marks it carries of its own that the change does not make (audit 61): a line's edited dot
+  const bare = structuredClone(fx); bare.edges.forEach(e => { delete e.edited; });
+  assert.deepEqual(same.model, bare);
   const born = diff(null, { nodes: [{ id: 'a', label: 'A' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] });
   assert.deepEqual([born.summary, born.views, born.model.nodes[0].change], [['adds the view v', 'adds A'], ['v'], 'added']);
   const gone = diff({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', title: 'Vee', nodeIds: ['a', 'b'] }] }, null);
@@ -1909,4 +1911,47 @@ test('audit 60: a re-pointed line a view drew and no longer draws, its new end n
     const r = diff(b, a); assert.deepEqual(r.summary, ['changes the line from API to DB (to)', 'puts the line from API to DB (reads) in the view Back'], tag);
     assert.ok(layout(r.model, 'back').edges.some(e => e.from === 'api' && e.to === 'db' && e.change), tag);
   }
+});
+
+test('audit 61: a map view that lists no lines draws a line re-pointed off it removed and the lines of a card put in or taken out in the same change; one re-pointed onto it added, listed or not', () => {
+  const N = [['web', 'Web'], ['api', 'API'], ['db', 'DB'], ['q', 'Queue'], ['log', 'Log']].map(([id, label]) => ({ id, label, kind: 'service' }));
+  const m = { nodes: N, edges: [{ id: 'wa', from: 'web', to: 'api', label: 'calls' }, { id: 'ad', from: 'api', to: 'db', label: 'reads' }, { id: 'al', from: 'api', to: 'log', label: 'logs' }],
+    views: [{ id: 'all', nodeIds: ['web', 'api', 'db', 'q', 'log'] }, { id: 'back', title: 'Back', nodeIds: ['api', 'db', 'web'] }] };
+  const drawn = x => layout(x, 'back').edges.map(e => [e.from, e.to, e.change ?? null]);
+  // Log put in (audit 54) or taken out (audit 52), and ad re-pointed off the view (audit 60), in one change
+  const came = edit(m, x => { x.views[1].nodeIds.push('log'); x.edges[1].to = 'q'; });
+  assert.deepEqual(drawn(diff(m, came).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'added']]);
+  const shown = edit(m, x => { x.views[1].nodeIds.push('log'); }), hidden = edit(shown, x => { x.views[1].nodeIds.pop(); x.edges[1].to = 'q'; });
+  assert.deepEqual(drawn(diff(shown, hidden).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'removed']]);
+  // re-pointed onto the card taken out with it: drawn back by its old ends alone, never by its new ones, where the view never drew it
+  const onto = edit(shown, x => { x.views[1].nodeIds.pop(); x.edges[1].to = 'log'; });
+  assert.deepEqual(drawn(diff(shown, onto).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'removed']]);
+  // ad re-pointed from Queue onto DB: put in the view, drawn added whether the view lists its lines or not
+  for (const list of [null, ['wa', 'ad']]) { const a = edit(m, x => { x.edges[1].to = 'q'; if (list) x.views[1].edges = list; }), b = edit(a, x => { x.edges[1].to = 'db'; }), d = diff(a, b);
+    assert.ok(d.summary.includes('puts the line from API to DB (reads) in the view Back'), JSON.stringify(list));
+    assert.deepEqual(drawn(d.model), [['web', 'api', null], ['api', 'db', 'added']], JSON.stringify(list)); }
+});
+
+test('audit 61: diff() marks only what changed: a card, line, box, member or override the author marked in the model is drawn unmarked where the change leaves it; planned stays', () => {
+  const m = { title: 'Shop', nodes: [{ id: 'web', label: 'Web shop', kind: 'frontend' }, { id: 'app', label: 'Shop app', kind: 'mobile', change: 'new' },
+    { id: 'bot', label: 'Reminder bot', kind: 'ai', change: 'removed', members: [{ id: 'm1', label: 'Nudge', change: 'added' }] }, { id: 'api', label: 'Orders API', kind: 'backend' }, { id: 'gift', label: 'Gift cards', change: 'planned' }],
+    edges: [{ id: 'e1', from: 'web', to: 'api', label: 'orders', edited: true }, { id: 'e2', from: 'bot', to: 'web', label: 'nudges', change: 'removed', style: 'removed' }],
+    views: [{ id: 'v', nodeIds: ['web', 'app', 'bot', 'api', 'gift'], containers: [{ id: 'b', label: 'Apps', nodeIds: ['web', 'app'], change: 'new' }], nodeOverrides: { api: { change: 'changed' } } }] };
+  const d = diff(m, edit(m, x => { x.nodes[3].label = 'Shop API'; }));
+  assert.deepEqual(d.summary, ['renames Orders API to Shop API']);
+  assert.deepEqual(d.model.nodes.map(n => n.change ?? null), [null, null, null, 'changed', 'planned']);
+  assert.deepEqual(d.model.edges.map(e => [e.change ?? null, e.style ?? null, e.edited ?? null]), [[null, null, null], [null, null, null]]);
+  assert.equal(d.model.nodes[2].members[0].change, undefined);
+  const v = d.model.views[0]; assert.equal(v.containers[0].change, undefined); assert.equal(v.nodeOverrides.api.change, undefined);
+  // the page: no card or line drawn new or removed but the one renamed, changed
+  const g = layout(d.model, 'v'); assert.deepEqual(g.nodes.filter(n => n.change).map(n => [n.id, n.change]), [['api', 'changed'], ['gift', 'planned']]);
+  assert.deepEqual(g.edges.filter(e => e.change || e.style || e.edited).map(e => e.id), []);
+  // the input is not changed, and a mark the change itself takes off is said, the card marked changed
+  assert.equal(m.nodes[1].change, 'new');
+  const shipped = diff(m, edit(m, x => { delete x.nodes[1].change; }));
+  assert.deepEqual(shipped.summary, ['changes Shop app (change)']); assert.equal(shipped.model.nodes[1].change, 'changed');
+  // the Bookshop atlas, which carries its own marks: its diff with itself marks nothing
+  const atlas = JSON.parse(readFileSync(modelUrl('bookshop-atlas'))), same = diff(atlas, atlas).model;
+  const marked = [...same.nodes.filter(n => n.change && n.change !== 'planned'), ...same.edges.filter(e => e.change && e.change !== 'planned' || e.edited || e.style === 'added' || e.style === 'removed')];
+  assert.deepEqual(marked.map(x => x.id), []);
 });

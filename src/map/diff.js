@@ -92,8 +92,15 @@ export function diff(before, after) {
   before = unreadable(before).model; after = unreadable(after).model; // each read as validate() and mapContext read it (audit 20)
   const arr = arrOf, A = copyOf(before || {}), out = copyOf(after || {}); // a host's function stays as it is (audit 24)
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
-  const card = (x, h) => ({ ...x, change: h });
-  const line = (x, h) => ({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
+  const ours = new WeakSet(), our = y => (ours.add(y), y); // the marks this diff writes
+  const card = (x, h) => our({ ...x, change: h });
+  const line = (x, h) => our({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
+  // a mark the model carries of its own (an author's NEW or REMOVED tab, a line's added or removed style or edited dot) on what
+  // this diff does not mark is dropped (audit 61: drawn and named as this change's, while the summary said nothing of it). A
+  // planned mark stays: it is drawn as itself, and no diff writes it. On a copy of after's, or before's for what comes back removed
+  const planned = c => typeof c === 'string' && c.toLowerCase() === 'planned';
+  const unmark = (x, ln) => { if (!x || typeof x !== 'object' || Array.isArray(x) || ours.has(x)) return;
+    if (x.change != null && !planned(x.change)) delete x.change; if (ln) { delete x.edited; if (x.style === 'added' || x.style === 'removed') delete x.style; } };
   function mark(old, now, put, keys = l => l.map(x => x && x.id), inPlace) { // now's items, marked; old's that left come back, marked removed; inPlace: the removed model lines' ids
     const ko = keys(old), kn = keys(now), O = new Map(Array.from(old, (x, i) => [ko[i], x])), kept = new Set(kn); // a list's hole as undefined, as map() would keep it and Map() throws on (audit 28)
     const res = now.map((x, i) => { if (!x || typeof x !== 'object') return x; const o = O.get(kn[i]);
@@ -105,9 +112,9 @@ export function diff(before, after) {
       else if (inPlace && inPlace.has(x)) res.splice(at++, 0, inPlace.get(x)); }); // a removed model line a view named, or one it hid, in its place too
     return res;
   }
-  out.nodes = mark(arr(A.nodes), arr(out.nodes), card);
+  out.nodes = mark(arr(A.nodes), arr(out.nodes), card); out.nodes.forEach(n => unmark(n));
   const E1 = arr(out.edges); // the after model's lines as given, before the removed ones come back
-  out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys);
+  out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys); out.edges.forEach(e => unmark(e, true));
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
   const keyed = l => { const k = lineKeys(l); return new Map(Array.from(l, (e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
@@ -156,12 +163,13 @@ export function diff(before, after) {
       const w = { ...v }; if (Array.isArray(v.nodes)) w.nodes = v.nodes.map(n => { if (!n || typeof n !== 'object') return n; const y = card(n, 'added'); how.set(y, 'added'); return y; });
       if (Array.isArray(v.edges)) w.edges = v.edges.map(e => e && typeof e === 'object' ? line(e, 'added') : e); return w; }
     const w = { ...v }, ids = arr(v.nodeIds), oldIds = arr(o.nodeIds);
-    if (v.nodes || o.nodes) w.nodes = mark(arr(o.nodes), arr(v.nodes), card);
+    if (v.nodes || o.nodes) { w.nodes = mark(arr(o.nodes), arr(v.nodes), card); w.nodes.forEach(n => unmark(n)); }
     const at = new Map([...out.nodes, ...arr(w.nodes)].filter(Boolean).map(n => [n.id, n]));
     // a removed subject (apply()'s delete drops the view's subject with it) stays the view's subject, so its frame is drawn
     // back with its parts, ports and connectors, removed with it (audit 51), not as a plain card
     if (o.subject != null && v.subject == null && how.get(at.get(o.subject)) === 'removed') w.subject = o.subject;
     const left = oldIds.filter(id => !ids.includes(id)), came = ids.filter(id => !oldIds.includes(id)), ov = idTable(v.nodeOverrides); // ov['__proto__'] = ... is an own key
+    Object.keys(ov).forEach(id => { const x = ov[id]; if (x && typeof x === 'object' && !Array.isArray(x) && x.change != null && !planned(x.change)) ov[id] = (({ change, ...r }) => r)(x); }); // an author's mark, as on a card
     // each card that left back in its old place, after the nearest one before it that stayed (audit 52: at the end, a removed
     // lifeline or timing lane was drawn at the far side, and an interaction use covering it spanned every lifeline between)
     { const kept = new Set(ids), after = new Map(); let prev = null; // each that left, by the one that stayed before it (null: the start)
@@ -252,6 +260,7 @@ export function diff(before, after) {
       const leftS = new Set(left); if (Array.isArray(o.edges)) o.edges.forEach(x => { const e = typeof x === 'string' && !now.has(x) && !back.has(x) && line0.get(x);
         if (e && onCard(e, leftS)) back.set(x, line(e, 'removed')); });
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e !== 'string' ? e : put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : ghost.has(e) ? back.get(e) : e);
+      w.edges.forEach(e => unmark(e, true)); // a line of its own the diff does not mark: no mark an author wrote, as a model line
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); // hidden from a view that listed none: at the end
       // a line it still lists to a card it no longer shows is drawn no more: removed, in its place; one to a card it now shows is
       // drawn now: added (audit 54: a dynamic view's steps through a card taken out of it were drawn live and numbered, and every
@@ -284,10 +293,18 @@ export function diff(before, after) {
       if (Array.isArray(w.edges)) w.edges = w.edges.map(x => { const e = typeof x === 'string' ? byId.get(x) : x; return lineNow(e) || x; });
       else if (typedL(v)) hidIn.push([w, hidL, camL]);
       else w.edges = linesOf(out, w).map(e => lineNow(e) || (typeof e.id === 'string' ? e.id : e)); }
-    // a map view that lists none gets its lines listed, as it draws them, with a re-pointed line it drew back removed in its place
-    if (ghost.size && !Array.isArray(v.edges) && !Array.isArray(o.edges) && !typedL(v)) { const K = keyed(arr(out.edges)), src = linesOf(out, w);
-      const L = Array.isArray(w.edges) ? w.edges : src.map(e => typeof e.id === 'string' ? e.id : e), now1 = new Map(src.map((e, i) => [e, L[i]]));
-      w.edges = arr(out.edges).flatMap(e => now1.has(e) ? [now1.get(e)] : e && ghost.has(K.get(e)) ? [ghost.get(K.get(e))] : []); }
+    // a map view that lists none gets its lines listed, as it draws them, with a re-pointed line it drew back removed in its place,
+    // and one re-pointed onto it marked added, as a view that lists its lines marks it (audit 61: drawn changed). Its lines as the
+    // model holds them, each by what the list above made of it (audit 61: read through that list, a line marked with a card that
+    // came or went was a copy, no model line, and was not drawn)
+    if ((ghost.size || put.length) && !Array.isArray(v.edges) && !Array.isArray(o.edges) && !typedL(v)) { const K = keyed(arr(out.edges)), src = linesOf(out, { ...w, edges: undefined });
+      const L = Array.isArray(w.edges) ? w.edges : src.map(e => typeof e.id === 'string' ? e.id : e), now1 = new Map(src.map((e, i) => [e, put.includes(K.get(e)) ? line(e, 'added') : L[i]]));
+      // a re-pointed line taken out is drawn by its old ends alone, never also by its new ones to a card that left with it: the view
+      // never drew it there
+      w.edges = arr(out.edges).flatMap(e => e && ghost.has(K.get(e)) ? [ghost.get(K.get(e))] : now1.has(e) ? [now1.get(e)] : []); }
+    // a box in both an author marked: no mark, as a card (one it gained is added, one it lost comes back removed, above)
+    { const C = w.containers || v.containers, kept = new Set(arr(v.containers).filter(c => c && typeof c === 'object').map(c => c.id)), mine = c => c && typeof c === 'object' && c.change != null && !planned(c.change) && ob.has(c.id) && kept.has(c.id);
+      if (Array.isArray(C) && C.some(mine)) w.containers = C.map(c => mine(c) ? (({ change, ...r }) => r)(c) : c); }
     return w;
   });
   arr(A.views).forEach(o => { if (!isView(o) || V1.has(o.id)) return; // a removed view comes back with everything in it removed
@@ -307,6 +324,10 @@ export function diff(before, after) {
     if (o.timeline && typeof o.timeline === 'object' && !Array.isArray(o.timeline)) w.timeline = { ...o.timeline, ...['changes', 'constraints'].reduce((t, k) => Array.isArray(o.timeline[k]) ? { ...t, [k]: gone(o.timeline[k]) } : t, {}) };
     touched.add(o.id); views.push(w); });
   out.views = views;
+  // a member's own mark an author wrote (one this diff marks is marked below: added, changed, or a copy back removed). Not in a
+  // card that comes back removed: its members are the model before's, which is laid out as it was
+  [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { if (how.get(n) === 'removed') return; const seen = new Set(); for (const s = [...arr(n && n.members)]; s.length;) { const x = s.pop();
+    if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); unmark(x); s.push(...arr(x.members)); } });
 
   // a removed item whose owner left too (a message in a fragment's operand, a state in a region) brings that owner back,
   // removed, in its place: a member into its element, a fragment into its view
