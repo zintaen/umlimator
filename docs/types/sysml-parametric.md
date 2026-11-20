@@ -9,7 +9,7 @@ pageClass: gallery-page
 
 # Parametric diagram
 
-<p class="ex-lead">Constraint blocks that bind a system's values. How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden with a full payload: its battery's usable energy and each load's consumption bound to the parameters of the equations that give the two delivery ranges. The page below opens on it, <a href="/umlimator/examples/types/sysml-parametric.html#view=range" target="_self">The cargo bike's delivery range, empty and laden</a>, live: pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">Constraint blocks that bind a system's values. How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden: its battery's usable energy, its empty consumption and its payload in kilograms bound to the parameters of the equations that give the laden consumption and the two delivery ranges. The page below opens on it, <a href="/umlimator/examples/types/sysml-parametric.html#view=range" target="_self">The cargo bike's delivery range, empty and laden</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
 <div class="ex-frame"><iframe src="/umlimator/examples/types/sysml-parametric.html" title="Parametric diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/sysml-parametric.html" target="_self">Open full screen<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.pdf" target="_self">PDF<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.json" target="_self">Model<span class="visually-hidden"> (Parametric)</span></a></div>
@@ -20,12 +20,12 @@ pageClass: gallery-page
 
 <ol class="ex-shows">
 <li>The frame's header naming its block: <code>par [Block] CargoBike [...]</code></li>
-<li>Value properties as plain boxes <code>name : Type</code> (ladenConsumption : EnergyPerDistance, batteryCapacity : Energy)</li>
+<li>Value properties as plain boxes <code>name : Type</code> (payload : Mass, batteryCapacity : Energy)</li>
 <li>Constraint properties as boxes with rounded corners, <code>name : ConstraintBlock</code>, the block's expression in braces under the name, cut to the box</li>
 <li>Two constraint properties typed by one constraint block (empty and laden : RangeEquation)</li>
 <li>Parameters as squares on a constraint property's border, <code>name : Type</code> beside each</li>
 <li>Binding connectors, plain lines with no ends, from value properties to parameters</li>
-<li>A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden)</li>
+<li>A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden; the consumption of empty into load, load's laden into the consumption of laden)</li>
 </ol>
 
 ## In another setting {#alternatives}
@@ -69,7 +69,7 @@ The view's `diagram`, the types its elements, members and lines may have, and it
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §9). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange, and no solving: the equations are text.
 
-A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the range of the bookshop's delivery cargo e-bike, empty and laden with a full payload, from its battery's usable energy.
+A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the range of the bookshop's delivery cargo e-bike, empty and laden with its payload in kilograms, from its battery's usable energy.
 
 ### The subset, and SysML v1.7's clauses
 

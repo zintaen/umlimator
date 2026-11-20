@@ -71,7 +71,7 @@ The view's `diagram`, the types its elements, members and lines may have, and it
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §8). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange: Mermaid has no internal block notation, and there is no XMI.
 
-A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an internal block diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json), inside the bookshop's delivery cargo e-bike: the battery, controller, motor, two lights and the dock at the dispatch bay it refers to, wired by connectors carrying DC power and phase current.
+A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an internal block diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json), inside the bookshop's delivery cargo e-bike: the battery, controller, motor, two lights, the cargo box and the dock at the dispatch bay it refers to, wired by connectors carrying DC power, phase current and the cargo box's unlock code.
 
 ### The subset, and SysML v1.7's clauses
 
