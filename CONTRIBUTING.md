@@ -74,7 +74,19 @@ Write the subject as `Area: what changed`, in plain words, for example `Docs: th
 
 ## Releases
 
-A maintainer releases by bumping `package.json`'s version in a pull request and adding that version's `## X.Y.Z: ...` section to `docs/module-api.md`. When the pull request is merged and the checks pass on `main`, CI tags `vX.Y.Z`, publishes a GitHub Release with that section as its notes, publishes the package to npm and publishes the site.
+A maintainer releases by bumping `package.json`'s version in a pull request and adding that version's `## X.Y.Z: ...` section to `docs/module-api.md`. When the pull request is merged and the checks pass on `main`, CI's `check.yml` releases it in three jobs, and publishes the site beside them:
+
+1. `release` tags `vX.Y.Z` at that commit, opens a draft GitHub Release with that section as its notes, and publishes the package to npm with provenance under the dist-tag `next`. A plain `npm install umlimator` still gets the version before.
+2. `smoke` installs `umlimator@X.Y.Z` from the registry into an empty folder and uses it (`tools/smoke.mjs`): it imports `umlimator` and `umlimator/all`, reads `umlimator/schema.json`, and runs `migrate()`, `validate()`, `layout()` and `check()` on the smallest model in `examples/types/`; then that commit's `umlimator.py render` draws the same model into a page with the installed `lib/`, and `umlimator.py check` checks the page in headless Chrome. The package does not ship the CLI or the examples, so both come from the tagged commit.
+3. `promote` runs only when `smoke` passed. It moves `latest` to the version with `npm dist-tag add` (never back to an older version) and publishes the GitHub Release.
+
+When the smoke test fails, the job says which step failed and why, `latest` stays where it was and the Release stays a draft. If the registry was at fault, re-run the failed jobs of that run. If the package is broken, fix it and release a new version: npm never takes the same version twice, and the broken one stays on `next` only. Until the release finishes or the version is bumped, each later push to `main` fails and names the commit whose jobs to re-run.
+
+Trusted publishing covers `npm publish` only, so `promote` needs the repository secret `NPM_TOKEN`, a granular npm token that may write `umlimator`. Without it, `promote` fails and prints the one command to run by hand: `npm dist-tag add umlimator@X.Y.Z latest`.
+
+After each Pages deploy, the `site-links` job reads the deployed site from its root (`tools/linkcheck.mjs`) and fails when any internal link, frame, picture, script or stylesheet does not answer 200, naming the page that links it.
+
+To try these before a release: `node tools/smoke.mjs <tarball from npm pack>` runs the smoke test on a local package, and `node tools/linkcheck.mjs <url>` checks any copy of the site, `https://zintaen.github.io/umlimator/` included. `python3 tests/steps.py` runs the release jobs' shell steps against stand-ins for `gh`, `git` and `npm`, and `tests/smoke.test.mjs` and `tests/linkcheck.test.mjs` test the two tools.
 
 ## Conduct
 

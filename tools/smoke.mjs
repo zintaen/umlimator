@@ -29,7 +29,9 @@ const repo = resolve(opt("--repo", join(fileURLToPath(import.meta.url), "..", ".
 const tries = Number(process.env.SMOKE_TRIES || 6), wait = Number(process.env.SMOKE_WAIT_MS || 20000);
 
 function fail(stepName, reason) {
-  console.log(`::error::smoke: ${stepName}: ${String(reason).trim().split("\n").slice(-12).join(" | ")}`);
+  // the reason without stack frames or blank lines (an error's message is its first line, not its last)
+  const lines = String(reason).split("\n").map((l) => l.trim()).filter((l) => l && !/^at |^Node\.js v|^\^+$/.test(l));
+  console.log(`::error::smoke: ${stepName}: ${lines.slice(-12).join(" | ")}`);
   process.exit(1);
 }
 
