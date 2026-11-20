@@ -1722,7 +1722,7 @@ test('audit 54: a C4 deployment view on the diff page draws both sides of an ins
 
 // audit 55
 test('audit 55: a map sequence view on the diff page numbers its live steps as the model after does; a removed step has no number', async () => {
-  const { describe } = await import('../lib/umlimator.js'), A = read45('types/map'), V = 'shop-run';
+  const { describe } = await import('../lib/umlimator.js'), A = JSON.parse(readFileSync(new URL('fixtures/map-shop.json', import.meta.url))), V = 'shop-run';
   const steps = m => layout(m, V).edges.map(e => [e._id ?? e.id, e.step ?? null, e.change ?? null]);
   // the price step: deleted from the model, taken out of the view's list, or its card taken out of the view
   const cases = { deleted: edit(A, m => { m.edges = m.edges.filter(e => e.id !== 'price'); m.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => e !== 'price'); }); }),
