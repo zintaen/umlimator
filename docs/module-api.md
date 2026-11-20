@@ -940,9 +940,7 @@ Nothing is removed. Two defaults change for a host that upgrades:
 - **The CLI:**
   - `umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]` writes the marked page, prints the summary
     and the views, and takes stills of those views.
-  - `umlimator.py diff --base REF --out DIR [--models PATHSPEC...]` does that for every map model the working tree
-    changed since a git ref. It also writes `summary.md`: the summary per file, with a mermaid sketch of the cards that
-    changed and their neighbours.
+  - `umlimator.py diff --base REF --out DIR [--models PATHSPEC...]` does that for every map model the working tree changed since a git ref. It also writes `summary.md`: the summary per file, with a mermaid sketch of the cards that changed and their neighbours. A removed view marks none of the cards and lines it shared with the model, which stay; its own cards and lines are sketched removed.
   - `umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]`.
   - `umlimator.py timelapse MODEL.json --out PAGE.html [--limit N]` puts every version of the model in git history,
     oldest first, on a slider, saying what changed at each step.

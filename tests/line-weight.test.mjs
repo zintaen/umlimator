@@ -158,3 +158,22 @@ test('audit 56: a first sentence ends after "ms.", a capital or a short number, 
   assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Shoppers to Cache, Answers in under 5 ms.');
   assert.ok(s.includes('Buy at shop A.') && !/>[^<]*They pay later/.test(s), s.match(/Buy at[^<"]*/g)?.join(' | '));
 });
+
+// audit 56: a line's title and accessible name say its edit mark, as a card's name does, and only the change marks a line is
+// drawn with ('planned' is drawn unmarked, as validate() warns)
+test('audit 56: an edited map line says (edited) in its title and name; a planned line says nothing it does not draw', () => {
+  const name = s => /class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], title = s => /<g class="edge-g[\s\S]*?<title>([^<]*)<\/title><\/g>/.exec(s)[1];
+  const one = e => svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'API', edited: true }, { id: 'b', label: 'Database' }],
+    edges: [{ id: 'e', from: 'a', to: 'b', label: 'reads, writes', ...e }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v'));
+  const ed = one({ edited: true });
+  assert.match(ed, /data-id="a"[^>]*aria-label="API[^"]*\(edited\)"/);
+  assert.equal(name(ed), 'Line from API to Database: reads, writes (edited)'); assert.equal(title(ed), 'API → Database: reads, writes (edited)');
+  assert.equal(name(one({})), 'Line from API to Database: reads, writes');
+  assert.equal(name(one({ edited: true, weight: 2 })), 'Line from API to Database: reads, writes (edited), weight 2 of 3');
+  for (const c of ['planned', 'Planned']) { const s = one({ change: c });
+    assert.equal(name(s), 'Line from API to Database: reads, writes', c); assert.equal(title(s), 'API → Database: reads, writes', c); }
+  assert.equal(name(one({ change: 'removed' })), 'Line from API to Database: reads, writes, removed');
+  assert.equal(name(one({ change: 'added' })), 'Line from API to Database: reads, writes, new');
+  // the card keeps its planned word: a planned card is drawn planned
+  assert.match(svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', change: 'planned' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v')), /aria-label="A[^"]*, planned"/);
+});

@@ -552,8 +552,11 @@ function mapContext(model, opts = {}) {
     // a line a type derives from its ends (a SysML containment line, <owner>-><child>), no model line's: with an end that came or went
     const endCh = new Map([...(g.nodes || []), ...(g.families || [])].filter(x => x && typeof x.id === 'string').map(x => [x.id, x.change || null]));
     const derived = e => { const a = endCh.get(e.from), b = endCh.get(e.to); return gone(a) || gone(b) ? 'removed' : came(a) || came(b) ? 'added' : null; };
+    // a line diff() marked changed (its label edited) that goes with a card the view no longer shows, or comes with one it now
+    // shows, or with the view itself: removed (added), as on a map view (audit 56: drawn live, amber, to the card's ghost)
+    const gw = k => { const h = dm && Object.hasOwn(dm, k) ? dm[k] : null, c = lineCh(k); return (h === 'removed' || h === 'added') && (c === 'changed' || c === 'modified') ? h : c; };
     (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return;
-      const c = lineCh(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
+      const c = gw(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
       if (c) e.change = c; else delete e.change; });
     return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
