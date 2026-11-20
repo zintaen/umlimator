@@ -1,0 +1,413 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "AWS diagram",
+ "root": "on-aws",
+ "nodes": [
+  {
+   "id": "shoppers",
+   "type": "aws.Resource",
+   "label": "Shoppers",
+   "props": {
+    "icon": "Users"
+   }
+  },
+  {
+   "id": "cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "dns",
+   "type": "aws.Service",
+   "label": "DNS",
+   "parent": "cloud",
+   "props": {
+    "icon": "Amazon-Route-53"
+   }
+  },
+  {
+   "id": "cdn",
+   "type": "aws.Service",
+   "label": "CDN",
+   "parent": "cloud",
+   "props": {
+    "icon": "Amazon-CloudFront"
+   }
+  },
+  {
+   "id": "prod",
+   "type": "aws.Group",
+   "label": "Bookshop production",
+   "parent": "cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "region",
+   "type": "aws.Group",
+   "label": "Europe (Ireland)",
+   "parent": "prod",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "assets",
+   "type": "aws.Service",
+   "label": "Storefront files",
+   "parent": "region",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  },
+  {
+   "id": "queue",
+   "type": "aws.Service",
+   "label": "Order queue",
+   "parent": "region",
+   "props": {
+    "icon": "Amazon-Simple-Queue-Service"
+   }
+  },
+  {
+   "id": "workers",
+   "type": "aws.Group",
+   "label": "Order workers",
+   "parent": "region",
+   "props": {
+    "groupType": "generic"
+   }
+  },
+  {
+   "id": "confirm-fn",
+   "type": "aws.Service",
+   "label": "Confirm order",
+   "parent": "workers",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "stock-fn",
+   "type": "aws.Service",
+   "label": "Update stock",
+   "parent": "workers",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "email",
+   "type": "aws.Service",
+   "label": "Order emails",
+   "parent": "region",
+   "props": {
+    "icon": "Amazon-Simple-Email-Service"
+   }
+  },
+  {
+   "id": "stock",
+   "type": "aws.Service",
+   "label": "Stock levels",
+   "parent": "region",
+   "props": {
+    "icon": "Amazon-DynamoDB"
+   }
+  },
+  {
+   "id": "monitoring",
+   "type": "aws.Service",
+   "label": "Logs and alarms",
+   "parent": "region",
+   "props": {
+    "icon": "Amazon-CloudWatch"
+   }
+  },
+  {
+   "id": "vpc",
+   "type": "aws.Group",
+   "label": "Bookshop VPC",
+   "parent": "region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "alb",
+   "type": "aws.Service",
+   "label": "Load balancer",
+   "parent": "vpc",
+   "props": {
+    "icon": "Elastic-Load-Balancing"
+   }
+  },
+  {
+   "id": "az-a",
+   "type": "aws.Group",
+   "label": "eu-west-1a",
+   "parent": "vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "public-b",
+   "type": "aws.Group",
+   "label": "Public subnet",
+   "parent": "az-b",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "nat-b",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "public-b",
+   "props": {
+    "icon": "Amazon-VPC_NAT-Gateway"
+   }
+  },
+  {
+   "id": "private-a",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "az-a",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "api-a",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "private-a",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "db-sg",
+   "type": "aws.Group",
+   "label": "Database security group",
+   "parent": "private-a",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "db",
+   "type": "aws.Service",
+   "label": "Database, primary",
+   "parent": "db-sg",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "az-b",
+   "type": "aws.Group",
+   "label": "eu-west-1b",
+   "parent": "vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "private-b",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "az-b",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "api-b",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "private-b",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "db-standby",
+   "type": "aws.Service",
+   "label": "Database, standby",
+   "parent": "private-b",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "logs",
+   "type": "aws.Group",
+   "label": "Log archive",
+   "parent": "cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "log-bucket",
+   "type": "aws.Service",
+   "label": "Audit log bucket",
+   "parent": "logs",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "shoppers-dns",
+   "type": "aws.Connection",
+   "from": "shoppers",
+   "to": "dns",
+   "label": "looks up"
+  },
+  {
+   "id": "shoppers-cdn",
+   "type": "aws.Connection",
+   "from": "shoppers",
+   "to": "cdn",
+   "label": "HTTPS"
+  },
+  {
+   "id": "cdn-assets",
+   "type": "aws.Connection",
+   "from": "cdn",
+   "to": "assets",
+   "label": "storefront"
+  },
+  {
+   "id": "cdn-alb",
+   "type": "aws.Connection",
+   "from": "cdn",
+   "to": "alb",
+   "label": "/api"
+  },
+  {
+   "id": "alb-api-a",
+   "type": "aws.Connection",
+   "from": "alb",
+   "to": "api-a",
+   "label": "HTTP"
+  },
+  {
+   "id": "alb-api-b",
+   "type": "aws.Connection",
+   "from": "alb",
+   "to": "api-b",
+   "label": "HTTP"
+  },
+  {
+   "id": "api-a-db",
+   "type": "aws.Connection",
+   "from": "api-a",
+   "to": "db",
+   "label": "SQL"
+  },
+  {
+   "id": "db-replica",
+   "type": "aws.Connection",
+   "from": "db",
+   "to": "db-standby",
+   "label": "replicates"
+  },
+  {
+   "id": "private-b-nat",
+   "type": "aws.Connection",
+   "from": "private-b",
+   "to": "nat-b",
+   "label": "outbound"
+  },
+  {
+   "id": "vpc-queue",
+   "type": "aws.Connection",
+   "from": "vpc",
+   "to": "queue",
+   "label": "paid orders"
+  },
+  {
+   "id": "queue-workers",
+   "type": "aws.Connection",
+   "from": "queue",
+   "to": "workers",
+   "label": "triggers"
+  },
+  {
+   "id": "confirm-email",
+   "type": "aws.Connection",
+   "from": "confirm-fn",
+   "to": "email",
+   "label": "confirmation"
+  },
+  {
+   "id": "stock-fn-stock",
+   "type": "aws.Connection",
+   "from": "stock-fn",
+   "to": "stock",
+   "label": "decrement"
+  },
+  {
+   "id": "vpc-monitoring",
+   "type": "aws.Connection",
+   "from": "vpc",
+   "to": "monitoring",
+   "label": "logs, metrics"
+  },
+  {
+   "id": "monitoring-logs",
+   "type": "aws.Connection",
+   "from": "monitoring",
+   "to": "logs",
+   "label": "archived"
+  }
+ ],
+ "views": [
+  {
+   "id": "on-aws",
+   "diagram": "aws",
+   "title": "The bookshop on AWS",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "shoppers",
+    "cloud",
+    "dns",
+    "cdn",
+    "prod",
+    "region",
+    "assets",
+    "queue",
+    "workers",
+    "confirm-fn",
+    "stock-fn",
+    "email",
+    "stock",
+    "monitoring",
+    "vpc",
+    "alb",
+    "az-a",
+    "public-b",
+    "nat-b",
+    "private-a",
+    "api-a",
+    "db-sg",
+    "db",
+    "az-b",
+    "private-b",
+    "api-b",
+    "db-standby",
+    "logs"
+   ]
+  }
+ ]
+}
