@@ -430,3 +430,10 @@ test('audit 26: an actor or participant with no name is reported with the right 
   const r = read('sequenceDiagram\n  actor \n  participant \n  A->>B: hi');
   assert.deepEqual(r.report.filter(x => x.status === 'skipped').map(x => x.message), ['an actor with no name', 'a participant with no name']);
 });
+
+test('audit 55: a reply in a break and one after it both answer the call: the break is performed instead of the rest', () => {
+  const { model, report } = read('sequenceDiagram\n  A->>B: place\n  break empty\n    B-->>A: error\n  end\n  B-->>A: order\n');
+  const ms = model.views[0].edges.filter(e => e.type === 'uml.Message');
+  assert.deepEqual(ms.map(e => e.props.replyTo ?? null), [null, ms[0].id, ms[0].id]);
+  assert.deepEqual(validate(model).filter(p => p.level !== 'info'), [], JSON.stringify(report));
+});

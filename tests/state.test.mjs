@@ -921,3 +921,16 @@ test('audit 51: Shift + Delete of a model region counts the states another view 
   assert.equal(r.say, 'Deleted region r and the 2 elements it held');
   const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes], [['S'], []]);
 });
+
+test('audit 55: a vertex in an unnamed region is said in it as the region\'s own name numbers it, never by the region\'s id', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'moving', type: 'uml.State', label: 'Moving', members: [{ id: 'moving.r1', type: 'uml.Region' }, { id: 'moving.r2', type: 'uml.Region', label: 'Sound' }] },
+    { id: 'i1', type: 'uml.Pseudostate', parent: 'moving.r1', props: { kind: 'initial' } }, { id: 'slow', type: 'uml.State', label: 'Slow', parent: 'moving.r1' },
+    { id: 'i2', type: 'uml.Pseudostate', parent: 'moving.r2', props: { kind: 'initial' } }, { id: 'quiet', type: 'uml.State', label: 'Quiet', parent: 'moving.r2' }],
+    edges: [{ id: 't1', type: 'uml.Transition', from: 'i1', to: 'slow' }, { id: 't2', type: 'uml.Transition', from: 'i2', to: 'quiet' }],
+    views: [{ id: 'sm', diagram: 'uml.state-machine', nodeIds: ['moving', 'i1', 'slow', 'i2', 'quiet'] }] };
+  const g = layout(m, 'sm'), fam = id => g.families.find(f => f.id === id);
+  assert.deepEqual([fam('moving.r1').aria, g.byId.i1.aria], ['Region 1 of Moving, 2 states', 'Initial pseudostate in region 1 of Moving']);
+  assert.equal(g.byId.i2.aria, 'Initial pseudostate in Sound'); // a named one by its name, as before
+  const d = describe(m, 'sm'); assert.match(d, /^Initial pseudostate in region 1 of Moving\.$/m); assert.doesNotMatch(d + [...svgOf(g).matchAll(/aria-label="([^"]*)"/g)].map(x => x[1]).join('\n'), /moving\.r1/);
+});

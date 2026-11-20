@@ -424,3 +424,24 @@ test('audit 55: a card or a line put back into a view that lists its lines: the 
   assert.equal(d.views[0].edges[1].change, 'added'); assert.deepEqual(errs(d), []);
   assert.match(errs(edit(d, x => { x.views[0].edges[1].to = 'a'; })).join('\n'), /line id "bc" is used twice/);
 });
+
+test('audit 55: on the diff page an owner\'s name counts what it holds as the model after does, not what diff() drew back removed', () => {
+  // [example, view, element deleted, owner whose name counts it]: the mindmap topic and cloud groups the audit found, and every
+  // other type whose owner names a count (use case subject, C4 boundary and deployment node, BPMN lane and pool, partition,
+  // region and composite state, component, composite structure, deployment node and target)
+  const cases = [['examples/types/mindmap.json', 'plan', 'order-emails', 'checkout'], ['examples/types/aws.json', 'on-aws', 'nat-b', 'public-b'], ['examples/types/aws.json', 'on-aws', 'db', 'db-sg'],
+    ['examples/types/azure.json', 'on-azure', 'az-rg', 'az-subscription'], ['examples/types/uml-use-case.json', 'shopping', 'browse', 'bookshop'], ['examples/types/c4.json', 'containers', 'storefront', 'bookshop'],
+    ['examples/bookshop-c4.json', 'c4-deployment', 'c4-storefront-1', 'c4-browser'], ['examples/types/bpmn.json', 'order-to-shipment', 'basket-ready', 'bp-shopper'],
+    ['examples/types/bpmn.json', 'order-to-shipment', 'order-received', 'bp-sales'], ['examples/types/uml-activity.json', 'fulfil', 'take-order', 'lane-desk'], ['examples/types/uml-activity.json', 'fulfil', 'take-order', 'lane-shop'],
+    ['examples/types/uml-state-machine.json', 'order-life', 'picking', 'fulfilling.parcel'], ['examples/types/uml-state-machine.json', 'order-life', 'in-transit', 'delivery'],
+    ['examples/types/uml-component.json', 'components', 'basket', 'shop-api'], ['examples/types/uml-composite-structure.json', 'inside', 'order-events', 'order-service'],
+    ['examples/types/uml-deployment.json', 'production', 'browser', 'shopper-device'], ['examples/types/uml-deployment.json', 'production', 'storefront-js', 'browser'], ['examples/types/uml-package.json', 'packages', 'money', 'shared']];
+  const name = (m, vid, id) => { const g = all.layout(m, vid), n = g.nodes.find(x => x.id === id) || (g.families || []).find(x => x.id === id);
+    return n && n.aria ? n.aria : (all.svgOf(g).match(new RegExp(`data-family="${id}"[^>]*aria-label="([^"]*)"`)) || [])[1]; };
+  for (const [f, vid, gone, owner] of cases) {
+    const m = load(f), after = all.apply(m, [{ op: 'delete', id: gone }]), was = name(m, vid, owner), now = name(after, vid, owner), why = `${f} ${gone} in ${owner}`;
+    assert.ok(was && now && was !== now, `${why}: the count changes (${was} / ${now})`);
+    assert.equal(name(all.diff(m, after).model, vid, owner), now, why);
+    assert.equal(name(all.diff(after, m).model, vid, owner), was, `${why}: an added one is counted`);
+  }
+});

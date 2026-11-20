@@ -102,7 +102,7 @@ function ucPic(model, view) {
   const pic = ownersOn(model, view, UC_LOOK);
   const boxes = pic.boxes.map(b => { const held = pic.holds(b.id), x = pic.at.get(b.id), st = ucStereo(x);
     const k = x.type === 'uml.Subject' ? brLines(b.title ?? b.label).length : 1, c = k > 1 ? { ...b, head: (k - 1) * UC.lh } : b;
-    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...c, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}, holding ${ucPlural(held.length, 'use case')}` } : c; });
+    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...c, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}, holding ${ucPlural(held.filter(id => !pic.gone(id)).length, 'use case')}` } : c; }); // the model after's count on the diff page (audit 55)
   return { ...pic, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a

@@ -72,7 +72,10 @@ function dpIndex(model, view) {
   const E = viewLines(model, V).map(([e]) => e).filter(e => DP_OBJ(e) && typeof e.id === 'string');
   const into = (t, id) => E.filter(e => e.type === t && e.to === id), outOf = (t, id) => E.filter(e => e.type === t && e.from === id);
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
-  const deployed = id => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type)).map(n => n.id), ...into('uml.Deployment', id).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type))])];
+  // live: not one diff() drew back removed, nor through a removed «deploy» line, as the model after counts them (audit 55)
+  const gone = y => typeof y.change === 'string' && y.change.toLowerCase() === 'removed';
+  const deployed = (id, live) => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type) && !(live && gone(n))).map(n => n.id),
+    ...into('uml.Deployment', id).filter(e => !(live && gone(e))).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type) && !(live && gone(at.get(x))))])];
   // does a hold b, at any depth
   const holds = (a, b) => { for (let p = (at.get(b) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (at.get(p) || {}).parent) { if (p === a) return true; seen.add(p); } return false; };
   return { at, E, into, outOf, deployed, holds };
@@ -112,9 +115,9 @@ function dpNodeName(n, pic, I) {
   if (!DP_TARGETS.includes(n.type)) return out[0];
   // the box drawn round it, not a card beside it (audit 32): the owner on the picture, through any the view does not show (audit 33)
   const box = pic.owner(n.id); if (box != null && I.at.has(box)) out.push(`in ${dpName(I.at.get(box))}`);
-  const k = new Map(); pic.holds(n.id).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
+  const k = new Map(); pic.holds(n.id).filter(id => !pic.gone(id)).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
   if (k.size) out.push('holding ' + [...k].map(([w, c]) => dpPlural(c, w)).join(', '));
-  const d = I.deployed(n.id).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
+  const d = I.deployed(n.id, true).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
   return out.join(', ');
 }
 // "Communication path HTTPS from Shopper's device to Edge proxy"; "Deployment from routes.conf to Edge proxy"

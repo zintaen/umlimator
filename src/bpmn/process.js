@@ -116,7 +116,9 @@ function bzPic(model, view) {
     dataLane.set(id, by != null ? { lane: bandOf(by), by } : { lane: p != null && band.has(p) ? p : null }); });
   const lo = new Map(), laneOf = id => (lo.has(id) ? lo.get(id) : lo.set(id, dataLane.has(id) ? dataLane.get(id).lane : bandOf(id)).get(id));
   // each lane's and pool's element count: what it draws (laneOf, so data and notes too), its nested lanes' with it
-  const inLane = new Map(); [...items, ...open].forEach(i => { const l = laneOf(i); if (l != null) [l, ...I.chain(l)].forEach(p => inLane.set(p, (inLane.get(p) || 0) + 1)); });
+  // not one diff() drew back removed: the model after's count on the diff page (audit 55)
+  const gone = i => { const c = (I.el(i) || {}).change; return typeof c === 'string' && c.toLowerCase() === 'removed'; };
+  const inLane = new Map(); [...items, ...open].filter(i => !gone(i)).forEach(i => { const l = laneOf(i); if (l != null) [l, ...I.chain(l)].forEach(p => inLane.set(p, (inLane.get(p) || 0) + 1)); });
   const held = new Map(); [...items, ...open].forEach(x => { const o = owner(x); held.has(o) ? held.get(o).push(x) : held.set(o, [x]); });
   const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);

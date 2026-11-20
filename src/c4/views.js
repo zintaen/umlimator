@@ -195,9 +195,9 @@ SHAPE['c4-node'] = { frame: f => { const line = (t, dy, wt, px, fill) => brLines
 const DEP_LOOK = { boxTypes: ['c4.DeploymentNode'], qualify: false, shape: () => 'c4-node', word: () => 'Deployment node' };
 function depPic(model, view) {
   const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...DEP_LOOK, ghost }), I = c4Index(model); // a removed card opens no box (c4Pic's, audit 54)
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).filter(id => !pic.gone(id)).map(id => pic.at.get(id)), k = new Map(); // live ones only (audit 55)
     held.forEach(y => { const w = (C4_WORD[y.type] || 'element').toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
-    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
+    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}${k.size ? `, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` : ''}` }; });
   return { ...pic, I, boxes, ghost, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
 }
 // the key: a deployment node, each instance's look (as its container's), the relationship and the implied line
