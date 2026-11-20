@@ -1674,3 +1674,48 @@ test('audit 53: an interface, constraint or part type block re-created under a n
     const ports = g.nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:${n.change}`).sort();
     assert.deepEqual(ports.filter(p => p.startsWith('bat2.')), all.layout(a, 'inside-ebike').nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:added`).sort(), 'the new block\'s ports drawn, added'); }
 });
+
+// audit 54
+test('audit 54: a stereotype removed from a profile marks no card or box of its scope that draws as before, as the reverse diff marks none', async () => {
+  const all = await fromSrc(), b = read45('bookshop-profile'), V = 'profile';
+  const marked = (x, y) => Object.fromEntries([...all.layout(all.diff(x, y).model, V).nodes, ...(all.layout(all.diff(x, y).model, V).families || [])].filter(n => n.change).map(n => [n.id, n.change]));
+  for (const st of ['column', 'entity']) { const a = structuredClone(b); a.nodes = a.nodes.filter(n => n.id !== st); a.edges = a.edges.filter(e => e.from !== st && e.to !== st);
+    const out = marked(b, a), back = marked(a, b);
+    assert.equal(out.sales, undefined, `removing «${st}» marks the package sales: ${JSON.stringify(out)}`);
+    assert.equal(out[st], 'removed'); assert.equal(back[st], 'added');
+    // what else it marks is what the reverse marks too: a card that draws the tag compartment
+    assert.deepEqual(Object.keys(out).sort(), Object.keys(back).sort(), `both ways mark the same: ${JSON.stringify(out)} ${JSON.stringify(back)}`); }
+});
+
+test('audit 54: a C4 dynamic view on the diff page draws the steps through a card taken out of it removed and unnumbered, the live ones numbered as the model after', async () => {
+  const all = await fromSrc(), B = read45('bookshop-c4'), V = 'c4-placing-an-order';
+  const A = structuredClone(B), w = A.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'c4-shopper');
+  const steps = m => all.layout(m, V).edges.map(e => [e._id ?? e.id, e.step ?? null, e.change ?? null]);
+  const live = (m, ch) => steps(m).filter(s => s[2] !== ch).map(s => s.slice(0, 2));
+  const out = steps(all.diff(B, A).model);
+  assert.deepEqual(out.filter(s => s[2] === 'removed').map(s => s.slice(0, 2)), [['c4-shopper-storefront', null], ['c4-mail-shopper', null]]);
+  assert.deepEqual(live(all.diff(B, A).model, 'removed'), live(A), 'the live steps as the model after numbers them');
+  assert.match(svgOf(all.layout(all.diff(B, A).model, V)), /aria-label="Step 8: Relationship from Order worker to Database/);
+  // put back: drawn added, numbered as the model after
+  const back = steps(all.diff(A, B).model);
+  assert.deepEqual(back.filter(s => s[2] === 'added').map(s => s.slice(0, 2)), [['c4-shopper-storefront', 1], ['c4-mail-shopper', 9]]);
+  assert.deepEqual(back.map(s => s.slice(0, 2)), steps(B).map(s => s.slice(0, 2)));
+});
+
+test('audit 54: a C4 deployment view on the diff page draws both sides of an instance taken out or put back: its line and the implied line from its node', async () => {
+  const all = await fromSrc(), B = read45('bookshop-c4'), V = 'c4-deployment';
+  const A = structuredClone(B), w = A.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'c4-storefront-1');
+  const lines = m => Object.fromEntries(all.layout(m, V).edges.map(e => [e._id ?? e.id, e.change ?? null]));
+  // every line diff() marks in the view is drawn (view.diffMarks: marks and gone)
+  const drawsMarks = (d, why) => { const dm = d.model.views.find(v => v.id === V).diffMarks || {}, L = lines(d.model);
+    for (const [k, h] of Object.entries(dm.marks || {})) assert.equal(L[k], h, `${why}: ${k} drawn ${h}: ${JSON.stringify(L)}`);
+    for (const x of dm.gone || []) assert.equal(L[x.id], 'removed', `${why}: ${x.id} drawn back removed: ${JSON.stringify(L)}`); };
+  const out = all.diff(B, A); drawsMarks(out, 'taken out');
+  const g = all.layout(out.model, V), at = id => g.nodes.find(n => n.id === id);
+  assert.ok(at('c4-browser'), 'Web browser drawn as a card, as the model after draws it');
+  assert.equal(at('c4-storefront-1').change, 'removed');
+  assert.deepEqual([lines(out.model)['c4-browser->c4-api-1'], lines(out.model)['c4-storefront-1-api-1']], ['added', 'removed']);
+  const back = all.diff(A, B); drawsMarks(back, 'put back');
+  assert.deepEqual([lines(back.model)['c4-browser->c4-api-1'], lines(back.model)['c4-storefront-1-api-1']], ['removed', 'added']);
+  for (const d of [out, back]) assert.doesNotThrow(() => svgOf(all.layout(d.model, V)));
+});
