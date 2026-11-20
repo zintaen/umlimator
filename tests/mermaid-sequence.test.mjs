@@ -437,3 +437,23 @@ test('audit 55: a reply in a break and one after it both answer the call: the br
   assert.deepEqual(ms.map(e => e.props.replyTo ?? null), [null, ms[0].id, ms[0].id]);
   assert.deepEqual(validate(model).filter(p => p.level !== 'info'), [], JSON.stringify(report));
 });
+
+test('audit 56: a reply after a break does not answer a call inside it, nor one in another operand of an alt, as the editor pairs it', () => {
+  const pairs = t => { const ms = read(t).model.views[0].edges.filter(e => e.type === 'uml.Message'), at = new Map(ms.map((e, i) => [e.id, i]));
+    return ms.map(e => (e.props.replyTo == null ? null : at.get(e.props.replyTo))); };
+  // the call inside the break never happens with the reply after it: the reply answers the one before the break
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n  end\n  B-->>A: done\n'), [null, null, 0]);
+  // a reply inside the break still answers the call inside it, and one after the break the call before it
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n    B-->>A: no\n  end\n  B-->>A: done\n'), [null, null, 1, 0]);
+  // a break inside an opt ends the opt only: a reply after the opt can answer the call in the break
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  opt maybe\n    break card declined\n      A->>B: second()\n    end\n  end\n  B-->>A: done\n'), [null, null, 1]);
+  // a call in one operand of an alt is never answered from another
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  alt ok\n    A->>B: second()\n  else not\n    B-->>A: done\n  end\n'), [null, null, 0]);
+  // what the reader pairs, the writer writes without a reply-to hint, and it reads back the same
+  for (const t of ['sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n  end\n  B-->>A: done\n']) {
+    const { model } = read(t), text = write(model);
+    assert.doesNotMatch(text, /reply-to/, text);
+    assert.deepEqual(read(text).model.views[0].edges, model.views[0].edges, text);
+    assert.deepEqual(validate(model).filter(p => p.level !== 'info'), []);
+  }
+});
