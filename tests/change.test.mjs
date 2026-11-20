@@ -1589,3 +1589,42 @@ test('audit 52: a moved requirement\'s old containment is drawn back when its ol
   const g = all.layout(all.diff(a, b).model, a.views[0].id), ch = Object.fromEntries(g.edges.filter(e => e.type === 'containment').map(e => [`${e.from}->${e.to}`, e.change ?? null]));
   assert.equal(ch['range->spec'], 'removed'); assert.equal(ch['range->docking'], 'added'); assert.equal(ch['docking->spec'], 'removed');
 });
+
+test('audit 53: an IDEF1X view that lists its lines marks no entity when one relationship is taken out of the list', async () => {
+  const all = await fromSrc(), m = read45('bookshop-schema'), V = m.views[0];
+  V.notation = 'idef1x'; V.edges = m.edges.map(e => e.id);
+  for (const id of V.edges) { const b = structuredClone(m); b.views[0].edges = b.views[0].edges.filter(x => x !== id);
+    const g = all.layout(all.diff(m, b).model, V.id);
+    assert.deepEqual(g.nodes.filter(n => n.change).map(n => n.id), [], `${id} taken out: no entity marked`);
+    assert.equal(g.edges.find(e => (e._id ?? e.id) === id).change, 'removed', `${id} drawn back removed`); }
+  // a relationship deleted from the model still marks its child, which draws otherwise
+  const b = structuredClone(m); b.edges = b.edges.filter(e => e.id !== 'er-order-lines'); b.views[0].edges = b.views[0].edges.filter(x => x !== 'er-order-lines');
+  assert.equal(all.layout(all.diff(m, b).model, V.id).nodes.find(n => n.id === 'er-order_line').change, 'changed');
+});
+
+test('audit 53: a namesake interface or constraint block that comes or goes marks the ports and constraint properties it leaves unresolved', async () => {
+  const all = await fromSrc();
+  const cases = [['ebike-structure', 'inside-ebike', { id: 'ci2', type: 'sysml.InterfaceBlock', label: 'ChargeInterface' }, ['ebike.battery->battery.charge', 'ebike.dock->dock.charge'], n => n.flow ?? null],
+    ['ebike-range', 'range-analysis', { id: 're2', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }, ['ebike.eco', 'ebike.boost'], n => n.expr ?? null]];
+  for (const [f, vid, twin, ids, look] of cases) { const m = read45(f), b = structuredClone(m); b.nodes.push(twin);
+    for (const [x, y, word] of [[m, b, 'added'], [b, m, 'deleted']]) { const d = all.diff(x, y), g = all.layout(d.model, vid), at = id => g.nodes.find(n => n.id === id);
+      assert.ok(d.views.includes(vid), `${f}: namesake ${word}, the view listed`);
+      assert.deepEqual(ids.map(id => at(id).change), ids.map(() => 'changed'), `${f}: namesake ${word}, marked`);
+      assert.deepEqual(ids.map(id => look(at(id))), ids.map(id => look(all.layout(y, vid).nodes.find(n => n.id === id))), `${f}: namesake ${word}, drawn as the model after`); } }
+});
+
+test('audit 53: an interface, constraint or part type block re-created under a new id draws on the diff page as in the model after', async () => {
+  const all = await fromSrc();
+  const remake = (f, id, nid) => { const m = read45(f), a = structuredClone(m), i = a.nodes.findIndex(n => n.id === id), o = a.nodes[i];
+    a.nodes[i] = { ...o, id: nid, members: (o.members || []).map(x => ({ ...x, id: x.id.replace(id + '.', nid + '.') })) };
+    a.edges.forEach(e => { for (const k of ['from', 'to']) if (typeof e[k] === 'string') e[k] = e[k].replace(id + '.', nid + '.'); }); return [m, a]; };
+  { const [m, a] = remake('ebike-range', 'usable-energy', 'ue2'), pick = g => g.nodes.find(n => n.id === 'ebike.usable');
+    const g = all.layout(all.diff(m, a).model, 'range-analysis');
+    assert.equal(pick(g).expr, '{usable = capacity * share}'); assert.equal(pick(g).expr, pick(all.layout(a, 'range-analysis')).expr); assert.equal(pick(g).change, undefined, 'drawn as it was: no mark'); }
+  { const [m, a] = remake('ebike-structure', 'charge-interface', 'ci2'), d = all.diff(m, a);
+    const flow = x => all.layout(x, 'inside-ebike').nodes.find(n => n.id === 'ebike.battery->battery.charge').flow;
+    assert.equal(flow(a), 'inout'); assert.equal(flow(d.model), 'inout'); }
+  { const [m, a] = remake('ebike-structure', 'battery', 'bat2'), g = all.layout(all.diff(m, a).model, 'inside-ebike');
+    const ports = g.nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:${n.change}`).sort();
+    assert.deepEqual(ports.filter(p => p.startsWith('bat2.')), all.layout(a, 'inside-ebike').nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:added`).sort(), 'the new block\'s ports drawn, added'); }
+});

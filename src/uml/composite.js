@@ -8,7 +8,7 @@ import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, l
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsDrawn, portRoom, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, oneNamed, propTextProblems } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -119,7 +119,7 @@ function csPic(model, view) {
   const rest = ids.filter(id => !boxed.has(id) && !uses.includes(id));
   const partOf = new Map([...parts.map(m => [m.id, S]), ...collabs.flatMap(c => c.roles.map(m => [m.id, c.x]))]); // a part or role: its structure
   const classes = [...at.values()].filter(n => CS_TYPED.includes(n.type));
-  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return c.length === 1 ? c[0] : null; };
+  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return oneNamed(c); };
   const el = id => at.get(id) || (mem.get(id) || {}).m || null;
   // a line's end as drawn: { node, port?, id (the model's) }; null where nothing drawn is it
   const end = (e, k) => { const x = e[k], p = (CS_PROPS(e).ends || {})[k], part = CS_OBJ(p) ? p.part : null;
