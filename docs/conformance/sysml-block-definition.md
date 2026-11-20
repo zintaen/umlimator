@@ -62,7 +62,7 @@ Layout limits, measured on `examples/ebike-blocks.json` and `tests/block-definit
 
 - `repair: false`, `reroute: false`; a generalization ranks the general first. A bdd draws only the class type's lines: a
   model whose internal block or parametric views add connectors or bindings between the same blocks would draw them at
-  their owners, so the example's view lists its own `edges` (the five lines it draws), and an atlas that joins it
+  their owners, so the example's view lists its own `edges` (the six lines it draws), and an atlas that joins it
   draws it as the file does. A gap: the type does not filter model lines by kind; a view with no `edges` list in such a model draws them.
 - The example lays out clean right and down. The stress file's `edge-cases` view (every compartment, a block of 40 rows,
   a value type with unit and quantity kind, an interface block with each direction, a constraint block owning a
@@ -86,7 +86,7 @@ Measured on `examples/ebike-blocks.json` (0.25.0); the PDF's text read back by `
 
 ## Accessibility
 
-Names: "Block CargoBike, 5 parts, 1 reference, 6 values, 3 constraints"; "Value type Energy, unit = Wh, quantityKind = energy". Text at 4.5:1, lines and outlines at 3:1 in both themes (`tests/blocks.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
+Names: "Block CargoBike, 6 parts, 1 reference, 6 values, 4 constraints"; "Value type Energy, unit = Wh, quantityKind = energy". Text at 4.5:1, lines and outlines at 3:1 in both themes (`tests/blocks.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
 
 ## Performance (P1)
 

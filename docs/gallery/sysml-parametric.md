@@ -9,7 +9,7 @@ pageClass: gallery-page
 
 # Parametric diagram
 
-<p class="ex-lead">How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden with a full payload: its battery's usable energy and each load's consumption bound to the parameters of the equations that give the two delivery ranges. The page below opens on it, <a href="/umlimator/examples/types/sysml-parametric.html#view=range" target="_self">The cargo bike's delivery range, empty and laden</a>, live: pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden: its battery's usable energy, its empty consumption and its payload in kilograms bound to the parameters of the equations that give the laden consumption and the two delivery ranges. The page below opens on it, <a href="/umlimator/examples/types/sysml-parametric.html#view=range" target="_self">The cargo bike's delivery range, empty and laden</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
 <div class="ex-frame"><iframe src="/umlimator/examples/types/sysml-parametric.html" title="Parametric diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/sysml-parametric.html" target="_self">Open full screen<span class="visually-hidden"> (Parametric)</span></a><a href="../conformance/sysml-parametric.html">Conformance<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.pdf" target="_self">PDF<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.json" target="_self">Model<span class="visually-hidden"> (Parametric)</span></a></div>
@@ -20,12 +20,12 @@ pageClass: gallery-page
 
 <ol class="ex-shows">
 <li>The frame's header naming its block: <code>par [Block] CargoBike [...]</code></li>
-<li>Value properties as plain boxes <code>name : Type</code> (ladenConsumption : EnergyPerDistance, batteryCapacity : Energy)</li>
+<li>Value properties as plain boxes <code>name : Type</code> (payload : Mass, batteryCapacity : Energy)</li>
 <li>Constraint properties as boxes with rounded corners, <code>name : ConstraintBlock</code>, the block's expression in braces under the name, cut to the box</li>
 <li>Two constraint properties typed by one constraint block (empty and laden : RangeEquation)</li>
 <li>Parameters as squares on a constraint property's border, <code>name : Type</code> beside each</li>
 <li>Binding connectors, plain lines with no ends, from value properties to parameters</li>
-<li>A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden)</li>
+<li>A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden; the consumption of empty into load, load's laden into the consumption of laden)</li>
 </ol>
 
 ## In another setting {#alternatives}

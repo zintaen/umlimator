@@ -3,7 +3,7 @@
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §9). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange, and no solving: the equations are text.
 
-A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the range of the bookshop's delivery cargo e-bike, empty and laden with a full payload, from its battery's usable energy.
+A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the range of the bookshop's delivery cargo e-bike, empty and laden with its payload in kilograms, from its battery's usable energy.
 
 ## The subset, and SysML v1.7's clauses
 
