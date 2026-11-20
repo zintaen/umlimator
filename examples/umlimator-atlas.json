@@ -1,7 +1,7 @@
 {
  "$schema": "../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Umlimator Atlas",
+ "title": "Umlimator",
  "root": "overview",
  "nodes": [
   {

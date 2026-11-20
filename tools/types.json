@@ -1,38 +1,6 @@
 {
  "about": "Each diagram type's page (examples/types/<type>.json, hand-authored, rendered to examples/types/<type>.html): its title, its intro (a sentence or two on the scenario the diagram draws), its main view (the model's root and first view: one comprehensive diagram of the type, showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist in one picture), its alternatives (the same example in a setting that cannot coexist with the main view, such as a layout direction or a notation: each a view of the same model, a child of the main view, with what differs), and shows (the features the main view demonstrates, in the order a reader finds them, a checklist the docs page lists). A type may allow layout issues (issues, a count, with why, the reason the type's layout cannot avoid them); 0 is the default and the goal. A type still \"pending\" keeps its old page model (an overview of variant cards) until its comprehensive example replaces it. Plain keyboard characters; `code` in backticks.",
  "types": {
-  "map": {
-   "title": "Map",
-   "intro": "A bookshop's systems on one map: the people who use it, the apps they use, the API at its heart with what it calls, stores and hands on, the support desk, and what is new, planned and switched off.",
-   "main": "shop",
-   "alternatives": [
-    {
-     "view": "shop-run",
-     "setting": "As a numbered view (`render` `sequence`): the cards and lines a checkout touches, numbered in run order instead of the hand-set steps, with no boxes."
-    }
-   ],
-   "shows": [
-    "The view's title and caption over the map",
-    "A card drawn by its kind: person (Shoppers), user (Shop staff), terminal (Admin CLI), browser app (Storefront), phone (Shop app), folder (Pricing), hexagon (Fraud check), cylinder (Orders), pipe (Order queue), robot (Support agent), page with a folded corner (returns.md), box in perspective (Hosts), dashed external card (Card gateway)",
-    "A card's own `shape` over its kind: Back office drawn as a window",
-    "A card with its name only, the sub-line kept for the panel (Admin CLI, `noSub`)",
-    "Logos on cards (Storefront React, Shop API FastAPI, Orders PostgreSQL)",
-    "Badges on cards, plain and in a tone (public, on call, backed up)",
-    "Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)",
-    "A main-step card with verb chips and an edit mark (Shop API: checkout, refund)",
-    "Line kinds in their colours: calls, feeds (charges, saves), triggers (checks), state (paid order, reads) and guard (if within 14 days)",
-    "Line weights 1 to 3, shown as widths on hover, selection and keyboard focus (POST /orders 3, order 2)",
-    "Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)",
-    "A line with a sub-label (POST /orders over JSON)",
-    "Line styles over the kind: dashed (runs jobs), security (charges), async (paid order)",
-    "Added lines green and flowing (on the go, redeem), a removed line rose and dashed (nudges), an edit mark on a line (saves)",
-    "Boxes around cards, one nested in another (Data in Shop platform), with badges on their borders (EU, backed up nightly)",
-    "Tinted boxes, dashed with the title in their tone (Data in green, Support in violet)",
-    "A line ending on a box's border (Hosts runs Shop platform)",
-    "One pin (`layout`): the Card gateway at column 6, row 0, so the charges line clears the Data box",
-    "Two lenses in the page's Lenses menu: Who owns what (rings each card in its owner's tone) and Where the money goes (lights the feeds lines)"
-   ]
-  },
   "uml-class": {
    "title": "Class diagram",
    "intro": "A bookshop's sales domain: who orders, what an order holds, how it is paid for, and the shared types the classes use, in one class diagram.",

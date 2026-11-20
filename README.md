@@ -11,7 +11,7 @@ Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types yo
 
 One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
 
-[![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](https://raw.githubusercontent.com/zintaen/umlimator/main/examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
+[![The Umlimator atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](https://raw.githubusercontent.com/zintaen/umlimator/main/examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
 ## Install
 
@@ -78,7 +78,7 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 | [Guide](https://zintaen.github.io/umlimator/guide/getting-started.html) | the model, embedding, editing, the CLI, the Action, MCP, import and icons ([as Markdown](https://github.com/zintaen/umlimator/tree/main/docs/guide)) |
 | [API](https://zintaen.github.io/umlimator/api/) | every export, its options and events (`lib/umlimator.d.ts`) |
 | [Diagram types](https://zintaen.github.io/umlimator/types.html) | the 28 types, each with a live example and its conformance note |
-| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, host pages for embedding, live updates and editing ([what each one shows](https://github.com/zintaen/umlimator/blob/main/examples/README.md)) |
+| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, the atlases (each opens on a map: the [Bookshop atlas's overview](https://zintaen.github.io/umlimator/gallery/bookshop-atlas.html#view-overview) shows everything a map draws), host pages for embedding, live updates and editing ([what each one shows](https://github.com/zintaen/umlimator/blob/main/examples/README.md)) |
 | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | try a model in the browser |
 | [Changelog](https://github.com/zintaen/umlimator/blob/main/docs/module-api.md) | each release's changes, and the decisions behind the API |
 

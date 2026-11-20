@@ -1,5 +1,5 @@
 ---
-title: "The Bookshop Atlas"
+title: "Bookshop"
 description: "An online bookshop modelled end to end in one model: many views of many diagram types that open into each other."
 aside: false
 pageClass: gallery-page
@@ -7,12 +7,12 @@ pageClass: gallery-page
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# The Bookshop Atlas
+# Bookshop
 
-<p class="ex-lead">An online bookshop modelled end to end as one model: a map of its systems and the people around them opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.</p>
+<p class="ex-lead">An online bookshop modelled end to end as one model: a map of its systems and the people around them, which shows everything a map draws, opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/bookshop-atlas.html" title="The Bookshop Atlas, live" loading="lazy"></iframe></div>
-<div class="ex-links"><a href="/umlimator/examples/bookshop-atlas.html" target="_self">Open full screen<span class="visually-hidden"> (The Bookshop Atlas)</span></a><a href="/umlimator/examples/bookshop-atlas.pdf" target="_self">PDF<span class="visually-hidden"> (The Bookshop Atlas)</span></a><a href="/umlimator/examples/bookshop-atlas.json" target="_self">Model<span class="visually-hidden"> (The Bookshop Atlas)</span></a></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/bookshop-atlas.html" title="Bookshop, live" loading="lazy"></iframe></div>
+<div class="ex-links"><a href="/umlimator/examples/bookshop-atlas.html" target="_self">Open full screen<span class="visually-hidden"> (Bookshop)</span></a><a href="/umlimator/examples/bookshop-atlas.pdf" target="_self">PDF<span class="visually-hidden"> (Bookshop)</span></a><a href="/umlimator/examples/bookshop-atlas.json" target="_self">Model<span class="visually-hidden"> (Bookshop)</span></a></div>
 
 ## Its views {#views}
 
@@ -20,7 +20,35 @@ pageClass: gallery-page
 <article class="ex-variant" id="view-overview">
 <h3><a href="/umlimator/examples/bookshop-atlas.html#view=overview" target="_self">Bookshop</a></h3>
 <p class="ex-sub">Map</p>
-<p>The atlas's root: the bookshop's systems and the people and partners around them. Each card opens the view that tells its part of the business.</p>
+<p>The atlas's root and the map's example: the bookshop's systems and the people and partners around them, with every card kind, boxes nested and tinted, badges, change marks, line kinds, weights, styles and steps, and two lenses. Each card that stands for a part of the business opens the view that tells it.</p>
+<p>The map's example: what it shows, in the order you find it in the picture:</p>
+<ol class="ex-shows">
+<li>The view's title and caption over the map</li>
+<li>A card drawn by its kind: person (Shopper), user (Shop staff), browser app (Storefront), phone (Shop app), terminal (Admin CLI), folder (Pricing), hexagon (Fraud check), cylinder (Database), pipe (Order queue), robot (Support agent), page with a folded corner (returns.md, Opening plan), box in perspective (Hosting), dashed external card (Payment provider, Email service, Courier), AI card (Reminder bot), backend card (Shop API, Order worker, Warehouse, Gift cards)</li>
+<li>A card's own <code>shape</code> over its kind: Back office drawn as a window</li>
+<li>A card with its name only, the sub-line kept for the panel (Admin CLI, <code>noSub</code>)</li>
+<li>Logos and icons on cards (Storefront React, Shop API FastAPI, Database PostgreSQL, Reminder bot a robot)</li>
+<li>Badges on cards, plain and in a tone (public, on call, backed up)</li>
+<li>Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)</li>
+<li>A main-step card with verb chips and an edit mark (Shop API: checkout, refund)</li>
+<li>Cards that open a view of their own, marked in their top corner: every card but the Shop app, Back office, Admin CLI, Fraud check, Gift cards, Support agent, Reminder bot, Email service and Courier opens the diagram that tells its part</li>
+<li>Line kinds in their colours: calls, feeds (charges cards, oldest first, parcels), triggers (checks, pick lists), state (reads, writes; paid order; reads) and guard (refund if within 14 days)</li>
+<li>Line weights 1 to 3, shown as widths on hover, selection and keyboard focus (POST /orders 3, browses and orders 2)</li>
+<li>Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)</li>
+<li>A line with a sub-label (POST /orders over JSON over HTTPS)</li>
+<li>Line styles over the kind: dashed (runs jobs), security (charges cards), async (paid order)</li>
+<li>Added lines green and flowing (on the go, redeems), a removed line rose and dashed (nudges), an edit mark on a line (reads, writes)</li>
+<li>Boxes around cards, one nested in another (Data in Bookshop), with badges on their borders (EU, backed up nightly)</li>
+<li>Tinted boxes, dashed with the title in their tone (Data in green, Support in violet)</li>
+<li>A line ending on a box's border (Hosting runs the Bookshop)</li>
+<li>Pins (<code>layout</code>): each card at its column and row, so the lines run left to right and cross nothing</li>
+<li>Two lenses in the page's Lenses menu: Who owns what (rings each card in its owner's tone) and Where the money goes (lights the feeds lines)</li>
+</ol>
+</article>
+<article class="ex-variant" id="view-overview-run">
+<h3><a href="/umlimator/examples/bookshop-atlas.html#view=overview-run" target="_self">An order, in run order</a></h3>
+<p class="ex-sub">Map</p>
+<p>The same map's checkout as a numbered view (<code>render: sequence</code>): the cards and lines a checkout touches, numbered in run order, with no boxes. The Pricing card opens it.</p>
 </article>
 <article class="ex-variant" id="view-c4-context">
 <h3><a href="/umlimator/examples/bookshop-atlas.html#view=c4-context" target="_self">Bookshop: system context</a></h3>

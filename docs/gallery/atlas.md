@@ -1,5 +1,5 @@
 ---
-title: "The Umlimator Atlas"
+title: "Umlimator"
 description: "Umlimator's own model, drawn with umlimator, in many views that open into each other."
 aside: false
 pageClass: gallery-page
@@ -7,12 +7,12 @@ pageClass: gallery-page
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# The Umlimator Atlas
+# Umlimator
 
 <p class="ex-lead">Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/umlimator-atlas.html" title="The Umlimator Atlas, live" loading="lazy"></iframe></div>
-<div class="ex-links"><a href="/umlimator/examples/umlimator-atlas.html" target="_self">Open full screen<span class="visually-hidden"> (The Umlimator Atlas)</span></a><a href="/umlimator/examples/umlimator-atlas.html#story=pull-request&amp;step=1" target="_self">A pull request, from push to comment<span class="visually-hidden"> (The Umlimator Atlas)</span></a><a href="/umlimator/examples/umlimator-atlas.html#story=assistant&amp;step=1" target="_self">An assistant, then the reader<span class="visually-hidden"> (The Umlimator Atlas)</span></a><a href="/umlimator/examples/umlimator-atlas.pdf" target="_self">PDF<span class="visually-hidden"> (The Umlimator Atlas)</span></a><a href="/umlimator/examples/umlimator-atlas.json" target="_self">Model<span class="visually-hidden"> (The Umlimator Atlas)</span></a></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/umlimator-atlas.html" title="Umlimator, live" loading="lazy"></iframe></div>
+<div class="ex-links"><a href="/umlimator/examples/umlimator-atlas.html" target="_self">Open full screen<span class="visually-hidden"> (Umlimator)</span></a><a href="/umlimator/examples/umlimator-atlas.html#story=pull-request&amp;step=1" target="_self">A pull request, from push to comment<span class="visually-hidden"> (Umlimator)</span></a><a href="/umlimator/examples/umlimator-atlas.html#story=assistant&amp;step=1" target="_self">An assistant, then the reader<span class="visually-hidden"> (Umlimator)</span></a><a href="/umlimator/examples/umlimator-atlas.pdf" target="_self">PDF<span class="visually-hidden"> (Umlimator)</span></a><a href="/umlimator/examples/umlimator-atlas.json" target="_self">Model<span class="visually-hidden"> (Umlimator)</span></a></div>
 
 ## Its views {#views}
 
