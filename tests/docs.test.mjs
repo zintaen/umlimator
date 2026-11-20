@@ -488,3 +488,22 @@ test('audit 60: module-api.md\'s section after 0.44.0 names the behaviour change
   assert.doesNotMatch(rel, /`examples\/types\/map\.json` and `docs\/gallery\/map\.md` are gone/);
   assert.match(rel, /Diagrams \(the map and the 28 types\)/);
 });
+
+// audit 64 finding 9: round 63's fixes landed after 0.45.0 was cut (from 9b836c1e) with no line in the release notes, and
+// 0.45.0's Known gaps list them as open: the section after the last release names each change a host sees and closes them
+test('audit 64: module-api.md\'s section after the last release names round 63\'s changes and closes 0.45.0\'s open audit 63 items', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.ok(at(version + ':') > 0, `a ${version} section`);
+  const from = doc.indexOf('\n## ', at(version + ':') + 4);
+  assert.ok(from > 0, `a section after ${version}`);
+  const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined).replace(/\s+/g, ' ');
+  assert.match(after, new RegExp(`^ ## After ${version.replace(/\./g, '\\.')}: changes not yet released`));
+  for (const [what, re] of [['the audits it holds', /They are the fixes of audits 63 and/], ['0.45.0\'s open items closed', /Audit 63's 5 low findings, open in 0\.45\.0 \(its Known gaps\), are closed/],
+    ['the BPMN boundary event on a host not read', /boundary event whose host the reader does not read[^.]*kept whole under `ext\.bpmn\.skipped`/],
+    ['the Ingress resource backend', /Ingress resource backend is said as a resource backend/], ['the v1beta1 spec.backend', /`extensions\/v1beta1` `spec\.backend` is read as the default route/],
+    ['the use case actor\'s Alt + arrow', /Alt \+ an arrow along the rank axis on an actor[^.]*emits nothing/], ['keepsRank', /`keepsRank\(model, view, id\)`/],
+    ['the history() docs', /The `history\(\)` docs say `limit` caps the steps back/], ['the showcase guard', /showcase guard counts each legacy test file's reads/],
+    ['the PDF Members rows (audit 64)', /PDF's Members column prints an operation as its box draws it/], ['the BPMN said-once line (audit 64)', /moves to the next element read with that attribute/]])
+    assert.match(after, re, what);
+});
