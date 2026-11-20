@@ -969,3 +969,14 @@ test('a backslash before a capital N is text, not a line break, in the flowchart
   assert.equal(readMermaidFlowchart('flowchart LR\n  A["one\\ntwo<BR>three"]').model.nodes[0].label, 'one\ntwo\nthree');
   assert.equal(readMermaidSequence('sequenceDiagram\n  A->>B: one\\ntwo<Br/>three').model.views[0].edges[0].label, 'one\ntwo\nthree');
 });
+
+test('the class writer writes a carriage return as #13;, in a class, relation and note label, so Mermaid reads one statement and it reads back (audit 58)', () => {
+  for (const label of ['Order\r\nLine', 'y\r}\rclass Z']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label }, { id: 'B', type: 'uml.Class', label: 'B' }, { id: 'n', type: 'uml.Comment', label }],
+      edges: [{ id: 'A-B', type: 'uml.Association', from: 'A', to: 'B', label }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'n'] }] };
+    const text = write(m), back = read(text).model;
+    assert.ok(!text.includes('\r'), JSON.stringify(text));
+    assert.equal(text.split('#13;').length - 1, 3 * (label.split('\r').length - 1));
+    assert.deepEqual([back.nodes.map(n => n.label), back.edges.map(e => e.label)], [[label, 'B', label], [label]]);
+  }
+});

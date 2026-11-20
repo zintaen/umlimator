@@ -399,8 +399,8 @@ Also rejected: reading a trace directly and writing replies at span ends. That n
 |---|---|---|
 | `participant A`, `participant A as Name`, `actor A` | A `uml.Lifeline` with its id from `A` and the alias as its label. An actor gets `stereotypes: ['actor']` | |
 | `participant A@{ "type": … }` | The type as a stereotype; the writer writes a participant's first stereotype back so when it is one of Mermaid's six types (audit 17) | approximated |
-| `create participant B`, then a message to B | That message gets `sort: 'create'` | |
-| `destroy B`, then a message to B | That message gets `sort: 'delete'`. A message from B is kept as written, and its stem is not ended | skipped (the destruction) |
+| `create participant B`, then a message to B | That message gets `sort: 'create'`. A message from B, to itself too, is kept as written, and nothing creates B | skipped (the creation) |
+| `destroy B`, then a message to B | That message gets `sort: 'delete'`, unless a later message (not in another operand of an `alt`, nor after a `break`) still reaches B or comes from B: then it keeps its arrow's sort, or `create` when it also creates B, and its stem is not ended. A message from B, to itself too, is kept as written, and its stem is not ended. A message that both creates and destroys B, with nothing later, gets `sort: 'delete'`, and the creation is reported | skipped (the destruction, or the creation) |
 | `->>` | call | |
 | `-->>` | reply, with `replyTo` the latest unanswered call from the reply's receiver to its sender. A call answered only in another operand of an `alt` counts as unanswered | approximated when no call is found |
 | `-)` | async | |
