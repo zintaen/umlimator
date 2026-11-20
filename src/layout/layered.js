@@ -1237,10 +1237,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     placed.push({ x: L.x, y: L.y, w: L.w, h: L.h }); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); e.lbl = L; });
   edges.forEach(e => { if ((e.label || e.step != null) && !e.lbl && e.pts && !(map && e.fixed)) { placeLabel(e, true); if (e.lbl) LOOSE.add(e); } });
   // (a typed view with repair off) a label the late tries left on other lines: those lines, up to three, routed again round it
-  // (its box is reserved; crossing lines if they must), kept when the view has fewer issues but crossings, no more
-  // in all and no label less (audit 62: the use case gallery example with one
-  // association added or deleted, a long extend label on the one gap its line crosses, an include and another extend through it)
-  if (!map && dg.repair === false && !NEST && !dg.quick) { let lb = 4; const said = () => { const ps = routeAudit({ edges, families, byId }, ''); return [ps.filter(p => !/ cross$/.test(p)).length, ps.length]; }, lbls = () => edges.filter(o => o.lbl).length;
+  // (its box is reserved; crossing lines if they must), kept when the view has fewer issues but crossings, no more in all and
+  // no label less (audit 62: the use case gallery example with one association added or deleted, a long extend label on the one
+  // gap its line crosses, an include and another extend through it). Not in a nested view (a state machine's, NEST or PLAIN:
+  // its own passes weigh its labels) nor one whose boxes have more padding than 12 px (a cube's faces lie there, deployment.js,
+  // which the grid does not know)
+  if (!map && dg.repair === false && !dg.nest && !dg.quick && !families.some(f => f.pad > 12)) { let lb = 4; const said = () => { const ps = routeAudit({ edges, families, byId }, ''); return [ps.filter(p => !/ cross$/.test(p)).length, ps.length]; }, lbls = () => edges.filter(o => o.lbl).length;
     edges.forEach(e => { const L = e.lbl; if (!L || e.fixed || lb <= 0 || !onLine(e, L)) return; const r = { x: L.x + 1, y: L.y + 1, w: L.w - 2, h: L.h - 2 };
       const os = edges.filter(o => o !== e && o.pts && segsOf(o.pts).some(([a, b]) => segHitsRect(a, b, r)));
       if (!os.length || os.length > 3 || os.some(o => o.fixed || o.inner || o.s === o.t || o.fromPort != null || o.toPort != null)) return; lb--;

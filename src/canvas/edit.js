@@ -154,8 +154,11 @@ function typedEditor(api) {
     if (e.altKey) { const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[K], n = s && s.type === 'node' && api.geo().byId[s.id];
       if (!d || !n) return false; if (!Number.isFinite(n.col)) return true; if (api.geo().down) d.reverse();
       // a cell another card is pinned to is stepped over (audit 58: Alt + Left onto it drew the two cards one over the other)
+      // and so is the cell the card's own pin names when the card is drawn elsewhere: the layout settled that pin back (a box over
+      // another there), and writing it again changed nothing, so the card could not be stepped past it by keyboard (audit 62)
       const L = (view() || {}).layout, onPin = (c, r) => isRec(L) && Object.entries(L).some(([k, p]) => k !== n.id && Array.isArray(p) && p[0] === c && Math.abs(p[1] - r) < 1);
-      let c = n.col + d[0], r = n.row + d[1]; for (let k = 0; onPin(c, r) && k < 64; k++) { c += d[0]; r += d[1]; }
+      const own = isRec(L) && Object.hasOwn(L, n.id) && Array.isArray(L[n.id]) ? L[n.id] : null, mine = (c, r) => !!own && own[0] === c && Math.abs(own[1] - r) < 1;
+      let c = n.col + d[0], r = n.row + d[1]; for (let k = 0; (onPin(c, r) || mine(c, r)) && k < 64; k++) { c += d[0]; r += d[1]; }
       pin(n.id, c, r); return true; }
     if (K === 'F2' && s && can('rename')) { api.rename(); return true; }
     if ((K === 'n' || K === 'N') && can('add')) { I.addNode(0); return true; }

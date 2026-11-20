@@ -264,3 +264,11 @@ test('audit 62: the use case gallery example with one association added or delet
   const rm = structuredClone(ex); rm.edges = rm.edges.filter(e => e.id !== 'member-tracks');
   assert.deepEqual(on(rm), [], 'member-tracks deleted');
 });
+
+// audit 62: Alt + Right on the use case gallery's Pay for the order pinned it a column right, and pinsClear drew it back on its
+// own cell (two labels on lines there weighed more than none): the card now goes a column right or further
+test('audit 62: one Alt + Right on a use case of the gallery example never draws it back where it was', () => {
+  const ex = JSON.parse(readFileSync(new URL('../examples/types/uml-use-case.json', import.meta.url))), vid = 'shopping', at = (m, id) => { const n = layout(m, vid).byId[id]; return [n.col, n.row]; };
+  const [c, r] = at(ex, 'pay'), q = at(apply(ex, [{ op: 'set', view: vid, path: ['layout', 'pay'], value: [c + 1, r] }]), 'pay');
+  assert.ok(q[0] >= c + 1, JSON.stringify([[c, r], q]));
+});
