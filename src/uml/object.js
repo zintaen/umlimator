@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember } from './class.js';
+import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember, rowMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -227,7 +227,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   word: (model, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); return x && isInstance(x) ? 'Instance specification' : null; },
   // the PDF's Members: what the box draws, an instance's slots, a classifier's compartments (audit 30); null: its members
   rows: (model, view, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
-    return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(printMember)); },
+    return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(rowMember)); },
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
   text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
   edits: { rename: obRename, connect: obConnect },
