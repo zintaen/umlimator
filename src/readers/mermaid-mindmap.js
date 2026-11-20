@@ -14,7 +14,7 @@ import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar
    that depth, one report item. Ids (R3): a topic's own (`id[text]`), else one from its text's words, the next free of
    base, base-2 ... `%% id: <id>` above a topic gives it that id, above the header the view's; `%% side: left|right` gives
    a topic `present.<id>.side`, `%% opens: <viewId>` its `opensView`. `[ ]` is the topic itself (the writer's form for an
-   id); `( )`, `(( ))`, `)) ((`, `) (` and `{{ }}`, `::icon()`, `:::classes` and a Markdown string are kept under
+   id), as are `(- )` and, opening a line, `-) )`, which Mermaid draws with no border (reported); `( )`, `(( ))`, `)) ((`, `) (` and `{{ }}`, `::icon()`, `:::classes` and a Markdown string are kept under
    `ext.mermaid` and written back, each kind reported `approximated` once. It never throws.
 
    writeMermaidMindmap(model, viewId?) -> text: one mindmap view, two spaces a level, in `nodeIds` order. A topic is bare
@@ -25,8 +25,10 @@ const MMR_LIMIT = 1 << 20; // characters; a mindmap a person writes is a few kil
 const MMR_VIEW = 'mindmap'; // the view's id when the source does not name it
 const MMR_DEEP = 64; // levels below the root that are read as written; deeper hang at this one (R2)
 // the shapes, longest open first: open, close, what ext.mermaid.shape keeps (null: the topic itself), what Mermaid calls it
-const MMR_SHAPES = [['((', '))', 'circle', 'a circle'], ['))', '((', 'bang', 'a bang'], ['{{', '}}', 'hexagon', 'a hexagon'],
-  ['(', ')', 'rounded', 'a rounded rectangle'], [')', '(', 'cloud', 'a cloud'], ['[', ']', null]];
+// (-, and -) opening a line, are openers in Mermaid's lexer too: a topic with no border (getType's default), read as a plain
+// one, said (audit 54). Their closer here is ) only: Mermaid's -) closer ends a text only where it is quoted or empty
+const MMR_SHAPES = [['((', '))', 'circle', 'a circle'], ['))', '((', 'bang', 'a bang'], ['{{', '}}', 'hexagon', 'a hexagon'], ['(-', ')', null, 'no border'],
+  ['-)', ')', null, 'no border'], ['(', ')', 'rounded', 'a rounded rectangle'], [')', '(', 'cloud', 'a cloud'], ['[', ']', null]];
 const MMR_OPEN = new Map(MMR_SHAPES.filter(s => s[2]).map(s => [s[2], s]));
 const MMR_ENT = new Map([['quot', '"'], ['lt', '<'], ['gt', '>'], ['amp', '&']]); // a Map: #constructor; is no entity
 const MMR_LEAD = /^(%%|:::|::icon\(|mindmap)/i; // a line that starts so is not a topic's name or bare text
@@ -58,11 +60,11 @@ function mmrText(s, bad, badChar) {
 // stopped, or one look-up (R2)
 function mmrTopic(s, more, ahead) {
   let k = 0;
-  while (k < s.length && !'()[]{}'.includes(s[k])) k++;
+  if (!s.startsWith('-)')) while (k < s.length && !'()[]{}'.includes(s[k])) k++; // -) opens a line with no id (Mermaid's id text takes a -)
   if (k === s.length) return { text: s.trim(), bare: true };
   const id = s.slice(0, k).trim(), sh = MMR_SHAPES.find(([o]) => s.startsWith(o, k));
   if (!sh) return { text: s.trim(), bare: true, unclosed: `${s[k]} opens no shape` };
-  const [o, c, shape] = sh, j = k + o.length, out = { id, shape };
+  const [o, c, shape, what] = sh, j = k + o.length, out = { id, shape, ...(!shape && what ? { plain: o } : {}) };
   // Mermaid's string ("[^"]+) and a shape's bare text ([^)\](}]+) run over line breaks (audit 49): when the line holds
   // no stop, the text goes on to the next stop, if that stop is the quote before the closer, or the closer
   const over = (stops, q) => {
@@ -209,6 +211,7 @@ function mmrRead(text, report, say, empty) {
     const rec = { no, label: mmrText(t.text, bad, code => say(no, 'approximated', mermaidBadChar(code))), name: t.id || null };
     if (t.openQuote) say(no, 'approximated', `${mmrClip(t.text)}: a quote is not closed, kept as written`);
     if (t.shape) { (rec.mer = {}).shape = t.shape; first(t.shape, no, `${MMR_OPEN.get(t.shape)[3]} ${MMR_OPEN.get(t.shape)[0]} ${MMR_OPEN.get(t.shape)[1]} is kept, drawn as a rounded box`); }
+    if (t.plain) first(t.plain, no, `${t.plain} opens a topic Mermaid draws with no border: read as a plain topic`);
     if (t.md) { (rec.mer ||= {}).markdown = true; first('markdown', no, 'a Markdown string is kept, drawn as plain text'); }
     for (const [k, h] of hints) rec[k] = h;
     hints.clear();
@@ -316,7 +319,7 @@ function writeMermaidMindmap(model, viewId) {
     if (!sh && !md && bareOk(label) && n.id === mmrSlug(label)) out.push(pad + label);
     else {
       const [o, c] = sh || ['[', ']'];
-      const body = md ? `"\`${enc(label)}\`"` : /^[^()[\]{}"#<`\r\n]+$/.test(label) && label.trim() === label ? label : `"${enc(label).replace(/\r\n|\r|\n/g, '<br>')}"`;
+      const body = md ? `"\`${enc(label)}\`"` : /^[^()[\]{}"#<`\r\n]+$/.test(label) && label.trim() === label && !(o === '(' && label[0] === '-') ? label : `"${enc(label).replace(/\r\n|\r|\n/g, '<br>')}"`;
       if (!idOk(n.id)) out.push(`${pad}%% id: ${n.id}`);
       out.push(`${pad}${idOk(n.id) ? n.id : 't'}${o}${body}${c}`);
     }

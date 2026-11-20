@@ -225,6 +225,9 @@ function szRead(workspace, report, recs, rels, views) {
     if (rels.length === SZ_MAX) { if (!fullR) { fullR = true; say(path, 'skipped', `over ${SZ_MAX} relationships: this and the rest are not read`); } continue; }
     const to = bySid.get(szKey(szOwn(x, 'destinationId')));
     if (!to) { say(path, 'skipped', `a relationship from ${from.node.label} whose destination is not read: not read`); continue; }
+    // one between an element and its own owner, or its owner's owner (Structurizr refuses it; the C4 type can not hold it)
+    const owner = [[from, to], [to, from]].find(([a, b]) => { for (let p = a.parent, n = 0; p && n <= SZ_DEEP + 4; p = p.parent, n++) if (p === b) return true; return false; });
+    if (owner) { say(path, 'skipped', `a relationship between ${owner[0].node.label} and its own owner ${owner[1].node.label}: not read`); continue; }
     const description = text(x, 'description', path), technology = text(x, 'technology', path);
     const edge = { type: 'c4.Relationship', from, to, ...(description ? { label: description } : {}), ...(technology ? { props: { technology } } : {}) };
     const r = { edge, ident: ident(x) };

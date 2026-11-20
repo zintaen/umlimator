@@ -33,7 +33,7 @@ const mfTable = o => Object.assign(Object.create(null), o); // a lookup table: "
 // the bracket forms, longest first, as the importer's SHAPES: open, close, type (null: a process, approximated) and what Mermaid calls it
 const MF_BRACKETS = [['(((', ')))', null, 'a double circle'], ['([', '])', 'flow.Terminator'], ['[[', ']]', 'flow.PredefinedProcess'], ['[(', ')]', 'flow.Database'],
   ['((', '))', 'flow.Connector'], ['{{', '}}', null, 'a hexagon'], ['[/', '/]', 'flow.InputOutput'], ['[/', '\\]', null, 'a trapezoid'], ['[\\', '\\]', 'flow.InputOutput'],
-  ['[\\', '/]', null, 'an upside-down trapezoid'], ['[', ']', 'flow.Process'], ['(', ')', null, 'a rounded box'], ['{', '}', 'flow.Decision'], ['>', ']', null, 'an asymmetric shape']];
+  ['[\\', '/]', null, 'an upside-down trapezoid'], ['[', ']', 'flow.Process'], ['(-', '-)', null, 'an ellipse'], ['(', ')', null, 'a rounded box'], ['{', '}', 'flow.Decision'], ['>', ']', null, 'an asymmetric shape']];
 // @{ shape: ... }: the names and aliases in Mermaid's shapes.ts of the shapes a flowchart symbol has; any other is a process, approximated
 const MF_SHAPES = mfTable({
   stadium: 'flow.Terminator', terminal: 'flow.Terminator', pill: 'flow.Terminator',

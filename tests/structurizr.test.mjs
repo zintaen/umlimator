@@ -338,3 +338,23 @@ test('a raw character XML cannot hold in a name or description is read as U+FFFD
     { path: 'model.people[0].name', status: 'approximated', message: 'the character U+0001, which SVG or XML cannot hold, is read as U+FFFD' },
     { path: 'model.people[0].description', status: 'approximated', message: 'the character U+FFFF, which SVG or XML cannot hold, is read as U+FFFD' }]);
 });
+
+test('a relationship between an element and its own owner, or its owner\'s owner, is reported and not read (audit 54)', () => {
+  const ws = { model: {
+    softwareSystems: [{ id: '3', name: 'S', relationships: [{ id: 'r3', sourceId: '3', destinationId: '5', description: 'down' }, { id: 'r4', sourceId: '3', destinationId: '6', description: 'kept' }],
+      containers: [{ id: '4', name: 'C', relationships: [{ id: 'r1', sourceId: '4', destinationId: '3', description: 'calls' }],
+        components: [{ id: '5', name: 'K', relationships: [{ id: 'r2', sourceId: '5', destinationId: '3', description: 'up' }, { id: 'r5', sourceId: '5', destinationId: '5', description: 'self' }] }] }] },
+      { id: '6', name: 'T' }],
+    deploymentNodes: [{ id: '7', name: 'Box', environment: 'Live', relationships: [{ id: 'r6', sourceId: '7', destinationId: '9' }],
+      children: [{ id: '8', name: 'Inner', environment: 'Live', containerInstances: [{ id: '9', containerId: '4', instanceId: '1', environment: 'Live', relationships: [{ id: 'r7', sourceId: '9', destinationId: '8' }] }] }] }] },
+    views: { containerViews: [{ key: 'c', softwareSystemId: '3', elements: [{ id: '4' }] }] } };
+  const r = read(ws);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label]), [['s', 't', 'kept'], ['k', 'k', 'self']]);
+  assert.deepEqual(r.report.filter(x => x.message.includes('own owner')).map(x => [x.path, x.message]), [
+    ['model.softwareSystems[0].relationships[0]', 'a relationship between K and its own owner S: not read'],
+    ['model.softwareSystems[0].containers[0].relationships[0]', 'a relationship between C and its own owner S: not read'],
+    ['model.softwareSystems[0].containers[0].components[0].relationships[0]', 'a relationship between K and its own owner S: not read'],
+    ['model.deploymentNodes[0].relationships[0]', 'a relationship between C and its own owner Box: not read'],
+    ['model.deploymentNodes[0].children[0].containerInstances[0].relationships[0]', 'a relationship between C and its own owner Inner: not read']]);
+  assert.deepEqual(check(r.model).filter(p => p.level === 'error'), []);
+});

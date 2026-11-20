@@ -486,3 +486,21 @@ test('a subgraph titled with no id of its own whose title holds whitespace is Me
     '5: subgraph subGraph1: the group is not read, the nodes in it are', '8: subgraph one: the group is not read, the nodes in it are',
     '12: ship-it --> one: one is a subgraph, which is not read']);
 });
+
+test('an ellipse A(-text-) is read as Mermaid reads it, its text without the dashes, in this reader and the map importer alike (audit 54)', () => {
+  // Mermaid's flow.jison: '(-' text '-)' is addVertex(A, text, 'ellipse'); its text may hold dashes, and a quoted one -)
+  const src = ['flowchart TD', 'A(-Start here-) --> B(round)', 'C(- x -) & D(-a-b-) --> E(--x--)', 'F(-"q -) z"-)'].join('\n');
+  const want = [['A', 'Start here'], ['B', 'round'], ['C', ' x '], ['D', 'a-b'], ['E', '-x-'], ['F', 'q -) z']];
+  const { model, report } = read(src);
+  assert.deepEqual(model.nodes.map(n => [n.id, n.label]), want.map(([id, l]) => [id, l.trim()]));
+  assert.deepEqual(model.nodes.map(n => n.type), Array(6).fill('flow.Process'));
+  assert.deepEqual(report.map(r => r.message), ['A: an ellipse is read as a process', 'B: a rounded box is read as a process',
+    'C: an ellipse is read as a process', 'D: an ellipse is read as a process', 'E: an ellipse is read as a process', 'F: an ellipse is read as a process']);
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const py = JSON.parse(execFileSync('python3', ['-I', '-c', `import json, sys
+sys.path.insert(0, ${JSON.stringify(root)})
+import umlimator_import as imp
+m, unread = imp.read("mermaid", sys.stdin.read(), "flowchart")
+print(json.dumps([[n["id"], n["label"]] for n in m["nodes"]]))`], { input: src, encoding: 'utf8' }));
+  assert.deepEqual(py, want.map(([id, l]) => [id, l.trim()]));
+});
