@@ -1177,12 +1177,38 @@ def sketch(m, most=60):
             todo += [(y, i) for y in lst(x.get("members"))]
     at = lambda r: r if isinstance(r, str) and r in cards else owner.get(r) if isinstance(r, str) else None
     # lifted: an end was a member, drawn on its card; a line from a card to itself (a self-transition, a reflexive call) is not
-    lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}
-             for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
+    lines = [({**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}, w, e)
+             for w, es in enumerate([m.get("edges") or [], *(v.get("edges") or [] for v in views)]) for e in es if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
     # a change the sketch draws: a mark, as a string; a list or object an author wrote is no mark and is left out, as the
     # module's own pictures leave it (audit 54: `[1] in MARKS` raised TypeError and the diff Action wrote no summary)
-    mark = lambda x: x["change"] if isinstance(x.get("change"), str) and x["change"] in MARKS else None
-    hot = {i for i, n in cards.items() if mark(n)}
+    mark = lambda x: x["change"] if isinstance(x, dict) and isinstance(x.get("change"), str) and x["change"] in MARKS else None
+    # one line is drawn once (audit 55): diff() writes a copy of a model line, marked or not, into each view that lists lines
+    # (a line taken out of a view or put in, a card taken out or put in), so the model's line and a view's copy, or two views'
+    # copies, are one line. A line is keyed by its id and ends, or with no id by all it says but its mark, and by how many
+    # such lines its own list held before it (two alike in one list stay two); a marked copy wins over an unmarked one, and two
+    # different marks are 'changed'
+    one, seen = {}, {}
+    for e, w, raw in lines:
+        i = raw.get("id")
+        say = (i, e["from"], e["to"]) if isinstance(i, (str, int, float)) and not isinstance(i, bool) else \
+            json.dumps({k: v for k, v in raw.items() if k not in ("change", "style")}, sort_keys=True, default=repr)
+        n = seen[w, say] = seen.get((w, say), -1) + 1
+        key, was = (say, n), one.get((say, n))
+        if was is None or (not mark(was) and mark(e)):
+            one[key] = e
+        elif mark(e) and mark(was) != mark(e):
+            one[key] = {**was, "change": "changed"}
+    lines = list(one.values())
+    # a card a view takes out or puts in: diff() marks it in that view's nodeOverrides, not on the card (audit 55); the card's
+    # own mark wins, and two different marks from two views are 'changed'
+    viewmark = {}
+    for v in views:
+        ov = v.get("nodeOverrides") if isinstance(v.get("nodeOverrides"), dict) else {}
+        for i, o in ov.items():
+            if i in cards and mark(o):
+                viewmark[i] = mark(o) if viewmark.get(i) in (None, mark(o)) else "changed"
+    cmark = lambda i: mark(cards[i]) or viewmark.get(i)
+    hot = {i for i in cards if cmark(i)}
     lines = [e for e in lines if mark(e) or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
     # a line between two members of one card, or a member and its card: the card, with no line (audit 34); a card's own loop
     # is drawn (audit 35)
@@ -1194,7 +1220,7 @@ def sketch(m, most=60):
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
     q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace("#", "#35;").replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
-    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{mark(cards[i])}" if mark(cards[i]) else "") for i in key]
+    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{cmark(i)}" if cmark(i) else "") for i in key]
     style = []
     for k, e in enumerate(lines):
         out.append(f'  {key[e["from"]]} {"-.->" if mark(e) == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')

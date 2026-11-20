@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2434,6 +2434,45 @@ if part("audit 54 tools"):
     ok("map-repo · each pin of the skill's CLI ships in a plugin version of its own: plugin.json's version is the one recorded with the pin (audit 54)",
        shipped.get(pin) == plugin and len(set(shipped.values())) == len(shipped)
        and list(shipped.values()) == sorted(shipped.values(), key=lambda v: tuple(map(int, v.split(".")))), (pin, plugin, shipped))
+if part("audit 55 tools"):
+    # audit 55: diff() writes a marked copy of a model line into each view that lists lines, and the sketch drew the model's
+    # line and every copy, so one line came twice (a live copy beside a removed one, or the same mark twice); and a card a view
+    # takes out or puts in is marked only in that view's nodeOverrides, which the sketch never read
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    lines = [{"id": "ab", "from": "a", "to": "b", "label": "one"}, {"id": "bc", "from": "b", "to": "c", "label": "two"}]
+    two = lambda ids: [{"id": "main", "title": "Main", "nodeIds": ids}, {"id": "two", "title": "Two", "parent": "main", "nodeIds": ids}]
+    listed = lambda es, b="B": {"title": "T", "nodes": [*nodes[:1], {"id": "b", "label": b}, *nodes[2:]], "edges": lines,
+                                "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"], "edges": es}]}
+    sk = lambda b, a: u.sketch(u.js("diff", b, a)["model"])
+    out_listed = sk(listed(["ab", "bc"]), listed(["ab"], "B2"))  # a line taken out of a view's list, its card renamed
+    out_two = sk({"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b", "c"])}, {"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b"])})
+    in_two = sk({"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b"])}, {"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b", "c"])})
+    bare = [{k: v for k, v in e.items() if k != "id"} for e in lines]  # lines with no id, as a map's: copied into each view too
+    no_id = sk({"title": "T", "nodes": nodes, "edges": bare, "views": two(["a", "b", "c"])}, {"title": "T", "nodes": nodes, "edges": bare[1:], "views": two(["a", "b"])})
+    drawn = lambda sk_, arrow: sum(arrow in x for x in sk_)
+    ok("diff --base · the sketch draws a line once: a view's marked copy wins over the model's line, and two views' copies are one (audit 55)",
+       drawn(out_listed, '|"two"|') == 1 and drawn(out_listed, ' -.->|"two"| ') == 1 and drawn(out_two, '|"two"|') == 1
+       and drawn(in_two, '|"two"|') == 1 and sum("linkStyle" in x for x in out_two) == 1 and sum("linkStyle" in x for x in in_two) == 1
+       and drawn(no_id, '|"one"|') == 1 and drawn(no_id, '|"two"|') == 1 and sum("linkStyle" in x for x in no_id) == 2,
+       (out_listed, out_two, in_two, no_id))
+    one = lambda ids: {"title": "T", "nodes": nodes, "edges": lines, "views": [{"id": "main", "title": "Main", "nodeIds": ids}]}
+    taken, put = sk(one(["a", "b", "c"]), one(["a", "b"])), sk(one(["a", "b"]), one(["a", "b", "c"]))
+    # one card taken out of one view and put into another: 'changed'
+    moved = u.sketch({"nodes": nodes, "edges": [], "views": [{"id": "v", "nodeIds": ["a"], "nodeOverrides": {"a": {"change": "removed"}}},
+                                                            {"id": "w", "nodeIds": ["a"], "nodeOverrides": {"a": {"change": "added"}}}]})
+    ok("diff --base · the sketch marks a card a view takes out or puts in, as diff() marks it in the view's nodeOverrides (audit 55)",
+       '  n1["C"]:::removed' in taken and '  n1["C"]:::added' in put and '  n0["A"]:::changed' in moved, (taken, put, moved))
+    # audit 54 finding 7: the import table said a person becomes kind frontend (external when external); the importers write
+    # person, and user for an external one
+    with tempfile.TemporaryDirectory() as t:
+        (Path(t) / "p.puml").write_text('@startuml\n!include <C4/C4_Context>\nPerson(shopper, "Shopper")\nPerson_Ext(guest, "Guest")\n'
+                                        'System(shop, "Shop")\nRel(shopper, shop, "Uses")\nRel(guest, shop, "Uses")\n@enduml\n', encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(Path(t) / "p.puml"), "--out", str(Path(t) / "p.json")], capture_output=True, text=True)
+        kinds = {n["id"]: n.get("kind") for n in json.loads((Path(t) / "p.json").read_text(encoding="utf-8"))["nodes"]}
+    row = next((x for x in (ROOT / "docs" / "module-api.md").read_text(encoding="utf-8").splitlines() if x.strip().startswith("| A person (")), "").strip()
+    said = re.findall(r"`(\w+)`", row.split("|")[2]) if row.count("|") > 2 else []
+    ok("docs/module-api.md · the import table gives a person the kinds the importer writes (audit 54 finding 7)",
+       kinds.get("shopper") == "person" and kinds.get("guest") == "user" and said[:2] == ["person", "user"], (kinds, row))
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
