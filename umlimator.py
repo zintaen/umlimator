@@ -1097,7 +1097,11 @@ def diff_since(a):
             continue
         done.append({"file": name, **({"movedFrom": was} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
         md += [f"**{fname}**: " + flat(", ".join(r["views"])) if r["views"] else f"**{fname}**", ""]
-        md += [f"- {flat(s)}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
+        try:  # a sketch that fails costs this file its sketch, never the summary of the rest (audit 54)
+            drawn = sketch(r["model"])
+        except Exception as e:
+            drawn = [f"_No sketch: {flat(str(e))}._"]
+        md += [f"- {flat(s)}" for s in r["summary"]] + [""] + drawn + [""]
         if r.get("stillsFailed"):
             said = no_pictures(r["stillsFailed"])
             md += [f"_{flat(said[:1].upper() + said[1:])}._", ""]  # view ids are model words (audit 11)
@@ -1175,8 +1179,11 @@ def sketch(m, most=60):
     # lifted: an end was a member, drawn on its card; a line from a card to itself (a self-transition, a reflexive call) is not
     lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}
              for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
-    hot = {i for i, n in cards.items() if n.get("change") in MARKS}
-    lines = [e for e in lines if e.get("change") in MARKS or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
+    # a change the sketch draws: a mark, as a string; a list or object an author wrote is no mark and is left out, as the
+    # module's own pictures leave it (audit 54: `[1] in MARKS` raised TypeError and the diff Action wrote no summary)
+    mark = lambda x: x["change"] if isinstance(x.get("change"), str) and x["change"] in MARKS else None
+    hot = {i for i, n in cards.items() if mark(n)}
+    lines = [e for e in lines if mark(e) or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
     # a line between two members of one card, or a member and its card: the card, with no line (audit 34); a card's own loop
     # is drawn (audit 35)
     inside = {e["from"] for e in lines if e["from"] == e["to"] and e["lifted"]}
@@ -1187,12 +1194,12 @@ def sketch(m, most=60):
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
     q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace("#", "#35;").replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
-    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
+    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{mark(cards[i])}" if mark(cards[i]) else "") for i in key]
     style = []
     for k, e in enumerate(lines):
-        out.append(f'  {key[e["from"]]} {"-.->" if e.get("change") == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')
-        if e.get("change") in MARKS:
-            style.append(f"  linkStyle {k} stroke:{MARKS[e['change']]},stroke-width:2px")
+        out.append(f'  {key[e["from"]]} {"-.->" if mark(e) == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')
+        if mark(e):
+            style.append(f"  linkStyle {k} stroke:{MARKS[mark(e)]},stroke-width:2px")
     out += style + [f"  classDef {c} stroke:{v},stroke-width:2px" + (",stroke-dasharray:4 3" if c == "removed" else "") for c, v in MARKS.items()]
     return out + ["```"]
 

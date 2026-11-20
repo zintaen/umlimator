@@ -254,6 +254,24 @@ test('the examples\' README links only files that exist, and \'Not shown\' names
   assert.deepEqual(said.flatMap(([k, v]) => models.filter(m => sets(m, k, v)).map(m => `${k}${v ? ': ' + v : ''} in ${m}`)), []);
 });
 
+// audit 54: the nodeOverrides row said the Bookshop Atlas's Shop API opens domain in components after audit 52 moved that
+// opener to the shop-api image: each view the row names sets nodeOverrides, and each "(card opens `view`)" it says is the
+// opensView of the card of that label in that view's nodeOverrides
+test('the examples\' README nodeOverrides row names the cards that carry an override in each view it names', () => {
+  const row = read('examples/README.md').split('\n').find(l => l.includes('(`nodeOverrides`)')); assert.ok(row);
+  const atlas = json('examples/bookshop-atlas.json'), byId = new Map(atlas.nodes.map(n => [n.id, n]));
+  const named = [...row.split('|')[2].matchAll(/`([\w-]+)`(?: \((?:the )?(.+?) opens `([\w-]+)`\))?/g)].filter(m => atlas.views.some(v => v.id === m[1]));
+  assert.ok(named.length >= 2, row);
+  for (const [, view, card, opens] of named) {
+    const over = atlas.views.find(v => v.id === view).nodeOverrides || {};
+    assert.ok(Object.keys(over).length, `${view} sets no nodeOverrides`);
+    if (!card) continue;
+    const hit = Object.entries(over).filter(([id]) => (byId.get(id)?.label ?? '').toLowerCase() === card.toLowerCase());
+    assert.equal(hit.length, 1, `${view}: no card "${card}" in its nodeOverrides (${Object.keys(over).join(', ')})`);
+    assert.equal(hit[0][1].opensView, opens, `${view}: ${card}`);
+  }
+});
+
 // audit 51: docs/types.md said a type's "All examples" opens one page holding every example and variant of the type, a
 // card for each on its overview, the gallery before 20 Nov; the page tools/gallery.mjs writes is one live example, its
 // checklist and its alternatives, with no cards
