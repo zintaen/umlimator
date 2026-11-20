@@ -987,6 +987,9 @@ def unread(names, pos, named, read=READ):
 def c4(lines, m):
     """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
     boxes, stack, rels, bases, people, opened, named_as = [], [], [], set(), set(), [], {}  # named_as: each alias's id
+    # stack: each open {'s innermost boundary (its own or the one around it), so a line finds its box in O(1), never by
+    # walking every open { that is not a boundary (hostile input, R2, audit 61); a box's dict by its id, for the same reason
+    by_id = {}
     for no, s in lines:
         if s == "}":
             if stack:
@@ -1000,7 +1003,7 @@ def c4(lines, m):
             continue
         c = CALL.match(s)
         name, (pos, named), opens = (c.group(1), call_args(c.group(2)), c.group(3)) if c else (None, ([], {}), s.endswith("{"))
-        box, alias = next((b for b in reversed(stack) if b), None), None
+        box, alias = stack[-1] if stack else None, None
         if c and (e := ELEMENT.fullmatch(name)):
             base, shape, ext = e.groups()
             a = {**dict(zip(ARGS[base].split(), pos)), **named}
@@ -1018,15 +1021,14 @@ def c4(lines, m):
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)
-                for b in boxes:
-                    if b["id"] == box:
-                        b["nodeIds"].append(cid)
+                if box:
+                    by_id[box]["nodeIds"].append(cid)
         elif c and BOUNDARY.fullmatch(name):
             if not pos or not pos[0] or pos[0] in named_as:
                 m.say(no, f"{name}({pos[0] if pos else ''}): {'its alias is used already' if pos and pos[0] else 'no alias'}")
             else:
                 alias = named_as.setdefault(pos[0], m.named(pos[0], no))
-                boxes.append({"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no})
+                boxes.append(by_id.setdefault(alias, {"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no}))
                 if left := unread(BOXARGS.get(name, "alias label tags link descr"), pos, named, {"alias", "label"}):
                     m.say(no, f"{name}({pos[0]}): {left}")
         elif c and (r := REL.fullmatch(name)):
@@ -1039,7 +1041,7 @@ def c4(lines, m):
         elif named.get("shape"):  # ponytail: a tag's $shape (RoundedBoxShape, EightSidedShape) is said, not drawn
             m.say(no, f"{name}({clip((pos or [''])[0], 40)}): $shape={named['shape']} is not imported")
         if opens:
-            stack.append(alias)
+            stack.append(alias or box)
             opened.append((no, s))
     left_open(m, opened)
     ids = m.view("components" if "Component" in bases else "containers" if "Container" in bases else "context", list(m.nodes), boxes)
@@ -1209,7 +1211,7 @@ def statement(s, bad=None):
         if not grp:
             return None
         groups.append(grp)
-        if not s[i:].strip():
+        if WS.match(s, i).end() == len(s):  # not s[i:].strip(): a copy of the rest at each link was quadratic (audit 61)
             return groups, links
         # A e1@--> B: an edge id runs from the link's start to the next @, holding no space, " & or | (Mermaid's LINK_ID), with
         # no { or " after the @ (audit 29: the statement was not imported). The next @ and the next break are each kept
@@ -1316,8 +1318,16 @@ def flowchart(lines, m):
             continue
         style = {"style": "async"} if "." in arrow else {"weight": 2} if "=" in arrow else {}
         label = text(lk["pipe"] or lk["text"], bad_code(m, no))
+        # a map line always has one arrowhead: no arrowhead, a circle end and a cross end are said, and o--o and x--x are
+        # two lines as <--> is, in the typed reader's words (audit 61)
+        head, tail = arrow[-1], arrow[0]
+        two = tail in "<ox"
+        how = (["no arrowhead"] if head not in ">ox" else []) + (["a circle end"] if "o" in (head, tail) else []) \
+            + (["a cross end"] if "x" in (head, tail) else []) + (["an arrowhead at each end"] if two and tail != "<" else [])
+        if how:
+            m.say(no, f"{a} {lk['plain'] or lk['open'] + ' ... ' + lk['close']} {b}: {', '.join(how)}: read as {'two lines' if two else 'a line'}")
         m.line(a, b, label, where=no, hint=eid, **style)  # the edge id names its first line
-        if arrow[0] == "<":
+        if two:
             m.line(b, a, label, where=no, **style)
 
 
