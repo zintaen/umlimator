@@ -63,7 +63,7 @@ test('19-parametric.json draws clean in its frame, right and down: properties in
   for (const direction of ['right', 'down']) {
     const d = withDir(M19, direction), g = layout(d, VID), F = g.families.find(f => f.id === 'ebike');
     assert.deepEqual(check(d, VID), [], `${direction}: no overlap, no crossing, no line through a node`);
-    assert.deepEqual([F.shape, F.title], ['sysml-frame', 'par [Block] EBike [E-bike range]'], direction);
+    assert.deepEqual([F.shape, F.title], ['sysml-frame', 'par [Block] CargoBike [Cargo bike range]'], direction);
     node(M19, 'ebike').members.forEach(x => { const b = g.byId[x.id];
       assert.ok(b.x >= F.x && b.y >= F.y && b.x + b.w <= F.x + F.w && b.y + b.h <= F.y + F.h, `${direction}: ${x.id} in the frame`); });
     const ports = g.nodes.filter(n => n.shape === 'port');
@@ -72,10 +72,10 @@ test('19-parametric.json draws clean in its frame, right and down: properties in
       const b = n.nameBox; assert.ok(b && b.x >= F.x && b.y >= F.y && b.x + b.w <= F.x + F.w && b.y + b.h <= F.y + F.h, `${direction}: ${n.id}'s name in the frame`); });
     const all = [F, ...g.nodes, ...ports.map(n => n.nameBox)], B = g.bounds;
     assert.ok(all.every(b => b.x >= B.x && b.y >= B.y && b.x + b.w <= B.x + B.w && b.y + b.h <= B.y + B.h), `${direction}: the bounds hold the frame and the names`);
-    assert.deepEqual(['usable', 'eco', 'boost'].map(k => g.byId['ebike.' + k].expr), ['{usable = capacity * share}', '{range = energy / consumption}', '{range = energy / consumption}']);
+    assert.deepEqual(['usable', 'empty', 'laden'].map(k => g.byId['ebike.' + k].expr), ['{usable = capacity * share}', '{range = energy / consumption}', '{range = energy / consumption}']);
     assert.equal(g.edges.length, 8);
   }
-  assert.equal(mem(M19, 'ebike.eco').type, 'sysml.ConstraintProperty', 'the model is not edited');
+  assert.equal(mem(M19, 'ebike.empty').type, 'sysml.ConstraintProperty', 'the model is not edited');
 });
 
 test('a constraint block subject: its parameters on its frame, its constraint properties inside, bindings to the frame\'s parameters drawn; one with parameters only is still a frame', () => {
@@ -93,7 +93,7 @@ test('a constraint block subject: its parameters on its frame, its constraint pr
     assert.deepEqual(g.nodes.filter(n => n.shape === 'sysml-constraint').map(n => n.id), ['range-model.u', 'range-model.r']);
     assert.equal(g.nodes.filter(n => n.shape === 'port').length, 4 + 6);
     assert.equal(g.edges.length, 5);
-    assert.ok(!g.byId['ebike.eco'], 'only the subject\'s members');
+    assert.ok(!g.byId['ebike.empty'], 'only the subject\'s members');
   }
   const b = layout(NEST, 'bare'), F = b.families.find(f => f.id === 'range-equation');
   assert.equal(F.shape, 'sysml-frame'); assert.equal(F.title, 'par [ConstraintBlock] RangeEquation');
@@ -102,31 +102,31 @@ test('a constraint block subject: its parameters on its frame, its constraint pr
 
 test('a constraint property\'s shape: rounded corners, its name over its expression, each cut to the box', () => {
   const { markup } = mapContext(M19).buildView(VID);
-  assert.match(markup, /<g class="node part constraint" data-id="ebike.eco"[^>]*aria-label="Constraint eco: RangeEquation \{range = energy \/ consumption\}, in EBike, 3 parameters">/);
+  assert.match(markup, /<g class="node part constraint" data-id="ebike.empty"[^>]*aria-label="Constraint empty: RangeEquation \{range = energy \/ consumption\}, in CargoBike, 3 parameters">/);
   assert.equal((markup.match(/rx="10" class="n-body"/g) || []).length, 3, 'three constraint properties, rounded');
   // sized by the composite type from its name and its parameters (§17): the example's expressions are cut, whole in the name
-  assert.match(markup, /class="c-expr"[^>]*>\{range = energy \/ c…<\/text>/);
+  assert.match(markup, /class="c-expr"[^>]*>\{range = energy \/ cons…<\/text>/);
   const long = structuredClone(M19); node(long, 'range-equation').props.constraint = ('range = ' + 'energy / consumption + '.repeat(5)).padEnd(120, 'x').slice(0, 120); // 120 characters
   assert.equal(node(long, 'range-equation').props.constraint.length, 120);
-  const g = layout(long, VID), n = g.byId['ebike.eco'], cut = /class="c-expr"[^>]*>([^<]*)<\/text>/.exec(mapContext(long).buildView(VID).markup)[1];
-  assert.ok(cut.endsWith('…') && cut.length < 30, cut); assert.equal(n.w, layout(M19, VID).byId['ebike.eco'].w, 'sized by its name, not its expression (§17)');
+  const g = layout(long, VID), n = g.byId['ebike.empty'], cut = /class="c-expr"[^>]*>([^<]*)<\/text>/.exec(mapContext(long).buildView(VID).markup)[1];
+  assert.ok(cut.endsWith('…') && cut.length < 30, cut); assert.equal(n.w, layout(M19, VID).byId['ebike.empty'].w, 'sized by its name, not its expression (§17)');
 });
 
 test('names, reading order, legend and describe() (§13)', () => {
   const g = layout(M19, VID), by = g.byId, E = Object.fromEntries(g.edges.map(e => [e.id, e.aria]));
-  assert.equal(g.families[0].aria, 'Parametric diagram of block EBike: E-bike range');
-  assert.equal(by['ebike.ecoRange'].aria, 'Value ecoRange: Distance, in EBike');
-  assert.equal(by['ebike.eco->range-equation.range'].aria, 'Parameter range: Distance of eco');
-  assert.equal(E['bind-eco-range'], 'Binding from value ecoRange to parameter range of eco');
-  assert.equal(E['bind-usable-eco'], 'Binding from parameter usable of usable to parameter energy of eco');
+  assert.equal(g.families[0].aria, 'Parametric diagram of block CargoBike: Cargo bike range');
+  assert.equal(by['ebike.emptyRange'].aria, 'Value emptyRange: Distance, in CargoBike');
+  assert.equal(by['ebike.empty->range-equation.range'].aria, 'Parameter range: Distance of empty');
+  assert.equal(E['bind-empty-range'], 'Binding from value emptyRange to parameter range of empty');
+  assert.equal(E['bind-usable-empty'], 'Binding from parameter usable of usable to parameter energy of empty');
   assert.equal(layout(NEST, 'model').byId['range-model.range'].aria, 'Parameter range: Distance of RangeModel');
   assert.equal(layout(NEST, 'model').edges.find(e => e.id === 'n-range').aria, 'Binding from parameter range of RangeModel to parameter range of r');
   assert.equal(g.order[0], 'ebike'); assert.deepEqual(g.order.slice(-8), M19.edges.map(e => e.id));
   assert.deepEqual(g.legend.map(s => s.match(/<b>(.*?)<\/b>/)[1]), ['Binding']);
   const said = describe(M19, VID).split('\n');
-  assert.equal(said[0], 'E-bike range: a parametric diagram of 19 elements and 8 lines.');
-  assert.equal(said[1], 'Parametric diagram of block EBike: E-bike range.');
-  assert.equal(said.length, 1 + 19 + 8); assert.equal(said.at(-1), 'Binding from value boostRange to parameter range of boost.');
+  assert.equal(said[0], 'Cargo bike range: a parametric diagram of 19 elements and 8 lines.');
+  assert.equal(said[1], 'Parametric diagram of block CargoBike: Cargo bike range.');
+  assert.equal(said.length, 1 + 19 + 8); assert.equal(said.at(-1), 'Binding from value ladenRange to parameter range of laden.');
   const b = structuredClone(M19); b.views[0].nodeIds.push('range-equation');
   assert.ok(describe(b, VID).split('\n').some(l => l.startsWith('Constraint block RangeEquation')), 'a constraint block\'s card: not "Class"');
 });
@@ -146,17 +146,17 @@ const misSide = m => { const v = m.views[0], g = layout(m, v.id);
     if (!Array.isArray(r)) continue; let o = v; const path = r[0].path; for (const k of path.slice(0, -1)) o = o[k] ??= {}; o[path.at(-1)] = 'Top'; return; }
   throw new Error('no port to move'); };
 const RULE_CASES = {
-  'subject-kind': [m => { m.views[0].subject = 'ebike.eco'; }, 'error'],
-  'binding-ends': [m => { m.edges.find(e => e.id === 'bind-eco-range').props.ends.to.part = 'ebike.ecoRange'; }, 'error'],
-  'binding-parameter': [m => { m.edges.find(e => e.id === 'bind-eco-range').to = 'usable-energy.share'; }, 'error'],
+  'subject-kind': [m => { m.views[0].subject = 'ebike.empty'; }, 'error'],
+  'binding-ends': [m => { m.edges.find(e => e.id === 'bind-empty-range').props.ends.to.part = 'ebike.emptyRange'; }, 'error'],
+  'binding-parameter': [m => { m.edges.find(e => e.id === 'bind-empty-range').to = 'usable-energy.share'; }, 'error'],
   'binding-types': [m => { m.nodes.push({ id: 'distance', type: 'sysml.ValueType', label: 'Distance' }, { id: 'energy', type: 'sysml.ValueType', label: 'Energy' });
-    m.edges.push(bind('mixed', 'ebike.batteryCapacity', 'range-equation.range', { to: { part: 'ebike.eco' } })); }, 'warning'],
-  'parameter-bound': [m => { m.edges = m.edges.filter(e => e.id !== 'bind-eco-range'); }, 'warning'],
+    m.edges.push(bind('mixed', 'ebike.batteryCapacity', 'range-equation.range', { to: { part: 'ebike.empty' } })); }, 'warning'],
+  'parameter-bound': [m => { m.edges = m.edges.filter(e => e.id !== 'bind-empty-range'); }, 'warning'],
   'connector-drawn': [m => { m.views[0].subject = 'range-model'; m.views[0].nodeIds = ['range-model']; m.edges.push(bind('loop', 'range-model.capacity', 'range-model.range')); }, 'warning'],
   'present-values': [misSide, 'warning'],
   // the block definition view's two, said with a parametric view only (audit 20)
-  'value-type': [m => { mem(m, 'ebike.ecoRange').props.valueType = 'RangeEquation'; }, 'warning'],
-  'constraint-type': [m => { delete mem(m, 'ebike.eco').props.valueType; }, 'error'],
+  'value-type': [m => { mem(m, 'ebike.emptyRange').props.valueType = 'RangeEquation'; }, 'warning'],
+  'constraint-type': [m => { delete mem(m, 'ebike.empty').props.valueType; }, 'error'],
 };
 test('validators: each rule passes the examples and fails on a model that breaks it, at its level', () => {
   assert.deepEqual(Object.keys(RULE_CASES), Object.keys(T.rules));
@@ -168,34 +168,34 @@ test('validators: each rule passes the examples and fails on a model that breaks
   const none = structuredClone(M19); delete none.views[0].subject;
   assert.deepEqual(validate(none).filter(p => p.rule === 'subject-kind').map(p => p.level), ['warning']);
   const m = structuredClone(M19); RULE_CASES['binding-ends'][0](m);
-  // audit 10: both its ends are now on ecoRange, one through a port: not drawn, and said
-  assert.deepEqual(validate(m).map(p => [p.rule, p.path, p.message]), [['connector-drawn', 'edges[6]', 'connector-drawn: bind-eco-range runs from "ecoRange" to itself through its ports, which this view does not draw: no line runs from a box or a part to itself'], ['binding-ends', 'edges[6].props.ends.to.part', 'binding-ends: bind-eco-range\'s to end goes through "ecoRange", not a constraint property of "EBike": a binding reaches a parameter through a constraint property'],
-    ['parameter-bound', 'nodes[2].members[0]', 'parameter-bound: parameter "range" of "eco" has no binding: nothing gives it a value']]);
+  // audit 10: both its ends are now on emptyRange, one through a port: not drawn, and said
+  assert.deepEqual(validate(m).map(p => [p.rule, p.path, p.message]), [['connector-drawn', 'edges[6]', 'connector-drawn: bind-empty-range runs from "emptyRange" to itself through its ports, which this view does not draw: no line runs from a box or a part to itself'], ['binding-ends', 'edges[6].props.ends.to.part', 'binding-ends: bind-empty-range\'s to end goes through "emptyRange", not a constraint property of "CargoBike": a binding reaches a parameter through a constraint property'],
+    ['parameter-bound', 'nodes[2].members[0]', 'parameter-bound: parameter "range" of "empty" has no binding: nothing gives it a value']]);
   const o = structuredClone(M19); o.nodes.push({ id: 'other', type: 'sysml.Block', label: 'Other', members: [{ id: 'other.v', type: 'sysml.ValueProperty', label: 'v' }] });
-  o.edges.push(bind('far', 'other.v', 'range-equation.range', { to: { part: 'ebike.eco' } }));
+  o.edges.push(bind('far', 'other.v', 'range-equation.range', { to: { part: 'ebike.empty' } }));
   assert.deepEqual(validate(o).map(p => [p.rule, p.path]), [['binding-ends', 'edges[8].from']]);
   // two values bound; a parameter bound twice; one type specializing the other: passing
-  const ok = structuredClone(M19); ok.edges.push(bind('vv', 'ebike.ecoRange', 'ebike.boostRange'), bind('twice', 'ebike.boostRange', 'range-equation.range', { to: { part: 'ebike.eco' } }));
+  const ok = structuredClone(M19); ok.edges.push(bind('vv', 'ebike.emptyRange', 'ebike.ladenRange'), bind('twice', 'ebike.ladenRange', 'range-equation.range', { to: { part: 'ebike.empty' } }));
   ok.nodes.push({ id: 'distance', type: 'sysml.ValueType', label: 'Distance' }, { id: 'length', type: 'sysml.ValueType', label: 'Length' });
-  mem(ok, 'ebike.boostRange').props.valueType = 'Length'; ok.edges.push({ id: 'g', type: 'uml.Generalization', from: 'length', to: 'distance' });
+  mem(ok, 'ebike.ladenRange').props.valueType = 'Length'; ok.edges.push({ id: 'g', type: 'uml.Generalization', from: 'length', to: 'distance' });
   assert.deepEqual(validate(ok), []);
-  ok.edges.pop(); assert.deepEqual(validate(ok).map(p => [p.rule, p.ids[0]]), [['binding-types', 'bind-boost-range'], ['binding-types', 'vv'], ['binding-types', 'twice']]);
+  ok.edges.pop(); assert.deepEqual(validate(ok).map(p => [p.rule, p.ids[0]]), [['binding-types', 'bind-laden-range'], ['binding-types', 'vv'], ['binding-types', 'twice']]);
 });
 
 /* ---- editing (§9): the composite type's hooks on the projection, mapped back ---- */
 test('connect: a binding drawn from the canvas is a sysml.BindingConnector carrying ends.to.part, from a value or from the parameter\'s end; a comment link to a parameter refused', () => {
-  const want = { id: 'connector', type: 'sysml.BindingConnector', from: 'ebike.ecoRange', to: 'range-equation.consumption', props: { ends: { to: { part: 'ebike.boost' } } } };
+  const want = { id: 'connector', type: 'sysml.BindingConnector', from: 'ebike.emptyRange', to: 'range-equation.consumption', props: { ends: { to: { part: 'ebike.laden' } } } };
   const line = T.lines[0];
-  for (const [a, b] of [['ebike.ecoRange', 'ebike.boost->range-equation.consumption'], ['ebike.boost->range-equation.consumption', 'ebike.ecoRange']]) {
+  for (const [a, b] of [['ebike.emptyRange', 'ebike.laden->range-equation.consumption'], ['ebike.laden->range-equation.consumption', 'ebike.emptyRange']]) {
     const r = T.edits.connect(M19, V, a, b, null, line);
     assert.deepEqual(r, [{ op: 'add', element: want, view: VID }], `${a} to ${b}`); }
-  const m = run(M19, T.edits.connect(M19, V, 'ebike.ecoRange', 'ebike.boost->range-equation.consumption', null, line));
+  const m = run(M19, T.edits.connect(M19, V, 'ebike.emptyRange', 'ebike.laden->range-equation.consumption', null, line));
   assert.deepEqual(errors(m), []); assert.ok(layout(m, VID).edges.some(e => e.id === 'connector'));
-  const pp = T.edits.connect(M19, V, 'ebike.eco->range-equation.energy', 'ebike.boost->range-equation.energy', null, line)[0].element;
-  assert.deepEqual(pp.props.ends, { from: { part: 'ebike.eco' }, to: { part: 'ebike.boost' } }, 'parameter to parameter');
-  assert.equal(T.edits.connect(M19, V, 'ebike.ecoRange', 'ebike.boostRange', null, line), null, 'value to value: the default');
-  assert.match(T.edits.connect(M19, V, 'ebike.eco->range-equation.range', 'ebike.eco', null, line).error, /pick a parameter of eco/, 'to a constraint property\'s box: refused');
-  assert.ok(T.edits.connect(M19, V, 'ebike.eco->range-equation.range', 'ebike.ecoRange', null, T.lines[1]).error);
+  const pp = T.edits.connect(M19, V, 'ebike.empty->range-equation.energy', 'ebike.laden->range-equation.energy', null, line)[0].element;
+  assert.deepEqual(pp.props.ends, { from: { part: 'ebike.empty' }, to: { part: 'ebike.laden' } }, 'parameter to parameter');
+  assert.equal(T.edits.connect(M19, V, 'ebike.emptyRange', 'ebike.ladenRange', null, line), null, 'value to value: the default');
+  assert.match(T.edits.connect(M19, V, 'ebike.empty->range-equation.range', 'ebike.empty', null, line).error, /pick a parameter of empty/, 'to a constraint property\'s box: refused');
+  assert.ok(T.edits.connect(M19, V, 'ebike.empty->range-equation.range', 'ebike.emptyRange', null, T.lines[1]).error);
 });
 test('add: a constraint property and a value property into the subject by their palette entries; no value property in a constraint block', () => {
   const E = l => T.elements.find(e => e.label === l);
@@ -208,39 +208,39 @@ test('add: a constraint property and a value property into the subject by their 
   assert.equal(T.edits.add(M19, V, E('Comment'), 'note', null), null);
 });
 test('remove, rename, moveTo and member rows on the projection: SysML\'s types back, in SysML\'s words', () => {
-  let r = T.edits.remove(M19, V, ['ebike.eco'], false);
-  assert.deepEqual(r.commands, [{ op: 'delete', id: 'ebike.eco' }]); assert.match(r.say, /property eco of EBike and its 3 lines/);
-  const m = run(M19, r); assert.ok(!m.edges.some(e => ['bind-usable-eco', 'bind-eco-consumption', 'bind-eco-range'].includes(e.id)), 'its bindings go with it (refs)');
+  let r = T.edits.remove(M19, V, ['ebike.empty'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'ebike.empty' }]); assert.match(r.say, /property empty of CargoBike and its 3 lines/);
+  const m = run(M19, r); assert.ok(!m.edges.some(e => ['bind-usable-empty', 'bind-empty-consumption', 'bind-empty-range'].includes(e.id)), 'its bindings go with it (refs)');
   assert.deepEqual(errors(m), []);
-  r = T.edits.remove(M19, V, ['ebike.eco->range-equation.range'], false);
-  assert.deepEqual(r.commands, [{ op: 'delete', id: 'bind-eco-range' }]); assert.match(r.say, /the 1 binding through eco to its parameter range/);
-  assert.deepEqual(T.edits.rename(M19, V, 'ebike.eco', 'city : RangeEquation'), [{ op: 'set', id: 'ebike.eco', path: 'label', value: 'city' }]);
-  assert.deepEqual(T.edits.rename(M19, V, 'ebike.eco->range-equation.range', 'distance').commands, [{ op: 'set', id: 'range-equation.range', path: 'label', value: 'distance' }]);
-  const geo = layout(M19, VID), side = geo.byId['ebike.eco->range-equation.range'].side, by = { L: [1, 0], R: [-1, 0], T: [0, 1], B: [0, -1] }[side];
-  assert.equal(T.edits.moveTo(M19, V, 'ebike.eco->range-equation.range', { by, geo })[0].path.join('.'), 'present.ebike.eco.ports.range-equation.range.side');
+  r = T.edits.remove(M19, V, ['ebike.empty->range-equation.range'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'bind-empty-range' }]); assert.match(r.say, /the 1 binding through empty to its parameter range/);
+  assert.deepEqual(T.edits.rename(M19, V, 'ebike.empty', 'city : RangeEquation'), [{ op: 'set', id: 'ebike.empty', path: 'label', value: 'city' }]);
+  assert.deepEqual(T.edits.rename(M19, V, 'ebike.empty->range-equation.range', 'distance').commands, [{ op: 'set', id: 'range-equation.range', path: 'label', value: 'distance' }]);
+  const geo = layout(M19, VID), side = geo.byId['ebike.empty->range-equation.range'].side, by = { L: [1, 0], R: [-1, 0], T: [0, 1], B: [0, -1] }[side];
+  assert.equal(T.edits.moveTo(M19, V, 'ebike.empty->range-equation.range', { by, geo })[0].path.join('.'), 'present.ebike.empty.ports.range-equation.range.side');
   assert.deepEqual(T.edits.member(M19, V, 'ebike', null, 'city : RangeEquation'), [{ op: 'add', element: { id: 'ebike.city', type: 'sysml.ConstraintProperty', label: 'city', props: { valueType: 'RangeEquation' } }, owner: 'ebike' }]);
   assert.equal(T.edits.member(M19, V, 'ebike', null, 'mass : Real')[0].element.type, 'sysml.ValueProperty');
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', null, 'param speed : Speed'), [{ op: 'add', element: { id: 'range-equation.speed', type: 'sysml.ConstraintParameter', label: 'speed', props: { valueType: 'Speed' } }, owner: 'range-equation' }]);
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length'), [{ op: 'set', id: 'range-equation.range', path: 'props.valueType', value: 'Length' }]);
-  assert.match(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'param eco : RangeEquation').error, /keeps its member's kind/);
+  assert.match(T.edits.member(M19, V, 'ebike', 'ebike.empty', 'param empty : RangeEquation').error, /keeps its member's kind/);
   assert.match(T.edits.member(M19, V, 'ebike', null, 'param x : Real').error, /belongs to a constraint block/, 'a param row on a block: no port added');
   // a property row's kind is its type's, as a new row's is: a retype across it, by the row or by F2, refused (audit 20)
-  for (const [id, t] of [['ebike.ecoRange', 'ecoRange : RangeEquation'], ['ebike.eco', 'eco : Distance'], ['ebike.eco', 'eco2 : Real'], ['ebike.eco', 'eco']]) {
+  for (const [id, t] of [['ebike.emptyRange', 'emptyRange : RangeEquation'], ['ebike.empty', 'empty : Distance'], ['ebike.empty', 'empty2 : Real'], ['ebike.empty', 'empty']]) {
     assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /^A row keeps its member's kind: /, t);
     if (t.includes(':')) assert.match(T.edits.rename(M19, V, id, t).error, /^A row keeps its member's kind: /, `F2 ${t}`); }
-  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'eco : UsableEnergy'), [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: 'UsableEnergy' }], 'another constraint block');
-  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.ecoRange', 'ecoRange : Real'), [{ op: 'set', id: 'ebike.ecoRange', path: 'props.valueType', value: 'Real' }]);
+  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.empty', 'empty : UsableEnergy'), [{ op: 'set', id: 'ebike.empty', path: 'props.valueType', value: 'UsableEnergy' }], 'another constraint block');
+  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.emptyRange', 'emptyRange : Real'), [{ op: 'set', id: 'ebike.emptyRange', path: 'props.valueType', value: 'Real' }]);
   // a port row adds no port this view never draws, new or over a value property's row (audit 14)
-  for (const [id, t] of [[null, 'port zz : Real'], [null, 'Full Port zz : Real'], ['ebike.eco', 'proxy port eco : RangeEquation']]) assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /constraint or value property/, t);
+  for (const [id, t] of [[null, 'port zz : Real'], [null, 'Full Port zz : Real'], ['ebike.empty', 'proxy port empty : RangeEquation']]) assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /constraint or value property/, t);
   assert.match(T.edits.member(M19, V, 'range-equation', null, 'x : Real').error, /holds parameters/, 'a plain row on a constraint block: refused');
   // the composite type's words said in SysML's: a parameter, a binding, a constraint property
-  assert.equal(T.edits.rename(M19, V, 'ebike.eco->range-equation.range', 'dist : Length').say, 'Renamed RangeEquation\'s parameter: every constraint property of that type shows it');
+  assert.equal(T.edits.rename(M19, V, 'ebike.empty->range-equation.range', 'dist : Length').say, 'Renamed RangeEquation\'s parameter: every constraint property of that type shows it');
   const along = { L: [0, 1], R: [0, 1], T: [1, 0], B: [1, 0] }[side];
-  assert.match(T.edits.moveTo(M19, V, 'ebike.eco->range-equation.range', { by: along, geo }).error, /^A parameter's place along its side/);
+  assert.match(T.edits.moveTo(M19, V, 'ebike.empty->range-equation.range', { by: along, geo }).error, /^A parameter's place along its side/);
   assert.match(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length [2]').error, /^A parameter is param name : Type$/);
   assert.deepEqual(node(M19, 'range-equation').members.map(T.member.print), ['param range : Distance', 'param energy : Energy', 'param consumption : EnergyPerDistance']);
-  assert.equal(T.member.print(mem(M19, 'ebike.eco')), 'eco : RangeEquation');
-  assert.ok(T.member.add('x', node(M19, 'ebike')).error && T.member.edit(mem(M19, 'ebike.eco'), 'x').error);
+  assert.equal(T.member.print(mem(M19, 'ebike.empty')), 'empty : RangeEquation');
+  assert.ok(T.member.add('x', node(M19, 'ebike')).error && T.member.edit(mem(M19, 'ebike.empty'), 'x').error);
 });
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const E = l => T.elements.find(e => e.label === l), steps = [];
@@ -266,17 +266,17 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
 });
 
 test('the PDF (§13): words, rows, a binding\'s ends as its line text', () => {
-  assert.deepEqual(['ebike.eco', 'ebike.ecoRange', 'range-equation.range', 'ebike', 'range-equation', 'nope'].map(id => T.word(M19, id)),
+  assert.deepEqual(['ebike.empty', 'ebike.emptyRange', 'range-equation.range', 'ebike', 'range-equation', 'nope'].map(id => T.word(M19, id)),
     ['Constraint', 'Value', 'Parameter', 'Block', 'Constraint block', null]);
-  assert.deepEqual(T.rows(M19, V, 'ebike.eco'), ['eco: RangeEquation', '{range = energy / consumption}']);
+  assert.deepEqual(T.rows(M19, V, 'ebike.empty'), ['empty: RangeEquation', '{range = energy / consumption}']);
   assert.deepEqual(T.rows(M19, V, 'range-equation.range'), ['Distance']);
   assert.deepEqual(T.rows(M19, V, 'range-equation'), ['{range = energy / consumption}', 'param range : Distance', 'param energy : Energy', 'param consumption : EnergyPerDistance']);
   // its bindings are Lines rows, not member rows too (audit 18, as the internal block view since audit 17)
-  assert.deepEqual(T.rows(M19, V, 'ebike').slice(8), ['boost : RangeEquation']);
-  assert.deepEqual(['bind-eco-range', 'bind-usable-eco', 'nope'].map(id => T.text(M19, V, id)), ['ecoRange to range of eco', 'usable of usable to energy of eco', null]);
+  assert.deepEqual(T.rows(M19, V, 'ebike').slice(8), ['laden : RangeEquation']);
+  assert.deepEqual(['bind-empty-range', 'bind-usable-empty', 'nope'].map(id => T.text(M19, V, id)), ['emptyRange to range of empty', 'usable of usable to energy of empty', null]);
   const ctx = mapContext(M19), tables = tablesOf(ctx, ctx.V[VID], ctx.buildGeo(VID)), cards = tables.find(t => t.cls === 'cards');
   const lines = tables.find(t => t.cls === 'lines');
-  assert.equal(lines.rows.filter(r => r.includes('ecoRange to range of eco')).length, 1, lines.rows.join('\n'));
+  assert.equal(lines.rows.filter(r => r.includes('emptyRange to range of empty')).length, 1, lines.rows.join('\n'));
   assert.equal(lines.rows.length, 8);
   // each binding's ends as the picture names them, not by member id (audit 32)
   const ends = lines.rows.map(r => r.replace(/<\/td>.*$/, '').replace(/<[^>]+>/g, ''));
@@ -322,9 +322,9 @@ test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
 });
 
 test('audit 4: the hint line\'s SysML words leave the element names as written', () => {
-  const m = structuredClone(M19); mem(m, 'ebike.batteryCapacity').label = 'spare part count'; mem(m, 'ebike.eco').label = 'port connector';
-  assert.match(T.edits.remove(m, m.views[0], ['ebike.batteryCapacity'], true).say, /^Deleted property spare part count of EBike/);
-  assert.match(T.edits.remove(m, m.views[0], ['ebike.eco'], false).say, /property port connector of EBike and its 3 lines/);
+  const m = structuredClone(M19); mem(m, 'ebike.batteryCapacity').label = 'spare part count'; mem(m, 'ebike.empty').label = 'port connector';
+  assert.match(T.edits.remove(m, m.views[0], ['ebike.batteryCapacity'], true).say, /^Deleted property spare part count of CargoBike/);
+  assert.match(T.edits.remove(m, m.views[0], ['ebike.empty'], false).say, /property port connector of CargoBike and its 3 lines/);
 });
 
 test('audit 8: a constraint block with no label is named by its id: bindings to its parameters pass binding-parameter', () => {
@@ -348,13 +348,13 @@ test('audit 15: "port : Integer" is a value property named port; "param : Real" 
 });
 
 test('audit 18: a constraint property with no type: binding-parameter says it has none, never "a parameter of null"', () => {
-  const m = run(M19, [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: undefined }]);
+  const m = run(M19, [{ op: 'set', id: 'ebike.empty', path: 'props.valueType', value: undefined }]);
   const said = validate(m).filter(p => p.rule === 'binding-parameter').map(p => p.message);
   assert.ok(said.length >= 1, said.join('\n'));
-  for (const s of said) { assert.ok(!/null/.test(s), s); assert.match(s, /is not a parameter of "eco", which has no type: type it by a constraint block/); }
+  for (const s of said) { assert.ok(!/null/.test(s), s); assert.match(s, /is not a parameter of "empty", which has no type: type it by a constraint block/); }
   // a type set but naming no constraint block keeps its quoted name
-  const named = validate(run(M19, [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: 'Nothing' }])).filter(p => p.rule === 'binding-parameter');
-  assert.ok(named.length && named.every(p => /a parameter of "Nothing", the type of "eco"/.test(p.message)), named.map(p => p.message).join('\n'));
+  const named = validate(run(M19, [{ op: 'set', id: 'ebike.empty', path: 'props.valueType', value: 'Nothing' }])).filter(p => p.rule === 'binding-parameter');
+  assert.ok(named.length && named.every(p => /a parameter of "Nothing", the type of "empty"/.test(p.message)), named.map(p => p.message).join('\n'));
 });
 
 test('audit 23: a view\'s own binding (view.edges object) is drawn, named, described and checked as a model one: no arrowhead', () => {
@@ -393,9 +393,9 @@ test('audit 28: a listed line of another kind is keyed as it is drawn (a depende
 });
 
 test('audit 30: binding-types reads a generalization a block definition view draws as its own line, as one of the model', () => {
-  const ok = structuredClone(M19); ok.edges.push(bind('vv', 'ebike.ecoRange', 'ebike.boostRange'));
+  const ok = structuredClone(M19); ok.edges.push(bind('vv', 'ebike.emptyRange', 'ebike.ladenRange'));
   ok.nodes.push({ id: 'distance', type: 'sysml.ValueType', label: 'Distance' }, { id: 'length', type: 'sysml.ValueType', label: 'Length' });
-  mem(ok, 'ebike.boostRange').props.valueType = 'Length'; mem(ok, 'ebike.ecoRange').props.valueType = 'Distance';
+  mem(ok, 'ebike.ladenRange').props.valueType = 'Length'; mem(ok, 'ebike.emptyRange').props.valueType = 'Distance';
   const before = validate(ok).filter(p => p.rule === 'binding-types' && p.ids[0] === 'vv').length;
   assert.equal(before, 1, 'Length and Distance unrelated: vv warned');
   ok.views.push({ id: 'bdd', diagram: 'sysml.block-definition', nodeIds: ['distance', 'length'], edges: [{ id: 'g', type: 'uml.Generalization', from: 'length', to: 'distance' }] });
@@ -409,8 +409,8 @@ test('an unnamed constraint or value property is named as drawn, ": RangeEq", in
   for (const [what, cut] of [['no label', x => { delete x.label; }], ['an empty label', x => { x.label = ''; }]]) {
     const m = structuredClone(base); cut(mem(m, 'bike.eq')); cut(mem(m, 'bike.energy'));
     const g = layout(m, 'v'), aria = id => g.byId[id].aria, said = describe(m, 'v');
-    assert.equal(aria('bike.eq'), 'Constraint : RangeEq {r = e / 7}, in Bike, 2 parameters', what);
-    assert.equal(aria('bike.energy'), 'Value : Real, in Bike', what);
+    assert.equal(aria('bike.eq'), 'Constraint : RangeEq {r = e / 7}, in CargoBike, 2 parameters', what);
+    assert.equal(aria('bike.energy'), 'Value : Real, in CargoBike', what);
     assert.ok(g.nodes.filter(n => n.shape === 'port' && n.owner === 'bike.eq').every(n => / of : RangeEq$/.test(n.aria)), what);
     assert.equal(g.edges.find(e => e.id === 'bind-e').aria ?? g.byId['bind-e']?.aria, 'Binding from value : Real to parameter e of : RangeEq', what);
     assert.ok(!/bike\.(eq|energy)/.test(said), `${what}: ${said}`);
@@ -418,10 +418,10 @@ test('an unnamed constraint or value property is named as drawn, ": RangeEq", in
     assert.ok(lines.rows.some(r => r.includes('<td>: Real to e of : RangeEq</td>')), what);
     // with neither name nor type, the id
     const bare = structuredClone(m); delete mem(bare, 'bike.energy').props;
-    assert.equal(layout(bare, 'v').byId['bike.energy'].aria, 'Value bike.energy, in Bike', what);
+    assert.equal(layout(bare, 'v').byId['bike.energy'].aria, 'Value bike.energy, in CargoBike', what);
   }
   // a named one keeps its name
-  assert.equal(layout(base, 'v').byId['bike.eq'].aria, 'Constraint eq: RangeEq {r = e / 7}, in Bike, 2 parameters');
+  assert.equal(layout(base, 'v').byId['bike.eq'].aria, 'Constraint eq: RangeEq {r = e / 7}, in CargoBike, 2 parameters');
 });
 
 // audit 37: SYS_PAR_SAID named every unnamed member by its id, so the subject's PDF row listed 'bike.eq : RangeEq' where the

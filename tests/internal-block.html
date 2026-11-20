@@ -59,7 +59,7 @@ try {
     const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], svg = pick('.stage svg');
     check(`${tag}: the frame, six parts, twelve ports, seven lines, four flow arrows, three item triangles`, all('.node.part').length === 6 && all('.node.port').length === 12 && all('.edge-g').length === 7
       && !!pick('.family[data-family="ebike"] rect.family-box') && all('.ib-flow').length === 4 && all('.ib-item').length === 3, [all('.node').map(g => g.dataset.id), all('.edge-g').length, all('.ib-flow').length, all('.ib-item').length]);
-    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'ibd [Block] EBike [Inside the e-bike]', pick('.family[data-family="ebike"] .family-title').textContent);
+    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'ibd [Block] CargoBike [Inside the cargo bike]', pick('.family[data-family="ebike"] .family-title').textContent);
     const nodes = all('.node'), B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))])), F = box(pick('.family[data-family="ebike"] .family-box'));
     all('.node.part').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B[g.dataset.id])) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
     PARTS.forEach(id => { if (!inside(B[id], F)) bad.push(`${id} outside the frame`); });
@@ -80,10 +80,10 @@ try {
     const lines = all('.edge-g path.edge');
     const tri = all('.ib-item').map(p => { const b = box(p), c = [b.x + b.w / 2, b.y + b.h / 2], path = lines.find(l => { const n = l.getTotalLength(); for (let s = 0; s <= n; s += 1) { const q = l.getPointAtLength(s); if (Math.hypot(q.x - c[0], q.y - c[1]) < 1.5) return true; } return false; }); return [p.dataset.edge, !!path, b.w <= 8.5 && b.h <= 8.5]; });
     check(`${tag}: each item triangle sits on a line, 8 px`, tri.every(([, on, size]) => on && size), tri);
-    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Internal block diagram of block EBike: Inside the e-bike'
-      && pick('.node[data-id="ebike.battery"]').getAttribute('aria-label') === 'Part battery: Battery, in EBike, 3 ports'
+    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Internal block diagram of block CargoBike: Inside the cargo bike'
+      && pick('.node[data-id="ebike.battery"]').getAttribute('aria-label') === 'Part battery: Battery, in CargoBike, 3 ports'
       && pick('.node[data-id="ebike.dock->dock.charge"]').getAttribute('aria-label') === 'Proxy port charge: ChargeInterface of dock, conjugated, flow out'
-      && pick('.node[data-id="ebike.plug"]').getAttribute('aria-label') === 'Proxy port plug: ChargeInterface of EBike, flow in'
+      && pick('.node[data-id="ebike.plug"]').getAttribute('aria-label') === 'Proxy port plug: ChargeInterface of CargoBike, flow in'
       && pick('.edge-g[data-from="ebike.battery"][data-to="ebike.controller"] title').textContent.startsWith('Connector from'),
     [pick('.node[data-id="ebike.battery"]').getAttribute('aria-label'), pick('.node[data-id="ebike.dock->dock.charge"]').getAttribute('aria-label')]);
     check(`${tag}: reading order: the subject's port, then each part and its ports`, all('.keys .node-key').slice(0, 3).map(k => k.dataset.node).join() === 'ebike.plug,ebike.battery,ebike.battery->battery.charge', all('.keys .node-key').slice(0, 4).map(k => k.dataset.node));
@@ -133,9 +133,9 @@ try {
   h.update(m2);
   // F2 on the frame: a field holding the subject's name, not the whole header, which it would store as the name (audit 20)
   h.select({ type: 'container', id: 'ebike', view: VID }); key('F2');
-  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'EBike', pick('.um-rename') && pick('.um-rename').value);
-  if (pick('.um-rename')) name('E-bike');
-  gives('F2 on the frame: the block renamed', [{ op: 'set', id: 'ebike', path: 'label', value: 'E-bike' }], m => m.nodes[0].label === 'E-bike', m2);
+  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'CargoBike', pick('.um-rename') && pick('.um-rename').value);
+  if (pick('.um-rename')) name('Delivery bike');
+  gives('F2 on the frame: the block renamed', [{ op: 'set', id: 'ebike', path: 'label', value: 'Delivery bike' }], m => m.nodes[0].label === 'Delivery bike', m2);
   // a connector from a port on a part by L, an arrow and Enter, the picker: ← reaches the controller's drive port (→ reached the
   // motor itself, a connector through its own port that the view does not draw, which connect() refuses since audit 11)
   click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('l'); key('ArrowLeft'); key('Enter');

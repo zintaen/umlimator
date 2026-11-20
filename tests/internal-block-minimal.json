@@ -5,7 +5,7 @@
   {
    "id": "bike",
    "type": "sysml.Block",
-   "label": "Bike",
+   "label": "CargoBike",
    "members": [
     {
      "id": "bike.battery",
