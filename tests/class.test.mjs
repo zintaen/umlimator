@@ -749,3 +749,29 @@ test('audit 62: a line from a member 12000 deep is drawn to its owner on the cla
   validate(m);
   assert.deepEqual(layout(m, 'u').edges.map(e => [e.from, e.to]), [['C', 'B']]);
 });
+
+// audit 64 lane (0.45.0's known gap): linked classes in packages, every one pinned to one cell, were settled pin by pin round
+// that cell (settlePins) into a picture of crossing lines that routed in a second a layout, and pinsClear laid it out some 20
+// times: 80 classes in 10 packages took 26 s, a chain of 120 about 28 s (20: 0.4 s). Three or more pins on one cell are a pile
+// (unpile, layered.js): the first keeps the cell, the others are dropped, so their cards take a slot as with no pin. A view
+// that ranks its own cards (requirement: pinCells) drops them the same way
+test('a pile of pins on one cell lays out in about the time the view takes with none: 80 and 120 linked classes in 10 packages (timed)', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const pile = (n, diagram = 'uml.class', nt = 'uml.Class', et = 'uml.Association', pinned = true) => {
+    const pk = Array.from({ length: 10 }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'P' + i }));
+    const cs = Array.from({ length: n }, (_, i) => ({ id: 'c' + i, type: nt, label: 'C' + i, parent: 'p' + (i % 10) }));
+    return { schemaVersion: 2, nodes: [...pk, ...cs], edges: cs.slice(1).map((c, i) => ({ id: 'e' + i, type: et, from: cs[i].id, to: c.id })),
+      views: [{ id: 'v', diagram, nodeIds: [...pk, ...cs].map(x => x.id), ...(pinned ? { layout: Object.fromEntries(cs.map(c => [c.id, [0, 0]])) } : {}) }] };
+  };
+  const time = m => { let best = Infinity, g; for (let k = 0; k < 2; k++) { const t = performance.now(); g = U.layout(structuredClone(m), 'v'); best = Math.min(best, performance.now() - t); } return [best, g]; };
+  const [t20] = time(pile(20));
+  for (const n of [80, 120]) { const m = pile(n), [t, g] = time(m), cards = g.nodes.filter(x => /^c/.test(x.id));
+    // the layout is linear in the cards or near it: before, 80 took 65 times what 20 took, 120 some 70 times
+    assert.ok(t < (n / 20) ** 2 * t20 + 300, `${n} classes piled on one cell: ${Math.round(t)} ms, 20 of them ${Math.round(t20)} ms`);
+    assert.equal(new Set(cards.map(x => x.col + ',' + x.row)).size, n, `${n}: no two classes on one cell`);
+    assert.deepEqual([g.byId.c0.col, g.byId.c0.row], [0, 0], `${n}: the pile's first pin keeps its cell`);
+    assert.deepEqual(U.check(m, 'v').map(p => p.message), [], `${n}: nothing over anything, no line shared`); }
+  // a requirement view settles its pins among its ranked cards (pinCells): the pile drawn as the view with none, but the first pin
+  const req = p => pile(40, 'sysml.requirement', 'sysml.Requirement', 'sysml.DeriveReqt', p);
+  assert.ok(U.check(req(true), 'v').length <= U.check(req(false), 'v').length, 'requirements piled on one cell: no more said of them than of the view with no pins');
+});
