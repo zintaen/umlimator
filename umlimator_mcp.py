@@ -264,7 +264,7 @@ def refs(m, items):
 
 
 EDITOR = cli.HERE / "umlimator_edit.mjs"  # the edit tools' Node half: the page's own editor on the model (its header says how)
-KEEP = 50                                  # changes the undo history keeps
+KEEP, ROOM = 50, 16 << 20                  # changes the undo history keeps, and the most text it holds (16 MB)
 
 
 def history_file():
@@ -273,8 +273,9 @@ def history_file():
 
 
 def history():
-    """{done: [...], undone: [...]}, each change {before, after, summary, at}: the model file's text before and after it.
-    A history that is missing or unreadable is an empty one."""
+    """{done: [...], undone: [...]}: each change written, {before, after_sha, summary, at}, the model file's text before
+    it and a hash of its text after; each change undo() took back, {after, before_sha, ...}, the other way round. A
+    history that is missing or unreadable is an empty one."""
     try:
         h = json.loads(history_file().read_text(encoding="utf-8"))
         if isinstance(h, dict) and all(isinstance(h.get(k), list) for k in ("done", "undone")):
@@ -282,6 +283,19 @@ def history():
     except (OSError, ValueError, RecursionError):
         pass
     return {"done": [], "undone": []}
+
+
+def sha(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def kept(h):
+    """The history as it is written: the last KEEP changes, and no more than ROOM of text (the oldest go first)."""
+    for k in ("done", "undone"):
+        h[k] = h[k][-KEEP:]
+        while len(h[k]) > 1 and sum(len(c.get("before") or c.get("after") or "") for c in h[k]) > ROOM:
+            h[k].pop(0)
+    return json.dumps(h)
 
 
 def write(path, text):
@@ -397,14 +411,14 @@ def commit(out):
             raise Fail("the model file changed while the change was made (another editor wrote it); nothing written: call it again")
         write(MODEL, out["text"])
     h = history()
-    h["done"] = (h["done"] + [{"before": out["before"], "after": out["text"], "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}])[-KEEP:]
+    h["done"].append({"before": out["before"], "after_sha": sha(out["text"]), "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
     h["undone"] = []
     try:
-        write(history_file(), json.dumps(h))
-        kept = ""
+        write(history_file(), kept(h))
+        lost = ""
     except OSError as e:
-        kept = f" (no undo: cannot write {history_file().name}: {e.strerror or e})"
-    return said_of(out, True) | {"page": tell_pages() + kept}
+        lost = f" (no undo: cannot write {history_file().name}: {e.strerror or e})"
+    return said_of(out, True) | {"page": tell_pages() + lost}
 
 
 def undo(redo=False):
@@ -415,16 +429,20 @@ def undo(redo=False):
     if not stack:
         raise Fail(f"nothing to {'redo' if redo else 'undo'}: " + ("undo() has taken back no change since the last one written" if redo else "the edit tools have written no change to this model"))
     c = stack[-1]
-    want_now, put = (c["before"], c["after"]) if redo else (c["after"], c["before"])
+    want_now, put = (c.get("before_sha"), c.get("after")) if redo else (c.get("after_sha"), c.get("before"))
+    if not isinstance(put, str):
+        raise Fail(f"the undo history {history_file().name} does not hold that change's text; nothing written")
     with rendering:
         now = model_text()
-        if now != want_now:
+        if sha(now) != want_now:
             raise Fail(f"the model file changed since that change was {'taken back' if redo else 'written'} (another editor wrote it): "
                        f"{'redo' if redo else 'undo'} would lose that; nothing written")
         write(MODEL, put)
-    other.append(stack.pop())
+    stack.pop()
+    keep = {k: v for k, v in c.items() if k not in ("before", "after", "before_sha", "after_sha")}
+    other.append({**keep, "before": now, "after_sha": sha(put)} if redo else {**keep, "after": now, "before_sha": sha(put)})
     try:
-        write(history_file(), json.dumps(h))
+        write(history_file(), kept(h))
     except OSError:
         pass
     return {"written": True, "undone" if not redo else "redone": c["summary"], "left": len(stack), "page": tell_pages()}

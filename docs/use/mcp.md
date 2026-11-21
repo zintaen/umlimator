@@ -64,7 +64,7 @@ What a written change does:
 - It is written only when `validate()` finds no error that the change adds. Warnings it adds are in the answer, and do not stop it.
 - The file is replaced atomically, and kept in its own layout: every part the change leaves alone keeps its text, so a renamed card is a one-line diff.
 - Nothing is written over a file that another editor changed while the tool ran.
-- Each change is one step in `MODEL.json.undo`, a history kept next to the model (its last 50 changes). `undo()` puts the file back as it was, byte for byte. It is refused when someone else wrote the file since, so their change is never lost. A new change clears what `redo()` could write.
+- Each change is one step in `MODEL.json.undo`, a history kept next to the model (its last 50 changes, up to 16 MB of text). `undo()` puts the file back as it was, byte for byte. It is refused when someone else wrote the file since, so their change is never lost. A new change clears what `redo()` could write.
 - An open page reloads and draws the new version, and the answer says so.
 
 To measure how well an assistant turns a request into these calls, `tests/fixtures/mcp-eval/cases.json` holds requests in plain words, each on a model of the repository, with the change it asks for as `diff()`'s summary. `python3 tools/mcp_eval.py start CASE` copies the case's model and prints the server command for it. Give the assistant the request, then run `python3 tools/mcp_eval.py check CASE COPY`. `tools/mcp_eval.py reference` checks that each case's own answer still holds. CI does not run the eval.

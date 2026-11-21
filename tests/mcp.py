@@ -305,6 +305,22 @@ ok("edit · undo puts the file back as it was, change by change, and redo writes
    u1.get("undone") == ["renames Invoice to Bill"] and back1 and u2.get("undone") == ["adds Invoice, to Order"] and back0 and u3.startswith("FAIL nothing to undo")
    and r1.get("redone") == ["adds Invoice, to Order"] and fwd and r2.startswith("FAIL the model file changed since that change was taken back")
    and u4.startswith("FAIL the model file changed since that change was written") and r3.startswith("FAIL nothing to redo"), [u1, u2, u3, r1, r2, u4, r3])
+# the history keeps each change's text before it and a hash after (not both texts), its last KEEP changes and no more than
+# ROOM of text, the oldest dropped first; undo and redo still work on what it keeps
+keep_h = (mcp.KEEP, mcp.ROOM)
+edit_on("class.json", CLASS)
+mcp.KEEP = 3
+for name in ("A", "B", "C", "D"):
+    ed("rename", id="order", label=name)
+h4 = mcp.history()
+mcp.KEEP, mcp.ROOM = 50, 1
+ed("rename", id="order", label="E")
+h5 = mcp.history()
+undid = ed("undo")
+mcp.KEEP, mcp.ROOM = keep_h
+ok("edit · the undo history holds each change's text before it and a hash after, its last KEEP changes and no more than ROOM of text",
+   [c["summary"] for c in h4["done"]] == [["renames A to B"], ["renames B to C"], ["renames C to D"]] and all(set(c) >= {"before", "after_sha"} and "after" not in c for c in h4["done"])
+   and [c["summary"] for c in h5["done"]] == [["renames D to E"]] and undid.get("undone") == ["renames D to E"] and '"D"' in mcp.MODEL.read_text(encoding="utf-8"), (h4, h5, undid))
 # the history sits next to the model, not as a .json a folder of models would take for one; no temporary file is left behind
 ok("edit · the undo history is MODEL.json.undo next to the model; the writes leave no temporary file",
    mcp.history_file() == ed_dir / "class.json.undo" and mcp.history_file().is_file() and not [p for p in ed_dir.iterdir() if p.name.endswith(".tmp")], sorted(p.name for p in ed_dir.iterdir()))
