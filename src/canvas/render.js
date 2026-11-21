@@ -21,6 +21,11 @@ const h = (html) => { const t = document.createElement('template'); t.innerHTML 
 
 // the reader's setting; a handle drawn instant (the page's #check, #still and #shot hooks) is still on top of it, on its own
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// motion speed: one multiplier on a tour's dot, a story step's time and the flow along lines, from 0.25 to 4 (a number, or
+// its text as a link or saved choice gives it); anything else is none (null), and the next source is read. The speed button (1×) steps
+// through SPEEDS. Reduced motion still wins: nothing rides or flows under it, whatever the speed
+const speedOf = v => { const n = typeof v === 'number' || (typeof v === 'string' && v.trim() !== '') ? +v : NaN; return n >= 0.25 && n <= 4 ? n : null; };
+const SPEEDS = [0.5, 1, 1.5, 2];
 let SHEET = null;
 const sheet = () => { if (!SHEET) { SHEET = new CSSStyleSheet(); SHEET.replaceSync(STYLES); } return SHEET; };
 const INNER = Symbol('umlimator.inner'); // what mountPage needs from render() beyond the public handle
@@ -63,7 +68,7 @@ export function render(container, model, options = {}) {
         <div class="ctl">
           <button data-z="up" title="Up one level (Esc)" aria-label="Up one level">↑</button><span class="sep"></span>
           <button data-z="out" title="Zoom out (−)" aria-label="Zoom out">−</button><button data-z="fit" class="pct" title="Fit to screen (0)">100%</button><button data-z="in" title="Zoom in (+)" aria-label="Zoom in">+</button><span class="sep"></span>
-          <button data-z="one" title="Actual size (1)">1:1</button><button data-z="flow" title="Animate flow direction (F)" aria-label="Animate flow">≋</button>${E && E.add ? '<span class="sep"></span><button data-z="add" title="Add a card (N, or Alt + double-click)" aria-label="Add a card">＋</button>' : ''}<span class="depth" title="Reading depth follows zoom">READ</span>
+          <button data-z="one" title="Actual size (1)">1:1</button><button data-z="flow" title="Animate flow direction (F)" aria-label="Animate flow">≋</button><button data-z="speed" title="Motion speed: tours, story steps and flow" aria-label="Motion speed 1×">1×</button>${E && E.add ? '<span class="sep"></span><button data-z="add" title="Add a card (N, or Alt + double-click)" aria-label="Add a card">＋</button>' : ''}<span class="depth" title="Reading depth follows zoom">READ</span>
         </div>`}</div></div>${!framed ? '' : (options.legend ? '<div class="m-legend"></div>' : '') + (options.hints ? `<div class="hint">${hintHTML('', ctrlWheel)}</div>` : '') + '</div>'
           + (options.details ? '<aside class="panel" aria-label="Node details" hidden></aside>' : '') + '</div>'
           + (options.nav ? '<button class="ibtn um-navbtn" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button><aside class="outline" aria-label="Views"></aside>' : '') + '</div>'}`;
@@ -746,9 +751,28 @@ export function render(container, model, options = {}) {
     if (k) { const g = svg.querySelector(`.edge-g[data-i="${k.dataset.i}"]`); if (g) g.classList.add('key-on'); } };
   stage.addEventListener('focusin', keyOn); stage.addEventListener('focusout', keyOn);
   const ctl = q('.ctl');
-  if (ctl) ctl.addEventListener('click', e => { const z = e.target.closest('button')?.dataset.z; if (!z) return; readerMoved(); // a press by key too: a story playing waits
-    if (z === 'in') cam.zoomAt(1.4, null, null, true); else if (z === 'out') cam.zoomAt(1 / 1.4, null, null, true); else if (z === 'fit') cam.fit(); else if (z === 'one') cam.actual(); else if (z === 'up') up(); else if (z === 'flow') setFlow(!stage.classList.contains('flowing')); else if (z === 'add') addAt(cam.s.cx, cam.s.cy); });
+  if (ctl) ctl.addEventListener('click', e => { const z = e.target.closest('button')?.dataset.z; if (!z) return; if (z !== 'speed') readerMoved(); // a press by key too: a story playing waits (not for its speed)
+    if (z === 'speed') { const s = speedNow(); setSpeed(SPEEDS.find(x => x > s + 1e-9) ?? SPEEDS[0]); } else if (z === 'in') cam.zoomAt(1.4, null, null, true); else if (z === 'out') cam.zoomAt(1 / 1.4, null, null, true); else if (z === 'fit') cam.fit(); else if (z === 'one') cam.actual(); else if (z === 'up') up(); else if (z === 'flow') setFlow(!stage.classList.contains('flowing')); else if (z === 'add') addAt(cam.s.cx, cam.s.cy); });
   setFlow(options.flow ?? !reducedMotion(), false); // the default, or the host's: not saved as the page reader's choice
+  /* motion speed: the host's or the reader's choice (options.speed, handle.speed, the speed button), else the model's motion.speed, else 1.
+     It scales a tour's dot as it rides, the time of a story step armed from now on, and the flow (--um-speed on the stage,
+     which the sheet's flow animations divide by, and a line mark's own speed) */
+  let speedSet = speedOf(options.speed);
+  const speedNow = () => { const mo = current && typeof current === 'object' ? current.motion : null;
+    return speedSet ?? speedOf(mo && typeof mo === 'object' ? mo.speed : null) ?? 1; };
+  function showSpeed() {
+    const s = speedNow(); if (s === 1) stage.style.removeProperty('--um-speed'); else stage.style.setProperty('--um-speed', String(s));
+    const b = q('[data-z="speed"]'); if (b) { b.textContent = s + '×'; b.setAttribute('aria-label', `Motion speed ${s}×`); }
+  }
+  function setSpeed(v, save = true) { // save: the reader's (the speed button), which the page keeps and the live region says; else the host's (null: the model's again)
+    const was = speedNow(); speedSet = v == null ? null : speedOf(v) ?? speedSet; showSpeed();
+    if (save) say(`Motion speed ${speedNow()}×`);
+    if (speedNow() === was) return;
+    if (layers.size) drawMarks(); // a line mark's flow speed is drawn with the map's
+    if (save && P.onSpeed) P.onSpeed(speedNow());
+    touch();
+  }
+  showSpeed();
 
   // the stage changes size with its container: keep the zoom, refit only an untouched view (no ResizeObserver, as in
   // jsdom: the view is fitted once)
@@ -942,7 +966,7 @@ export function render(container, model, options = {}) {
       if (m.level < 1) [eg, s.querySelector(`.e-lab[data-i="${i}"]`)].forEach(x => x && x.setAttribute('opacity', m.level));
       if (m.tone || m.pulse) path.insertAdjacentHTML('beforebegin', `<path d="${path.getAttribute('d')}" class="um-glow${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/>`);
       if (m.dash) path.setAttribute('style', 'stroke-dasharray: 7 5');
-      if (m.speed != null) flows.forEach(flow => flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed).toFixed(2)}s` : 'animation: none; opacity: 0'));
+      if (m.speed != null) flows.forEach(flow => flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed / speedNow()).toFixed(2)}s` : 'animation: none; opacity: 0'));
       if (m.label == null || m.label === '') return;
       // the pill takes the first place that covers no card, box title or tab, line label or pill before it (#81): under the
       // line's own label (else on its longest run), then a few places along the line. The view is not laid out again for
@@ -1045,7 +1069,7 @@ export function render(container, model, options = {}) {
       legs.push({ pts, to: ids[k + 1], len: lenOf(pts), skip: through.length ? lenOf([...through, r.pts[0]]) : 0, from: ids[k], i: r.i }); }
     if (legs.length && still() && P.tourAt == null) atRest(legs, quiet);
     if (!legs.length || (still() && P.tourAt == null)) return Promise.resolve(legs.length > 0);
-    const speed = Math.max(20, +o.speed || 240); // map units a second
+    const ups = Math.max(20, +o.speed || 240); // map units a second at 1×: the map's speed scales it frame by frame, so a change mid-ride goes on from where the dot is
     const g = tripLayer(); g.insertAdjacentHTML('beforeend', '<circle r="5.5" class="tour-dot"/>');
     const dot = g.firstElementChild; let leg = 0, base = 0;
     if (P.tourAt != null) { // the page's #shot=1&at=<0 to 1>: the dot held that far along the ride, a frame for umlimator.py record (#83)
@@ -1055,7 +1079,8 @@ export function render(container, model, options = {}) {
       const [x, y] = along(legs[leg].pts, legs[leg].skip + d); dot.setAttribute('cx', x); dot.setAttribute('cy', y);
       trip = { raf: 0, dot: g, end() {} }; return Promise.resolve(true);
     }
-    return new Promise(res => { startTrip(ms => { const d = ms * speed / 1000;
+    let d = 0, then = 0;
+    return new Promise(res => { startTrip(ms => { d += (ms - then) * ups * speedNow() / 1000; then = ms;
       while (leg < legs.length && d - base >= legs[leg].len) { base += legs[leg].len; flash(legs[leg].to); leg++; }
       if (leg >= legs.length) return false;
       const [x, y] = along(legs[leg].pts, d - base); dot.setAttribute('cx', x); dot.setAttribute('cy', y); return true; }, res); trip.dot = g; trip.kind = 'tour'; trip.story = quiet; touch(); });
@@ -1169,7 +1194,7 @@ export function render(container, model, options = {}) {
   function arm(st) { // playing: the next step once this one's duration is up and its tour has reached its end
     clearTimeout(st.timer);
     if (!st.auto || story !== st || st.phase !== 'shown' || paused) return; // entering: it arms once shown; the page's Pause: once it ends
-    const seq = st.seq, dur = Math.max(500, +(st.steps[st.at] || {}).duration || 4000); // reading time: not cut by reduced motion
+    const seq = st.seq, dur = Math.max(500, +(st.steps[st.at] || {}).duration || 4000) / speedNow(); // reading time: not cut by reduced motion; the map's speed scales it
     Promise.all([st.toured, new Promise(r => { st.timer = later(r, dur); })]).then(() => { if (story === st && st.seq === seq && st.auto && !paused) stepStory(1); });
   }
   function pauseStory(st) { st.auto = false; st.held = true; clearTimeout(st.timer); storyBar(st); storyEvent(st); touch(); } // held: its step's tour waits too (startTrip)
@@ -1262,7 +1287,7 @@ export function render(container, model, options = {}) {
     const deep = o => { Object.values(o).forEach(v => v && typeof v === 'object' && deep(v)); return Object.freeze(o); }, st = story, t = trip;
     return deep({ view: cur, navigating: nav ? nav.to : null, selection: picked(), expanded: [...(expanded[cur] || [])], lens: lensId, overlays: [...layers.keys()],
       story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
-      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), gesture: gestureNow(), destroyed: dead });
+      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), speed: speedNow(), gesture: gestureNow(), destroyed: dead });
   }
   const first = () => {
     if (dead) return;
@@ -1280,7 +1305,7 @@ export function render(container, model, options = {}) {
   if (measure && !own && document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (dead || !current || typeof current !== 'object') return; measure = hostMeasure(host); update(current, true); });
 
   return {
-    update: m => { update(m); if (tx && !dead) tx.refresh(); },
+    update: m => { update(m); if (!dead) showSpeed(); if (tx && !dead) tx.refresh(); }, // the model's motion.speed, when no one chose one
     setView: id => go(id), // a Promise<boolean>: true once the view shows; false for a view the model lacks, a later request, or destroy()
     select: ref => { if (!dead) select(ref); },
     fit: () => { if (cam && !dead) { readerMoved(); cam.fit(); } }, // the host takes the camera: a story playing waits
@@ -1301,6 +1326,8 @@ export function render(container, model, options = {}) {
     get destroyed() { return dead; },
     get flow() { return stage.classList.contains('flowing'); }, // the animated flow along lines (≋, F)
     set flow(on) { if (!dead) setFlow(!!on, false); }, // a host's choice, not the reader's: the page saves only ≋ and F
+    get speed() { return speedNow(); }, // the motion speed: the host's, the reader's (the speed button), else the model's motion.speed, else 1
+    set speed(v) { if (!dead) setSpeed(v, false); }, // a host's choice, not the reader's: the page saves only the speed button's; null goes back to the model's
     get motion() { return motionOf(); }, // 'instant' (the page's #check, #still, #shot), 'reduced' (the reader's setting), else 'full'
     get story() { return story ? story.ctl : null; }, // the player of the story shown (play()'s, the page menu's or a link's), else null
     overlay: (name, layer) => overlay(name, layer),
@@ -1314,4 +1341,4 @@ export function render(container, model, options = {}) {
   };
 }
 
-export { h, reducedMotion, pngOf };
+export { h, reducedMotion, pngOf, speedOf };

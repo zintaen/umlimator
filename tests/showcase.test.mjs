@@ -19,6 +19,7 @@ test('every showcase model validates with no error, and each of its views lays o
     const m = JSON.parse(readFileSync(new URL(f, root), 'utf8'));
     assert.deepEqual(validate(m).filter(p => p.level === 'error' || !p.level), [], f);
     assert.ok((m.views || []).length > 0, `${f}: no view`);
+    assert.equal(m.motion, undefined, `${f}: a motion field would change how fast it plays (motion speed)`);
     for (const v of m.views) {
       let g;
       assert.doesNotThrow(() => { g = layout(m, v.id); }, `${f}: view ${v.id}`);

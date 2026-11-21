@@ -159,6 +159,19 @@ const acOther = e => !AC_LINES.includes(e.type);
 const acLegend = (types, edges) => [...AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says))),
   ...(edges.some(acOther) ? [acKey('<path d="M2 8H26"/>', 'Line', LINE_SAYS)] : [])];
 
+/* A node's row across the flow is an order among its lane's nodes in its column (laneRows): one with no node of its lane
+   on that side in its column keeps its row whatever its pin says, so the canvas's Alt + an arrow across the lanes writes no
+   pin there and says this (audit 64: each press was an undo step that moved nothing) */
+function actKeeps(model, view, id, geo, by) {
+  const I = actIndex(model, view), by0 = AC_OBJ(geo) && AC_OBJ(geo.byId) ? geo.byId : {}, at = x => (Object.hasOwn(by0, x) ? by0[x] : null), n = at(id);
+  if (!by || !I.lanes.length || !I.drawn.includes(id) || !n || !Number.isFinite(n.col) || !Number.isFinite(n.row)) return null;
+  const s = Math.sign(by[1]), l = I.laneOf(id);
+  if (!s || I.drawn.some(x => x !== id && I.laneOf(x) === l && at(x) && at(x).col === n.col && Math.sign(at(x).row - n.row) === s)) return null;
+  const who = acName(I.N.get(id)), alone = !I.drawn.some(x => x !== id && I.laneOf(x) === l && at(x) && at(x).col === n.col);
+  return `${who} is ${alone ? 'the only node' : `the ${s < 0 ? 'first' : 'last'} node`} ${l == null ? 'outside the partitions' : `of ${acName(I.N.get(l))}`} here: `
+    + (l == null ? 'the Owner field puts it in a partition' : 'the Owner field moves it to another partition');
+}
+
 /* ---- the view laid out: { model, view, pos, memo } (§9.1, §5) ---- */
 function actGeo({ model, view, pos, memo }) {
   const I = actIndex(model, view), down = view.direction === 'down';
@@ -361,7 +374,7 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   lines: [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.ObjectFlow', label: 'Object flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
   props: { ...Object.fromEntries(Object.keys(AC_LOOK).map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(AC_LOOK[t][0]) ? [] : [AC_ST]])), 'uml.Comment': [], 'uml.ControlFlow': [AC_GUARD, AC_ST], 'uml.ObjectFlow': [AC_GUARD, AC_ST], 'uml.CommentLink': [] },
-  layout: actGeo,
+  layout: Object.assign(actGeo, { keepsRow: actKeeps }), // the canvas's Alt + an arrow writes no row the lanes override
   draw: actDraw,
   owners: actOwners,
   member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)

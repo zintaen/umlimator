@@ -163,12 +163,22 @@ function settlePins(pins, at, up, fixed = null, rows = .5) { // rows: how far pa
   Object.defineProperty(out, MOVED, { value: moved });
   return out;
 }
+/* A pile: three or more pins on one cell, which no hand made (a host that writes one cell for every card; 0.44.0 drew them over
+   each other). Settled one by one round that cell (settlePins), 80 linked classes in 10 packages took a picture of crossing
+   lines that routed in a second a layout, and pinsClear (src/map/context.js) laid it out some 20 times (audit 64 lane, 26 s).
+   The first pin of a pile keeps the cell; the others are dropped, so their cards take a slot as a card with no pin does. Two
+   pins on one cell (Alt + an arrow onto a pinned card: audit 58) still settle. pins: [[id, cell]]; the same list when none drops */
+function unpile(pins) {
+  const at = new Map(); pins.forEach(([i, p]) => { const k = p[0] + ',' + p[1]; if (!at.has(k)) at.set(k, []); at.get(k).push(i); });
+  const drop = new Set([...at.values()].flatMap(a => (a.length > 2 ? a.slice(1) : [])));
+  return drop.size ? pins.filter(([i]) => !drop.has(i)) : pins;
+}
 /* A view that ranks its own cards (component, BPMN, requirement) with pins: at, its ranked cells by id, the pins [[id, cell]]
    settled (settlePins) and put in, then each other card, in order, at its cell, or down a row while a card is there, and on
    to the nearest clean slot when its box would grow there over what it does not hold (the component gallery's Basket pinned
    on Checkout's cell, Checkout down past Payment provider). at is changed and returned */
 function pinCells(at, P, up, order = Object.keys(at)) {
-  const pinned = new Set(P.map(([id]) => id)), S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up), held = new Set(pinned);
+  P = unpile(P); const pinned = new Set(P.map(([id]) => id)), S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up), held = new Set(pinned);
   let taken = P.map(([id]) => S[id]); const free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
   P.forEach(([id]) => { at[id] = S[id]; }); Object.assign(at, S[MOVED]); // what a fresh row a pin went in moved down
   order.forEach(id => { if (pinned.has(id) || !Object.hasOwn(at, id)) return; let [c, r] = at[id]; if (!free(c, r)) { while (!free(c, r)) r++;
@@ -1281,4 +1291,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells };
+export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };

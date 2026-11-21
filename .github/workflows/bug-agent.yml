@@ -1,0 +1,308 @@
+name: bug-agent
+
+# The bug agent: when a maintainer labels an issue `bug` (or runs this workflow by hand with an issue number), an agent
+# tries to reproduce the bug with a small test. If it reproduces and the agent fixes it, a draft pull request into
+# audit-loop proposes the fix with a test that fails without it; if not, a comment asks for a model and steps.
+#
+# Off unless the repository variable BUG_AGENT_ENABLED is "true" and the secret ANTHROPIC_API_KEY is set
+# (CONTRIBUTING.md, "The bug agent"). The issue's text is data, never instructions (SECURITY.md): it reaches the agent as
+# a fenced file, never through the prompt, a shell command or a workflow expression. Three jobs, each on a fresh runner:
+#   agent    a read-only token and the API key, which only a proxy holds (tools/bug_agent_proxy.mjs, as a user of its
+#            own that reaches the Anthropic API and nothing else). The agent (the Claude Code CLI, pinned) runs as
+#            another user with a placeholder key, no token, loopback only (tools/bug_agent_jail.sh) and a shell that
+#            takes exact commands. The runner's git takes its diff, and the job hands the diff and the result on as a
+#            job output, as data.
+#   verify   a read-only token and no secret; the base branch's checker (tools/bug_agent.mjs) takes the patch only within
+#            the allowed paths and only when its test fails on the base branch and passes with the fix. The patch's
+#            code runs as a jailed user with no network at all, in a copy of the tree with no .git.
+#   publish  contents, pull-requests and issues write and no secret; runs no agent and none of the patch's code, checks
+#            the patch's paths again, pushes one new branch, opens a draft pull request or comments
+# No release secret is used here.
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: The issue number to work on
+        required: true
+        type: number
+
+permissions: {}
+
+# one run per issue at a time; a second label or dispatch for the same issue waits, it does not cancel a run mid-push
+concurrency:
+  group: bug-agent-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+env:
+  BASE: audit-loop
+
+jobs:
+  agent:
+    # labelled `bug` by someone other than its author, or by an author who is a member or collaborator (an issue template
+    # that adds `bug` as an outsider opens it does not start a run)
+    if: >-
+      vars.BUG_AGENT_ENABLED == 'true' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event.label.name == 'bug' && github.event.issue.state == 'open' && !github.event.issue.pull_request &&
+          (github.event.sender.login != github.event.issue.user.login ||
+           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read   # the checkout
+      issues: read     # the issue's text
+    outputs:
+      number: ${{ steps.issue.outputs.number }}
+      raw: ${{ steps.raw.outputs.raw }}
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      JAIL: /srv/bug-agent
+      CLI: /opt/bug-agent-cli
+      PORT: "8417"
+    steps:
+      # The runner's own steps (checkout, setup-node, the CLI's install, the issue) reach only these hosts. The agent's
+      # user is held tighter by tools/bug_agent_jail.sh: the Anthropic API and nothing else.
+      - uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c  # v2.23.0
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.anthropic.com:443
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            registry.npmjs.org:443
+            nodejs.org:443
+
+      - name: The API key is set
+        run: |
+          if [ "$HAS_KEY" != true ]; then echo "::error::the secret ANTHROPIC_API_KEY is not set; see CONTRIBUTING.md"; exit 1; fi
+          echo "WORK=$RUNNER_TEMP/bug-agent" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The official Claude Code CLI at a pinned version, outside the runner's home so the agent's user can run it.
+      # (The Claude Code GitHub Action runs as the runner's own user, which this workflow keeps away from the agent.)
+      - name: The Claude Code CLI
+        run: |
+          sudo install -d -o "$(id -u)" -g "$(id -g)" -m 755 "$CLI"
+          npm install --prefix "$CLI" --no-audit --no-fund --loglevel=error @anthropic-ai/claude-code@2.1.318
+          "$CLI/node_modules/.bin/claude" --version
+
+      - id: issue
+        name: The issue, as a data file, and the agent's prompt and settings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || inputs.issue }}
+        run: |
+          case "$NUMBER" in ''|*[!0-9]*) echo "::error::not an issue number"; exit 1;; esac
+          mkdir -p "$WORK"
+          gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json number,title,body,author,labels,state > "$WORK/issue.json"
+          node tools/bug_agent.mjs issue "$WORK/issue.json" "$WORK/issue.md"
+          node tools/bug_agent.mjs prompt .github/bug-agent/prompt.md "$WORK/prompt.md" \
+            "BASE=$BASE" "NUMBER=$NUMBER" "ISSUE_FILE=$JAIL/work/issue.md" "RESULT_FILE=$JAIL/work/result.json"
+          node tools/bug_agent.mjs settings tests "$NUMBER" "$JAIL/work" "$JAIL/repo" "$WORK/settings.json"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      # The key goes to the proxy's user only, through the environment of a process the agent's user cannot read (another
+      # uid). The proxy's copy of its code is root-owned, out of the agent's reach.
+      - name: The proxy that holds the key, as a user that reaches only the API
+        env:
+          BUG_AGENT_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          sudo bash tools/bug_agent_jail.sh bugkey api
+          sudo install -d -o root -g root -m 755 /opt/bug-agent-proxy
+          sudo install -o root -g root -m 644 tools/bug_agent_proxy.mjs /opt/bug-agent-proxy/proxy.mjs
+          # the runner's own log file, written by the runner's shell
+          # shellcheck disable=SC2024
+          sudo --preserve-env=BUG_AGENT_KEY -u bugkey -H -- nohup "$(command -v node)" /opt/bug-agent-proxy/proxy.mjs "$PORT" \
+            > "$RUNNER_TEMP/proxy.log" 2>&1 &
+          for _ in $(seq 1 50); do curl -fsS "http://127.0.0.1:$PORT/health" > /dev/null 2>&1 && break; sleep 0.2; done
+          curl -fsS "http://127.0.0.1:$PORT/health"
+
+      - name: A user of its own for the agent, with no token, no key and loopback only
+        run: |
+          sudo bash tools/bug_agent_jail.sh agent local
+          sudo install -d -o root -g root -m 755 "$JAIL"
+          sudo install -d -o agent -g agent -m 755 "$JAIL/work"
+          sudo cp -a "$GITHUB_WORKSPACE" "$JAIL/repo"
+          sudo chown -R agent:agent "$JAIL/repo"
+          sudo install -o root -g root -m 644 "$WORK/issue.md" "$JAIL/work/issue.md"
+          sudo install -o root -g root -m 644 "$WORK/settings.json" "$JAIL/settings.json"
+
+      - id: claude
+        name: The agent reproduces and fixes
+        run: |
+          # the agent gets a placeholder key and the proxy's address; nothing else of the runner's environment reaches it
+          # (sudo resets it). The runner's shell reads the prompt, which the agent cannot.
+          # shellcheck disable=SC2024
+          sudo -u agent -H -- env -C "$JAIL/repo" PATH="$PATH" \
+            ANTHROPIC_BASE_URL="http://127.0.0.1:$PORT" ANTHROPIC_API_KEY=placeholder-the-proxy-holds-the-key \
+            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 \
+            timeout 35m "$CLI/node_modules/.bin/claude" --bare -p --settings "$JAIL/settings.json" --setting-sources user \
+              --permission-mode dontAsk --tools Read,Edit,Write,Glob,Grep,Bash --strict-mcp-config \
+              --add-dir "$JAIL/work" --max-turns 80 --max-budget-usd 10 < "$WORK/prompt.md" || echo "::warning::the agent stopped with an error"
+
+      - id: raw
+        name: The agent's diff and result, as data for the verify job
+        if: always() && steps.issue.outcome == 'success'
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          sudo pkill -KILL -u agent || true
+          sudo pkill -KILL -u bugkey || true
+          mkdir -p "$WORK/raw" "$WORK/after"
+          # the agent's tree, copied as it is (links stay links) and handed to the runner's user without its .git; the
+          # runner's own git directory, which the agent never had, reads it
+          if [ -d "$JAIL/repo" ]; then
+            sudo cp -a "$JAIL/repo/." "$WORK/after/"
+            sudo rm -rf "$WORK/after/.git"
+            sudo chown -R "$(id -u):$(id -g)" "$WORK/after"
+            g() { git --git-dir="$GITHUB_WORKSPACE/.git" --work-tree="$WORK/after" -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+            g add -A
+            g diff --cached --binary --no-ext-diff --no-renames --no-textconv > "$WORK/raw/fix.patch"
+          fi
+          # read as the agent's user, so a link it left cannot point the runner at a file the agent could not read
+          # shellcheck disable=SC2024
+          sudo -u agent head -c 20000 "$JAIL/work/result.json" > "$WORK/raw/result.json" 2> /dev/null || rm -f "$WORK/raw/result.json"
+          # a second check (the agent never held the key): the key must not leave in what the agent wrote
+          if ! node tools/bug_agent.mjs leak KEY "$WORK/raw/result.json" "$WORK/raw/fix.patch"; then
+            rm -f "$WORK/raw/result.json" "$WORK/raw/fix.patch"; echo "the API key was in what the agent wrote" > "$WORK/raw/leak.txt"
+          fi
+          # one base64 line, at most 700 kB (a job's outputs hold 1 MB); a bigger diff is left out and verify says so
+          tar -czf "$WORK/raw.tgz" -C "$WORK/raw" .
+          if [ "$(wc -c < "$WORK/raw.tgz")" -le 512000 ]; then echo "raw=$(base64 -w0 "$WORK/raw.tgz")" >> "$GITHUB_OUTPUT"; fi
+
+  verify:
+    needs: agent
+    if: always() && needs.agent.outputs.number != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read   # the checkout of the base branch
+    outputs:
+      outcome: ${{ steps.check.outputs.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: A user of its own, with no network at all, for the patch's code
+        run: sudo bash tools/bug_agent_jail.sh agent none
+
+      - id: check
+        name: The test fails without the fix and passes with it
+        env:
+          RAW: ${{ needs.agent.outputs.raw }}
+          BUG_AGENT_SANDBOX_USER: agent
+        run: |
+          # the base branch's checker, copied out before the patch touches the tree; the build and the test run as the
+          # jailed user in a copy of the tree with no .git (tools/bug_agent.mjs, runTest)
+          ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
+          mkdir -p "$RUNNER_TEMP/raw"
+          # the agent job's output, unpacked as plain files only (no links, no paths out of the folder)
+          if [ -n "$RAW" ] && printf %s "$RAW" | base64 -d > "$RUNNER_TEMP/raw.tgz" 2>/dev/null; then
+            for f in ./result.json ./fix.patch ./leak.txt; do
+              tar -xzf "$RUNNER_TEMP/raw.tgz" -C "$RUNNER_TEMP/raw" --no-same-owner --no-same-permissions "$f" 2>/dev/null || true
+            done
+            find "$RUNNER_TEMP/raw" -mindepth 1 ! -type f -exec rm -rf {} + 2>/dev/null || true
+          fi
+          node "$ba" check "$RUNNER_TEMP/raw" "$RUNNER_TEMP/out" > "$RUNNER_TEMP/outcome.txt" || echo failed > "$RUNNER_TEMP/outcome.txt"
+          outcome=$(head -n 1 "$RUNNER_TEMP/outcome.txt")
+          case "$outcome" in fixed|reproduced|not-reproduced|failed) ;; *) outcome=failed ;; esac
+          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bug-agent
+          path: ${{ runner.temp }}/out/
+          retention-days: 7
+
+  publish:
+    needs: [agent, verify]
+    if: always() && needs.verify.result == 'success' && needs.verify.outputs.outcome != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write        # one new branch, bug-agent/issue-<n>-<run>; nothing else is pushed
+      pull-requests: write   # the draft pull request
+      issues: write          # the comment on the issue
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NUMBER: ${{ needs.agent.outputs.number }}
+      OUTCOME: ${{ needs.verify.outputs.outcome }}
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: true   # the one push, of the new branch
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bug-agent
+          path: ${{ runner.temp }}/out
+
+      - id: publish
+        name: A draft pull request, or a comment
+        run: |
+          out="$RUNNER_TEMP/out"
+          # the base branch's checker, copied out before the patch touches the tree, runs every step below
+          ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
+          case "$NUMBER" in ''|*[!0-9]*) echo "::error::not an issue number"; exit 1;; esac
+          # the paths are checked again here, before the patch touches the tree
+          if [ "$OUTCOME" = fixed ] && ! node "$ba" check-patch "$out/fix.patch" 2> "$out/reason.txt"; then OUTCOME=failed; fi
+          case "$OUTCOME" in
+            fixed)
+              branch="bug-agent/issue-$NUMBER-$GITHUB_RUN_ID"
+              git switch -c "$branch"
+              git apply --index "$out/fix.patch"
+              # what git staged, checked again against the allowlist before anything is committed
+              if ! node "$ba" check-staged 2> "$out/reason.txt"; then
+                git reset -q --hard HEAD; git switch -q -
+                reason=$(head -c 600 "$out/reason.txt")
+                node "$ba" comment - failed "$RUN" "$(node -p 'JSON.stringify({reason: process.argv[1]})' "$reason")" > "$out/comment.md"
+                gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$out/comment.md"
+                exit 0
+              fi
+              git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -q -m "Bug agent: a proposed fix for #$NUMBER"
+              git push -q origin "$branch"
+              node "$ba" comment "$out/result.json" pr-body "$RUN" "{\"issue\":$NUMBER}" > "$out/body.md"
+              url=$(gh pr create --draft --base "$BASE" --head "$branch" --title "Bug agent: a proposed fix for #$NUMBER" --body-file "$out/body.md")
+              node "$ba" comment "$out/result.json" pr "$url" > "$out/comment.md"
+              ;;
+            reproduced|not-reproduced)
+              node "$ba" comment "$out/result.json" "$OUTCOME" "$RUN" > "$out/comment.md"
+              ;;
+            *)
+              reason=$(head -c 600 "$out/reason.txt" 2>/dev/null || true)
+              node "$ba" comment - failed "$RUN" "$(node -p 'JSON.stringify({reason: process.argv[1]})' "$reason")" > "$out/comment.md"
+              ;;
+          esac
+          gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$out/comment.md"

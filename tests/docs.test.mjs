@@ -460,21 +460,23 @@ test('audit 58: module-api.md says destroy() leaves the rest of the container, i
 // to an import, a reader, diff() and editing included, and the 0.44.0 note keeps only what 0.44.0 shipped
 // audit 62: the opening of the section after the last release said "audits 51 to 59 ... and of audit 60 so far" while the
 // section went on to describe audit 61's fixes: it names the rounds up to the last one the section holds
-test('audit 62: module-api.md\'s section after the last release opens with every round it holds, up to the last', () => {
+// 0.45.0: that section is now the 0.45.0 release's, the one after the 0.44.0 section, and its opening says the audits it holds
+test('audit 62: module-api.md\'s section after 0.44.0 opens with every round it holds, up to the last', () => {
   const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
-  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version, from = doc.indexOf('\n## ', at(version + ':') + 4);
-  const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined), open = after.split('\n').find(l => /^These changes/.test(l));
+  const from = doc.indexOf('\n## ', at('0.44.0:') + 4), end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined);
+  const open = after.split('\n').find(l => /^Audits 51 to/.test(l));
   const rounds = [...after.matchAll(/\baudits? (\d+(?:(?:, | and | to )\d+)*)/g)].flatMap(m => m[1].match(/\d+/g).map(Number)), last = Math.max(...rounds);
   assert.ok(open && last >= 61, 'an opening paragraph and the rounds named');
-  assert.match(open, new RegExp(`fixes of audits 51 to ${last} \\(\\d+ findings confirmed`), `the opening names audits 51 to ${last}`);
+  assert.match(after.slice(0, after.indexOf('\n', 5)), new RegExp(`fixes from audits 51 to ${last}$`), `the heading names audits 51 to ${last}`);
+  assert.match(open, new RegExp(`^Audits 51 to ${last} confirmed \\d+ findings`), `the opening names audits 51 to ${last}`);
   assert.doesNotMatch(open, /so far/);
 });
 
-test('audit 60: module-api.md\'s section after the last release names the behaviour changes of rounds 51 to 59; the 0.44.0 note claims none of them', () => {
+test('audit 60: module-api.md\'s section after 0.44.0 names the behaviour changes of rounds 51 to 59; the 0.44.0 note claims none of them', () => {
   const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
-  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version, from = doc.indexOf('\n## ', at(version + ':') + 4);
-  assert.ok(at(version + ':') > 0 && from > 0, 'a section after the last release');
-  const after = doc.slice(from).replace(/\s+/g, ' '), rel = doc.slice(at(version + ':'), from).replace(/\s+/g, ' ');
+  const from = doc.indexOf('\n## ', at('0.44.0:') + 4), end = doc.indexOf('\n## ', from + 4);
+  assert.ok(at('0.44.0:') > 0 && from > 0, 'a section after 0.44.0');
+  const after = doc.slice(from, end > 0 ? end : undefined).replace(/\s+/g, ' '), rel = doc.slice(at('0.44.0:'), from).replace(/\s+/g, ' ');
   for (const [what, re] of [['the DBML one-to-one foreign key end', /`Ref: a\.id - b\.a_id` gives `b\.a_id` the `foreignKey`/], ['the ER comparison in brackets', /`CHECK \(amount > 0\)`/],
     ['re-pointed lines said per view', /A re-pointed line is said as changed, and as taken out of a view/], ['diffMarks.listed', /`view\.diffMarks\.listed`/],
     ['describe() of a communication view on a diff model', /communication view numbers its messages as the model after does/], ['BPMN Delete of a view-own activity with its boundary event', /Delete of such an activity deletes it and its event/],
@@ -485,4 +487,23 @@ test('audit 60: module-api.md\'s section after the last release names the behavi
   // the map example, the atlas names and the one-sidebar docs came after the 0.44.0 tag (c78fc3e5, ef2c0271)
   assert.doesNotMatch(rel, /`examples\/types\/map\.json` and `docs\/gallery\/map\.md` are gone/);
   assert.match(rel, /Diagrams \(the map and the 28 types\)/);
+});
+
+// audit 64 finding 9: round 63's fixes landed after 0.45.0 was cut (from 9b836c1e) with no line in the release notes, and
+// 0.45.0's Known gaps list them as open: the section after the last release names each change a host sees and closes them
+test('audit 64: module-api.md\'s section after the last release names round 63\'s changes and closes 0.45.0\'s open audit 63 items', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.ok(at(version + ':') > 0, `a ${version} section`);
+  const from = doc.indexOf('\n## ', at(version + ':') + 4);
+  assert.ok(from > 0, `a section after ${version}`);
+  const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined).replace(/\s+/g, ' ');
+  assert.match(after, new RegExp(`^ ## After ${version.replace(/\./g, '\\.')}: changes not yet released`));
+  for (const [what, re] of [['the audits it holds', /They are the fixes of audits 63 and/], ['0.45.0\'s open items closed', /Audit 63's 5 low findings, open in 0\.45\.0 \(its Known gaps\), are closed/],
+    ['the BPMN boundary event on a host not read', /boundary event whose host the reader does not read[^.]*kept whole under `ext\.bpmn\.skipped`/],
+    ['the Ingress resource backend', /Ingress resource backend is said as a resource backend/], ['the v1beta1 spec.backend', /`extensions\/v1beta1` `spec\.backend` is read as the default route/],
+    ['the use case actor\'s Alt + arrow', /Alt \+ an arrow along the rank axis on an actor[^.]*emits nothing/], ['keepsRank', /`keepsRank\(model, view, id\)`/],
+    ['the history() docs', /The `history\(\)` docs say `limit` caps the steps back/], ['the showcase guard', /showcase guard counts each legacy test file's reads/],
+    ['the PDF Members rows (audit 64)', /PDF's Members column prints an operation as its box draws it/], ['the BPMN said-once line (audit 64)', /moves to the next element read with that attribute/]])
+    assert.match(after, re, what);
 });

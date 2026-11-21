@@ -1,8 +1,8 @@
 # Layout by business flow: design note
 
-Status: **proposed, 21 Nov 2026**, against `audit-loop` at a304bbb (0.45.0 plus audit 63's fixes). Design only: this note changes no file under `src/`. It covers product item 3 of the plan approved after 0.45.0 (layout by business flow) and sketches item 4 (stories) where it builds on item 3. Fix round 64 is changing `src/layout/layered.js` and `src/map/context.js` while this note is written; the line numbers below are a304bbb's and the function names are what the design relies on.
+Status: **proposed, 22 Nov 2026**, against `audit-loop` at 214bf25 (0.45.0 plus audit 63's fixes and fix round 64's pile rule). Design only: this note changes no file under `src/`. It covers product item 3 of the plan approved after 0.45.0 (layout by business flow) and sketches item 4 (stories) where it builds on item 3. Fix round 64 is changing `src/layout/layered.js` and `src/map/context.js` while this note is written (its first change, `unpile`, is in the pins table below); the function names are what the design relies on, and `tests/notes.test.mjs` fails when one is renamed or moved.
 
-The work splits into five pieces, each shippable on its own: a quality score and a bench mode that computes it (section 4), so every later piece is measured before it lands; dependency lines that do not pull the layout (section 5); a main flow on one straight row with branches above or below (section 6); semantic zones per diagram type (section 7); and a layout that stays put across edits (section 8). A weekly propose-measure-keep loop tunes the parameters the pieces expose (section 9). section 10 sketches stories generated from the main flow, section 11 lists the risks, and section 12 gives the order of pull requests.
+The work splits into five pieces, each shippable on its own: a quality score and a bench mode that computes it (section 4), so every later piece is measured before it lands; dependency lines that do not pull the layout (section 5); a main flow on one straight row with branches above or below (section 6); semantic zones per diagram type (section 7); and a layout that stays put across edits (section 8). A weekly propose-measure-keep loop tunes the parameters the pieces expose (section 9). Section 10 sketches stories generated from the main flow, section 11 lists the risks, and section 12 gives the order of pull requests.
 
 ## 1. The rule every piece keeps
 
@@ -40,6 +40,7 @@ What ranks a card is only the direction of its forward lines. A `state` line (re
 |---|---|---|
 | `onGrid` | `src/map/context.js` | Holds a pin far off the grid at the view's card count plus 64; drops a pin that is not two numbers. |
 | `fillLayout` | `src/map/context.js` | Pinned cards keep their cells; every other card takes its `autoPos` cell, or the next free row down. With boxes, `boxFit` keeps a card's slot only when no box then lies over what it does not hold and its lines run ahead, else finds the nearest such slot. A typed view settles its pins (`typedPins`, up to 3 rounds). |
+| `unpile` | `src/layout/layered.js` | Three or more pins on one cell of a typed view (a host that writes one cell for every card) are a pile: the first in the view's order keeps the cell and the others are dropped, so their cards take a slot as unpinned cards do (fix round 64). Called by `fillLayout` and before `settlePins`. |
 | `settlePins` | `src/layout/layered.js` | A typed view's pins, in order, each kept where clean, else moved to the nearest clean cell in rings, else to a fresh row under its box (`MOVED` lists what moved down). |
 | `pinCells` | `src/layout/layered.js` | The same for the types that rank themselves (component, requirement, and BPMN through `cpPlace`). |
 | `pinsClear` | `src/map/context.js` | A typed view whose pins still draw a box over a card, two boxes or cards over each other, or a pinned card's line on another: each pin tries the cells round it (12 layouts at most), then pins that meet something are dropped; the lowest `score` kept. |
@@ -196,7 +197,7 @@ For each view, the base's cells are what `autoPos` (or `fillLayout`, for a pinne
 
 ### 8.3 With pins and typed layouts
 
-Real pins win over soft pins: a card pinned in the after model takes its pin even if it was elsewhere before. `pinsClear` treats soft pins as droppable first, before the model's pins. Typed types with `pins: false` (sequence, timing, mindmap) are already stable by construction (their axis order is the model's order) and take no `base`.
+Real pins win over soft pins: a card pinned in the after model takes its pin even if it was elsewhere before. Soft pins come from one finished layout, so no two share a cell and `unpile` never drops one; a real pin that lands on a soft pin's cell moves the soft-pinned card, never the real pin. `pinsClear` treats soft pins as droppable first, before the model's pins. Typed types with `pins: false` (sequence, timing, mindmap) are already stable by construction (their axis order is the model's order) and take no `base`.
 
 ### 8.4 Risks and proof
 
