@@ -201,7 +201,7 @@ def by_id(m, i):
     return next((x for x in [*m.get("nodes", []), *m.get("edges", [])] if x.get("id") == i), None)
 
 
-CLASS = ROOT / "examples" / "types" / "uml-class.json"
+CLASS = ROOT / "tests" / "fixtures" / "mcp-class.json"  # copies of the showcase models, pinned here
 edit_on("class.json", CLASS)
 first = CLASS.read_text(encoding="utf-8")
 dry = ed("add_card", view="sales", label="Invoice", dry_run=True)
@@ -235,12 +235,12 @@ ok("edit · pin with no place (its pin off), move_to_box out of every box, remov
    and "customer" not in m2["views"][0]["nodeIds"] and by_id(m2, "customer") and "layout" not in m2["views"][0] or m2["views"][0].get("layout") == {}, got)
 # the type's own rules, where the page asks them: a sequence's reply pairs with its call (props.replyTo, and its slot);
 # BPMN refuses a message flow from a start event and a task moved out of its pool with its flows; a sequence keeps no pins
-edit_on("seq.json", ROOT / "examples" / "types" / "uml-sequence.json")
+edit_on("seq.json", ROOT / "tests" / "fixtures" / "mcp-sequence.json")
 call_ = ed("connect", view="checkout", **{"from": "shopper", "to": "storefront"}, type="Call", label="browse")
 reply_ = ed("connect", view="checkout", **{"from": "storefront", "to": "shopper"}, type="Reply", label="page")
 unnamed = ed("connect", view="checkout", **{"from": "shopper", "to": "storefront"}, type="uml.Message")
 nopin = ed("pin", view="checkout", id="shopper", col=1, row=0)
-edit_on("bpmn.json", ROOT / "examples" / "types" / "bpmn.json")
+edit_on("bpmn.json", ROOT / "tests" / "fixtures" / "mcp-bpmn.json")
 flow = ed("connect", view="order-to-shipment", **{"from": "basket-ready", "to": "order-received"})
 pool = ed("move_to_box", view="order-to-shipment", id="bp-take-payment", box="bp-shopper")
 ok("edit · a typed view's hooks decide, as on the page: a reply pairs with its call; BPMN's rules on flows and pools refuse; a sequence keeps no pins; an ambiguous kind is asked by name",
@@ -249,7 +249,7 @@ ok("edit · a typed view's hooks decide, as on the page: a reply pairs with its 
    and flow == "FAIL connect: A message flow cannot start at a start event; nothing written"
    and pool == "FAIL move_to_box: Move its sequence flows first: a sequence flow stays in its pool; nothing written"
    and nopin.startswith("FAIL pin: a uml.sequence view places its elements itself"), [call_, reply_, unnamed, flow, pool, nopin])
-# a map view: the commands a host's would be (examples/edit.html), boxes in the view's containers
+# a map view: the commands a host would write (the edit demo page), boxes in the view's containers
 edit_on("map.json", ROOT / "tests" / "fixtures" / "integration.json")
 got = [ed("add_card", view="system", label="Billing", kind="backend", box="rides"), ed("connect", view="system", **{"from": "backend1", "to": "pricing"}, kind="sync", label="prices"),
        ed("rename", view="system", id="rides", label="Ride services"), ed("move_to_box", view="system", id="backend1", box="fleet-box")]
@@ -318,20 +318,20 @@ except mcp.Fail as e:
     raced = str(e)
 ok("edit · a change is not written over a file another editor wrote meanwhile", raced and raced.startswith("the model file changed while the change was made")
    and '"Client"' in mcp.MODEL.read_text(encoding="utf-8") and '"Purchase"' not in mcp.MODEL.read_text(encoding="utf-8"), raced)
-# the model file's text kept: an untouched file's every byte; every example and the fixture, a card renamed, as JSON the model
+# the model file's text kept: an untouched file's every byte; each test model, a card renamed, as JSON the model
 import subprocess as sp
 kept = sp.run(["node", "--input-type=module", "-e", f"""
 import {{ written }} from {json.dumps((ROOT / "umlimator_edit.mjs").as_uri())}; import fs from 'node:fs';
-const R = {json.dumps(str(ROOT) + "/")}, files = [...fs.readdirSync(R + 'examples').filter(f => f.endsWith('.json')).map(f => 'examples/' + f),
-  ...fs.readdirSync(R + 'examples/types').filter(f => f.endsWith('.json')).map(f => 'examples/types/' + f), 'tests/fixtures/integration.json'], bad = [];
+const R = {json.dumps(str(ROOT) + "/")}, files = [...fs.readdirSync(R + 'tests').filter(f => f.endsWith('.json')).map(f => 'tests/' + f),
+  ...fs.readdirSync(R + 'tests/fixtures').filter(f => f.endsWith('.json')).map(f => 'tests/fixtures/' + f)], bad = [];
 for (const f of files) {{ const src = fs.readFileSync(R + f, 'utf8'), m = JSON.parse(src.replace(/^\\ufeff/, '')), m2 = structuredClone(m);
   if (written(src, m, m) !== src) bad.push(f + ': not kept');
   if (m2.nodes && m2.nodes[0]) m2.nodes[0].label = 'Renamed'; const t = written(src, m, m2);
   if (JSON.stringify(JSON.parse(t)) !== JSON.stringify(m2) || Math.abs(t.split('\\n').length - src.split('\\n').length) > 1) bad.push(f + ': rename'); }}
 console.log(JSON.stringify({{ files: files.length, bad }}));"""], capture_output=True, text=True)
 kept = json.loads(kept.stdout or "{}") if not kept.returncode else {"error": kept.stderr[-500:]}
-ok("edit · every example and the fixture: untouched, its text is kept to the byte; a card renamed, its text is the new model, its lines as many",
-   kept.get("files", 0) > 50 and kept.get("bad") == [], kept)
+ok("edit · every model of the tests (minimal, stress, fixtures, in their many layouts): untouched, its text is kept to the byte; a card renamed, its text is the new model, its lines as many",
+   kept.get("files", 0) > 60 and kept.get("bad") == [], kept)
 mcp.MODEL, mcp.page, mcp.URL = keep_ed
 
 
@@ -669,7 +669,7 @@ window.RESULT = { steps, model };
 same_dir = Path(tempfile.mkdtemp())
 (same_dir / "page.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0"><div id="m" style="width:1200px;height:800px"></div><script type="module">\n'
                                     + (ROOT / "lib" / "umlimator-all.js").read_text(encoding="utf-8").replace("</script", "<\\/script")
-                                    + "\nconst MODEL0 = " + (ROOT / "examples" / "types" / "uml-class.json").read_text(encoding="utf-8")
+                                    + "\nconst MODEL0 = " + CLASS.read_text(encoding="utf-8")
                                     + ";\ntry {\n" + SAME + "\n} catch (e) { window.RESULT = { error: String(e && e.stack || e) }; }\n</script>", encoding="utf-8")
 chrome = Chrome()
 try:
@@ -680,7 +680,7 @@ finally:
 keep_same = (mcp.MODEL, mcp.page, mcp.URL)
 mcp.page, mcp.URL = (lambda: ("v", None)), "http://127.0.0.1:1"
 mcp.MODEL = same_dir / "class.json"
-mcp.MODEL.write_bytes((ROOT / "examples" / "types" / "uml-class.json").read_bytes())
+mcp.MODEL.write_bytes(CLASS.read_bytes())
 pin_at = next((c["value"] for st in onpage.get("steps", []) if st["name"] == "pin" for c in st["commands"]), [0, 0])
 calls = [("add_card", {"view": "sales", "label": "Invoice", "type": "Interface"}), ("connect", {"view": "sales", "from": "interface1", "to": "customer", "type": "Dependency"}),
          ("rename", {"id": "interface1", "label": "Billable"}), ("move_to_box", {"view": "sales", "id": "interface1", "box": "catalog"}),
