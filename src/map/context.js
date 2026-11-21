@@ -5,7 +5,7 @@ import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
-import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, untangle } from '../layout/layered.js';
+import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
@@ -270,6 +270,8 @@ function mapContext(model, opts = {}) {
         const k = fit && fit.clean(i, c, r) ? fit.cost(i)(c, r) : null;
         out[i] = fit && k !== 0 ? fit.near(i, taken, c, r, k) || [c, r] : [c, r]; });
       return out; };
+    if (typed) { const P = ids.filter(i => Array.isArray(L[i])).map(i => [i, L[i]]), K = unpile(P); // a pile's pins past its first dropped (layered.js)
+      if (K !== P) { const keep = new Set(K.map(p => p[0])); L = { ...L }; P.forEach(([i]) => { if (!keep.has(i)) delete L[i]; }); } }
     let out = fill(L);
     // a typed view's pins settled (settlePins, layered.js) among the cards as placed, and the rest placed again round them; a
     // map's pins stay as given. Rows count a whole row out: a typed view's tall row reaches over the half row after it (audit

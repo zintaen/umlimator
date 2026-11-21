@@ -27,12 +27,14 @@ async function header(width, view, node) {
   }
   await wait(100);
   if (!ph) { f.remove(); return null; }
+  const deep = (r, sel) => r.querySelector(sel) || [...r.querySelectorAll('*')].reduce((x, e) => x || (e.shadowRoot && deep(e.shadowRoot, sel)), null);
   const vw = f.contentWindow.innerWidth, h2 = ph.querySelector('h2'), panel = ph.closest('.panel'), acts = [...ph.querySelectorAll('.acts button')];
   const r = {
     vw, title: h2.textContent, titleWidth: Math.round(h2.getBoundingClientRect().width), titleFits: h2.scrollWidth <= h2.clientWidth + 1,
     out: acts.filter(b => { const x = b.getBoundingClientRect(); return x.left < -1 || x.right > vw + 1; }).map(b => b.getAttribute('aria-label') || b.textContent.trim()),
     open: !!ph.querySelector('[data-open]'), close: !!ph.querySelector('[data-close]'),
-    scroll: [panel.scrollWidth, panel.clientWidth], oneRow: (({ top, bottom }, x) => x.top < bottom && x.bottom > top)(h2.getBoundingClientRect(), ph.querySelector('[data-close]').getBoundingClientRect()),
+    scroll: [panel.scrollWidth, panel.clientWidth], ctlOut: ((c) => !c ? ['no controls'] : [...c.querySelectorAll('button')].filter(b => { const x = b.getBoundingClientRect(); return x.width && (x.left < -1 || x.right > vw + 1); }).map(b => b.dataset.z))(deep(f.contentDocument, '.ctl')),
+    speed: (deep(f.contentDocument, '.ctl [data-z="speed"]') || {}).textContent, oneRow: (({ top, bottom }, x) => x.top < bottom && x.bottom > top)(h2.getBoundingClientRect(), ph.querySelector('[data-close]').getBoundingClientRect()),
   };
   f.remove();
   return r;
@@ -43,6 +45,7 @@ try {
   for (const [[w, view, node, opens], r] of cases.map((c, i) => [c, got[i]])) {
     check(`at ${w} px the details header of ${node} (${opens ? 'it opens a view' : 'no view to open'}) shows the card's name whole, every button inside the screen, and the panel does not scroll sideways (audit 61)`,
       !!r && r.close && r.open === opens && r.titleWidth > 0 && r.titleFits && !r.out.length && r.scroll[0] <= r.scroll[1], r);
+    if (view === 'overview' && opens) check(`at ${w} px the map's controls, the speed button (1×) among them, are all inside the screen`, !!r && r.speed === '1×' && !r.ctlOut.length, r && [r.speed, r.ctlOut]);
   }
   const wide = await header(1200, 'overview', 'api');
   check('at 1200 px the details header stays one row: the name and the buttons side by side', !!wide && wide.open && wide.titleFits && !wide.out.length && wide.oneRow, wide);

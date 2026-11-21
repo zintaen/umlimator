@@ -178,6 +178,15 @@ try {
   check('…nor by Alt + arrows', !ed.length, ed.map(e => e.commands));
   click('.node[data-id="ship"] .n-body'); key('ArrowDown', { altKey: true });
   check('Alt + ↓ on a node: a pin, its row an order inside its lane', ed.length === 1 && same(ed[0].commands[0].path, ['layout', 'ship']), ed.map(e => e.commands)); ed = [];
+  // audit 64: across the lanes (← → laid out down) the lane sets the row: a node with no node of its lane on that side in its
+  // column wrote a pin each press that moved nothing; now nothing is emitted and the hint line says why
+  click('.node[data-id="check-stock"] .n-body'); key('ArrowRight', { altKey: true }); key('ArrowLeft', { altKey: true });
+  check('Alt + ← / → on a node alone in its lane\'s column: nothing emitted, said', !ed.length && /Check the stock of each book is the only node of Warehouse here: the Owner field/.test(hint()), [ed.map(e => e.commands), hint()]);
+  click('.node[data-id="packed-and-paid"] .n-body'); key('ArrowLeft', { altKey: true });
+  check('Alt + ← on the first node of its lane in its column: nothing emitted, said', !ed.length && /the first node of Warehouse here/.test(hint()), [ed.map(e => e.commands), hint()]);
+  key('ArrowRight', { altKey: true });
+  check('Alt + → toward a node of its lane in its column: a pin', ed.length === 1 && same(ed[0].commands[0].path, ['layout', 'packed-and-paid']), ed.map(e => e.commands)); ed = [];
+  click('.node[data-id="ship"] .n-body');
   // the Owner field, by keyboard
   const own = panel('[data-f="owner"]'), opts = own && [...own.options].map(o => o.textContent);
   check('the Owner field: none and every partition', same(opts, ['none', 'Order worker', 'Warehouse', 'Email service']) && own.value === 'lane-warehouse', opts);

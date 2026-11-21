@@ -63,6 +63,7 @@ interface RenderOptions {
   wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;
   flow?: boolean;
+  speed?: number;
   measure?: false | ((text: string, px: number) => number);
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   stableLayout?: boolean;
@@ -79,10 +80,11 @@ interface RenderOptions {
 |---|---|---|
 | `view` | `model.root`, else the view with no parent | The view shown first. |
 | `select` | none | A [`Ref`](./model-and-schema.md#ref) selected at the start. |
-| `controls` | `true` | The up, zoom, fit, 1:1 and flow buttons over the canvas. |
+| `controls` | `true` | The up, zoom, fit, 1:1, flow and speed buttons over the canvas. |
 | `wheel` | `'zoom'` | `'zoom'`: the wheel zooms and a trackpad pans. `'ctrl'`: only Ctrl or ⌘ with the wheel (or a pinch) zooms, and the wheel otherwise scrolls the page, as a map inside a document should. |
 | `minimap` | `false` | A small overview of the view in a corner. |
 | `flow` | on, unless the reader prefers reduced motion | Animated flow along lines. |
+| `speed` | the model's [`motion.speed`](./model-and-schema.md#motion), else 1 | The motion speed, from 0.25 to 4: one multiplier on a tour's dot, a story step's time and the flow along lines. Reduced motion still stops all motion. |
 | `measure` | the host's font (`--um-sans`), measured on a canvas | How text widths are measured. `false` uses a font-independent estimate, the same one `layout()` uses in Node. |
 | `editable` | `false` | Edit gestures that emit [`change`](./events-and-state.md#change) events: all of them, or only those set `true`. On a typed view they emit [`edit`](./events-and-state.md#edit) instead. See [`docs/editing.md`](https://github.com/zintaen/umlimator/blob/main/docs/editing.md). |
 | `stableLayout` | `true` | Cards keep their places across `update()`, in this handle only (never written to the model). |
@@ -280,7 +282,7 @@ tour(path: string[] | null, options?: { speed?: number }): Promise<boolean>;
 ```
 
 A dot rides the lines between each pair of cards in `path` in turn, flashing each card it reaches. `speed` is in map
-units a second (default 240). Resolves `true` at the end, and `false` when cut short: a new tour or replay,
+units a second at 1x (default 240), and the map's [`speed`](#properties) multiplies it as the dot rides, so a change mid-ride goes on from where the dot is. Resolves `true` at the end, and `false` when cut short: a new tour or replay,
 `tour(null)`, Esc on the map, a new picture of the view, or `destroy()`. Under reduced motion no dot rides: the path is
 lit at rest and the promise resolves at once.
 
@@ -345,6 +347,7 @@ readonly destroyed: boolean;
 readonly motion: 'full' | 'reduced' | 'instant';
 readonly story: StoryPlayer | null;
 flow: boolean;
+speed: number;
 ```
 
 | Property | What it is |
@@ -359,6 +362,7 @@ flow: boolean;
 | `motion` | `'instant'` (drawn without animation), `'reduced'` (the reader's setting) or `'full'`. |
 | `story` | The player of the story shown, whoever started it, else `null`. |
 | `flow` | The animated flow along lines. Settable: `map.flow = false`. |
+| `speed` | The motion speed: a tour's dot rides that much faster, a story step started from then on lasts its duration divided by it, and the flow along lines runs that much faster. Settable: `map.speed = 2`; a value outside 0.25 to 4 is ignored, and `null` goes back to the model's `motion.speed`, else 1. The speed button on the controls steps it through 0.5, 1, 1.5 and 2. Set by a host, it is not saved as the reader's choice. Reduced motion still stops the dot and the flow; a story step's time scales under it too. |
 
 ## mountPage
 

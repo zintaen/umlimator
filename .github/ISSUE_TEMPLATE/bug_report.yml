@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. A small model that shows the problem gets it fixed fastest. For a security problem, do not open an issue: follow SECURITY.md.
+        Thanks for the report. A minimal model and exact steps get it fixed fastest. For a security problem, do not open an issue: follow SECURITY.md.
   - type: input
     id: version
     attributes:
@@ -38,14 +38,14 @@ body:
   - type: textarea
     id: model
     attributes:
-      label: Model JSON
-      description: The smallest model that shows the problem, or the part of it that matters. Leave out anything private.
+      label: Minimal model (JSON)
+      description: The smallest model that still shows the problem, cut down until removing anything more makes it go away. Leave out anything private. Skip this only when no model is involved (a docs page, a CLI flag).
       render: json
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
-      description: The code you ran or the command line, and what you did on the page.
+      description: Numbered steps from a fresh start, with the exact code you ran or the command line, and what you did on the page. A maintainer may run the bug agent on this issue, which tries these steps as written.
     validations:
       required: true
   - type: textarea

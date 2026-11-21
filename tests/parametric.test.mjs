@@ -235,8 +235,10 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.match(T.edits.member(M19, V, 'range-equation', null, 'x : Real').error, /holds parameters/, 'a plain row on a constraint block: refused');
   // the composite type's words said in SysML's: a parameter, a binding, a constraint property
   assert.equal(T.edits.rename(M19, V, 'ebike.empty->range-equation.range', 'dist : Length').say, 'Renamed RangeEquation\'s parameter: every constraint property of that type shows it');
-  const along = { L: [0, 1], R: [0, 1], T: [1, 0], B: [1, 0] }[side];
-  assert.match(T.edits.moveTo(M19, V, 'ebike.empty->range-equation.range', { by: along, geo }).error, /^A parameter's place along its side/);
+  // the arrow toward the side it is on: said; another arrow names the side it goes to (audit 64: one along its side was refused)
+  const own = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] }[side], along = { L: [0, 1], R: [0, 1], T: [1, 0], B: [1, 0] }[side];
+  assert.match(T.edits.moveTo(M19, V, 'ebike.empty->range-equation.range', { by: own, geo }).error, /^The parameter is on its owner's \w+ side already/);
+  assert.equal(T.edits.moveTo(M19, V, 'ebike.empty->range-equation.range', { by: along, geo })[0].value, { L: 'bottom', R: 'bottom', T: 'right', B: 'right' }[side]);
   assert.match(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length [2]').error, /^A parameter is param name : Type$/);
   assert.deepEqual(node(M19, 'range-equation').members.map(T.member.print), ['param range : Distance', 'param energy : Energy', 'param consumption : EnergyPerDistance']);
   assert.equal(T.member.print(mem(M19, 'ebike.empty')), 'empty : RangeEquation');
