@@ -70,6 +70,25 @@ for (const [what, path] of [['a page', '/umlimator/use/index.html'], ['a frame',
   });
 }
 
+test('linkcheck: a page listed only in sitemap.xml is checked and read; a broken one is named with the sitemap', async () => {
+  const site = {
+    ...SITE,
+    '/umlimator/sitemap.xml': [200, 'application/xml', `<urlset><url><loc>URL/orphan.html</loc></url><url><loc>URL/gone.html</loc></url>
+      <url><loc>https://example.com/other</loc></url></urlset>`],
+    '/umlimator/orphan.html': [200, 'text/html', '<a href="assets/only-from-orphan.css">x</a>'],
+  };
+  const s = await serve(site);
+  site['/umlimator/sitemap.xml'][2] = site['/umlimator/sitemap.xml'][2].replaceAll('URL/', s.url);
+  try {
+    const r = await check(s.url);
+    assert.equal(r.code, 1, r.out);
+    assert.match(r.out, new RegExp(`::error::linkcheck: ${s.url}gone\\.html \\(404\\) from ${s.url}sitemap\\.xml`));
+    assert.match(r.out, new RegExp(`::error::linkcheck: ${s.url}assets/only-from-orphan\\.css \\(404\\) from ${s.url}orphan\\.html`));
+    assert.match(r.out, /4 page\(s\) read \(2 listed in sitemap\.xml\)/);
+    assert.ok(!/example\.com/.test(r.out), r.out);
+  } finally { s.close(); }
+});
+
 test('linkcheck: a link that answers 500 fails too; one on another site is not checked', async () => {
   const s = await serve({ ...SITE, '/umlimator/assets/app.js': [500, 'text/plain', 'boom'] });
   try {

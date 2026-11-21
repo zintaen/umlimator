@@ -623,7 +623,7 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # The deployed site's links: every page of the documentation site, fetched from Pages and followed from its root, and every
+  # The deployed site's links: every page of the documentation site, fetched from Pages and followed from its root (and its sitemap.xml, if any), and every
   # internal link, frame, picture, script and stylesheet one names answers 200 (tools/linkcheck.mjs; tests/linkcheck.test.mjs)
   # (about 1 min)
   site-links:

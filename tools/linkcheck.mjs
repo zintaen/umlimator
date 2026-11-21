@@ -7,7 +7,8 @@
 //
 // Internal means on the base URL's origin and under its path. Pages are crawled outside <base>examples/ only: the
 // rendered examples are checked to answer, not read (each is a whole model in one file, its links in script strings).
-// A page is read only when it answers text/html. A fragment is dropped; a query is kept. The root is retried for a short
+// A page is read only when it answers text/html. A fragment is dropped; a query is kept. When the site has a
+// <base>sitemap.xml, each internal page it lists is checked and read as well, so a page no link reaches is not missed. The root is retried for a short
 // while, as Pages may still be switching to the new deploy. Each broken link prints `::error::linkcheck: <url> (<status>)
 // from <page>`, and the run exits 1 if there is any. Standard library only (Node 18+ fetch).
 let base;
@@ -69,9 +70,20 @@ async function main() {
   const status = new Map([[base.href, 200]]), from = new Map(), queue = [[base.href, root.html]];
   const pages = new Set([base.href]);
   const bad = [];
-  while (queue.length) {
+  const map = new URL("sitemap.xml", base).href, sitemap = [];
+  const sm = await fetch(map).then(async (r) => (r.ok ? r.text() : "")).catch(() => "");
+  for (const [, loc] of sm.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
+    try {
+      const u = new URL(loc.replace(/&amp;/g, "&"));
+      u.hash = "";
+      if (internal(u) && !from.has(u.href) && u.href !== base.href) { from.set(u.href, map); sitemap.push(u.href); }
+    } catch {}
+  }
+  let seed = [...sitemap];
+  while (queue.length || seed.length) {
     const batch = queue.splice(0);
-    const found = [];
+    const found = seed;
+    seed = [];
     for (const [page, html] of batch) for (const l of links(html, page)) if (internal(new URL(l)) && !status.has(l) && !from.has(l)) { from.set(l, page); found.push(l); }
     for (let i = 0; i < found.length; i += 8) {
       await Promise.all(found.slice(i, i + 8).map(async (l) => {
@@ -83,7 +95,7 @@ async function main() {
     }
   }
   for (const b of bad) console.log(`::error::linkcheck: ${b}`);
-  console.log(`linkcheck: ${pages.size} page(s) read, ${status.size} internal link(s) checked, ${bad.length} broken`);
+  console.log(`linkcheck: ${pages.size} page(s) read${sitemap.length ? ` (${sitemap.length} listed in sitemap.xml)` : ""}, ${status.size} internal link(s) checked, ${bad.length} broken`);
   process.exit(bad.length ? 1 : 0);
 }
 

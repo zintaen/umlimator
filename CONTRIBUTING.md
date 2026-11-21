@@ -84,7 +84,7 @@ When the smoke test fails, the job says which step failed and why, `latest` stay
 
 Trusted publishing covers `npm publish` only, so `promote` needs the repository secret `NPM_TOKEN`, a granular npm token that may write `umlimator`. Without it, `promote` fails and prints the one command to run by hand: `npm dist-tag add umlimator@X.Y.Z latest`.
 
-After each Pages deploy, the `site-links` job reads the deployed site from its root (`tools/linkcheck.mjs`) and fails when any internal link, frame, picture, script or stylesheet does not answer 200, naming the page that links it.
+After each Pages deploy, the `site-links` job reads the deployed site from its root and from its `sitemap.xml` when it has one (`tools/linkcheck.mjs`), and fails when any internal link, frame, picture, script or stylesheet does not answer 200, naming the page that links it.
 
 To try these before a release: `node tools/smoke.mjs <tarball from npm pack>` runs the smoke test on a local package, and `node tools/linkcheck.mjs <url>` checks any copy of the site, `https://zintaen.github.io/umlimator/` included. `python3 tests/steps.py` runs the release jobs' shell steps against stand-ins for `gh`, `git` and `npm`, and `tests/smoke.test.mjs` and `tests/linkcheck.test.mjs` test the two tools.
 
