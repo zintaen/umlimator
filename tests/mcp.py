@@ -170,6 +170,171 @@ ok("audit 12 · view_for: a line to a port, to a box, to a port on a part's type
    at == ["inner"] * 4, at)
 
 
+# ---- the edit tools (evolve-plan.md product item 2): each the page's own gesture, written as one undo step, in process here
+# (the page reloading with a change, and the same change made on the page, are below with Chrome)
+keep_ed = (mcp.MODEL, mcp.page, mcp.URL)
+mcp.page, mcp.URL = (lambda: ("v", None)), "http://127.0.0.1:1"
+ed_dir = Path(tempfile.mkdtemp())
+
+
+def edit_on(name, src):
+    """A copy of src as the server's model, with no undo history: its path."""
+    mcp.MODEL = ed_dir / name
+    mcp.MODEL.write_bytes(Path(src).read_bytes())
+    mcp.history_file().unlink(missing_ok=True)
+    return mcp.MODEL
+
+
+def ed(name, **a):
+    """An edit tool's answer, or its refusal as the text the assistant reads (FAIL: ...)."""
+    try:
+        return mcp.call(name, a)
+    except mcp.Fail as e:
+        return "FAIL " + str(e)
+
+
+def model_now():
+    return json.loads(mcp.MODEL.read_text(encoding="utf-8"))
+
+
+def by_id(m, i):
+    return next((x for x in [*m.get("nodes", []), *m.get("edges", [])] if x.get("id") == i), None)
+
+
+CLASS = ROOT / "examples" / "types" / "uml-class.json"
+edit_on("class.json", CLASS)
+first = CLASS.read_text(encoding="utf-8")
+dry = ed("add_card", view="sales", label="Invoice", dry_run=True)
+ok("edit · add_card with dry_run answers with the page's commands (its N: id class1 of the view's first kind) and diff()'s words, and writes nothing",
+   dry.get("commands") == [{"op": "add", "element": {"id": "class1", "type": "uml.Class", "label": "Invoice"}, "view": "sales"}] and dry.get("summary") == ["adds Invoice"]
+   and "written" not in dry and mcp.MODEL.read_text(encoding="utf-8") == first and not mcp.history_file().exists(), dry)
+got = [ed("add_card", view="sales", label="Invoice", type="Interface", box="sales"),
+       ed("connect", view="sales", **{"from": "customer", "to": "interface1"}, type="uml.Dependency", label="uses"),
+       ed("rename", id="interface1", label="Billable"),
+       ed("set_field", id="interface1", path="props.abstract", value=True),
+       ed("set_field", view="sales", path="title", value="Sales"),
+       ed("pin", view="sales", id="interface1", col=0, row=4)]
+m1 = model_now()
+ok("edit · add_card (a type by its palette name, into a box), connect, rename, set_field on an element and on a view, and pin each write the model file",
+   all(g.get("written") is True for g in got) and by_id(m1, "interface1") == {"id": "interface1", "type": "uml.Interface", "label": "Billable", "parent": "sales", "props": {"abstract": True}}
+   and by_id(m1, "dependency1") == {"id": "dependency1", "type": "uml.Dependency", "from": "customer", "to": "interface1", "label": "uses"}
+   and m1["views"][0]["title"] == "Sales" and m1["views"][0]["layout"] == {"interface1": [0, 4]} and "dependency1" in m1["views"][0]["edges"]
+   and got[0]["added"] == ["interface1"] and got[0]["commands"][1] == {"op": "reparent", "id": "interface1", "parent": "sales"}, [got, by_id(m1, "interface1")])
+# the file is written as it was: a card renamed is one line changed, a card added one line in its list, every other line as it was
+import difflib
+diffs = [x for x in difflib.unified_diff(first.splitlines(), mcp.MODEL.read_text(encoding="utf-8").splitlines(), n=0, lineterm="") if x[:1] in "+-" and x[:3] not in ("+++", "---")]
+# the card and the line, one line each in their lists (the items before them gain a comma); the view's title, lists and new layout
+ok("edit · the model file keeps its own layout: what the change leaves alone is its text as it was, a card and a line one line each",
+   len([x for x in diffs if x.startswith("-")]) == 6 and len([x for x in diffs if x.startswith("+")]) == 9
+   and '+  { "id": "dependency1", "type": "uml.Dependency", "from": "customer", "to": "interface1", "label": "uses" }' in diffs, diffs)
+got = [ed("pin", view="sales", id="interface1"), ed("move_to_box", view="sales", id="interface1", box=None),
+       ed("remove", ids="customer", view="sales"), ed("remove", ids=["interface1"], from_model=True)]
+m2 = model_now()
+ok("edit · pin with no place (its pin off), move_to_box out of every box, remove from a view (hidden there) and from the model (its lines too)",
+   all(g.get("written") is True for g in got) and by_id(m2, "interface1") is None and by_id(m2, "dependency1") is None
+   and "customer" not in m2["views"][0]["nodeIds"] and by_id(m2, "customer") and "layout" not in m2["views"][0] or m2["views"][0].get("layout") == {}, got)
+# the type's own rules, where the page asks them: a sequence's reply pairs with its call (props.replyTo, and its slot);
+# BPMN refuses a message flow from a start event and a task moved out of its pool with its flows; a sequence keeps no pins
+edit_on("seq.json", ROOT / "examples" / "types" / "uml-sequence.json")
+call_ = ed("connect", view="checkout", **{"from": "shopper", "to": "storefront"}, type="Call", label="browse")
+reply_ = ed("connect", view="checkout", **{"from": "storefront", "to": "shopper"}, type="Reply", label="page")
+unnamed = ed("connect", view="checkout", **{"from": "shopper", "to": "storefront"}, type="uml.Message")
+nopin = ed("pin", view="checkout", id="shopper", col=1, row=0)
+edit_on("bpmn.json", ROOT / "examples" / "types" / "bpmn.json")
+flow = ed("connect", view="order-to-shipment", **{"from": "basket-ready", "to": "order-received"})
+pool = ed("move_to_box", view="order-to-shipment", id="bp-take-payment", box="bp-shopper")
+ok("edit · a typed view's hooks decide, as on the page: a reply pairs with its call; BPMN's rules on flows and pools refuse; a sequence keeps no pins; an ambiguous kind is asked by name",
+   call_.get("written") and reply_.get("written") and reply_["commands"][0]["element"]["props"] == {"sort": "reply", "replyTo": call_["added"][0]}
+   and "index" in call_["commands"][0] and unnamed.startswith("FAIL connect: view \"checkout\" (uml.sequence) draws 5 kinds of \"uml.Message\"; give type as one's name: \"Call\" (uml.Message)")
+   and flow == "FAIL connect: A message flow cannot start at a start event; nothing written"
+   and pool == "FAIL move_to_box: Move its sequence flows first: a sequence flow stays in its pool; nothing written"
+   and nopin.startswith("FAIL pin: a uml.sequence view places its elements itself"), [call_, reply_, unnamed, flow, pool, nopin])
+# a map view: the commands a host's would be (examples/edit.html), boxes in the view's containers
+edit_on("map.json", ROOT / "tests" / "fixtures" / "integration.json")
+got = [ed("add_card", view="system", label="Billing", kind="backend", box="rides"), ed("connect", view="system", **{"from": "backend1", "to": "pricing"}, kind="sync", label="prices"),
+       ed("rename", view="system", id="rides", label="Ride services"), ed("move_to_box", view="system", id="backend1", box="fleet-box")]
+m3 = model_now()
+sysv = next(v for v in m3["views"] if v["id"] == "system")
+ok("edit · on a map view: add_card of a kind into a box, connect, rename a box, move_to_box between the view's boxes",
+   all(g.get("written") for g in got) and by_id(m3, "backend1") == {"id": "backend1", "label": "Billing", "kind": "backend"} and "backend1" in sysv["nodeIds"]
+   and by_id(m3, "line1") == {"id": "line1", "from": "backend1", "to": "pricing", "kind": "sync", "label": "prices"}
+   and [c["label"] for c in sysv["containers"] if c["id"] == "rides"] == ["Ride services"]
+   and [c["id"] for c in sysv["containers"] if "backend1" in c["nodeIds"]] == ["fleet-box"], got)
+# refusals: each says why and writes nothing
+edit_on("class.json", CLASS)
+refused = [ed("add_card", view="nope", label="X"), ed("add_card", view="sales", label="X", kind="database"), ed("add_card", view="sales", label=" "),
+           ed("connect", view="sales", **{"from": "customer", "to": "order"}), ed("connect", view="sales", **{"from": "customer", "to": "payments"}, type="Dependency"),
+           ed("move_to_box", view="sales", id="customer", box="sales"), ed("remove", ids="customer"), ed("set_field", path="label", value="x"),
+           ed("pin", view="sales", id="customer", col=1), ed("add_card", view="sales", label="X", id="order"),
+           ed("apply", edits=[{"op": "set", "view": "sales", "path": "nodeIds", "value": ["customer", "ghost"]}]),
+           ed("apply", edits=[{"tool": "rename", "id": "customer", "label": "Client"}, {"tool": "rename", "id": "ghost", "label": "G"}]),
+           ed("apply", edits=[{"tool": "rename", "id": "customer", "label": "C", "dry_run": True}]), ed("apply", edits=[{"tool": "paths"}]), ed("apply", edits=[])]
+ok("edit · refusals say why and write nothing: no such view; a map card's kind on a typed view; no label; a line kind not given; a box as a line's end; "
+   "a box it is in already; remove with no view; set_field with no target; pin with a column alone; an id in use; a change that adds a validate() error; a step that fails, named",
+   all(isinstance(r, str) and r.startswith("FAIL ") for r in refused) and mcp.MODEL.read_text(encoding="utf-8") == first and not mcp.history_file().exists()
+   and "no view \"nope\"" in refused[0] and "kind is a map card's" in refused[1] and "a card needs a label" in refused[2] and "draws 5 kinds of line" in refused[3]
+   and "is not drawn as a card on view \"sales\" but as a box that holds cards" in refused[4] and "is in \"sales\" already" in refused[5]
+   and "from_model: true" in refused[6] and "give id (an element) or view" in refused[7] and "col (a whole number) and row" in refused[8] and "is used already" in refused[9]
+   and refused[10].startswith("FAIL nothing written: the change adds 1 error validate() finds: views[0].nodeIds[1]") and "ghost" in refused[10]
+   and refused[11].startswith("FAIL step 2 of 2: rename: \"ghost\" is not an element") and "a step has no dry_run" in refused[12]
+   and "\"paths\" is not an edit tool" in refused[13] and "edits is empty" in refused[14], refused)
+# preview: the whole change in words, on a copy; apply: the same, written as one step
+steps = [{"tool": "add_card", "view": "sales", "label": "Invoice", "id": "invoice"}, {"tool": "connect", "view": "sales", "from": "invoice", "to": "order", "type": "Association"},
+         {"op": "set", "id": "invoice", "path": "props.abstract", "value": True}]
+pre = ed("preview", edits=steps)
+unchanged = mcp.MODEL.read_text(encoding="utf-8") == first
+app = ed("apply", edits=steps)
+ok("edit · preview runs the steps on a copy (an edit tool's call and an apply() command), answers what apply then writes, as one change",
+   unchanged and "written" not in pre and app.get("written") is True and pre["commands"] == app["commands"] and pre["summary"] == app["summary"]
+   and pre["summary"] == ["adds Invoice, to Order"] and pre["added"] == ["invoice", "association1"] and len(mcp.history()["done"]) == 1, [pre, app])
+# undo and redo: the file as it was, byte for byte; refused when another editor wrote it since; a new change ends redo
+one = mcp.MODEL.read_text(encoding="utf-8")
+ed("rename", id="invoice", label="Bill")
+u1, u2 = ed("undo"), None
+back1 = mcp.MODEL.read_text(encoding="utf-8") == one
+u2 = ed("undo")
+back0 = mcp.MODEL.read_text(encoding="utf-8") == first
+u3 = ed("undo")
+r1 = ed("redo")
+fwd = mcp.MODEL.read_text(encoding="utf-8") == one
+mcp.MODEL.write_text(mcp.MODEL.read_text(encoding="utf-8").replace('"Invoice"', '"Invoice (by hand)"'), encoding="utf-8")
+r2, u4 = ed("redo"), ed("undo")
+ed("rename", id="order", label="Purchase")
+r3 = ed("redo")
+ok("edit · undo puts the file back as it was, change by change, and redo writes it again; each refused when another editor wrote the file since; a new change ends redo",
+   u1.get("undone") == ["renames Invoice to Bill"] and back1 and u2.get("undone") == ["adds Invoice, to Order"] and back0 and u3.startswith("FAIL nothing to undo")
+   and r1.get("redone") == ["adds Invoice, to Order"] and fwd and r2.startswith("FAIL the model file changed since that change was taken back")
+   and u4.startswith("FAIL the model file changed since that change was written") and r3.startswith("FAIL nothing to redo"), [u1, u2, u3, r1, r2, u4, r3])
+# the history sits next to the model, not as a .json a folder of models would take for one; no temporary file is left behind
+ok("edit · the undo history is MODEL.json.undo next to the model; the writes leave no temporary file",
+   mcp.history_file() == ed_dir / "class.json.undo" and mcp.history_file().is_file() and not [p for p in ed_dir.iterdir() if p.name.endswith(".tmp")], sorted(p.name for p in ed_dir.iterdir()))
+# a write the server did not make, between the change and its write: nothing written over it
+edit_on("class.json", CLASS)
+out = mcp.change([{"tool": "rename", "id": "order", "label": "Purchase"}])
+mcp.MODEL.write_text(first.replace('"Customer"', '"Client"'), encoding="utf-8")
+try:
+    mcp.commit(out); raced = None
+except mcp.Fail as e:
+    raced = str(e)
+ok("edit · a change is not written over a file another editor wrote meanwhile", raced and raced.startswith("the model file changed while the change was made")
+   and '"Client"' in mcp.MODEL.read_text(encoding="utf-8") and '"Purchase"' not in mcp.MODEL.read_text(encoding="utf-8"), raced)
+# the model file's text kept: an untouched file's every byte; every example and the fixture, a card renamed, as JSON the model
+import subprocess as sp
+kept = sp.run(["node", "--input-type=module", "-e", f"""
+import {{ written }} from {json.dumps((ROOT / "umlimator_edit.mjs").as_uri())}; import fs from 'node:fs';
+const R = {json.dumps(str(ROOT) + "/")}, files = [...fs.readdirSync(R + 'examples').filter(f => f.endsWith('.json')).map(f => 'examples/' + f),
+  ...fs.readdirSync(R + 'examples/types').filter(f => f.endsWith('.json')).map(f => 'examples/types/' + f), 'tests/fixtures/integration.json'], bad = [];
+for (const f of files) {{ const src = fs.readFileSync(R + f, 'utf8'), m = JSON.parse(src.replace(/^\\ufeff/, '')), m2 = structuredClone(m);
+  if (written(src, m, m) !== src) bad.push(f + ': not kept');
+  if (m2.nodes && m2.nodes[0]) m2.nodes[0].label = 'Renamed'; const t = written(src, m, m2);
+  if (JSON.stringify(JSON.parse(t)) !== JSON.stringify(m2) || Math.abs(t.split('\\n').length - src.split('\\n').length) > 1) bad.push(f + ': rename'); }}
+console.log(JSON.stringify({{ files: files.length, bad }}));"""], capture_output=True, text=True)
+kept = json.loads(kept.stdout or "{}") if not kept.returncode else {"error": kept.stderr[-500:]}
+ok("edit · every example and the fixture: untouched, its text is kept to the byte; a card renamed, its text is the new model, its lines as many",
+   kept.get("files", 0) > 50 and kept.get("bad") == [], kept)
+mcp.MODEL, mcp.page, mcp.URL = keep_ed
+
+
 class Chrome:
     """Headless Chrome over --remote-debugging-pipe: open pages, evaluate in them, close them."""
 
@@ -424,6 +589,19 @@ try:
     ok("mcp-latest-command#2 · a new version's page is never sent ids it no longer has", ps["model"].get("renders")
        and [r.get("id") for r in (ps["asked"].get("highlight") or {}).get("refs", [])] == ["fare"], ps["asked"])
 
+    # the edit tools: a change written is drawn by the open page, which reloads with it; undo() takes it off the page again
+    model.write_text(json.dumps(fixture), encoding="utf-8")
+    tool("show_view", view="trips")
+    HAS = "(id => { const h = document.querySelector('#m-canvas .umlimator'); return !!(h && h.shadowRoot && h.shadowRoot.querySelector(`.node[data-id=\"${id}\"]`)); })"
+    added = json.loads(tool("add_card", view="trips", label="Billing", kind="backend"))
+    shown_ed = until(lambda: chrome.eval(sid, HAS + "('backend1')"))
+    undone = json.loads(tool("undo"))
+    gone_ed = until(lambda: chrome.eval(sid, HAS + "('trip-api')") and not chrome.eval(sid, HAS + "('backend1')"))
+    ok("edit · a change written reloads the open page, which draws it, and the tool says so; undo() takes it off the page again",
+       added.get("written") and added.get("page") == f"The page at {url} reloaded with it." and shown_ed
+       and undone.get("undone") == ["adds Billing"] and undone.get("page") == f"The page at {url} reloaded with it." and gone_ed, (added, undone, shown_ed, gone_ed))
+    model.write_text(json.dumps(smaller), encoding="utf-8")
+
     # this server stops, and another model's server takes its port: the tab stays the moped share, and says so
     port = int(url.rsplit(":", 1)[1])
     srv.stdin.close()
@@ -462,6 +640,64 @@ finally:
     srv.stdin.close()
     srv.wait(timeout=30)
     shutil.rmtree(work, ignore_errors=True)
+# the edit tools and the page give the same model: the class example edited on the page, by its own gestures (the palette and
+# a name typed, L and the kind of line picked, F2, the Owner field, a property's box, Alt + arrows, Delete), each edit event
+# applied; then the same edits made by the edit tools on a copy of the file. Each step's commands are the page's, and so is
+# the model written
+SAME = """
+const el = document.getElementById('m'); let model = MODEL0; const events = [];
+const h = render(el, model, { view: 'sales', editable: true, on: { edit: e => { events.push(e.commands); model = apply(model, e.commands); h.update(model); } } });
+const sr = el.querySelector('.umlimator').shadowRoot, stage = sr.querySelector('.stage');
+const tick = () => new Promise(r => setTimeout(r, 30));
+const ptr = (t, type, [x, y], extra = {}) => t.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true, ...extra }));
+const key = (k, extra = {}, t = stage) => t.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const card = async id => { const g = sr.querySelector(`.node[data-id="${id}"] .n-label`) || sr.querySelector(`.node[data-id="${id}"]`); const r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2];
+  ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); await tick(); };
+const type = async text => { const inp = sr.querySelector('.um-rename'); inp.value = text; key('Enter', {}, inp); await tick(); };
+const steps = [];
+const step = async (name, f) => { const n = events.length; await f(); await tick(); steps.push({ name, commands: events.slice(n).flat() }); };
+await step('add_card', async () => { sr.querySelector('.um-editor [data-add="1"]').click(); await tick(); await type('Invoice'); });
+await step('connect', async () => { await card('interface1'); key('l'); for (const c of 'cus') key(c); key('Enter'); await tick();
+  [...sr.querySelectorAll('.um-pick button')].find(b => b.textContent.trim() === 'Dependency').click(); });
+await step('rename', async () => { await card('interface1'); key('F2'); await tick(); await type('Billable'); });
+await step('move_to_box', async () => { await card('interface1'); const s = sr.querySelector('.um-editor select[data-owner]'); s.value = 'catalog'; s.dispatchEvent(new Event('change', { bubbles: true })); });
+await step('set_field', async () => { await card('order'); const c = sr.querySelector('.um-editor input[data-key="isAbstract"]'); c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); });
+await step('pin', async () => { await card('order'); key('ArrowRight', { altKey: true }); });
+await step('remove', async () => { await card('customer'); key('Delete'); });
+window.RESULT = { steps, model };
+"""
+same_dir = Path(tempfile.mkdtemp())
+(same_dir / "page.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0"><div id="m" style="width:1200px;height:800px"></div><script type="module">\n'
+                                    + (ROOT / "lib" / "umlimator-all.js").read_text(encoding="utf-8").replace("</script", "<\\/script")
+                                    + "\nconst MODEL0 = " + (ROOT / "examples" / "types" / "uml-class.json").read_text(encoding="utf-8")
+                                    + ";\ntry {\n" + SAME + "\n} catch (e) { window.RESULT = { error: String(e && e.stack || e) }; }\n</script>", encoding="utf-8")
+chrome = Chrome()
+try:
+    tab, sid = chrome.open((same_dir / "page.html").as_uri())
+    onpage = until(lambda: chrome.eval(sid, "window.RESULT || null")) or {}
+finally:
+    chrome.quit()
+keep_same = (mcp.MODEL, mcp.page, mcp.URL)
+mcp.page, mcp.URL = (lambda: ("v", None)), "http://127.0.0.1:1"
+mcp.MODEL = same_dir / "class.json"
+mcp.MODEL.write_bytes((ROOT / "examples" / "types" / "uml-class.json").read_bytes())
+pin_at = next((c["value"] for st in onpage.get("steps", []) if st["name"] == "pin" for c in st["commands"]), [0, 0])
+calls = [("add_card", {"view": "sales", "label": "Invoice", "type": "Interface"}), ("connect", {"view": "sales", "from": "interface1", "to": "customer", "type": "Dependency"}),
+         ("rename", {"id": "interface1", "label": "Billable"}), ("move_to_box", {"view": "sales", "id": "interface1", "box": "catalog"}),
+         ("set_field", {"id": "order", "path": "props.isAbstract", "value": True}), ("pin", {"view": "sales", "id": "order", "col": pin_at[0], "row": pin_at[1]}),
+         ("remove", {"ids": "customer", "view": "sales"})]
+bymcp = []
+for name, a in calls:
+    try:
+        bymcp.append({"name": name, "commands": mcp.call(name, a)["commands"]})
+    except mcp.Fail as e:
+        bymcp.append({"name": name, "error": str(e)})
+written_same = json.loads(mcp.MODEL.read_text(encoding="utf-8"))
+mcp.MODEL, mcp.page, mcp.URL = keep_same
+shutil.rmtree(same_dir, ignore_errors=True)
+ok("edit · the same change made on the page, gesture by gesture, and by the edit tools: the same commands at each step, and the same model",
+   not onpage.get("error") and len(onpage.get("steps", [])) == 7 and all(st["commands"] for st in onpage["steps"])
+   and onpage["steps"] == bymcp and written_same == onpage.get("model"), (onpage.get("error"), onpage.get("steps"), bymcp))
 # C10 (2.6): an object model and a package model served the same way. The read tools answer with the type's own words, and
 # a page tool's highlight is shown on the diagram the page draws (umlimator/all: a typed view), boxes and all
 for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order-1042", "card-1"], "Order 1042, just placed: an object diagram of 7 elements and 6 lines.", 7, 0),

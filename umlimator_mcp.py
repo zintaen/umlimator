@@ -62,8 +62,60 @@ TOOLS = [
          "assistant's highlight), story, tour and camera (the map's MapState); whether it shows the model's latest version, and "
          "whether that version renders; and what the assistant last asked it to show. Needs no page: with none open, it says so."),
 ]
+# The edit tools: each is the page's own gesture on a typed view (the type's hooks: its rules on lines and owners), and the
+# apply() commands a host's would be on a map view; it writes the model file as one undo step (undo() takes it back), only
+# when validate() finds no new error, and an open page reloads with it. dry_run: what it would do, and nothing written.
+WRITES = (" It writes the model file only when validate() finds no new error, as one step undo() takes back, and an open page"
+          " reloads with it. It answers with the apply() commands, diff()'s summary in words, and the problems, rule breaks"
+          " and layout issues it adds. dry_run: the same answer, and nothing written.")
+DRY = {"type": "boolean", "description": "preview only: nothing is written"}
+CHOOSE = {"anyOf": [{"type": "string"}, {"type": "integer", "minimum": 0}],
+          "description": "where the page would ask (a picker the type opens): the choice, by its label or its place from 0"}
+ANY = {"description": "any JSON value"}
+EDITS = [
+    tool("add_card", "Adds a card (an element) to a view, as the page's palette and N do: on a typed view, of `type` (the view's "
+         "first kind when none is given), by the type's own rules; on a map view, a card of `kind`. box: the box to put it in "
+         "(move_to_box's box). id: its id, else one made as the page makes it (class1)." + WRITES,
+         {"view": VIEW, "label": {"type": "string"}, "type": {"type": "string", "description": "a typed view's element type (uml.Class) or its name in the palette (User task)"},
+          "kind": {"type": "string", "description": "a map card's kind (database, service ...)"}, "box": {"type": "string"},
+          "id": {"type": "string"}, "choose": CHOOSE, "dry_run": DRY}, "view", "label"),
+    tool("connect", "Draws a line from one element to another on a view, as the page's L does: on a typed view, of `type` (needed "
+         "when the view draws more than one kind), by the type's own rules (a reply pairs with its call, a flow into a gateway); "
+         "on a map view, a line of `kind`. label: its text." + WRITES,
+         {"view": VIEW, "from": CARD, "to": CARD, "label": {"type": "string"}, "type": {"type": "string", "description": "a typed view's line type (uml.Association) or its name in the palette (Reply)"},
+          "kind": {"type": "string", "description": "a map line's kind"}, "id": {"type": "string"}, "choose": CHOOSE, "dry_run": DRY}, "view", "from", "to"),
+    tool("rename", "Renames an element, as F2 does: on a typed view by the type's own rules (a message's text, a transition's trigger); "
+         "a map view's box too. view: the view to rename it on, else the first that shows it." + WRITES,
+         {"id": {"type": "string"}, "label": {"type": "string"}, "view": VIEW, "choose": CHOOSE, "dry_run": DRY}, "id", "label"),
+    tool("move_to_box", "Puts an element into another box (its owner: a package, a group, a lane ...) or, with box null, out of every "
+         "box, as the properties panel's Owner field does: by the type's rules on owners; on a map view, into one of the view's boxes." + WRITES,
+         {"view": VIEW, "id": {"type": "string"}, "box": {"anyOf": [{"type": "string"}, {"type": "null"}]}, "choose": CHOOSE, "dry_run": DRY}, "view", "id", "box"),
+    tool("remove", "Takes elements out of a view (Delete on the page), or with from_model out of the model, with their lines and every "
+         "place that names them (Shift + Delete), by the type's own rules." + WRITES,
+         {"ids": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "view": VIEW,
+          "from_model": {"type": "boolean"}, "choose": CHOOSE, "dry_run": DRY}, "ids"),
+    tool("set_field", "Sets a field of an element (id) or of a view (view, no id), as the properties panel does: path 'label', "
+         "'props.visibility', or a list of keys; no value takes the field off. On a typed view the type's own rules come first." + WRITES,
+         {"path": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "value": ANY, "id": {"type": "string"},
+          "view": VIEW, "choose": CHOOSE, "dry_run": DRY}, "path"),
+    tool("pin", "Pins a card to a column and row of a view's layout, as a drag in its box does; neither: takes its pin off." + WRITES,
+         {"view": VIEW, "id": {"type": "string"}, "col": {"type": "integer", "minimum": 0},
+          "row": {"type": "number", "minimum": 0, "description": "a row, or half one between two (as Alt + arrows place a card)"}, "dry_run": DRY}, "view", "id"),
+]
+STEP = {"type": "array", "items": {"type": "object"}, "description": "the steps, in order: an edit tool's call ({tool: 'connect', view, from, "
+        "to, ...}, no dry_run) or an apply() command as it is ({op: 'set', id, path, value})"}
+TOOLS += EDITS + [
+    tool("preview", "What the steps would do, run on a copy, one after the other: the apply() commands, diff()'s summary in words, the "
+         "problems (validate()), rule breaks and layout issues (check(), on the views it changes) the change adds. Nothing is written.",
+         {"edits": STEP}, "edits"),
+    tool("apply", "Runs the steps as one change and writes the model file, atomically, only when validate() finds no new error: one "
+         "step undo() takes back. An open page reloads with it. The answer is preview's, and what the page did.", {"edits": STEP}, "edits"),
+    tool("undo", "Takes the model file back to before the last change the edit tools wrote, when nothing else has written it since; redo() puts it back."),
+    tool("redo", "Writes again the last change undo() took back."),
+]
 TOOL = {t["name"]: t for t in TOOLS}
 PAGE_TOOLS = {"show_view", "highlight", "tour", "play_story", "clear"}
+EDIT_TOOLS = {t["name"] for t in EDITS}
 
 
 class Fail(Exception):
@@ -211,7 +263,209 @@ def refs(m, items):
     return out
 
 
+EDITOR = cli.HERE / "umlimator_edit.mjs"  # the edit tools' Node half: the page's own editor on the model (its header says how)
+KEEP = 50                                  # changes the undo history keeps
+
+
+def history_file():
+    """The undo history, next to the model: MODEL.json.undo (not *.json, so a folder of models never takes it for one)."""
+    return MODEL.with_name(MODEL.name + ".undo")
+
+
+def history():
+    """{done: [...], undone: [...]}, each change {before, after, summary, at}: the model file's text before and after it.
+    A history that is missing or unreadable is an empty one."""
+    try:
+        h = json.loads(history_file().read_text(encoding="utf-8"))
+        if isinstance(h, dict) and all(isinstance(h.get(k), list) for k in ("done", "undone")):
+            return h
+    except (OSError, ValueError, RecursionError):
+        pass
+    return {"done": [], "undone": []}
+
+
+def write(path, text):
+    """path's text, replaced atomically: written to a file beside it, then renamed over it, so a reader (the page, an
+    editor, a build) sees the old file or the new one, never half of one."""
+    fd, tmp = tempfile.mkstemp(prefix="." + path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        if path.exists():
+            os.chmod(tmp, path.stat().st_mode & 0o7777)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def model_text():
+    """The model file's text, as the CLI reads it: UTF-8 (a BOM too), UTF-16 or UTF-32. An edit writes it back as UTF-8."""
+    try:
+        data = MODEL.read_bytes()
+        return data.decode(json.detect_encoding(data)).lstrip("\ufeff")
+    except (OSError, UnicodeDecodeError) as e:
+        raise Fail(f"cannot read the model {MODEL.name}: {getattr(e, 'strerror', None) or e}")
+
+
+def checked(name, a, where=""):
+    """An edit tool's arguments checked against its inputSchema, as tools/call checks them: the same words for a step of
+    preview() or apply()."""
+    t = TOOL[name]
+    props = t["inputSchema"]["properties"]
+    if missing := [k for k in t["inputSchema"]["required"] if k not in a]:
+        raise Fail(f"{where}{name} needs {', '.join(missing)}")
+    if extra := [k for k in a if k not in props]:
+        raise Fail(f"{where}{name}: no argument {', '.join(map(str, extra))}; its arguments: {', '.join(props) or 'none'}")
+    if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if not fits(a[k], props[k])]:
+        raise Fail(f"{where}{name}: {'; '.join(wrong)}")
+    return {k: whole(v) if props[k].get("type") == "integer" else v for k, v in a.items()}
+
+
+def steps_of(edits):
+    """preview()'s and apply()'s steps, each an edit tool's call (its arguments checked, no dry_run) or an apply() command."""
+    out = []
+    for i, x in enumerate(edits):
+        where = f"edits[{i}]: "
+        if not isinstance(x, dict):
+            raise Fail(f"{where}a step is an object: an edit tool's call ({{tool, ...}}) or an apply() command ({{op, ...}})")
+        if "op" in x:
+            if "tool" in x:
+                raise Fail(f"{where}a step is an edit tool's call or an apply() command, not both (tool and op)")
+            out.append(x)
+            continue
+        name, a = x.get("tool"), {k: v for k, v in x.items() if k != "tool"}
+        if name not in EDIT_TOOLS:
+            raise Fail(f"{where}{json.dumps(name)} is not an edit tool ({', '.join(t['name'] for t in EDITS)}), and no op makes it an apply() command")
+        if "dry_run" in a:
+            raise Fail(f"{where}a step has no dry_run: preview() writes nothing, apply() writes the whole change")
+        out.append({"tool": name, **checked(name, a, where)})
+    return out
+
+
+def change(steps):
+    """The steps, run on the model by the page's own editor in Node (umlimator_edit.mjs): the commands, the model after
+    them as text written as the file is, and what the change adds. A step the page would refuse is the tool's error."""
+    nodejs = cli.shutil.which("node")
+    if not nodejs:
+        raise Fail("the edit tools need Node.js 18 or later: they run the page's own editor")
+    text = model_text()
+    try:
+        m = cli.load_json(text, MODEL.name)
+    except (ValueError, RecursionError) as e:
+        raise Fail(f"cannot edit the model {MODEL.name}: it is not JSON ({e})" if isinstance(e, ValueError) else f"cannot edit the model {MODEL.name}: it nests too deep to read")
+    if not isinstance(m, dict) or (bad := cli.not_objects(m)):
+        raise Fail(f"cannot edit the model {MODEL.name}: " + ("its JSON is not an object" if not isinstance(m, dict) else "; ".join(bad)))
+    r = cli.run([nodejs, str(EDITOR)], input=json.dumps({"model": m, "steps": steps, "source": text}))
+    try:
+        out = json.loads(r.stdout) if not r.returncode else None
+    except ValueError:
+        out = None
+    if out is None:
+        said = r.stderr.strip()[-2000:]
+        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said or "the editor ended with no answer"])[-1])
+    if "error" in out:
+        raise Fail((f"step {out['step'] + 1} of {len(steps)}: " if len(steps) > 1 else "") + out["error"] + "; nothing written")
+    out["before"] = text
+    return out
+
+
+def said_of(out, written=None):
+    """What a change answers: its commands, diff()'s summary, what it adds (problems, rule breaks, layout issues), what
+    the type said, the ids it adds; and whether it was written, and what the pages did."""
+    added = [c["element"]["id"] for c in out["commands"] if isinstance(c, dict) and c.get("op") == "add" and isinstance(c.get("element"), dict) and "id" in c["element"]]
+    return {**({"written": written} if written is not None else {}), "commands": out["commands"], "summary": out["summary"], "views": out["views"],
+            "problems": out["problems"], "rules": out["rules"], "layout": out["layout"],
+            **({"said": s} if (s := [x for st in out["steps"] for x in st.get("said") or []]) else {}), **({"added": added} if added else {})}
+
+
+def errors_in(problems):
+    return [p for p in problems if isinstance(p, dict) and p.get("level") == "error"]
+
+
+def commit(out):
+    """The change written: the model file atomically, only when validate() finds no error the change adds and nothing
+    else wrote the file meanwhile; then the undo history, and the pages told."""
+    if bad := errors_in(out["problems"]):
+        raise Fail(f"nothing written: the change adds {len(bad)} error{'' if len(bad) == 1 else 's'} validate() finds: "
+                   + "; ".join(f"{p.get('path')}: {p.get('message')}" for p in bad[:8]) + ". preview() shows the whole change.")
+    if not out["commands"]:
+        raise Fail("nothing to change; nothing written")
+    with rendering:  # one writer at a time, and the page is not drawn from a file half written
+        now = model_text()
+        if now != out["before"]:
+            raise Fail("the model file changed while the change was made (another editor wrote it); nothing written: call it again")
+        write(MODEL, out["text"])
+    h = history()
+    h["done"] = (h["done"] + [{"before": out["before"], "after": out["text"], "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}])[-KEEP:]
+    h["undone"] = []
+    try:
+        write(history_file(), json.dumps(h))
+        kept = ""
+    except OSError as e:
+        kept = f" (no undo: cannot write {history_file().name}: {e.strerror or e})"
+    return said_of(out, True) | {"page": tell_pages() + kept}
+
+
+def undo(redo=False):
+    """undo(): the model file as it was before the last change the edit tools wrote; redo(): that change again. Each only
+    when the file is as that change left it, so a change another editor wrote since is never lost."""
+    h = history()
+    stack, other = (h["undone"], h["done"]) if redo else (h["done"], h["undone"])
+    if not stack:
+        raise Fail(f"nothing to {'redo' if redo else 'undo'}: " + ("undo() has taken back no change since the last one written" if redo else "the edit tools have written no change to this model"))
+    c = stack[-1]
+    want_now, put = (c["before"], c["after"]) if redo else (c["after"], c["before"])
+    with rendering:
+        now = model_text()
+        if now != want_now:
+            raise Fail(f"the model file changed since that change was {'taken back' if redo else 'written'} (another editor wrote it): "
+                       f"{'redo' if redo else 'undo'} would lose that; nothing written")
+        write(MODEL, put)
+    other.append(stack.pop())
+    try:
+        write(history_file(), json.dumps(h))
+    except OSError:
+        pass
+    return {"written": True, "undone" if not redo else "redone": c["summary"], "left": len(stack), "page": tell_pages()}
+
+
+def tell_pages():
+    """Each open page told the model has a new version: it reloads and draws it (the page script's own reload on a newer
+    version), then reports it. Waits for a page to report the new version, up to WAIT s."""
+    global latest
+    shown, broken = page()
+    t0 = time.time()
+    with lock:
+        open_ = [p for p in pages.values() if p.get("q")]
+        if not open_:
+            return f"No page is open: {URL} shows the new version."
+        latest = f"{RUN}-{next(ids)}"
+        data = event()
+        for p in open_:
+            p["q"].put(data)
+        start = time.monotonic()
+        while time.monotonic() - start < WAIT:
+            if any(p.get("model") == shown and p.get("seen", 0) >= t0 for p in pages.values()):
+                break
+            told.wait(0.2)
+        back = sum(1 for p in pages.values() if p.get("model") == shown and p.get("seen", 0) >= t0)
+    if broken:
+        return f"The new version does not render ({broken}), so the page at {URL} keeps the last version that did."
+    if back:
+        return f"The page at {URL} reloaded with it."
+    return f"Sent to the open page at {URL}, which had not reloaded within {WAIT} s (a tab in the background?): page_state() says what it shows."
+
+
 def call(name, a):
+    if name in EDIT_TOOLS or name in ("preview", "apply"):  # the edit tools: a preview, or a change written
+        steps = steps_of(a["edits"]) if name in ("preview", "apply") else [{"tool": name, **{k: v for k, v in a.items() if k != "dry_run"}}]
+        if not steps:
+            raise Fail(f"{name}: edits is empty")
+        out = change(steps)
+        return said_of(out) if name == "preview" or a.get("dry_run") else commit(out)
+    if name in ("undo", "redo"):
+        return undo(name == "redo")
     if name == "page_state":  # reads the model's bytes only: a version that is not JSON is said in it
         return page_state()
     try:
@@ -736,6 +990,8 @@ def fits(v, s):
     t = s.get("type")
     if t == "integer":
         return (n := whole(v)) is not None and n >= s.get("minimum", n)
+    if t == "number":  # a finite number, not a boolean
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float("inf") and v >= s.get("minimum", v)
     if not isinstance(v, JSON_TYPES.get(t, object)):
         return False
     return t != "array" or all(fits(x, s.get("items", {})) for x in v)
@@ -833,7 +1089,8 @@ def serve(model, port):
     URL, HOSTS = f"http://127.0.0.1:{port}", {f"127.0.0.1:{port}", f"localhost:{port}"}
     ORIGINS = {f"http://{h}" for h in HOSTS}
     HELLO = (f"The architecture map in {MODEL} (the server runs in {Path.cwd()}). The read tools answer from the file as it is "
-             f"at each call; the page tools drive the map's interactive page at {URL}, which the user opens in a browser.")
+             f"at each call; the page tools drive the map's interactive page at {URL}, which the user opens in a browser. The edit "
+             f"tools change the file as the page's own gestures do, after a preview if you like, and undo() takes a change back.")
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     print(f"umlimator mcp: {MODEL.name}, its page at {URL}", file=sys.stderr)
     out, sys.stdout = sys.stdout.buffer, sys.stderr  # stdout carries the protocol only: a stray print goes to the log
