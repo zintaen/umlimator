@@ -253,6 +253,63 @@ try {
   check('audit 20: the PDF lists a rule whose title is an object with a toString key, by its id', !!pdf && /<b>r<\/b>/.test(pdf.innerHTML) && !fRej.length, [!!pdf, fRej]);
   fr.remove(); window.removeEventListener('unhandledrejection', onRej);
   }
+
+  // motion speed: the speed button on the controls, the model's motion.speed, a host's option and handle.speed, a story
+  // step's time and a line mark's flow scaled by it; the standalone page's #speed=, the reader's saved choice, and storage that throws
+  {
+  const el5 = document.getElementById('b'); el5.innerHTML = '';
+  let h5 = render(el5, TINY), sr5 = el5.querySelector('.umlimator').shadowRoot;
+  const sb = () => sr5.querySelector('.ctl [data-z="speed"]'), live5 = () => sr5.querySelector('.um-live').textContent, st5 = () => sr5.querySelector('.stage');
+  const s0 = [sb() && sb().textContent, sb() && sb().getAttribute('aria-label'), h5.speed, h5.state.speed, st5().style.getPropertyValue('--um-speed')];
+  sb().click(); const s1 = [sb().textContent, sb().getAttribute('aria-label'), live5(), h5.speed, h5.state.speed, st5().style.getPropertyValue('--um-speed')];
+  sb().click(); const s2 = sb().textContent; sb().click(); const s3 = sb().textContent; sb().click(); const s4 = sb().textContent;
+  check("the speed button on the controls: 1× at first, each press the next of 1.5×, 2×, then 0.5× and 1× again, said to screen readers; handle.speed, state.speed and the stage's --um-speed follow",
+    s0.join() === '1×,Motion speed 1×,1,1,' && s1.join() === '1.5×,Motion speed 1.5×,Motion speed 1.5×,1.5,1.5,1.5' && s2 === '2×' && s3 === '0.5×' && s4 === '1×', [s0, s1, s2, s3, s4]);
+  const slow = h5.play('s', { auto: true }); await until(() => slow.state === 'playing');
+  sb().click(); const kept = slow.state; slow.stop(); sb().click(); sb().click(); sb().click();
+  check('…a press on it leaves a playing story playing (it is no reader taking the map)', kept === 'playing' && h5.speed === 1, [kept, h5.speed]);
+  h5.speed = 2; const t0 = performance.now(), told5 = await h5.play('s').done, took = performance.now() - t0;
+  check("a story step's time is its duration divided by the speed: two steps of 600 ms told in about 600 ms at 2×, not 1200", told5 === true && took >= 550 && took < 1150, took);
+  h5.overlay('m', { edges: { ab: { speed: 3 } } });
+  const fl = () => sr5.querySelector('.edge-g[data-from="a"][data-to="b"] .flowline').style.animationDuration, f2 = fl(); h5.speed = 1; const f1 = fl();
+  check("a line mark's flow speed is scaled by the map's: speed 3 at 2× runs 0.4 s a pass, at 1× 0.8 s", f2 === '0.4s' && f1 === '0.8s', [f2, f1]);
+  // reduced motion (this page's setting) still wins at any speed: no flow is drawn, and a tour lights its path at rest at once
+  h5.speed = 2; h5.flow = true; const rmFlow = getComputedStyle(sr5.querySelector('svg .flowline')).animationName;
+  const rt0 = performance.now(), rmTour = await h5.tour(['a', 'b', 'c']), rmTook = performance.now() - rt0, rmDot = !!sr5.querySelector('.tour-dot'); h5.tour(null);
+  check('reduced motion still wins at 2×: no flow along lines, and a tour lights its path at rest at once, with no dot riding',
+    h5.speed === 2 && rmFlow === 'none' && rmTour === true && rmTook < 300 && !rmDot, [h5.speed, rmFlow, rmTour, Math.round(rmTook), rmDot]);
+  h5.destroy(); el5.innerHTML = '';
+  const SPED = { ...TINY, motion: { speed: 2 } };
+  h5 = render(el5, SPED); sr5 = el5.querySelector('.umlimator').shadowRoot;
+  const m0 = [h5.speed, sb().textContent]; h5.speed = 0.5; const m1 = h5.speed; h5.speed = 9; const m2 = h5.speed; h5.speed = null; const m3 = h5.speed;
+  h5.update({ ...TINY, motion: { speed: 1.5 } }); const m4 = [h5.speed, sb().textContent]; h5.update({ ...TINY, motion: { speed: 'fast' } }); const m5 = h5.speed;
+  h5.destroy(); el5.innerHTML = '';
+  h5 = render(el5, SPED, { speed: 0.5 }); const m6 = h5.speed; h5.destroy(); el5.innerHTML = '';
+  check("the model's motion.speed is the map's speed until a host or a reader chooses one; one outside 0.25 to 4 is ignored, null goes back to the model's, and update() brings a new model's",
+    m0.join() === '2,2×' && m1 === 0.5 && m2 === 0.5 && m3 === 2 && m4.join() === '1.5,1.5×' && m5 === 1 && m6 === 0.5, [m0, m1, m2, m3, m4, m5, m6]);
+  // the standalone page, in a frame: the link's #speed=, kept in the link it writes; the reader's press saved, and outranking a link
+  const pageIn = async (params, model = TINY, bad = false) => {
+    const f = document.createElement('iframe'); f.style.cssText = 'width:900px;height:600px'; document.body.appendChild(f);
+    f.contentDocument.open(); f.contentDocument.write('<!doctype html><meta charset="utf-8"><body><div id="p" style="width:900px;height:600px"></div>'); f.contentDocument.close();
+    const w = f.contentWindow; if (bad) Object.defineProperty(w, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError'); } });
+    w.eval(`import(${JSON.stringify(new URL('../lib/umlimator.js', location.href).href)}).then(U => { try { window.pg = U.mountPage(document.getElementById('p'), ${JSON.stringify(model)}, { instant: true, params: new URLSearchParams(${JSON.stringify(params)}) }); } catch (e) { window.pgErr = String(e); } })`);
+    await until(() => w.pg || w.pgErr, 8000); await until(() => w.pg && w.location.hash.includes('view='), 3000);
+    return { f, w, btn: () => w.document.querySelector('#p .umlimator').shadowRoot.querySelector('.ctl [data-z="speed"]') }; };
+  try { localStorage.removeItem('visual-speed'); } catch (_) {}
+  const A = await pageIn('speed=2');
+  const a0 = [A.w.pg && A.w.pg.speed, A.btn() && A.btn().textContent, new URLSearchParams(A.w.location.hash.slice(1)).get('speed'), localStorage.getItem('visual-speed')];
+  A.btn().click(); await until(() => /speed=0.5/.test(A.w.location.hash));
+  const a1 = [A.w.pg.speed, localStorage.getItem('visual-speed'), new URLSearchParams(A.w.location.hash.slice(1)).get('speed')]; A.w.pg.destroy(); A.f.remove();
+  check("the page's #speed=2 starts the map at 2×, the link it writes keeps a speed, and it is not saved as the reader's choice", a0.join() === '2,2×,2,', a0);
+  check("…the reader's press is saved (visual-speed) and written into the link", a1.join() === '0.5,0.5,0.5', a1);
+  const B = await pageIn('speed=1.5', SPED), b0 = B.w.pg && B.w.pg.speed; B.w.pg.destroy(); B.f.remove();
+  try { localStorage.removeItem('visual-speed'); } catch (_) {}
+  const C = await pageIn('', SPED), c0 = [C.w.pg && C.w.pg.speed, new URLSearchParams(C.w.location.hash.slice(1)).get('speed')]; C.w.pg.destroy(); C.f.remove();
+  check("…a reader's saved speed outranks a link's; with neither, the model's motion.speed, and no speed in the link", b0 === 0.5 && c0.join() === '2,', [b0, c0]);
+  const D5 = await pageIn('speed=2', TINY, true); let d0 = [D5.w.pgErr || null, D5.w.pg && D5.w.pg.speed];
+  if (D5.w.pg) { D5.btn().click(); d0.push(D5.w.pg.speed); D5.w.pg.destroy(); } D5.f.remove();
+  check('…with storage that throws (a private window, blocked site data), the page opens at the link\'s speed and the button still steps it', d0.join() === ',2,0.5', d0);
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

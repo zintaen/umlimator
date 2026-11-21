@@ -45,6 +45,7 @@ interface MapModel {
   rules?: Rule[];
   stories?: Story[];
   lenses?: Lens[];
+  motion?: { speed?: number };
   [key: string]: unknown;
 }
 ```
@@ -63,6 +64,7 @@ interface MapModel {
 | `rules` | What must hold. See [`Rule`](#rule) and [`rules()`](./apply-and-commands.md#rules). |
 | `stories` | Narrated walk-throughs. See [`Story`](#story) and [`handle.play()`](./render.md#play). |
 | `lenses` | Saved ways to look at the map. See [`Lens`](#lens) and [`handle.lens()`](./render.md#lens). |
+| `motion` | How the map moves when it is played. See [Motion](#motion). |
 
 Fields the library does not know are kept as they are, so a host can store its own data in the model.
 
@@ -307,6 +309,18 @@ interface StoryStep {
     { "view": "system", "caption": "The API stores it.", "highlight": ["api", "db"], "tour": ["web", "api", "db"] }
   ]
 }]
+```
+
+## Motion
+
+```ts
+motion?: { speed?: number };
+```
+
+`speed` is the author's motion speed, a number from 0.25 to 4 (default 1): one multiplier on a tour's dot, a story step's time and the flow along lines. At 2 a step of 4000 ms lasts 2000 ms and the dot rides twice as fast. The reader's own choice on the speed button, the standalone page's `#speed=` link and a host's [`speed` option](./render.md#renderoptions) outrank it, in that order. Reduced motion still stops the dot and the flow. `validate()` warns on a speed outside the range or not a number, and on a `motion` that is not an object; either is ignored.
+
+```json
+"motion": { "speed": 1.5 }
 ```
 
 ## migrate

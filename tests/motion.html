@@ -226,6 +226,29 @@ try {
   check('shapes: a queue\'s floor moves while the flow is on, and is gone when it is off', getComputedStyle(floor).animationName === 'floor' && +getComputedStyle(floor).opacity > 0
     && (hs.flow = false, getComputedStyle(floor).animationName === 'none' || +getComputedStyle(floor).opacity === 0), [getComputedStyle(floor).animationName, getComputedStyle(floor).opacity]);
   hs.destroy(); sbox.remove();
+
+  // ---- motion speed, with motion: the flow runs faster, a tour's dot rides faster (and a change mid-ride goes on from where
+  // the dot is), and → during a step's ride skips to the next step at once, said to screen readers
+  {
+  const RIDE = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }, { id: 'd', label: 'D' }],
+    edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }, { id: 'cd', from: 'c', to: 'd' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }],
+    stories: [{ id: 's', steps: [{ view: 'v', caption: 'ride', tour: ['a', 'b', 'c', 'd'], duration: 600 }, { view: 'v', caption: 'after', duration: 600 }] }] };
+  await mount({ flow: true }, RIDE);
+  const fd = () => getComputedStyle(sr.querySelector('svg .flowline')).animationDuration, f1 = fd(); h.speed = 2; const f2 = fd(); h.speed = 0.5; const f5 = fd(); h.speed = 1;
+  check('the flow along lines runs at the speed: 2.4 s a pass at 1×, 1.2 s at 2×, 4.8 s at 0.5×', f1 === '2.4s' && f2 === '1.2s' && f5 === '4.8s', [f1, f2, f5]);
+  const ride = async sp => { h.speed = sp; const t0 = performance.now(); await h.tour(['a', 'b', 'c', 'd']); return performance.now() - t0; };
+  const r1 = await ride(1), r2 = await ride(2); h.speed = 1;
+  check("a tour's dot rides at the speed: the same tour in well under the time at 2×", r1 > 300 && r2 < r1 * 0.7, [Math.round(r1), Math.round(r2)]);
+  const cx = () => +(sr.querySelector('.um-trip circle') || { getAttribute: () => NaN }).getAttribute('cx'), cy = () => +(sr.querySelector('.um-trip circle') || { getAttribute: () => NaN }).getAttribute('cy');
+  const tp = h.tour(["a", "b", "c", "d"]); await wait(400); const p0 = [cx(), cy()]; h.speed = 0.5; await wait(48); const p1 = [cx(), cy()];
+  check('…and a change mid-ride goes on from where the dot is, not from where the new speed would have put it', Number.isFinite(p0[0]) && Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) < 20, [p0, p1]);
+  h.tour(null); await tp; h.speed = 1;
+  const live = () => sr.querySelector('.um-live').textContent, sp = h.play('s'); await until(() => sr.querySelector('.um-trip circle') && sp.state === 'playing', 3000);
+  const riding = !!sr.querySelector('.um-trip circle');
+  stage().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true, cancelable: true })); await wait(50);
+  check("→ while a step's tour rides skips to the next step at once: the dot goes and the step is said to screen readers", riding && sp.step === 1 && !sr.querySelector('.um-trip circle') && live().startsWith('Step 2 of 2: after'), [riding, sp.step, live()]);
+  sp.stop();
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 removeEventListener('error', onError);
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
