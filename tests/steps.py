@@ -36,8 +36,9 @@ def step(path, sid):
 
 
 # gh, git (ls-remote; anything else goes to the real git) and npm, answering from $STATE: tags/<name> (a commit, or "tag-object
-# commit" for an annotated tag), releases/<tag>.json, npm/<version> (the commit it was published from), comments/<id>.json,
-# head (the pull request's head commit). GH_FAIL names what fails (list, head, write); NPM_FAIL fails npm publish.
+# commit" for an annotated tag), releases/<tag>.json, npm/<version> (the commit it was published from), dist-tags/<tag> (a
+# version), npmrc (the token npm config set wrote), comments/<id>.json, head (the pull request's head commit). GH_FAIL names
+# what fails (list, head, write); NPM_FAIL fails npm publish.
 STUB = r'''#!/usr/bin/env python3
 import json, os, sys, time
 from pathlib import Path
@@ -57,14 +58,25 @@ if me == "git":
         print(f"{at[0]}\trefs/tags/{name}" + (f"\n{at[1]}\trefs/tags/{name}^{{}}" if len(at) > 1 else ""))
     sys.exit(2 if "--exit-code" in a and not names else 0)
 elif me == "npm":
-    if a[0] == "view":
+    if a[:3] == ["view", "umlimator", "dist-tags.latest"]:
+        f = S / "dist-tags" / "latest"
+        print(f.read_text()) if f.is_file() else fail("npm ERR! code E404")
+    elif a[0] == "view":
         v = a[1].split("@", 1)[1]
         print(v) if (S / "npm" / v).is_file() else fail("npm ERR! code E404")
+    elif a[:2] == ["config", "set"]:
+        (S / "npmrc").write_text(a[3])
+    elif a[:2] == ["dist-tag", "add"]:
+        if not (S / "npmrc").is_file():
+            fail("npm ERR! code ENEEDAUTH")
+        v = a[2].split("@", 1)[1]
+        (S / "dist-tags" / a[3]).write_text(v) if (S / "npm" / v).is_file() else fail("npm ERR! code E404")
     elif os.environ.get("NPM_FAIL"):
         fail("npm ERR! code E503 (the registry is down)")
     else:
         v = json.loads(Path("package.json").read_text())["version"]
         (S / "npm" / v).write_text(os.environ["GITHUB_SHA"])
+        (S / "dist-tags" / (opt("--tag") or "latest")).write_text(v)
 elif a[:2] == ["release", "view"]:
     f = S / "releases" / f"{a[2]}.json"
     if not f.is_file():
@@ -130,7 +142,7 @@ for name in ("gh", "git", "npm"):
 
 def fresh():
     state = Path(tempfile.mkdtemp(dir=tmp, prefix="state-"))
-    for d in ("tags", "releases", "npm", "comments"):
+    for d in ("tags", "releases", "npm", "dist-tags", "comments"):
         (state / d).mkdir()
     return state
 
@@ -143,10 +155,13 @@ def bash(script, env, cwd):
     return r.returncode, r.stdout + r.stderr
 
 
-# ---------- the release job (check.yml): a version is tagged at the commit that releases it, its Release is a draft until
-# npm has it, and npm only ever gets the tagged commit ----------
+# ---------- the release jobs (check.yml): a version is tagged at the commit that releases it and published to npm under
+# next; latest moves to it, and its Release is published, only after its smoke test passed; npm only ever gets the tagged
+# commit ----------
 _, TAG = step(".github/workflows/check.yml", "tag")
 NPM_IF, NPM = step(".github/workflows/check.yml", "npm")
+_, PROMOTE = step(".github/workflows/check.yml", "promote")
+_, SMOKE_FAILED = step(".github/workflows/check.yml", "smoke-failed")
 A, B, M = "a" * 40, "b" * 40, "c" * 40
 
 
@@ -158,17 +173,27 @@ def checkout(notes=True):
     return co
 
 
-def release(state, co, sha, npm_fails=False):
-    """One push to main: the tag step, then the npm step when its `if:` lets it run. (tag step's exit, npm step's exit or None, log)"""
+def release(state, co, sha, npm_fails=False, smoke=True, token="npm_t"):
+    """One push to main: the tag step, then the npm step when its `if:` lets it run; then, when the npm step gave a version
+    (the release job's output), the smoke job's outcome (`smoke`: its failure step runs when it failed) and the promote step
+    only when it passed, as those jobs' needs and `if:` run them. (tag step's exit, npm step's exit or None, promote step's
+    exit or None, log)"""
     out = Path(tempfile.mkstemp(dir=tmp)[1])
     env = {"STATE": str(state), "GITHUB_SHA": sha, "GITHUB_REPOSITORY": "o/r", "GITHUB_OUTPUT": str(out), "GH_TOKEN": "t",
            "NPM_FAIL": "1" if npm_fails else ""}
     code, log = bash(TAG, env, co)
-    npm = None
+    npm = promote = None
     if code == 0 and ("release=yes" in out.read_text() or not NPM_IF):  # as the job runs it: on its `if:`
         npm, more = bash(NPM, env, co)
         log += more
-    return code, npm, log
+    version = next((l.split("=", 1)[1] for l in out.read_text().splitlines() if l.startswith("version=")), "") if npm == 0 else ""
+    if version and not smoke:
+        _, more = bash(SMOKE_FAILED, {**env, "V": version}, co)
+        log += more
+    elif version:
+        promote, more = bash(PROMOTE, {**env, "V": version, "GH_REPO": "o/r", "NPM_TOKEN": token}, co)
+        log += more
+    return code, npm, promote, log
 
 
 def read(state, path):
@@ -177,29 +202,66 @@ def read(state, path):
 
 
 s, co = fresh(), checkout()
+(s / "dist-tags" / "latest").write_text("0.13.0")
 r = release(s, co, A)
-ok("release · a new version is tagged at its commit, published to npm from it, and its Release published once npm has it",
-   r[:2] == (0, 0) and read(s, "tags/v0.14.0") == A and read(s, "npm/0.14.0") == A and read(s, "releases/v0.14.0.json") == {"draft": False, "latest": True, "title": "v0.14.0: state"}, r)
+ok("release · a new version is tagged at its commit, published to npm from it under next, and after its smoke test latest moves to it and its Release is published",
+   r[:3] == (0, 0, 0) and read(s, "tags/v0.14.0") == A and read(s, "npm/0.14.0") == A and read(s, "dist-tags/next") == "0.14.0"
+   and read(s, "dist-tags/latest") == "0.14.0" and read(s, "releases/v0.14.0.json") == {"draft": False, "latest": True, "title": "v0.14.0: state"}, r)
+
+s = fresh()
+(s / "dist-tags" / "latest").write_text("0.13.0")
+r = release(s, co, A, smoke=False)
+ok("release · the smoke test fails: the version is on next only, latest stays, the Release stays a draft, and the run says so",
+   r[:3] == (0, 0, None) and read(s, "npm/0.14.0") == A and read(s, "dist-tags/next") == "0.14.0" and read(s, "dist-tags/latest") == "0.13.0"
+   and read(s, "releases/v0.14.0.json")["draft"] is True and "::error::" in r[3] and "latest stays at 0.13.0" in r[3], r)
+r = release(s, co, A)
+ok("release · re-running that commit's jobs once the smoke test passes: nothing published twice, latest moves, the Release is published",
+   r[:3] == (0, 0, 0) and "on npm already" in r[3] and read(s, "dist-tags/latest") == "0.14.0" and read(s, "releases/v0.14.0.json")["draft"] is False, r)
+
+s = fresh()
+(s / "dist-tags" / "latest").write_text("0.13.0")
+release(s, co, A, smoke=False)
+r = release(s, co, B)
+ok("release · the smoke test fails, then a later push: it publishes nothing, and fails naming the commit whose jobs to re-run or a new version",
+   r[0] == 1 and r[1] is None and A in r[3] and "::error::" in r[3] and "new version" in r[3] and read(s, "dist-tags/latest") == "0.13.0", r)
+
+s = fresh()
+(s / "dist-tags" / "latest").write_text("0.13.0")
+r = release(s, co, A, token="")
+ok("release · no NPM_TOKEN secret: latest stays, the Release stays a draft, and the job fails naming the command to run by hand",
+   r[2] == 1 and read(s, "dist-tags/latest") == "0.13.0" and read(s, "releases/v0.14.0.json")["draft"] is True
+   and "npm dist-tag add umlimator@0.14.0 latest" in r[3] and "npm_t" not in r[3], r)
+
+s = fresh()
+(s / "dist-tags" / "latest").write_text("0.20.1")
+r = release(s, co, A)
+ok("release · an older version's jobs re-run after a newer release: latest stays on the newer one, and its Release is not marked latest",
+   r[:3] == (0, 0, 0) and read(s, "dist-tags/latest") == "0.20.1" and read(s, "releases/v0.14.0.json") == {"draft": False, "latest": False, "title": "v0.14.0: state"}, r)
+
+s = fresh()
+(s / "dist-tags" / "latest").write_text("0.9.10")
+r = release(s, co, A)
+ok("release · versions compare by number, not as text: 0.14.0 is newer than 0.9.10", r[2] == 0 and read(s, "dist-tags/latest") == "0.14.0", r)
 
 s = fresh()
 r = release(s, co, A, npm_fails=True)
 ok("release · npm fails: the Release stays a draft, so no published Release names a package npm hasn't got (release-pipeline#2)",
-   r[1] == 1 and read(s, "npm/0.14.0") is None and (read(s, "releases/v0.14.0.json") or {}).get("draft") is True, r)
+   r[1] == 1 and r[2] is None and read(s, "npm/0.14.0") is None and (read(s, "releases/v0.14.0.json") or {}).get("draft") is True, r)
 r = release(s, co, A)
-ok("release · re-running that commit's job finishes it: npm from the tagged commit, then the Release published",
-   r[:2] == (0, 0) and read(s, "npm/0.14.0") == A and read(s, "releases/v0.14.0.json")["draft"] is False, r)
+ok("release · re-running that commit's job finishes it: npm from the tagged commit, then latest and the Release",
+   r[:3] == (0, 0, 0) and read(s, "npm/0.14.0") == A and read(s, "dist-tags/latest") == "0.14.0" and read(s, "releases/v0.14.0.json")["draft"] is False, r)
 
 s = fresh()
 release(s, co, A, npm_fails=True)
 r = release(s, co, B)
 ok("release · npm fails, then a later push: it publishes nothing under the earlier commit's tag, and fails saying which run to re-run (release-pipeline#1)",
-   r[0] == 1 and read(s, "npm/0.14.0") is None and A in r[2] and "::error::" in r[2] and read(s, "tags/v0.14.0") == A, r)
+   r[0] == 1 and read(s, "npm/0.14.0") is None and A in r[3] and "::error::" in r[3] and read(s, "tags/v0.14.0") == A, r)
 
 s = fresh()
 release(s, co, A)
 r = release(s, co, B)
-ok("release · a later push after a full release releases nothing, and passes", r[0] == 0 and r[1] in (None, 0) and read(s, "npm/0.14.0") == A
-   and "released already" in r[2], r)
+ok("release · a later push after a full release releases nothing, and passes", r[0] == 0 and r[1] in (None, 0) and r[2] is None
+   and read(s, "npm/0.14.0") == A and "released already" in r[3], r)
 
 s = fresh()
 r = release(s, checkout(notes=False), A)
@@ -210,7 +272,32 @@ s = fresh()
 (s / "tags" / "v0.14.0").write_text(f"{'d' * 40} {M}")  # tagged by hand (an annotated tag), never released
 r = release(s, co, B)
 ok("release · a tag made by hand at another commit is not taken as released: the job fails and names the tag's commit (release-pipeline#3)",
-   r[0] == 1 and M in r[2] and "d" * 40 not in r[2] and read(s, "npm/0.14.0") is None, r)
+   r[0] == 1 and M in r[3] and "d" * 40 not in r[3] and read(s, "npm/0.14.0") is None, r)
+
+
+def jobs(path):
+    """Each job of a workflow: its name and its lines (the YAML read as text: two-space job names under jobs:)."""
+    lines = (ROOT / path).read_text(encoding="utf-8").splitlines()
+    i = lines.index("jobs:")
+    heads = [k for k in range(i + 1, len(lines)) if lines[k].startswith("  ") and not lines[k].startswith("   ") and lines[k].rstrip().endswith(":")
+             and not lines[k].lstrip().startswith("#")]
+    return {lines[k].strip()[:-1]: lines[k:(heads + [len(lines)])[n + 1]] for n, k in enumerate(heads)}
+
+
+def field(job, name):
+    return next((l.split(":", 1)[1].split(" #")[0].strip() for l in job if l.startswith(f"    {name}:")), "")
+
+
+J = jobs(".github/workflows/check.yml")
+ok("release · smoke runs on the version the release job published, and promote only after both succeeded (no always() or failure())",
+   field(J["smoke"], "needs") == "release" and field(J["promote"], "needs") == "[release, smoke]"
+   and not any(x in field(J["promote"], "if") for x in ("always()", "failure()", "cancelled()")), (field(J["smoke"], "needs"), field(J["promote"], "needs"), field(J["promote"], "if")))
+ok("release · the npm step publishes under next and never moves latest; promote is the only step that does",
+   "npm publish --access public --tag next" in NPM and "dist-tag" not in NPM and "dist-tag add" in PROMOTE
+   and sum("dist-tag add" in "\n".join(j) for j in J.values()) == 1, NPM)
+ok("release · the smoke job installs the version from the registry with tools/smoke.mjs", any('node tools/smoke.mjs "umlimator@$V"' in l for l in J["smoke"]), J["smoke"])
+ok("site · the deployed site's links are checked after each Pages deploy", field(J["site-links"], "needs") == "site"
+   and any("node tools/linkcheck.mjs" in l for l in J["site-links"]) and any("steps.deploy.outputs.page_url" in l for l in J["site"]), J["site-links"])
 
 # ---------- the diff Action's comment step (action.yml) ----------
 cond, COMMENT = step("action.yml", "comment")
