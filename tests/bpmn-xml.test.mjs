@@ -771,3 +771,30 @@ test('audit 48: with no diagram interchange the view takes no id the writer writ
   const fine = await read(D('<bpmn:process id="p"><bpmn:task id="t" name="a\tb \u{1F4E6}"/></bpmn:process>'), BpmnModdle());
   assert.deepEqual(fine.report.filter(x => x.status === 'weakened'), []);
 });
+
+test('audit 64: a boundary event dropped for a host not read takes back all it kept and linked, and a once-said attribute moves to the next element read with it', needs, async () => {
+  const doc = body => `<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p">${body}</process></definitions>`;
+  const kept = '<task id="t"/><boundaryEvent id="ok" attachedToRef="t" parallelMultiple="true"><timerEventDefinition/></boundaryEvent>';
+  const said = r => r.report.filter(x => /parallelMultiple/.test(x.message)).map(x => `${x.line}: ${x.message}`);
+  const want = ['ok: the attribute parallelMultiple="true": not read, here or elsewhere in the file'];
+  assert.deepEqual(said(await read(doc(kept), BpmnModdle())), want, 'alone');
+  // a dropped event (its host a script task, not read) first: the line is said at the kept one, where the dropped one's was
+  const lost = '<scriptTask id="calc"/><boundaryEvent id="lost" attachedToRef="calc" parallelMultiple="true"><timerEventDefinition/></boundaryEvent>';
+  const r = await read(doc(lost + kept), BpmnModdle()), lines = r.report.map(x => x.line);
+  assert.deepEqual(said(r), want, 'with a dropped event first');
+  assert.ok(lines.indexOf('ok') < lines.indexOf('lost'), 'in the dropped event\'s place');
+  assert.deepEqual(r.model.nodes.find(n => n.id === 'ok').props.attachedTo, 't');
+  // two dropped ones and no kept one: nothing to say it at, so nothing said of it but the events kept
+  assert.deepEqual(said(await read(doc(lost + lost.replaceAll('lost', 'lost2').replace('calc"/>', 'calc2"/>').replace('"calc"', '"calc2"')), BpmnModdle())), []);
+  // a dropped event's output set, data output, marker and data association are inside its own entry, kept once, none
+  // under a parent the model does not have; nor is its association said as a line of its own
+  const es = '<subProcess id="es" triggeredByEvent="true"/><dataObjectReference id="dr" dataObjectRef="o"/><dataObject id="o"/>'
+    + '<boundaryEvent id="b" attachedToRef="es" parallelMultiple="true"><outputSet id="os"/><dataOutput id="do1"/><dataOutputAssociation id="da"><targetRef>dr</targetRef></dataOutputAssociation><messageEventDefinition/></boundaryEvent>';
+  const b = await read(doc(es + kept), BpmnModdle()), sk = b.model.ext.bpmn.skipped;
+  assert.deepEqual(said(b), want);
+  assert.deepEqual(sk.filter(s => s.parent === 'b').map(s => s.element.id), [], 'no entry under the dropped event');
+  assert.deepEqual(sk.filter(s => s.element.id === 'b').length, 1);
+  assert.deepEqual(sk.map(s => s.element.id).filter(id => ['os', 'do1', 'da'].includes(id)), [], 'its parts only inside it');
+  assert.deepEqual(b.report.filter(x => ['os', 'do1', 'da', 'b'].includes(x.line)).map(x => x.message), ['BoundaryEvent whose host es is not read: kept under ext.bpmn, not read']);
+  assert.deepEqual(validate(b.model).filter(p => p.level === 'error'), []);
+});

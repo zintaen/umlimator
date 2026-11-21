@@ -236,7 +236,9 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(r.commands, [{ op: 'set', id: 'dock.charge', path: 'label', value: 'inlet' }]);
   assert.deepEqual(T.edits.rename(RICH, V, 'ebike.dock->dock.charge', 'charge').commands, [], 'its own name: nothing set (the projection\'s name carries «proxy»)');
   const geo = layout(RICH, VID);
-  assert.deepEqual(T.edits.moveTo(RICH, V, 'ebike.plug', { by: [0, 1], geo }).error.slice(0, 16), 'A port\'s place a');
+  // audit 64: the arrow names the side (Alt + ↓ on a left port was refused as along its side); toward its own side, said
+  assert.equal(T.edits.moveTo(RICH, V, 'ebike.plug', { by: [0, 1], geo })[0].value, 'bottom');
+  assert.match(T.edits.moveTo(RICH, V, 'ebike.plug', { by: [-1, 0], geo }).error, /^The port is on its owner's left side already/);
   assert.equal(T.edits.moveTo(RICH, V, 'ebike.plug', { by: [1, 0], geo })[0].value, 'right');
   assert.deepEqual(T.edits.member(RICH, V, 'ebike', null, 'proxy port aux : ChargeInterface'), [{ op: 'add', element: { id: 'ebike.aux', type: 'sysml.Port', label: 'aux', props: { valueType: 'ChargeInterface', kind: 'proxy' } }, owner: 'ebike' }]);
   assert.equal(T.edits.member(RICH, V, 'ebike', null, 'ref home : Dock')[0].element.type, 'sysml.ReferenceProperty');
