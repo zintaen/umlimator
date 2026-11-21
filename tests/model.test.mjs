@@ -999,8 +999,6 @@ test('motion speed: validate() says a motion that is not an object and a speed t
   for (const [bad, text] of [[0, '0'], [0.2, '0.2'], [4.5, '4.5'], [-1, '-1'], ['2', '"2"'], [NaN, 'NaN'], [Infinity, 'Infinity'], [true, 'true'], [[2], '[2]'], [{ valueOf: () => 2 }, '{}']])
     assert.deepEqual(said({ speed: bad }), [`warning motion.speed: speed ${text} is not a number from 0.25 to 4: ignored`], String(bad));
   for (const bad of [2, 'fast', [1], true]) assert.deepEqual(said(bad), ['warning motion: motion is an object, { speed }: ignored'], String(bad));
-  // no example, fixture or bench model has a motion field: they move at 1× as before
-  const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f),
-    ...readdirSync(new URL('../examples/types/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/types/' + f), './fixtures/integration.json'];
-  for (const f of files) assert.equal(JSON.parse(readFileSync(new URL(f, import.meta.url))).motion, undefined, f);
+  // the integration fixture has no motion field: it moves at 1x as before (the showcase test checks examples/)
+  assert.equal(JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))).motion, undefined);
 });
