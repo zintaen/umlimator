@@ -139,8 +139,10 @@ try {
   // a port moved to another side: Alt + →, and a drag onto its part's top
   click('.node[data-id="order-service.api"] .n-mask'); key('ArrowRight', { altKey: true });
   gives('Alt + → on the subject\'s port: its side', [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'right' }], m => m.views[0].present['order-service.api'].side === 'right', m2);
-  const n0 = ed.length; key('ArrowDown', { altKey: true });
-  check('Alt + ↓ along its side: nothing emitted, said', ed.length === n0 && /follows its lines/.test(sr.textContent), [ed.length - n0, pick('.um-live') && pick('.um-live').textContent]);
+  const n0 = ed.length; key('ArrowLeft', { altKey: true });
+  check('Alt + ← toward the side it is drawn on: nothing emitted, said', ed.length === n0 && /left side already/.test(sr.textContent), [ed.length - n0, pick('.um-live') && pick('.um-live').textContent]);
+  key('ArrowUp', { altKey: true }); // audit 64: along its side it was refused; the arrow names the side, so the top a drag reaches
+  check('Alt + ↑ on a port on the left: its side, the top', ed.length === n0 + 1 && same(ed.at(-1).commands, [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'top' }]), ed.slice(n0).map(e => e.commands)); ed.length = n0;
   const part = pick('.node[data-id="order-service.checkout"] .n-mask').getBoundingClientRect(), from = centre('.node[data-id="order-service.checkout->checkout-class.quotes"] .n-mask'), at = [part.x + part.width / 2, part.y + 2];
   ptr(pick('.node[data-id="order-service.checkout->checkout-class.quotes"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
   const m3 = gives('a port on a part dragged to its top: present.<part>.ports.<port>.side', [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout-class.quotes', 'side'], value: 'top' }],

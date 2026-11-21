@@ -623,3 +623,18 @@ test('audit 54: an action named with a run of 200,000 dashes is added in linear 
   assert.equal(c.element.id, `a${d}b`);
   assert.equal(actAdd(m, m.views[0], { type: 'uml.Action' }, '--Pick, pack--', null)[0].element.id, 'pick-pack');
 });
+
+test('layout.keepsRow: Alt + an arrow across the lanes on a node with no node of its lane on that side in its column is refused and said, and only where its pin would move nothing (audit 64)', () => {
+  const V = EX.views[0], L = diagramOf(V).layout, g = layout(EX, V.id), box = m => JSON.stringify(layout(m, V.id).nodes.map(n => [n.id, n.x, n.y]));
+  assert.equal(V.direction, 'down');
+  // laid out down, Alt + → is the step [0, 1] across the lanes (src/canvas/edit.js turns the arrow)
+  assert.equal(L.keepsRow(EX, V, 'check-stock', g, [0, 1]), 'Check the stock of each book is the only node of Warehouse here: the Owner field moves it to another partition');
+  assert.match(L.keepsRow(EX, V, 'packed-and-paid', g, [0, -1]), /^.+ is the first node of Warehouse here/);
+  assert.equal(L.keepsRow(EX, V, 'packed-and-paid', g, [0, 1]), null, 'toward a node of its lane in its column: a pin');
+  const base = box(EX); let refused = 0;
+  for (const n of g.nodes) for (const s of [-1, 1]) {
+    if (!L.keepsRow(EX, V, n.id, g, [0, s]) || n.row + s < 0) continue; refused++;
+    assert.equal(box(apply(EX, [{ op: 'set', view: V.id, path: ['layout', n.id], value: [n.col, n.row + s] }])), base, `${n.id} ${s}: refused, so its pin moves nothing`);
+  }
+  assert.ok(refused > 10, refused);
+});

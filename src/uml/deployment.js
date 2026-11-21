@@ -3,7 +3,7 @@ import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { commentConnect, lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
+import { commentConnect, commentLinkProblems, lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
@@ -182,6 +182,7 @@ const DP_RULES = {
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
   'own-boxes': STRUCT_RULES['own-boxes'],
   'line-inside': 'a line between a box and something it holds, or from an open box to itself, is not drawn (a deployment and a communication path: their own rules)',
+  'comment-link': 'a comment link the view draws has a comment at one end',
 };
 const DP_USUAL = { 'uml.ExecutionEnvironment': DP_TARGETS, 'uml.Device': ['uml.Node', 'uml.Device'], 'uml.Node': ['uml.Node'] };
 function dpProblems(model, view) {
@@ -203,7 +204,9 @@ function dpProblems(model, view) {
       if (!kinds) say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`);
       else if (a != null) say('error', 'path-ends', path, ends, `${e.id} joins ${q(a)} and ${q(b)}, which it holds: a communication path joins two nodes, devices or execution environments, neither holding the other`); } });
   if (view) { const vi = DP_ARR(model.views).indexOf(view), pic = dpPic(model, view); // a deployment and a communication path: their own rules
-    dpListed(view, pic).forEach(e => { if (!['uml.Deployment', 'uml.CommunicationPath'].includes(e.type) && dpInside(pic, e)) out.push(lineInside(view, vi, e, e.from, e.to, q)); }); }
+    dpListed(view, pic).forEach(e => { if (!['uml.Deployment', 'uml.CommunicationPath'].includes(e.type) && dpInside(pic, e)) out.push(lineInside(view, vi, e, e.from, e.to, q)); });
+    // a comment link with no comment at either end, of the lines this view draws (connect refuses one), a warning (audit 64)
+    const drawn = new Set(dpLines(model, view, pic)); out.push(...commentLinkProblems(viewLines(model, view).filter(([e]) => drawn.has(e)), ty, q)); }
   return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends' || p.rule === 'own-boxes')];
 }
 

@@ -235,7 +235,8 @@ test('a model with only object views gets no class rules but member-names (uml-o
   const rules = validate(m).map(p => p.rule);
   assert.ok(rules.includes('member-names'), rules.join());
   assert.ok(!rules.includes('generalization-kinds') && !rules.includes('comment-link'), rules.join());
-  assert.ok(!T.rules['generalization-kinds'] && !T.rules['comment-link']);
+  // comment-link is the object view's own rule since audit 64 (a warning on a link it draws with no comment at either end)
+  assert.ok(!T.rules['generalization-kinds'] && Object.hasOwn(T.rules, 'comment-link'));
 });
 
 test("the PDF prints a classifier's members as the class type does, as the picture draws them (audit 4)", () => {
@@ -467,4 +468,17 @@ test('a drawn classifier\'s attribute multiplicity is judged as the class view j
   const ball = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'C' }, { id: 'i', type: 'uml.Interface', label: 'Api', members: [{ id: 'pr', type: 'uml.Property', label: 'size', props: { multiplicity: 'lots' } }] }],
     edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'c', to: 'i' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', 'i'], present: { i: { as: 'ball' } } }] };
   assert.deepEqual(validate(ball).filter(p => p.rule === 'multiplicity'), []);
+});
+
+test('audit 64: instance-of takes a slot naming a navigable association end of the classifier, and still warns of one naming nothing', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'order', type: 'uml.Class', label: 'Order', members: [{ id: 'order.id', type: 'uml.Property', label: 'id' }] }, { id: 'line', type: 'uml.Class', label: 'OrderLine' },
+    { id: 'o1', type: 'uml.InstanceSpecification', label: 'o1', props: { classifier: 'Order' }, members: [{ id: 'o1.id', type: 'uml.Slot', label: 'id', props: { value: '7' } }, { id: 'o1.lines', type: 'uml.Slot', label: 'lines', props: { value: 'l1' } }] },
+    { id: 'l1', type: 'uml.InstanceSpecification', label: 'l1', props: { classifier: 'OrderLine' }, members: [{ id: 'l1.order', type: 'uml.Slot', label: 'order', props: { value: 'o1' } }] }],
+    edges: [{ id: 'a', type: 'uml.Association', from: 'order', to: 'line', props: { ends: { from: { role: 'order', navigable: false }, to: { role: 'lines', multiplicity: '1..*', navigable: true } } } }],
+    views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o1', 'l1'] }] };
+  // o1.lines names Order's navigable end; l1.order names an end that is not navigable: still warned
+  assert.deepEqual(validate(m).map(p => [p.rule, p.ids]), [['instance-of', ['l1', 'l1.order', 'line']]]);
+  delete m.edges[0].props.ends.from.navigable; assert.deepEqual(validate(m), []);
+  m.nodes[2].members[1].label = 'items'; assert.deepEqual(validate(m).map(p => [p.rule, p.ids]), [['instance-of', ['o1', 'o1.lines', 'order']]]);
 });

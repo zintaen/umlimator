@@ -179,11 +179,17 @@ async function readBpmnXml(xml, moddle) {
       return id;
     };
     const said = new Set(); // BPMN's own attributes set and not read (startQuantity, isForCompensation, ...): each said once
+    // and, for a line said at a boundary event later dropped (its host not read), the next element read with that attribute
+    // to say it at in its place: a line -> its attribute, an attribute -> [element, id, value] of each element after the first (audit 64)
+    const onceOf = new Map(), later = new Map();
+    const once = k => `the attribute ${k}: not read, here or elsewhere in the file`;
     const foreign = (el, id) => {
       for (const k of Object.keys(el.$attrs || {})) if (!k.startsWith('xmlns') && !(pre && k.startsWith(pre))) say(id, 'skipped', `the attribute ${k}: not read`);
       for (const k of Object.keys(el)) {
         const p = el.$type !== 'bpmn:Definitions' && el.$descriptor?.propertiesByName?.[k];
-        if (p && p.isAttr && !p.isReference && !BX_ATTRS.has(k) && el[k] !== p.default && !said.has(k)) { said.add(k); say(id, 'skipped', `the attribute ${k}="${el[k]}": not read, here or elsewhere in the file`); }
+        if (!p || !p.isAttr || p.isReference || BX_ATTRS.has(k) || el[k] === p.default) continue;
+        if (said.has(k)) { if (!later.has(k)) later.set(k, []); later.get(k).push([el, id, el[k]]); continue; }
+        said.add(k); const r0 = report.length; say(id, 'skipped', once(`${k}="${el[k]}"`)); if (report.length > r0) onceOf.set(report.at(-1), k);
       }
     };
     foreign(defs, '');
@@ -285,6 +291,7 @@ async function readBpmnXml(xml, moddle) {
       for (const el of c.flowElements || []) {
         const t = el.$type, kind = t.replace('bpmn:', ''), at = (pool && laneOf.get(el)) || parent;
         let n = null;
+        const r0 = report.length, s0 = skipped.length, p0 = pending.length; // what reading it says, keeps and links: a boundary event's, taken back if it is dropped
         if (t in BX_TASK) {
           n = add(el, 'bpmn.Task', at, { taskType: BX_TASK[t] in BX_TASK_OUT ? BX_TASK[t] : 'none' });
           if (n && !(BX_TASK[t] in BX_TASK_OUT)) weak(n, `a ${BX_TASK[t]} task`, 'task', BX_TASK[t]);
@@ -297,11 +304,9 @@ async function readBpmnXml(xml, moddle) {
           if (ds.length > 1 || !BX_DEFS[kind].includes(def)) { skip(el, at, `with ${ds.map(d => d.$type.replace('bpmn:', '')).join(', ') || 'no definition'}`); continue; }
           const props = { definition: def };
           if (t === 'bpmn:BoundaryEvent') props.cancelActivity = el.cancelActivity !== false;
-          const r0 = report.length, s0 = skipped.length;
           n = add(el, `bpmn.${kind}`, at, props);
           const time = ds[0] && ['timeDate', 'timeDuration', 'timeCycle'].filter(k => ds[0][k]).map(k => [k, ds[0][k].body ?? '']);
           if (n && time && time.length) weak(n, `a timer's ${time.map(x => x[0]).join(', ')}`, 'timer', Object.fromEntries(time));
-          if (n && t === 'bpmn:BoundaryEvent') hosts.push([n, el.attachedToRef, el, at, report.slice(r0), skipped.slice(s0)]);
         } else if (t === 'bpmn:ExclusiveGateway' || t === 'bpmn:ParallelGateway') {
           n = add(el, `bpmn.${kind}`, at);
           if (n && el.default) weak(n, 'a gateway\'s default flow', 'default', idOf(el.default));
@@ -330,6 +335,9 @@ async function readBpmnXml(xml, moddle) {
           }
         }
         for (const a of el.dataOutputAssociations || []) pending.push([a, 'bpmn.DataAssociation', el, a.targetRef, null]);
+        // its lines, its kept parts (an output set, a data output, a marker) and its data associations, all inside its own
+        // ext.bpmn entry if it is dropped: the snapshot is taken once they are all read (audit 64)
+        if (t === 'bpmn:BoundaryEvent') hosts.push([n, el.attachedToRef, el, at, report.slice(r0), skipped.slice(s0), pending.slice(p0)]);
       }
       for (const a of c.artifacts || []) {
         if (a.$type === 'bpmn:TextAnnotation') { const n = add(a, 'bpmn.TextAnnotation', parent, {}, a.text); if (n) tagged.push([a, n]); }
@@ -343,12 +351,17 @@ async function readBpmnXml(xml, moddle) {
     for (const [o, parent] of objects) if (!refd.has(o)) add(o, 'bpmn.DataObject', parent);
     // a boundary event's host is an activity read; else the event is kept whole under ext.bpmn, as a line to an end not read
     // is, and its lines go the same way: a boundary event on nothing is no model validate() takes (audit 63)
-    for (const [n, h, el, at, lines, kept] of hosts) {
-      const a = h && elOf.get(h);
-      if (a && BX_ACTIVITY.has(a.type)) { n.props.attachedTo = a.id; continue; }
+    const dropped = new Set(hosts.filter(([n, h]) => { const a = h && elOf.get(h); return !(a && BX_ACTIVITY.has(a.type)); }).map(x => x[2]));
+    for (const [n, h, el, at, lines, kept, links] of hosts) {
+      if (!dropped.has(el)) { n.props.attachedTo = elOf.get(h).id; continue; }
       nodes.splice(nodes.indexOf(n), 1); byId.delete(n.id); elOf.delete(el); // what was said of it as read goes too
-      for (const x of lines) { const i = report.indexOf(x); if (i >= 0) { report.splice(i, 1); if (firstLost && i < firstLost.at) firstLost.at--; } }
+      for (const x of lines) { const i = report.indexOf(x); if (i < 0) continue;
+        // an attribute said once for the file: said at the next element read with it, in the same place (audit 64)
+        const k = onceOf.get(x), next = k && (later.get(k) || []).find(([e]) => !dropped.has(e));
+        if (next) { const y = { line: next[1], status: 'skipped', message: once(`${k}="${next[2]}"`) }; onceOf.set(y, k); report.splice(i, 1, y); continue; }
+        report.splice(i, 1); if (firstLost && i < firstLost.at) firstLost.at--; }
       for (const x of kept) skipped.splice(skipped.indexOf(x), 1);
+      for (const x of links) pending.splice(pending.indexOf(x), 1);
       for (let i = tagged.length; i--;) if (tagged[i][1] === n) tagged.splice(i, 1);
       skip(el, at, h ? `whose host ${idOf(h) || '(no id)'} is not read` : 'on no host');
     }

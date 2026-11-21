@@ -6,7 +6,7 @@ models, imports diagrams you already have, and compares versions.
 **Requirements.** Python 3.9+ (standard library only); Google Chrome or Chromium for `stills`, `check`, `record` and `pdf`; Node 18+ for `diff`, `drift`, `trace`, `mcp` and `export`, and for `import` of a Mermaid class, sequence, state, ER, requirement or mindmap diagram (or a flowchart with `--typed`), a Structurizr JSON workspace, DBML or BPMN XML (DBML and BPMN also need a package you install: [Import and export](./import-export.md) has each format's needs); and git for `diff --base` and `timelapse`. Get it by cloning the repository at a release tag:
 
 ```bash
-git clone --depth 1 --branch v0.44.0 https://github.com/zintaen/umlimator.git
+git clone --depth 1 --branch v0.45.0 https://github.com/zintaen/umlimator.git
 ```
 
 A command that fails leaves its previous output as it was.

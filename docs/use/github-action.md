@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.44.0
+      - uses: zintaen/umlimator@v0.45.0
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```

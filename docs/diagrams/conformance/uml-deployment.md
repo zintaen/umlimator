@@ -31,7 +31,7 @@ Rules (`notes/stage-5.md` §10.3): `deploy-ends`, `path-ends` (two targets, neit
 (from an artifact; to anything but a component, a warning) (errors); `nest-kinds` (an error when a target's owner is not
 a target; a warning for the unusual pairs: a node in an execution environment, say), `deployed-twice` (an artifact
 nested in one target and deployed by a line to another), `line-inside` (a dependency, manifestation or comment link
-between a box and something it holds is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings).
+between a box and something it holds is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored), `comment-link` (a comment link the view draws with no comment at either end, which connect refuses) (warnings).
 
 **Departures from UML 2.5.1:** «manifest» to a component only (`manifest-ends` warns on other targets).
 

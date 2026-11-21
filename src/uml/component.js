@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
@@ -98,10 +98,10 @@ const cpEnd = (pic, id) => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of $
 function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
   if (!x) return String(id);
-  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to)));
+  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to))).filter((n, i, a) => a.indexOf(n) === i);
     return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, stereotypes: cpStereo(x), provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
-  const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
+  const st = cpStereo(x), owners = k => [...new Set(of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from))))]; // each once: a component's port and the component realizing one interface (audit 64)
   // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
   if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
@@ -233,6 +233,7 @@ const CP_RULES = {
   'component-owner': 'a component\'s owner is a component or a package',
   multiplicity: RULES.multiplicity, // an interface box's attribute's, as the class view's (audit 45)
   'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
+  'comment-link': 'a comment link the view draws has a comment at one end',
 };
 function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -268,7 +269,9 @@ function cpProblems(model, view) {
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`);
     // a value the view reads only as written, misspelled or in another case: ignored, so said (audit 47)
     const as = CP_OWN(p, 'as'); if (as != null && as !== 'ball') say('warning', 'present-values', `views[${vi}].present.${id}.as`, [id], `${q(id)}'s as ${jsonText(as)} is not ball: ignored`);
-    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } }); }
+    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } });
+    // a comment link with no comment at either end, of the lines this view draws (connect refuses one), a warning (audit 64)
+    const drawn = new Set(pic.lines.map(l => l.e)); out.push(...commentLinkProblems(viewLines(model, view).filter(([e]) => drawn.has(e)), I.ty, q)); }
   return out;
 }
 
@@ -308,14 +311,15 @@ function cpConnect(model, view, from, to, at, line) {
   if (kind === 'delegation' && !I.P.has(within(to, from) ? from : to)) return { error: 'Delegate from a port of the box' }; // drawn only from its port (cpPic)
   return [{ op: 'add', element: { id: cpNewId(model, 'connector'), type: 'uml.Connector', from, to, props: { kind } }, view: view.id }];
 }
-// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); along its own side, nothing, as said
+// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); an arrow names the side it goes to, so every
+// side a drag reaches is reached by keyboard (audit 64: Alt + Up or Down on a left port was refused); the side it is on, said
 function cpMoveTo(model, view, id, at) {
   const I = cpIndex(model); if (!I.P.has(id) || !CP_OBJ(at)) return null;
   const g = CP_OBJ(at.geo) ? at.geo : {}, me = CP_OWN(g.byId, id), o = CP_OWN(g.byId, I.P.get(id).owner) || CP_ARR(g.families).find(f => f.id === I.P.get(id).owner);
   let s = null;
-  if (Array.isArray(at.by)) { const [dx, dy] = at.by, v = me && (me.side === 'L' || me.side === 'R');
-    if (me && (v ? dy && !dx : dx && !dy)) return { commands: [], say: 'A port\'s order along its side follows its lines: Alt + arrows across it moves it to another side' };
-    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null; }
+  if (Array.isArray(at.by)) { const [dx, dy] = at.by;
+    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null;
+    if (me && s && s === me.side) return { commands: [], say: `The port is on its owner's ${CP_SIDE[s]} side already: its order along the side follows its lines` }; }
   else if (Array.isArray(at.pt) && o) { const [x, y] = at.pt, d = { L: Math.abs(x - o.x), R: Math.abs(x - o.x - o.w), T: Math.abs(y - o.y), B: Math.abs(y - o.y - o.h) };
     s = Object.keys(d).reduce((a, b) => (d[b] < d[a] ? b : a)); }
   return s ? [{ op: 'set', view: view.id, path: ['present', id, 'side'], value: CP_SIDE[s] }] : null;
@@ -414,7 +418,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
     const ports = () => cpPortsOf(x).filter(p => (pic.I.P.get(p.id) || {}).owner === id).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
     if (x.type === 'uml.Component' || !x.type) return ports(); // no type: drawn as a component, with its ports (audit 29)
     // an interface: the operations and attributes its box draws, none as a ball (audit 29)
-    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
+    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(rowMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
     return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });
