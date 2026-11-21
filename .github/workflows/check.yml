@@ -553,6 +553,8 @@ jobs:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.page_url }}   # the site-links job reads the deployed site there
     permissions:
       pages: write
       id-token: write
@@ -621,15 +623,38 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Merging a version bump releases it: once the checks pass on main, package.json's version is tagged at that push's
-  # commit and published to npm from it, and then its GitHub Release (notes: that version's section of docs/module-api.md)
-  # is published; until npm has the version, the Release is a draft. Every other push to main releases nothing: a version
-  # tagged at another commit is never published from this one, and one whose release did not finish fails each later push
-  # and names the commit whose release job to re-run, which finishes it (tests/steps.py runs these steps).
+  # The deployed site's links: every page of the documentation site, fetched from Pages and followed from its root (and its sitemap.xml, if any), and every
+  # internal link, frame, picture, script and stylesheet one names answers 200 (tools/linkcheck.mjs; tests/linkcheck.test.mjs)
+  # (about 1 min)
+  site-links:
+    needs: site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Every internal link and frame of the deployed site answers 200
+        env:
+          URL: ${{ needs.site.outputs.url }}
+        run: node tools/linkcheck.mjs "$URL"
+
+  # Merging a version bump releases it, in three jobs: once the checks pass on main, release tags package.json's version
+  # at that push's commit and publishes it to npm from it under the dist-tag `next`; smoke installs that version from the
+  # registry into an empty folder and uses it (tools/smoke.mjs); only then does promote move `latest` to it and publish its
+  # GitHub Release (notes: that version's section of docs/module-api.md). Until then the Release is a draft and `latest`
+  # stays where it was: a smoke test that fails leaves the version on `next` only, and says why. Every other push to main
+  # releases nothing: a version tagged at another commit is never published from this one, and one whose release did not
+  # finish fails each later push and names the commit whose jobs to re-run, which finishes it (tests/steps.py runs these
+  # steps, tests/smoke.test.mjs the smoke test).
   release:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.npm.outputs.version }}   # set once npm has the version: smoke and promote run on it
     permissions:
       contents: write
       id-token: write  # npm's trusted publishing: npm checks that this workflow publishes, so no npm token is stored
@@ -646,7 +671,7 @@ jobs:
           at=$(git ls-remote origin "refs/tags/v$v" "refs/tags/v$v^{}" | tail -n1 | cut -f1)   # the tag's commit (an annotated tag peeled)
           if [ -n "$at" ] && [ "$at" != "$GITHUB_SHA" ]; then   # another commit's version: nothing is published from this one
             if [ "$(gh release view "v$v" --json isDraft --jq .isDraft 2> /dev/null)" = false ]; then echo "v$v is released already, from $at"; exit 0; fi
-            echo "::error::v$v is tagged at $at, but its release did not finish (its GitHub Release is a draft or missing): re-run the release job of the push of $at; for a tag made by hand, delete it and re-run this one"
+            echo "::error::v$v is tagged at $at, but its release did not finish (its GitHub Release is a draft or missing): re-run the failed release, smoke or promote job of the push of $at; if its smoke test found the package broken, fix it and release a new version (npm never takes the same version twice); for a tag made by hand, delete it and re-run this one"
             exit 1
           fi
           python3 -I - "$v" <<'PY'
@@ -667,12 +692,78 @@ jobs:
         with:
           node-version: 24  # npm 11: trusted publishing needs 11.5.1 or later
 
-      - name: Publish the tagged version to npm, once (with provenance, from trusted publishing), then its Release
+      - name: Publish the tagged version to npm under the dist-tag next, once (with provenance, from trusted publishing); latest is promote's
         id: npm
         if: steps.tag.outputs.release == 'yes'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           v=$(node -p "require('./package.json').version")
-          if npm view "umlimator@$v" version > /dev/null 2>&1; then echo "umlimator@$v is on npm already"; else npm publish --access public; fi
-          if [ "$(gh release view "v$v" --json isDraft --jq .isDraft)" = true ]; then gh release edit "v$v" --draft=false --latest; fi
+          if npm view "umlimator@$v" version > /dev/null 2>&1; then echo "umlimator@$v is on npm already"; else npm publish --access public --tag next; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  # The version just published, installed from the registry into an empty folder as a host installs it: imported in Node
+  # and its smallest example laid out, then drawn and checked in headless Chrome by this commit's CLI with the installed
+  # lib/ (tools/smoke.mjs). Promote waits for it (about 1 min)
+  smoke:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The published version installs from the registry and works, in Node and in the CLI's page
+        env:
+          V: ${{ needs.release.outputs.version }}
+        run: node tools/smoke.mjs "umlimator@$V" --repo .
+
+      - name: The smoke test failed, so latest stays where it was
+        id: smoke-failed
+        if: failure()
+        env:
+          V: ${{ needs.release.outputs.version }}
+        run: |
+          echo "::error::umlimator@$V failed its smoke test (the reason is above): it is on npm under next only, latest stays at $(npm view umlimator dist-tags.latest 2> /dev/null || echo 'what it was') and its GitHub Release a draft. Re-run this job if the registry was at fault; otherwise fix the package and release a new version"
+          exit 1
+
+  # latest moves to the version only after its smoke test passed, and never back to an older one; then its GitHub Release
+  # is published. npm's trusted publishing covers npm publish only, so moving a dist-tag needs the NPM_TOKEN secret (a
+  # granular token that may write umlimator); without it the job fails and says the one command to run by hand
+  promote:
+    needs: [release, smoke]
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: release
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Move latest to the version, then publish its Release
+        id: promote
+        env:
+          V: ${{ needs.release.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          v="$V"; mark=--latest
+          now=$(npm view umlimator dist-tags.latest 2> /dev/null || true)
+          newer=$(node -e 'const p = (x) => (x || "0.0.0").split("-")[0].split(".").map(Number); const [a, b] = [p(process.argv[1]), p(process.argv[2])]; const d = a.map((n, i) => n - b[i]).find((n) => n) || 0; console.log(d > 0 ? "yes" : d < 0 ? "older" : "same")' "$v" "$now")
+          if [ "$newer" = same ]; then echo "latest is $v already"
+          elif [ "$newer" = older ]; then echo "latest is $now, newer than $v: it stays"; mark=--latest=false
+          else
+            [ -n "$NPM_TOKEN" ] || { echo "::error::umlimator@$v passed its smoke test, but latest cannot move without the NPM_TOKEN secret (trusted publishing covers npm publish only): add the secret and re-run this job, or run npm dist-tag add umlimator@$v latest"; exit 1; }
+            npm config set "//registry.npmjs.org/:_authToken" "$NPM_TOKEN"
+            npm dist-tag add "umlimator@$v" latest
+            echo "latest: $now -> $v"
+          fi
+          if [ "$(gh release view "v$v" --json isDraft --jq .isDraft)" = true ]; then gh release edit "v$v" --draft=false "$mark"; fi
