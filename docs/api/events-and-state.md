@@ -152,6 +152,7 @@ interface MapState {
   camera: { x: number; y: number; zoom: number };
   flow: boolean;
   motion: 'full' | 'reduced' | 'instant';
+  speed: number;
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';
   destroyed: boolean;
 }
@@ -177,6 +178,7 @@ logged, sent or compared as it is. Read it as [`handle.state`](./render.md#prope
 | `camera` | The centre in map units and the zoom (1 is actual size). In a `state` event, where it last rested. |
 | `flow` | The lines flow. |
 | `motion` | How this map moves. |
+| `speed` | The motion speed, as [`handle.speed`](./render.md#properties). |
 | `gesture` | An edit in progress, on an editable map. |
 | `destroyed` | `destroy()` has run. |
 

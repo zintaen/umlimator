@@ -38,6 +38,8 @@ one, and `#story=<id>&step=<n>` links to a step.
 captions, and saves `<id>.story.json` for the model's `stories`. `umlimator.py record PAGE.html --story ID --out
 STORY.png` writes a story as an animated PNG ([Command line](../use/cli.md#record)).
 
+**Speed.** The speed button on the map's controls (`1×`) steps through 0.5x, 1x, 1.5x and 2x, and scales tours, story steps and the flow along lines together: at 2x a step of 4000 ms lasts 2000 ms. The standalone page remembers the reader's choice in their browser. An author sets a map's own speed with `"motion": { "speed": 1.5 }` in the model, and a link with `#speed=1.5`; the reader's choice outranks both, and a host sets `map.speed`. The Right arrow (or Page Down) skips to the next step at once, even while its tour rides, and the step is said to screen readers. Under reduced motion the dot and the flow stay still at any speed; a step's time still scales.
+
 ## Lenses
 
 `lenses` are saved ways to look at one map: what a lens picks is lit and the rest dimmed.
@@ -74,7 +76,7 @@ map.overlay('traffic', {
 
 | Mark | On a line | On a card |
 |---|---|---|
-| `speed` | the flow's speed, as a factor (0 stops it) | — |
+| `speed` | the flow's speed, as a factor (0 stops it), times the map's motion speed | — |
 | `tone` | a glow under the line, in `--um-<tone>` | a ring around the card |
 | `pulse` | yes | yes |
 | `label` | a pill under the line's own | — |

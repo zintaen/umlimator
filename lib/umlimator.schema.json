@@ -118,6 +118,18 @@
     "$ref": "#/$defs/lens"
    },
    "description": "Saved ways to look at the map: handle.lens(id), the page's Lenses menu and #lens=<id>. A lens lights what it picks and dims the rest; it never lays the view out again."
+  },
+  "motion": {
+   "type": "object",
+   "properties": {
+    "speed": {
+     "type": "number",
+     "minimum": 0.25,
+     "maximum": 4,
+     "description": "The author's motion speed: a multiplier on a tour's dot, a story step's time and the flow along lines (default 1). A reader's own choice on the page's speed button, a host's speed option and the page's #speed= link outrank it; reduced motion still stops all motion."
+    }
+   },
+   "description": "How the map moves when it is played."
   }
  },
  "$defs": {
