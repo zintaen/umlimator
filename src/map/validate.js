@@ -191,7 +191,7 @@ export function validate(model) {
   // motion: the author's speed for tours, story steps and the flow, which a reader's own choice and a host's option outrank
   if (m.motion != null && (typeof m.motion !== 'object' || Array.isArray(m.motion))) warn('motion', 'motion is an object, { speed }: ignored');
   else if (m.motion && m.motion.speed != null && !(typeof m.motion.speed === 'number' && m.motion.speed >= 0.25 && m.motion.speed <= 4))
-    warn('motion.speed', `speed ${jsonText(m.motion.speed)} is not a number from 0.25 to 4: the map moves at 1×`);
+    warn('motion.speed', `speed ${jsonText(m.motion.speed)} is not a number from 0.25 to 4: ignored`);
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
   const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));

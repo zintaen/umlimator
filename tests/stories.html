@@ -273,6 +273,11 @@ try {
   h5.overlay('m', { edges: { ab: { speed: 3 } } });
   const fl = () => sr5.querySelector('.edge-g[data-from="a"][data-to="b"] .flowline').style.animationDuration, f2 = fl(); h5.speed = 1; const f1 = fl();
   check("a line mark's flow speed is scaled by the map's: speed 3 at 2× runs 0.4 s a pass, at 1× 0.8 s", f2 === '0.4s' && f1 === '0.8s', [f2, f1]);
+  // reduced motion (this page's setting) still wins at any speed: no flow is drawn, and a tour lights its path at rest at once
+  h5.speed = 2; h5.flow = true; const rmFlow = getComputedStyle(sr5.querySelector('svg .flowline')).animationName;
+  const rt0 = performance.now(), rmTour = await h5.tour(['a', 'b', 'c']), rmTook = performance.now() - rt0, rmDot = !!sr5.querySelector('.tour-dot'); h5.tour(null);
+  check('reduced motion still wins at 2×: no flow along lines, and a tour lights its path at rest at once, with no dot riding',
+    h5.speed === 2 && rmFlow === 'none' && rmTour === true && rmTook < 300 && !rmDot, [h5.speed, rmFlow, rmTour, Math.round(rmTook), rmDot]);
   h5.destroy(); el5.innerHTML = '';
   const SPED = { ...TINY, motion: { speed: 2 } };
   h5 = render(el5, SPED); sr5 = el5.querySelector('.umlimator').shadowRoot;
