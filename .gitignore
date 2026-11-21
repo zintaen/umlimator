@@ -22,3 +22,7 @@ examples/types/*.html
 tests/fixtures/integration.html
 # the time-lapse page tests/embed.py writes with umlimator.py timelapse for tests/timelapse.html
 tests/fixtures/timelapse.html
+# the self-evolving loop's local state (tools/evolve/): the ownership lease, its lock and the fuzz run's findings
+/.evolve/lease.json
+/.evolve/lease.json.lock/
+/.evolve/fuzz/
