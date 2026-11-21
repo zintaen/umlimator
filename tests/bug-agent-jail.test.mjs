@@ -44,14 +44,15 @@ test('bug agent jail: the user has no sudo, and cannot read the runner files', {
 
 test('bug agent jail, local: the agent user reaches loopback (the proxy) and not the API itself', { skip }, async () => {
   jail('local');
-  const { createServer } = await import('node:http');
-  const server = createServer((req, res) => res.end('ok'));
-  await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+  // the server runs in its own process: status() uses spawnSync, which would block a server in this one until curl gave up
+  const { spawn } = await import('node:child_process');
+  const server = spawn(process.execPath, ['-e', "const s = require('node:http').createServer((q, r) => r.end('ok')); s.listen(0, '127.0.0.1', () => console.log(s.address().port))"], { stdio: ['ignore', 'pipe', 'inherit'] });
+  const port = await new Promise((ok, no) => { server.stdout.once('data', d => ok(String(d).trim())); server.once('exit', c => no(new Error(`server exited ${c}`))); });
   try {
-    assert.equal(status(`http://127.0.0.1:${server.address().port}/`), '200');
+    assert.equal(status(`http://127.0.0.1:${port}/`), '200');
     assert.equal(status('https://api.anthropic.com/v1/models'), 'blocked');
     assert.equal(status('https://github.com'), 'blocked');
-  } finally { server.close(); }
+  } finally { server.kill(); }
 });
 
 test('bug agent jail, none: not even the API', { skip }, () => {
