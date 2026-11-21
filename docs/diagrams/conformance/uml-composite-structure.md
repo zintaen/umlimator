@@ -23,11 +23,11 @@ example is [`examples/order-service-structure.json`](../../../examples/order-ser
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` (to a node or a port) | a note, a dashed line |
 
 Rules (`notes/stage-5.md` §10.2): `subject-shown` (a warning for a view with no subject), `connector-part` (an end's part is a part of the subject, or a role of an
-open collaboration shown, and the end a port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it),
+open collaboration shown, and the end a port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it, and so does one the view draws between boxes or collaboration uses, which connect refuses),
 `binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component),
 `part-multiplicity` (a part's multiplicity is one, as `1`, `*`, `0..1`, `1..*`), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject, or of one part, or of a subject drawn with no box, is
-not drawn), `present-values` (a port's present side other than left, right, top or bottom, as written: ignored), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings); and the
+not drawn), `present-values` (a port's present side other than left, right, top or bottom, as written: ignored), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored), `comment-link` (a comment link the view draws with no comment at either end, which connect refuses) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
 `subject-shown` is a warning for a view with no subject at all, as deleting its subject (Shift + Delete) leaves it: the
 view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject set to

@@ -4,7 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines, goneIn } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { CLASSIFIERS, commentConnect, commentLinkProblems, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsHeld, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
@@ -301,6 +301,7 @@ const CS_RULES = {
   'binding-ends': 'a role binding runs from a part of the subject to a collaboration use of it (a view with no subject: a warning)',
   'binding-role': 'a role binding\'s label names a role of the collaboration its use names',
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
+  'comment-link': 'a comment link the view draws has a comment at one end',
   'present-values': 'a port\'s present side, present.<port>.side or present.<part>.ports.<port>.side, is left, right, top or bottom: any other value is ignored',
   ...STRUCT_RULES,
 };
@@ -335,12 +336,18 @@ function csProblems(model, view) {
   // id (or an earlier own line's) takes is that one (audit 23, as clOwnLines and stProblems)
   const taken = new Set(CS_ARR(model.edges).filter(CS_OBJ).map(e => e.id)), lines = CS_ARR(model.edges).map((e, i) => [e, `edges[${i}]`]);
   CS_ARR(view.edges).forEach((e, j) => { if (CS_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } });
+  const drawn = new Set(P.lines.map(l => l.e));
+  // a comment link with no comment at either end, of the lines this view draws (connect refuses one), a warning (audit 64)
+  out.push(...commentLinkProblems(lines.filter(([e]) => drawn.has(e)), id => (P.el(id) || {}).type, q));
   lines.forEach(([e, path]) => { if (!CS_OBJ(e)) return; const ends = CS_OBJ(CS_PROPS(e).ends) ? CS_PROPS(e).ends : {};
     if (e.type === 'uml.Connector') {
       const parts = ['from', 'to'].map(k => (CS_OBJ(ends[k]) ? ends[k].part : null)), touches = ['from', 'to'].some((k, j) => structOf(e[k], parts[j]) || P.collabs.some(c => owner(e[k]) === c.x) || (parts[j] != null && owner(parts[j]) === S));
       // a connector the view lists between ports of types, no part named: in no structure of the view, not drawn (audit 6)
       // a view with no edges list draws every connector: there, one whose port's owner types a part of the subject (audit 11),
       // unless an end names another classifier's part: that classifier's own structure (a delegation in it), its view draws it (audit 12)
+      // one the view draws all the same, between boxes or collaboration uses (neither a port nor a part): in no structure, said
+      // where it is drawn, and so refused by connect (audit 64)
+      if (!touches && drawn.has(e)) return say(S || view.subject != null ? 'error' : 'warning', 'connector-scope', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, which lie in no structure of this view: its ends are the subject's ports and parts, or one collaboration's roles`);
       if (!touches) { const ks = ['from', 'to'].filter((k, j) => parts[j] == null && ((P.mem.get(e[k]) || {}).m || {}).type === 'uml.Port');
         const k = CS_ARR(view.edges).some(x => x === e.id || x === e) ? ks[0] : !Array.isArray(view.edges) && !parts.some(p => p != null && owner(p) && owner(p) !== S) && ks.find(k => P.parts.some(p => P.typeOf(p) === owner(e[k])));
         if (k) say('warning', 'connector-part', `${path}.props.ends.${k}.part`, [e.id, e[k]],
@@ -422,9 +429,9 @@ function csMoveTo(model, view, id, at) {
   if (!mine || !CS_OBJ(at) || !CS_OBJ(at.geo)) return null;
   const g = at.geo, n = CS_OBJ(g.byId) && Object.hasOwn(g.byId, id) ? g.byId[id] : null, o = n && (Object.hasOwn(g.byId, n.owner) ? g.byId[n.owner] : CS_ARR(g.families).find(f => f.id === n.owner));
   let side = null;
+  // an arrow names the side it goes to: every side a drag reaches, by keyboard too (audit 64: Alt + Up on a left port was refused)
   if (Array.isArray(at.by)) { const [dx, dy] = at.by; side = dx ? (dx < 0 ? 'L' : 'R') : dy < 0 ? 'T' : 'B';
-    if (n && (side === n.side || (side === 'L' || side === 'R') !== (n.side === 'L' || n.side === 'R')))
-      return { error: side === n.side ? `The port is on its owner's ${CS_WORD[side]} side already` : 'A port\'s place along its side follows its lines and is not stored: Alt + an arrow across the side moves it to another side' }; }
+    if (n && side === n.side) return { error: `The port is on its owner's ${CS_WORD[side]} side already: its place along the side follows its lines and is not stored` }; }
   else if (Array.isArray(at.pt) && o) { const [x, y] = at.pt, d = { L: Math.abs(x - o.x), R: Math.abs(x - o.x - o.w), T: Math.abs(y - o.y), B: Math.abs(y - o.y - o.h) };
     side = Object.keys(d).reduce((a, k) => (d[k] < d[a] ? k : a), 'L'); }
   if (!side) return null;

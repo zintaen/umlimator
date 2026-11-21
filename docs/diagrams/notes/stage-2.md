@@ -262,7 +262,7 @@ same problem from two types is reported once (de-duplicated by level, path and m
 |---|---|---|
 | `slot-kinds` | error | an instance holds slots only; a slot belongs to an instance |
 | `link-ends` | error | a link joins two instance specifications |
-| `instance-of` | warning | when `props.classifier` names exactly one classifier of the model (by its name or qualified name), each slot names an attribute of it or of one of its generals (`proposal.md` §3.3, row 2) |
+| `instance-of` | warning | when `props.classifier` names exactly one classifier of the model (by its name or qualified name), each slot names an attribute of it or of one of its generals, or a navigable association end opposite one (`proposal.md` §3.3, row 2) |
 | `owner-kinds` | warning | an instance's owner is a package (shared with §10.3) |
 
 Not checked: a classifier name that matches no classifier or several (types are text, M8); that `props.association` names

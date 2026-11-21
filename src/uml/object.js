@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember } from './class.js';
+import { RULES, classProblems, commentConnect, commentLinkProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember, rowMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -111,7 +111,8 @@ function objectGeo({ model, view, pos, memo }) {
 const OBJECT_RULES = {
   'slot-kinds': 'an instance holds slots only; a slot belongs to an instance',
   'link-ends': 'a link joins two instance specifications',
-  'instance-of': 'an instance\'s slots name attributes of its classifier, when the classifier is in the model',
+  'instance-of': 'an instance\'s slots name attributes (or navigable association ends) of its classifier, when the classifier is in the model',
+  'comment-link': 'a comment link the view draws has a comment at one end',
 };
 // what a classifier's compartments draw as text (its attributes' and operations' types, defaults, return types and parameters)
 // and an instance's slots' values, each said when it is not text, as the class view says it (audit 42)
@@ -142,9 +143,14 @@ function objectProblems(model, view) {
   at.forEach(n => { if (OB_CLASSIFIERS.includes(n.type)) { add(elName(n), n.id); const f = full(n.id); if (f !== elName(n)) add(f, n.id); } });
   // a generalization a class view draws as its own line is one of the model all the same (owners.js modelLines, audit 30)
   const up = new Map(); modelLines(model).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
+  // and the role of each navigable association end opposite it, a structural feature of it as an attribute is (UML 2.5.1 §9.5.3,
+  // §11.5): a slot may name one (audit 64)
+  const ends = new Map(); modelLines(model).forEach(e => { if (!OB_OBJ(e) || e.type !== 'uml.Association') return; const E = OB_OBJ(OB_PROPS(e).ends) ? OB_PROPS(e).ends : {};
+    [['from', 'to'], ['to', 'from']].forEach(([near, far]) => { const f = E[far]; if (OB_OBJ(f) && OB_HAS(f.role) && f.navigable !== false) ends.set(e[near], [...(ends.get(e[near]) || []), String(f.role)]); }); });
   const attrs = id => { const seen = new Set(), names = new Set(); // a stack, not recursion: a chain of any length
     for (const q = [id]; q.length;) { const c = q.pop(); if (seen.has(c) || !at.has(c)) continue; seen.add(c);
-      OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); }); q.push(...(up.get(c) || [])); }
+      OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); });
+      (ends.get(c) || []).forEach(r => names.add(r)); q.push(...(up.get(c) || [])); }
     return names; };
   nodes.forEach((n, i) => { if (!OB_OBJ(n)) return; const ms = OB_ARR(n.members);
     if (n.type === 'uml.Slot') say('error', 'slot-kinds', `nodes[${i}]`, [n.id], `slot ${q(n.id)} is a node: a slot belongs to an instance`);
@@ -158,6 +164,10 @@ function objectProblems(model, view) {
     ms.forEach((m, j) => { if (OB_OBJ(m) && m.type === 'uml.Slot' && !has.has(String(m.label))) say('warning', 'instance-of', `nodes[${i}].members[${j}]`, [n.id, m.id, hits[0]], `${q(n.id)} is an instance of ${q(hits[0])}, which has no attribute "${m.label}" (${m.id})`); }); });
   viewLines(model, view).forEach(([e, path]) => { if (OB_OBJ(e) && e.type === 'uml.Link' && !(isInst(e.from) && isInst(e.to)))
     say('error', 'link-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a link joins two instance specifications`); });
+  // a comment link with no comment at either end, of the lines this view draws (connect refuses one), as the use case and state
+  // machine views warn (audit 64)
+  if (OB_OBJ(view)) { const { pic, lines } = drawnLines(model, view, OBJECT_LINES), drawn = new Set(lines.filter(({ from, to }) => !holdsLine(pic, from, to)).map(l => l.e));
+    out.push(...commentLinkProblems(viewLines(model, view).filter(([e]) => drawn.has(e)), id => (at.get(id) || {}).type, q)); }
   return out;
 }
 
@@ -227,7 +237,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   word: (model, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); return x && isInstance(x) ? 'Instance specification' : null; },
   // the PDF's Members: what the box draws, an instance's slots, a classifier's compartments (audit 30); null: its members
   rows: (model, view, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
-    return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(printMember)); },
+    return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(rowMember)); },
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
   text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
   edits: { rename: obRename, connect: obConnect },
