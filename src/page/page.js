@@ -1,5 +1,5 @@
 import { elementCount, countText, hintHTML, hinter, pieces, nWord, shortT, stepCount } from '../canvas/pieces.js';
-import { pngOf, reducedMotion, render } from '../canvas/render.js';
+import { pngOf, reducedMotion, render, speedOf } from '../canvas/render.js';
 import { esc, inline } from '../core/text.js';
 import { mapContext } from '../map/context.js';
 import { KIND, kindOf } from '../map/kinds.js';
@@ -156,6 +156,7 @@ export function mountPage(container, model, options = {}) {
     if (told) { p.set('story', told.id); p.set('step', told.step + 1); } // the story shown, at its step (#69)
     if (lensOn) p.set('lens', lensOn); // the lens on the map (#94)
     if (Q.get('theme')) p.set('theme', document.documentElement.dataset.theme || Q.get('theme'));
+    if (Q.get('speed') != null) p.set('speed', String(handle.speed)); // a link opened with a speed keeps one: the speed shown now
     if (Q.get('reader')) p.set('reader', Q.get('reader')); // check, shot and still describe one run: never in the link a reader shares (issue 136)
     const h = '#' + p.toString();
     if (location.hash !== h) window.history[push ? 'pushState' : 'replaceState'](null, '', h); // window's: history() is this module's undo helper
@@ -410,10 +411,13 @@ export function mountPage(container, model, options = {}) {
 
 
   let flowPref = null; try { flowPref = reducedMotion() ? null : localStorage.getItem('visual-flow'); } catch (_) {} // the reader's ≋ and F; under reduced motion no flow is drawn
+  // the motion speed: the reader's own (the speed button, saved), else the link's #speed=, else the model's motion.speed (render reads it)
+  let speedPref = null; try { speedPref = speedOf(localStorage.getItem('visual-speed')); } catch (_) {}
+  const speed0 = speedPref ?? speedOf(Q.get('speed'));
   const p0 = new URLSearchParams(location.hash.slice(1));
   const v0 = V[p0.get('view')] ? p0.get('view') : rootId;
   const handle = render($('m-canvas'), model, {
-    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined,
+    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined,
     on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step }; app.classList.toggle('story', !!told); pc.story(e);
       const sv = told && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
     _page: {
@@ -430,6 +434,7 @@ export function mountPage(container, model, options = {}) {
         renderChrome(); },
       onBackground: () => togglePill(false),
       onFlow: on => { try { localStorage.setItem('visual-flow', on ? '1' : '0'); } catch (_) {} },
+      onSpeed: v => { try { localStorage.setItem('visual-speed', String(v)); } catch (_) {} if (X && !X.busy()) write(); }, // the reader's speed, for every page of this site
       onReady: () => { $('m-ghosts').remove(); queueMicrotask(() => follow(true)); }, // the link it opened with: its card, story step and lens (#69, #94), once the page listens
     },
   });

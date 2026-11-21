@@ -24,6 +24,10 @@ export interface MapModel {
   stories?: Story[];
   /** Saved ways to look at the map (#94): handle.lens(id), the standalone page's Lenses menu and #lens=<id>. */
   lenses?: Lens[];
+  /** How the map moves when it is played: speed is the author's multiplier on a tour's dot, a story step's time and the flow
+   *  along lines, from 0.25 to 4 (default 1). A reader's own choice (the speed button), a host's `speed` option and the
+   *  page's `#speed=` outrank it; reduced motion still stops all motion. */
+  motion?: { speed?: number };
   [key: string]: unknown;
 }
 /** A card's shape (0.15.0). A map draws each card in one style (0.21.0; the box/c4/uml choice and `shapes` are gone):
@@ -479,6 +483,7 @@ export interface MapState {
   camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size); a state event's: at rest
   flow: boolean;
   motion: 'full' | 'reduced' | 'instant';
+  speed: number;                  // the motion speed, as `handle.speed`
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';   // an edit in progress (editable maps)
   destroyed: boolean;
 }
@@ -506,6 +511,9 @@ export interface RenderOptions {
   wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
+  /** The motion speed, from 0.25 to 4: tours, story steps and the flow along lines, together. Default: the model's
+   *  `motion.speed`, else 1. Reduced motion still stops all motion; a story step's time scales under it too. */
+  speed?: number;
   /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
   measure?: false | ((text: string, px: number) => number);
   /** Edit gestures that emit `change` events: all of them, or only those set true. Off by default. */
@@ -581,6 +589,11 @@ export interface Handle {
   /** How this map moves: 'instant' (drawn without animation, as the page's #check, #still and #shot are), 'reduced' (the
    *  reader's setting), else 'full'. */
   readonly motion: 'full' | 'reduced' | 'instant';
+  /** The motion speed (the speed button on the controls steps it through 0.5, 1, 1.5 and 2), to read or set: a tour's dot
+   *  rides that much faster (from where it is), a story step armed from now on lasts its duration divided by it, and the
+   *  flow along lines runs that much faster. A value outside 0.25 to 4 is ignored; null goes back to the model's
+   *  `motion.speed`, else 1. Set by a host, it is not saved as the page reader's choice. */
+  speed: number;
   /** The player of the story shown, whoever started it (play(), the standalone page's Stories menu or a link), else null. */
   readonly story: StoryPlayer | null;
   /** Sets (or, with null, removes) a named layer of marks, drawn over the picture without touching the model. Layers stack

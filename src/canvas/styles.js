@@ -19,6 +19,7 @@ const STYLES = `
   .ctl button:hover:not(:disabled) { background: var(--um-panel-2); color: var(--um-cyan); }
   .ctl button:disabled { opacity: .35; cursor: default; }
   .ctl .pct { min-width: 54px; font-weight: 500; color: var(--um-muted); }
+  .ctl [data-z="speed"] { min-width: 44px; font-weight: 500; } /* the motion speed, 0.5× to 2×: one width, so the bar keeps still as it steps */
   .ctl .sep { width: 1px; height: 18px; background: var(--um-border-2); margin: 0 3px; }
   .ctl .depth { font: 700 10px var(--um-mono); letter-spacing: .12em; color: var(--um-muted); padding: 0 8px; }
   .mini-ctl { opacity: .0; transition: opacity .2s; } .canvas:hover .mini-ctl, .canvas:focus-within .mini-ctl, .canvas.full .mini-ctl { opacity: 1; }
@@ -47,7 +48,7 @@ const STYLES = `
   /* a line's flow: pulses in the canvas colour moving along it, as wide as the line (never a bump on it), and stopping
      where its arrowhead begins (svgOf trims the path), so the arrow keeps its shape */
   svg .flowline { fill: none; stroke: var(--um-bg-2); stroke-width: calc(1.6px * var(--um-ew, 1)); stroke-linecap: round; stroke-dasharray: 10 70; opacity: 0; pointer-events: none; }
-  .flowing svg .flowline { opacity: .9; animation: flowdash 2.4s linear infinite; }
+  .flowing svg .flowline { opacity: .9; animation: flowdash calc(2.4s / var(--um-speed, 1)) linear infinite; }
   .flowing svg .edge { opacity: .8; }
   @keyframes flowdash { to { stroke-dashoffset: -160; } }
   /* intake badges and the view tour: a ticket dot rides the loop while flow is on */
@@ -65,13 +66,13 @@ const STYLES = `
   svg .tour-packet { fill: var(--um-w-feeds); }
   .flowing svg .node.tour-stop { transform-box: fill-box; transform-origin: center; animation: tour-pulse 8s ease-in-out infinite; }
   @keyframes tour-pulse { 0%, 9%, 100% { transform: none; filter: none; } 4% { transform: scale(1.04); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--um-w-feeds) 60%, transparent)); } }
-  .flowing svg .edge-g.back .edge { animation: march 1.1s linear infinite; }
+  .flowing svg .edge-g.back .edge { animation: march calc(1.1s / var(--um-speed, 1)) linear infinite; }
   @keyframes march { to { stroke-dashoffset: -22; } }
   @media (prefers-reduced-motion: reduce) { svg .tour, svg .tour-glow { display: none !important; } .flowing svg .node.tour-stop, .flowing svg .edge-g.back .edge { animation: none; } }
   /* reduced motion: no flow is drawn, so ≋ isn't offered (as the page hides its ❚❚); the stage's class outranks :host .flowing below */
   @media (prefers-reduced-motion: reduce) { :host .stage.flowing svg .flowline { animation: none; opacity: 0; } .flowing svg .edge { opacity: 1; } .ctl [data-z="flow"] { display: none; } }
   .ctl button.on { color: var(--um-cyan); background: var(--um-cyan-f); }
-  svg .flow { stroke-dasharray: 6 6; animation: flow 1.2s linear infinite; }
+  svg .flow { stroke-dasharray: 6 6; animation: flow calc(1.2s / var(--um-speed, 1)) linear infinite; }
   @keyframes flow { to { stroke-dashoffset: -12; } }
   @media (prefers-reduced-motion: reduce) { svg .flow { animation: none; } }
   /* reading depths (archify): far out = shapes + names; closer = subs, verbs, edge labels */
@@ -111,7 +112,7 @@ const STYLES = `
   svg .node.nb .n-body { stroke-width: 2.6; stroke-opacity: 1; }
   svg .n-port { fill: var(--um-panel); stroke-width: 1.5; pointer-events: none; transition: fill .2s, stroke-width .2s; }
   svg .node.sel .n-port, svg .node.nb .n-port.hot { fill: var(--um-accent); stroke: var(--um-accent); stroke-width: 2.2; }
-  :host .focusing svg .edge-g.hot .flowline { opacity: .95; stroke-width: calc(2.8px * var(--um-ew, 1)); stroke-dasharray: 8 13; animation: selected-flow 1.1s linear infinite; }
+  :host .focusing svg .edge-g.hot .flowline { opacity: .95; stroke-width: calc(2.8px * var(--um-ew, 1)); stroke-dasharray: 8 13; animation: selected-flow calc(1.1s / var(--um-speed, 1)) linear infinite; }
   :host .focusing svg .edge-g.hot .edge { stroke-width: calc(2.8px * var(--um-ew, 1)); }
   @keyframes selected-flow { to { stroke-dashoffset: -42; } }
   @keyframes select-glow { from { filter: drop-shadow(0 0 12px color-mix(in srgb, var(--um-accent) 70%, transparent)); stroke-width: 5; } }
@@ -130,7 +131,7 @@ const STYLES = `
   svg .n-dot { opacity: .75; } svg .n-field, svg .n-screen { fill: var(--um-panel); stroke-opacity: .55; stroke-width: 1; } svg .n-speaker { stroke-width: 1.9; }
   svg .n-prompt { font: 700 9px var(--um-mono); }
   svg .n-floor { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: .1 7; opacity: 0; transition: opacity .2s; }
-  .flowing svg .n-floor { opacity: .7; animation: floor 1.07s linear infinite; }
+  .flowing svg .n-floor { opacity: .7; animation: floor calc(1.07s / var(--um-speed, 1)) linear infinite; }
   @keyframes floor { to { stroke-dashoffset: -71; } }
   svg .node.flash .n-accent { animation: accent 1.3s ease-out; }
   @keyframes accent { 0%, 35% { stroke-width: 3.6; } }
