@@ -153,8 +153,10 @@ const STEPS = {
     }
     const id = added(out.commands).map(e => e.id).find(x => typeof x === 'string');
     out.commands = renamed(m, out.commands, id, a.id); out.id = a.id ?? id;
-    if (a.box != null) { // then into its box, as a second gesture on the model with the card in it
-      const r = await STEPS.move_to_box(u.apply(m, out.commands), { view: v.id, id: out.id, box: a.box, choose: a.choose });
+    const m1 = a.box != null && u.apply(m, out.commands), e1 = m1 && elements(m1).get(out.id);
+    const inBox = e1 && (typedView(m, v) ? (e1.x.parent ?? null) === a.box : arr(viewOf(m1, v.id).containers).some(c => isObj(c) && c.id === a.box && arr(c.nodeIds).includes(out.id)));
+    if (a.box != null && !inBox) { // then into its box, as a second gesture on the model with the card in it (one the type put there already stays)
+      const r = await STEPS.move_to_box(m1, { view: v.id, id: out.id, box: a.box, choose: a.choose });
       out.commands.push(...r.commands); out.said.push(...r.said.filter(x => !out.said.includes(x)));
     }
     return out;
