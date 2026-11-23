@@ -855,7 +855,8 @@ def render(a, model, show=print):
     if all(isinstance(v, dict) and v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
-        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), docs=getattr(a, "docs", None)))
+        docs = getattr(a, "docs", None)  # passed only when given: a test's stand-in for visual_cmd takes (tmp, *args)
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})))
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
