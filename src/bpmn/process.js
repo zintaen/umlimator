@@ -166,24 +166,37 @@ const BZ_OTHER_SAYS = 'a kind of line this view does not draw as its own';
 
 /* ---- the view laid out: { model, view, pos, memo } (§5, §6, §7.2, §8) ---- */
 /* The lane pass sets what a pin would: data drawn beside its flow node takes no pin at all, an item with no other item of its lane
-   in its columns keeps its row whatever its pin says. The canvas's Alt + an arrow writes no pin there and says
-   this (keepsRank, keepsRow), where it wrote one that moved nothing (audit 64) */
+   in its columns keeps its row whatever its pin says, and a step the ranking and the lane pass settle back (the first or last
+   item of a lane's rows stepped outward) moves nothing. The canvas's Alt + an arrow writes no pin there and says
+   this (keepsRank, keepsRow), where it wrote one that moved nothing (audits 64 and 65) */
 function bzKeeps(model, view, id, geo, d) {
-  const P = bzPic(model, view), by = BZ_OBJ(geo) && BZ_OBJ(geo.byId) ? geo.byId : {}, top = P.holds(null);
-  if (!P.lanes.length || !top.includes(id) || !Object.hasOwn(by, id)) return null;
+  const P = bzPic(model, view), by = BZ_OBJ(geo) && BZ_OBJ(geo.byId) ? geo.byId : {}, top = P.holds(null), n = by[id];
+  if (!P.lanes.length || !top.includes(id) || !Object.hasOwn(by, id) || !Array.isArray(d) || !(d[0] || d[1])) return null;
+  // the pin the canvas would write, laid out (the ranking and the lane pass, bzCells) against the pins as they are, on the grid
+  // as the host puts them (onGrid): a pin's row also feeds the ranking, so whether it moves anything is asked, never assumed
+  // (audit 65: the first or last item of a lane's rows stepped outward, or one the lane pass settles back, wrote a pin that
+  // moved nothing). A cell a pin names already is the canvas's to step over: not asked
+  const lim = BZ_ARR(view.nodeIds).length + 64, grid = x => Math.max(-lim, Math.min(lim, x || 0));
+  const L = Object.fromEntries(Object.entries(BZ_OBJ(view.layout) ? view.layout : {}).filter(([, p]) => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number').map(([k, p]) => [k, [grid(p[0]), grid(p[1])]]));
+  const c = n && n.col + d[0], r = n && n.row + d[1];
+  if (!Number.isFinite(c) || !Number.isFinite(r) || Object.values(L).some(p => p[0] === c && Math.abs(p[1] - r) < 1)) return null;
+  const flat = o => Object.keys(o || {}).sort().map(k => `${k}\u0000${o[k]}`).join('\u0001'); // a map's entries in key order, a cell as "col,row"
+  let now, then; try { now = bzCells(P, L); then = bzCells(P, { ...L, [id]: [c, r] }); } catch { return null; }
+  if (!['at', 'runs', 'spans'].every(k => flat(now[k]) === flat(then[k]))) return null;
+  // why, said: data beside its flow node, an item alone in its lane's columns, or one its lane stacks back
   const beside = x => (P.dataLane.get(x) || {}).by, b = beside(id);
   if (b != null) return `${P.I.called(id)} is drawn beside ${P.I.called(b)}, the flow node it is associated with`;
-  if (!Array.isArray(d) || !d[1]) return null;
+  if (!d[1]) return `${P.I.called(id)} keeps its column: the flows into and out of it rank it there`;
   const leaves = x => (P.open.has(x) ? P.holds(x).flatMap(leaves) : [x]), cols = x => leaves(x).map(i => (Object.hasOwn(by, i) ? by[i].col : NaN)).filter(Number.isFinite);
-  const mine = cols(id), l = P.laneOf(id); if (!mine.length) return null;
-  // only alone: a pin's row also feeds the ranking (cpPlace), so a first or last item stepped outward can still move others
-  const c0 = Math.min(...mine), c1 = Math.max(...mine);
-  if (top.some(x => x !== id && beside(x) == null && P.laneOf(x) === l && cols(x).some(c => c >= c0 && c <= c1))) return null;
-  return `${P.I.called(id)} is the only item of ${l == null ? 'no lane' : P.I.called(l)} here: the Owner field, or a drag into another lane, moves it to another lane`;
+  const mine = cols(id), l = P.laneOf(id), lane = l == null ? 'no lane' : P.I.called(l), c0 = Math.min(...mine), c1 = Math.max(...mine);
+  return top.some(x => x !== id && beside(x) == null && P.laneOf(x) === l && cols(x).some(k => k >= c0 && k <= c1))
+    ? `${P.I.called(id)} keeps its place in ${lane}: the lane stacks its items in their columns from its first row; the Owner field, or a drag into another lane, moves it to another lane`
+    : `${P.I.called(id)} is the only item of ${lane} here: the Owner field, or a drag into another lane, moves it to another lane`;
 }
-function bzGeo({ model, view, pos: pins, memo }) {
-  const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
-  const pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
+/* each item's cell [col, row] (at) as the view draws it, from the pins: ranked (cpPlace), then the lane pass; with each lane's run
+   of rows and each pool's (spans). bzGeo draws from it, and bzKeeps asks it whether a step's pin would move anything (audit 65) */
+function bzCells(P, pins) {
+  const { open, lines } = P, pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
   // ranked: the sequence flows (a boundary event's from its activity), then each message flow between laid-out items that closes no cycle
   const links = lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null).map(l => [l.f.at, l.t.at]);
   const reach = (a, b) => { const seen = new Set([a]), q = [a]; while (q.length) { const u = q.pop(); if (u === b) return true; links.forEach(([s, t]) => { if (s === u && !seen.has(t)) { seen.add(t); q.push(t); } }); } return false; };
@@ -209,6 +222,11 @@ function bzGeo({ model, view, pos: pins, memo }) {
       if (pool !== 1) stack(l.id, ks.length ? 0 : 1); if (pool !== 2) { if (pool) q.push([l, 2]); q.push(...ks.map(k => [k, 0]).reverse()); } } };
     ord.filter(l => l.depth === 0).forEach((p, k) => { if (k) { runs['\u0000gap' + k] = [base, base]; base++; } const b0 = base; visit(p); spans[p.id] = [b0, base - 1]; });
     if (by.has('\u0000none')) { runs['\u0000gap'] = [base, base]; base++; stack('\u0000none', 0); } }
+  return { at, runs, spans };
+}
+function bzGeo({ model, view, pos: pins, memo }) {
+  const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
+  const leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]), { at, runs, spans } = bzCells(P, pins);
   const rowOf = x => Math.min(...leaves(x).map(id => at[id][1])), colOf = x => Math.min(...leaves(x).map(id => at[id][0]));
   const toward = (me, other) => (other.pool ? (spans[other.pool] || [0])[0] : rowOf(other.at)) < (me.pool ? spans[me.pool][0] : rowOf(me.at));
   // anchors (§7.2): a message flow to or from a pool ends at a 2 px node in the empty row beside it, on the other end's side
