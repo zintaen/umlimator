@@ -1109,3 +1109,33 @@ test('layout.keepsRow and keepsRank: Alt + an arrow on an item alone in its lane
   }
   assert.ok(refused > 10, refused);
 });
+
+// audit 65: Alt + an arrow on the first or last item of a lane's rows, stepped outward, or on one the lane pass settles back,
+// wrote a pin that moved nothing (keepsRow said only an item alone in its lane's columns): asked of the layout, every row step
+// is refused exactly where its pin moves nothing, in the example and the stress model's lane views, laid out right and down; so
+// is a step along the flow
+test('layout.keepsRow and keepsRank: Alt + an arrow that the lane pass settles back (the first or last item of a lane\'s rows stepped outward) is refused and said; every other step pins (audit 65)', () => {
+  const V = EX.views.find(v => v.diagram === 'bpmn'), L = diagramOf(V).layout, g = layout(EX, V.id);
+  assert.equal(g.byId['send-invoice'].row, 2);
+  assert.equal(L.keepsRow(EX, V, 'send-invoice', g, [0, -1]), 'Email invoice keeps its place in Sales: the lane stacks its items in their columns from its first row; the Owner field, or a drag into another lane, moves it to another lane');
+  assert.equal(L.keepsRow(EX, V, 'send-invoice', g, [0, 1]), null, 'toward cancel-order, below it in its lane: a pin');
+  const stress = JSON.parse(readFileSync(new URL('./bpmn-stress.json', import.meta.url), 'utf8'));
+  let refused = 0, pinned = 0;
+  for (const [M, vid] of [[EX, V.id], [stress, 'edge-cases'], [stress, 'ec-closed']]) for (const direction of ['right', 'down']) for (const held of [false, true]) {
+    // held: every third card pinned a row below its cell, as a hand-moved view holds
+    const pins = vid => { if (!held) return {}; const G0 = layout({ ...M, views: M.views.map(v => (v.id === vid ? { ...v, direction } : v)) }, vid);
+      return Object.fromEntries(G0.nodes.filter((n, i) => i % 3 === 0 && Number.isFinite(n.col)).map(n => [n.id, [n.col, n.row + 1]])); };
+    const m = { ...M, views: M.views.map(v => (v.id === vid ? { ...v, direction, ...(held ? { layout: pins(vid) } : {}) } : v)) }, v = m.views.find(x => x.id === vid), G = layout(m, vid);
+    const box = x => JSON.stringify(layout(x, vid).nodes.map(n => [n.id, n.x, n.y])), base = box(m);
+    // each step in cells, whichever way the view runs, as the canvas asks it: [0, s] across the flow (keepsRow), [s, 0] along it
+    // (keepsRank), of a card whose Alt + arrows moveTo leaves to the canvas (a boundary event's set its side; a pool's, a lane's
+    // and a group's are refused there)
+    for (const n of G.nodes) for (const d of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      if (!Number.isFinite(n.col) || !Number.isFinite(n.row) || diagramOf(v).edits.moveTo(m, v, n.id, { by: G.down ? [d[1], d[0]] : d, geo: G }) != null) continue;
+      const why = L[d[0] ? 'keepsRank' : 'keepsRow'](m, v, n.id, G, d), moved = box(apply(m, [{ op: 'set', view: vid, path: ['layout', n.id], value: [n.col + d[0], n.row + d[1]] }])) !== base;
+      // pinned, a refusal moves nothing (where audit 64's "only item" said so of a pin that moved others); a step onto a pin is the canvas's to step past
+      if (held) assert.ok(!(why && moved), `${vid} ${direction} pinned ${n.id} ${d}: ${why}`); else assert.equal(!why, moved, `${vid} ${direction} ${n.id} ${d}: ${why}`); if (why) refused++; else pinned++;
+    }
+  }
+  assert.ok(refused > 20 && pinned > 20, `${refused} ${pinned}`);
+});

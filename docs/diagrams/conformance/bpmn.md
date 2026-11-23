@@ -61,7 +61,7 @@ Rules (`src/bpmn/process.js`, the note's §4), each with a passing and a failing
 a sequence flow in one pool and one level, a message flow between two pools, a data association with data at one end and
 an activity or event of its pool, or of any pool for data in none (`data-ends` is an error for one that joins two pools,
 audit 19; connect and a move keep the same rule, audit 20), an
-association with an annotation at one end; anything else is refused with the rule's words.
+association with an annotation at one end; anything else is refused with the rule's words. The BPMN XML reader keeps a line these rules refuse for its scope (`sequence-scope`, `message-scope`, `data-ends`) whole under `ext.bpmn.skipped` and says so, so the model it reads passes `validate()` (audit 65).
 
 **Departures** (2.2.3 allows a tool's own sizes, colours, line styles and text positions; none changes a shape): the name
 of an event, a gateway, a data object or a data store is drawn outside, under the shape, moved aside where a line or a

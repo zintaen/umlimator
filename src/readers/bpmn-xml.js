@@ -88,18 +88,24 @@ const bxDup = e => { try { const m = /\n\s*nested error: duplicate ID <([^>\n]*)
 
 // a moddle element as JSON: its own properties, a reference by its id (or a list of ids), a generic (foreign) element's
 // children and body; cut at BX_DEEP levels. moddle defines a reference as a non-enumerable own property and keeps a generic
-// element's children in $children, so its descriptor's properties are read by name, not by Object.keys (audit 17)
-function bxJson(el, depth = 0) {
+// element's children in $children, so its descriptor's properties are read by name, not by Object.keys (audit 17). An
+// attribute named toString (on the element or a foreign one in it) is no key a model holds (validate() leaves out an object
+// with one), nor is __proto__: each is left out and given to lost(name), for the reader to say (audit 65)
+const BX_NOKEY = new Set(['toString', '__proto__']);
+const bxKeys = (o, lost) => { const out = {}; for (const k of Object.keys(o)) if (BX_NOKEY.has(k)) lost(k); else out[k] = o[k]; return out; };
+function bxJson(el, depth = 0, lost = () => {}) {
   if (!el || typeof el !== 'object') return el;
-  if (Array.isArray(el)) return el.map(x => bxJson(x, depth));
+  if (Array.isArray(el)) return el.map(x => bxJson(x, depth, lost));
   if (depth >= BX_DEEP) return { $type: el.$type, id: el.id, cut: true };
   const d = el.$descriptor || {}, props = d.properties || [], refs = new Set(props.filter(p => p.isReference).map(p => p.name));
   const out = { $type: el.$type }, keys = new Set([...props.map(p => p.name).filter(k => Object.hasOwn(el, k)), ...Object.keys(el), '$attrs', '$body', ...(d.isGeneric ? ['$children'] : [])]);
   for (const k of keys) {
     const v = el[k];
     if (k.startsWith('$') && k !== '$attrs' && k !== '$body' && k !== '$children') continue;
+    if (BX_NOKEY.has(k)) { lost(k); continue; }
     if (v == null || k === '$attrs' && !Object.keys(v).length || Array.isArray(v) && !v.length) continue;
-    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => (x && typeof x === 'object' ? x.id : x)) : typeof v === 'object' ? v.id : v) : k === '$attrs' ? { ...v } : bxJson(v, depth + 1);
+    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => (x && typeof x === 'object' ? x.id : x)) : typeof v === 'object' ? v.id : v) : k === '$attrs' ? bxKeys(v, lost) : bxJson(v, depth + 1, lost);
+    if (k === '$attrs' && !Object.keys(out[k]).length) delete out[k];
   }
   return out;
 }
@@ -197,8 +203,11 @@ async function readBpmnXml(xml, moddle) {
     const skip = (el, parent, why = 'outside the subset') => {
       const id = el.id || '';
       say(id || parent || '', 'skipped', `${(el.$type || 'an element').replace('bpmn:', '')} ${why}: kept under ext.bpmn, not read`);
-      skipped.push({ ...(parent ? { parent } : {}), element: bxJson(el) });
+      skipped.push({ ...(parent ? { parent } : {}), element: keep(el, id || parent || '') });
     };
+    // an element as JSON for ext.bpmn, an attribute no model key can hold (toString, __proto__) left out of it and said (audit 65)
+    const keep = (el, line) => { const lost = new Set(), j = bxJson(el, 0, k => lost.add(k));
+      for (const k of lost) say(line, 'skipped', `the attribute ${k}, a name no model key holds: not kept`); return j; };
     const ext = (el, parent) => { if (el.extensionElements) skip(el.extensionElements, parent, '(an extension)'); };
     ext(defs, null);
     const add = (el, type, parent, props = {}, label = el.name) => {
@@ -331,7 +340,7 @@ async function readBpmnXml(xml, moddle) {
           pending.push([a, 'bpmn.DataAssociation', (a.sourceRef || [])[0], el, null]);
           if (a.sourceRef?.length > 1) { // a line has one source: the rest are said and kept
             say(a.id || n.id, 'skipped', `its sources after the first (${a.sourceRef.slice(1).map(x => x.id).join(', ')}): kept under ext.bpmn, not read`);
-            skipped.push({ parent: n.id, element: bxJson(a) });
+            skipped.push({ parent: n.id, element: keep(a, a.id || n.id) });
           }
         }
         for (const a of el.dataOutputAssociations || []) pending.push([a, 'bpmn.DataAssociation', el, a.targetRef, null]);
@@ -372,11 +381,30 @@ async function readBpmnXml(xml, moddle) {
       const ids = [...new Set(vals.map(v => groupOf.get(v)).filter(Boolean))];
       if (ids.length) n.props = { ...n.props, categoryValueRef: ids };
     }
+    // a node's pool and process level as validate() finds them (sequence-scope, message-scope, data-ends): up its parents, a
+    // lane's parent lane, else its pool
+    const laneIn = new Map(); for (const n of nodes) if (n.type === 'bpmn.Participant') for (const m of n.members || []) laneIn.set(m.id, n.id);
+    const upFind = (x, ok) => { for (let p = x, seen = new Set(); p && !seen.has(p); p = byId.get(laneIn.has(p.id) ? p.parent ?? laneIn.get(p.id) : p.parent)) { seen.add(p); if (ok(p)) return p.id; } return null; };
+    const poolOf = x => upFind(x, p => p.type === 'bpmn.Participant'), levelOf = x => upFind(x, p => p !== x && (p.type === 'bpmn.SubProcess' || p.type === 'bpmn.Participant'));
+    const isData = x => x.type === 'bpmn.DataObject' || x.type === 'bpmn.DataStoreReference';
+    // a line no model holds, which BPMN refuses too, as validate() words it: kept whole under ext.bpmn and said, as a line to an end
+    // not read is, so the model read passes validate() (audit 65: a sequence flow across pools, a message flow inside one pool or
+    // to a process in no pool, an association with no text annotation were read and the model failed validate(), nothing said)
+    const outOfScope = (type, from, to) => {
+      if (type === 'bpmn.SequenceFlow' && levelOf(from) !== levelOf(to)) return poolOf(from) !== poolOf(to) ? 'across pools (a message flow joins pools)' : 'across sub-processes';
+      if (type === 'bpmn.MessageFlow') { const p = poolOf(from), q = poolOf(to); if (p == null || q == null) return 'with an end in no pool'; if (p === q) return 'inside one pool (a sequence flow joins it)'; }
+      if (type === 'bpmn.Association' && from.type !== 'bpmn.TextAnnotation' && to.type !== 'bpmn.TextAnnotation') return 'with no text annotation at either end';
+      if (type === 'bpmn.DataAssociation') { const d = isData(from) ? from : to, o = d === from ? to : from, p = poolOf(d), q = poolOf(o);
+        if (p != null && q != null && p !== q) return 'from data of one pool to another pool (data stays in its pool)'; }
+      return null;
+    };
     // lines, once every node is known: an end that is not read is said
     for (const [el, type, a, b, , w] of pending) {
       const id = idOf(el), from = a && elOf.get(a), to = b && elOf.get(b);
       if (!from || !to) { skip(el, null, `whose ${!from ? 'source' : 'target'} is not read`); continue; }
       if (!bxStr(id) || byId.has(id)) { skip(el, null, id ? `has the id ${id}, taken` : 'has no id'); continue; }
+      const why = outOfScope(type, from, to);
+      if (why) { skip(el, null, why); continue; }
       const doc = (el.documentation || []).map(x => x.text).filter(bxStr).join('\n'), props = {};
       if (doc) props.documentation = doc;
       if (type === 'bpmn.Association' && el.associationDirection && el.associationDirection !== 'None') props.direction = el.associationDirection.toLowerCase();
