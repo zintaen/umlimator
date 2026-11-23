@@ -329,6 +329,13 @@ test('the audit and fix templates parse as workflow scripts', async () => {
   }
 });
 
+test('the templates call no clock or random source: the workflow runtime throws on Date.now(), an argless new Date() and Math.random() (audit 65 stopped on one)', () => {
+  for (const n of readdirSync(join(ROOT, 'tools/evolve/templates')).filter(f => f.endsWith('.js'))) {
+    const src = readFileSync(join(ROOT, 'tools/evolve/templates', n), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    assert.doesNotMatch(src, /\bDate\.now\s*\(|\bnew Date\s*\(\s*\)|\bMath\.random\s*\(/, `${n}: pass the time in args instead`);
+  }
+});
+
 test('check: a pinned version newer than upstream\'s newest tag exits 1', () => {
   const f = files({ 'p.md': pinned(V1, { version: '1.2.0', tag: 'v1.2.0' }) });
   const r = check({ client: fakeGitHub().client, pinnedFile: f.path('p.md') });

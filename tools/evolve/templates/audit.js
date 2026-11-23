@@ -9,6 +9,7 @@
 //   args.gaps         the docs/module-api.md section whose Known gaps hold (default: the newest release section)
 //   args.rotation     [model A, model B] (A9.19); args.verifierModel / args.finderModel override it
 //   args.owner        the lease owner id of the orchestrator running this round
+//   args.date         the round's date (ISO); a workflow script cannot read the clock, so the orchestrator passes it
 export const meta = {
   name: 'audit-round',
   description: 'Audit round N on the integration branch: session checks (kill switch, pinned strategy, lease), 8 read-only finders by area, dedupe, one adversarial verifier per finding, confirmed and rejected findings with reasons and cause',
@@ -99,4 +100,4 @@ const confirmed = judged.filter(f => f.verdict.real)
 // rejected findings are saved with the verifier's reason (A9.20): the digest samples them for the maintainer
 const rejected = judged.filter(f => !f.verdict.real).map(f => ({ title: f.title, area: f.area, files: f.files, severity: f.severity, symptom: f.symptom, inputClass: f.inputClass, why: f.verdict.reason }))
 log(`${confirmed.length} confirmed of ${uniq.length}; verifier model ${verifierModel || 'default'}, finder model ${finderModel || 'default'}`)
-return { round: N, base: BASE, prev: PREV, date: new Date().toISOString(), finders_failed: 0, verifiers_failed: 0, models: { finder: finderModel || 'default', verifier: verifierModel || 'default' }, coverage, confirmed, rejected, strategy: start.strategy }
+return { round: N, base: BASE, prev: PREV, date: A.date || null, finders_failed: 0, verifiers_failed: 0, models: { finder: finderModel || 'default', verifier: verifierModel || 'default' }, coverage, confirmed, rejected, strategy: start.strategy }
