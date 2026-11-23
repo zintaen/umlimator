@@ -132,6 +132,9 @@ test('check: a pinned copy edited in place, a moved tag, an unreachable upstream
   assert.equal(r3.code, 1);
   assert.match(r3.lines.join('\n'), /upstream not reachable: HTTP 403/);
   assert.equal(check({ client: fakeGitHub().client, pinnedFile: join(tmp(), 'none.md') }).code, 1);
+  const untagged = check({ client: fakeGitHub({ tags: [{ name: 'draft', sha: 'c' }] }).client, pinnedFile: ok.path('p.md') });
+  assert.equal(untagged.code, 1);
+  assert.match(untagged.lines.join('\n'), /has no version tag/);
 });
 
 // ---------- propose ----------
@@ -223,7 +226,9 @@ test('feedback file: parse and write keep every entry and its fenced edits', () 
 test('update --dry-run says what it would pin and writes nothing; up to date it does nothing', () => {
   const f = files({ 'p.md': pinned() });
   const same = fakeGitHub();
-  assert.match(update({ client: same.client, pinnedFile: f.path('p.md'), now: NOW }).lines[0], /nothing to update/);
+  const none = update({ client: same.client, pinnedFile: f.path('p.md'), now: NOW });
+  assert.equal(none.code, 0);
+  assert.match(none.lines[0], /nothing to update/);
   const gh = fakeGitHub({ tags: [{ name: 'v1.0.0', sha: 'b1abb6ed' }, { name: 'v1.1.0', sha: 'deadbeefcafe' }] });
   const r = update({ client: gh.client, pinnedFile: f.path('p.md'), dryRun: true, now: NOW });
   assert.equal(r.code, 0);
@@ -363,4 +368,6 @@ test('kill switch command line: exit 0 with no switch, 2 on a usage error', () =
   assert.match(none.stdout, /no kill switch at/);
   assert.equal(run('extra').status, 2);
   assert.equal(run('--file').status, 2);
+  assert.equal(run('--ref').status, 2);
+  assert.equal(run('--repo').status, 2);
 });
