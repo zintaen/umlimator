@@ -323,3 +323,44 @@ test('the audit and fix templates parse as workflow scripts', async () => {
     assert.doesNotThrow(() => new AsyncFunction('args', 'agent', 'parallel', 'phase', 'log', src), n);
   }
 });
+
+test('check: a pinned version newer than upstream\'s newest tag exits 1', () => {
+  const f = files({ 'p.md': pinned(V1, { version: '1.2.0', tag: 'v1.2.0' }) });
+  const r = check({ client: fakeGitHub().client, pinnedFile: f.path('p.md') });
+  assert.equal(r.code, 1);
+  assert.match(r.lines.join('\n'), /newer than upstream's newest tag v1\.0\.0/);
+});
+
+test('changelog: a file with no version section gets the Unreleased block at its end; changelogSince stops at the target version', () => {
+  assert.equal(changelogEntry('# Changelog\n', [{ rule: 'A1', round: 'r', title: 'T.' }], 'p'), '# Changelog\n\n## Unreleased\n\n- A1 (from p, r): T.\n\n');
+  const log = '# Changelog\n\n## 1.2.0\n\nTwo.\n\n## 1.1.0\n\nOne.\n\n## 1.0.0\n\nZero.\n';
+  assert.equal(changelogSince(log, '1.0.0', '1.1.0'), '## 1.1.0\n\nOne.');
+  assert.equal(changelogSince(log, '1.0.0', '1.2.0'), '## 1.2.0\n\nTwo.\n\n## 1.1.0\n\nOne.');
+  assert.throws(() => parseFeedback('# x\n\n## Open\n\nNone.\n'), /"## Open" section followed by a "## Closed"/);
+});
+
+test('the command line: update --dry-run and a client error, through the injected client', () => {
+  const f = files({ 'p.md': pinned() });
+  const gh = fakeGitHub({ tags: [{ name: 'v1.1.0', sha: 'deadbeefcafe' }] });
+  const lines = [];
+  assert.equal(main(['update', '--dry-run', '--pinned', f.path('p.md')], { client: gh.client, out: l => lines.push(l), now: NOW }), 0);
+  assert.match(lines[0], /would open a pull request on zintaen\/umlimator: strategy\/v1\.1\.0 -> main/);
+  assert.deepEqual(gh.writes(), []);
+  const other = [];
+  assert.equal(main(['update', '--dry-run', '--pinned', f.path('p.md'), '--repo', 'me/fork', '--base', 'audit-loop'], { client: { ...gh.client, branchSha: () => 'f00' , openPulls: () => [] }, out: l => other.push(l), now: NOW }), 0);
+  assert.match(other[0], /on me\/fork: strategy\/v1\.1\.0 -> audit-loop/);
+  const broken = { ...gh.client, tags: () => { throw new Error('HTTP 500'); } };
+  const err = [];
+  assert.equal(main(['update', '--pinned', f.path('p.md')], { client: broken, out: l => err.push(l) }), 1);
+  assert.deepEqual(err, ['strategy-sync update: HTTP 500']);
+});
+
+test('kill switch command line: exit 0 with no switch, 2 on a usage error', () => {
+  const dir = tmp();
+  const run = (...a) => spawnSync(process.execPath, [join(ROOT, 'tools/evolve/killswitch.mjs'), ...a], { encoding: 'utf8' });
+  const none = run('--file', join(dir, 'STOP'));
+  assert.equal(none.status, 0);
+  assert.match(none.stdout, /no kill switch at/);
+  assert.equal(run('extra').status, 2);
+  assert.equal(run('--file').status, 2);
+});
