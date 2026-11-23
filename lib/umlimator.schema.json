@@ -541,6 +541,10 @@
         "stereotypes": {
          "description": "Any UML element: names drawn «in guillemets», as text (['entity']). From 0.23.0, a name a profile applied to one of the element's packages defines is that profile's stereotype, checked against it; Profile::name picks one of two applied profiles that define a name; outside every applied profile a name is a keyword, as before."
         },
+        "associationClass": {
+         "description": "uml.Class (after 0.45.0): the id of the uml.Association it is the association class of (UML 2.5.1 11.5.4); a class view that draws both draws the class joined to the middle of the association's line by a dashed line. Rule association-class: an association has one such class, the class is at neither of its ends, and a class view shows the two together.",
+         "type": "string"
+        },
         "classifier": {
          "description": "uml.InstanceSpecification: the name (or qualified name, sales::Order) of the classifier it is an instance of, as text; drawn name : Classifier, underlined."
         },

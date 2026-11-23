@@ -110,7 +110,7 @@ In a version-2 model, a class diagram (`examples/sales-classes.json`; every fiel
 | node, member, edge | `type`, from 0.19.0 | an object diagram's `uml.InstanceSpecification`, its members `uml.Slot`, lines `uml.Link`; a package diagram's `uml.Package` and the classifiers above, lines `uml.PackageImport`, `uml.PackageMerge`, `uml.Dependency` |
 | node | `parent` | the package that owns it: from 0.19.0 drawn as a box holding it when the view shows both |
 | node, member, edge | `props`, from 0.19.0 | an instance's `classifier` (a name, as text); a slot's `value`; a link's `association` and its ends' `role`; a package import's `visibility`, `public` («import») or `private` («access») |
-| node, member, edge | `props` | the type's own fields: `isAbstract`, `stereotypes`; a member's `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `parameters`, `returnType`; an association's `ends.from` and `ends.to` (`role`, `multiplicity`, `aggregation`, `navigable`) |
+| node, member, edge | `props` | the type's own fields: `isAbstract`, `stereotypes`; a class's `associationClass` (the id of the association it is the association class of); a member's `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `parameters`, `returnType`; an association's `ends.from` and `ends.to` (`role`, `multiplicity`, `aggregation`, `navigable`) |
 | view | `diagram` | `"uml.class"`, `"uml.object"` or `"uml.package"`: the view is a class, object or package diagram |
 | view | `subject` | the package the view shows the inside of: names are qualified from it |
 | view | `direction` | `"down"` lays it out top to bottom, the general class above (default `"right"`) |

@@ -28,7 +28,7 @@ test('the definition: uml.class is registered with its palette, its lines, a pro
   assert.deepEqual(T.props['uml.Association'].filter(f => f.path).map(f => f.path.join('.')), ['ends.from.role', 'ends.from.multiplicity', 'ends.from.aggregation', 'ends.from.navigable',
     'ends.to.role', 'ends.to.multiplicity', 'ends.to.aggregation', 'ends.to.navigable']);
   for (const k of ['layout', 'validate', 'describe', 'rankFlip', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
-  assert.equal(Object.keys(T.rules).length, 13, 'its ten, and owner-kinds, line-inside and own-boxes, since a class view draws packages as boxes (2.2)');
+  assert.equal(Object.keys(T.rules).length, 14, 'its ten, association-class, and owner-kinds, line-inside and own-boxes, since a class view draws packages as boxes (2.2)');
 });
 
 // ---- the member micro-syntax (risks.md E3, E4)
@@ -125,6 +125,7 @@ const breaks = {
   'owner-kinds': m => { m.nodes[3].parent = 'a'; return ['i', 'a']; },
   'line-inside': m => { m.edges.push({ id: 'pa', type: 'uml.Dependency', from: 'pkg', to: 'a' }); return ['pa', 'pkg', 'a']; },
   'own-boxes': m => { m.views[0].containers = [{ id: 'k', label: 'K', nodeIds: ['i'] }]; return ['v']; },
+  'association-class': m => { m.nodes[7].props = { associationClass: 'ad' }; return ['a2', 'ad']; }, // a dependency is no association
 };
 const WARNS = ['owner-kinds', 'line-inside', 'own-boxes']; // a class view's rules about owners and boxes (2.2) are warnings
 test('validators: the base model breaks no rule, and validate() reports no error in it', () => {

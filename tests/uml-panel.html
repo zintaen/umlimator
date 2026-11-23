@@ -95,7 +95,7 @@ try {
   nf && key('Escape', {}, nf);
   // ---- audit 30: an element of no type (or "") is offered the fields and Owner of the kind its view draws it as: a class view's
   // class, an object view's instance (one of no UML kind too), a component view's component
-  for (const [diagram, type, want] of [['uml.class', undefined, ['isAbstract', 'stereotypes']], ['uml.class', '', ['isAbstract', 'stereotypes']], ['uml.package', undefined, ['isAbstract', 'stereotypes']],
+  for (const [diagram, type, want] of [['uml.class', undefined, ['isAbstract', 'stereotypes', 'associationClass']], ['uml.class', '', ['isAbstract', 'stereotypes', 'associationClass']], ['uml.package', undefined, ['isAbstract', 'stereotypes']],
     ['uml.object', undefined, ['classifier', 'stereotypes']], ['uml.object', 'acme.Thing', ['classifier', 'stereotypes']], ['uml.component', undefined, ['stereotypes']], ['uml.component', '', ['stereotypes']]]) {
     const um = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'pkg' }, { id: 'x', label: 'X', ...(type === undefined ? {} : { type }), props: { classifier: 'Order', stereotypes: ['s'] } }], edges: [],
       views: [{ id: 'v', diagram, nodeIds: ['p', 'x'] }] };
