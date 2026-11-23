@@ -204,8 +204,8 @@ SHAPE.note = {
 };
 
 /* ---- lines: how each kind is drawn (src/typed/draw.js's ENDS), and its words ---- */
-// an association class's tie (below, typeGeo): a layout line of its own, no model element
-const TIE = 'association-class:', TIE_T = 'uml.AssociationClassLink';
+// an association class's tie (below, typeGeo): a layout line of its own, no model element, so of no uml.* type (the profile's metaclass table names those)
+const TIE = 'association-class:', TIE_T = 'tie.AssociationClass';
 const endOfLine = (e, w) => { const at = ((UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {})[w]) || {};
   return at.aggregation === 'composite' ? 'filled-diamond' : at.aggregation === 'shared' ? 'diamond' : at.navigable ? 'open' : 'none'; };
 const endsOf = e => (UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {});

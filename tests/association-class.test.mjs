@@ -30,7 +30,7 @@ test('the class view draws an association class joined to the middle of its asso
   for (const v of ['v', 'd']) {
     const g = layout(m, v), job = g.nodes.find(n => n.id === 'job'), works = g.edges.find(e => e.id === 'works'), tie = g.edges.find(e => e.id === 'association-class:job');
     assert.ok(tie, `${v}: the tie is drawn`);
-    assert.equal(tie.type, 'uml.AssociationClassLink');
+    assert.equal(tie.type, 'tie.AssociationClass');
     assert.deepEqual(tie.end, { from: 'none', to: 'none', dashed: true }, 'dashed, with no arrowhead');
     assert.ok(onBorder(job, tie.pts[0]), `${v}: it leaves the class box's border`);
     assert.ok(onLine(works.pts, tie.pts.at(-1)), `${v}: it ends on the association's line`);
@@ -53,7 +53,7 @@ test('the class view draws an association class joined to the middle of its asso
 });
 
 test('no tie without the field, for a class at an end of its association, for a second class of one association, or for a loop', () => {
-  const tie = (m, v = 'v') => layout(m, v).edges.filter(e => e.type === 'uml.AssociationClassLink').map(e => e.id);
+  const tie = (m, v = 'v') => layout(m, v).edges.filter(e => e.type === 'tie.AssociationClass').map(e => e.id);
   assert.deepEqual(tie(model({})), []);
   const end = model(); end.edges[0].to = 'job';
   assert.deepEqual(tie(end), [], 'an end of its own association');
