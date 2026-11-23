@@ -377,3 +377,35 @@ test('every rendered example links back to a docs page that exists, and the site
   for (const out of ['_site/examples/$n.html', '_site/examples/types/$n.html'])
     assert.ok(ci.includes(`python3 umlimator.py render "$m" --out "${out}" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"`), out);
 });
+
+// node tools/gallery.mjs --docs-of with no path, a path that is not there, a folder or a file that is no model: one line
+// naming the problem and exit 1, no Node stack trace (audit 65); a model there prints its href as docsOf says
+test('node tools/gallery.mjs --docs-of with no path or a bad one says what is wrong in one line and exits 1', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'umlimator-docs-of-'));
+  try {
+    writeFileSync(join(dir, 'list.json'), '[1]'); writeFileSync(join(dir, 'bad.json'), '{');
+    const run = (...a) => spawnSync(process.execPath, ['tools/gallery.mjs', '--docs-of', ...a], { cwd: new URL('.', root), encoding: 'utf8' });
+    for (const [args, said] of [
+      [[], /^tools\/gallery\.mjs: --docs-of takes a model's path/],
+      [['examples/nope.json'], /^tools\/gallery\.mjs: examples\/nope\.json: no such file$/],
+      [['examples/types/nope.json'], /^tools\/gallery\.mjs: examples\/types\/nope\.json: no such file$/],
+      [['examples'], /^tools\/gallery\.mjs: examples: a folder, not a model$/],
+      [[join(dir, 'list.json')], /: not a model \(a JSON object\)$/],
+      [[join(dir, 'bad.json')], /: not JSON \(/],
+    ]) {
+      const r = run(...args);
+      assert.equal(r.status, 1, String(args));
+      assert.equal(r.stdout, '', String(args));
+      assert.equal(r.stderr.trimEnd().split('\n').length, 1, `${args}: one line, no stack trace: ${r.stderr}`);
+      assert.match(r.stderr.trimEnd(), said, String(args));
+    }
+    for (const f of ['examples/types/uml-class.json', 'examples/sales-classes.json', 'examples/shapes.json', `examples/${atlases()[0].file}.json`]) {
+      const r = run(f);
+      assert.deepEqual([r.status, r.stdout, r.stderr], [0, docsOf(f) + '\n', ''], f);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
