@@ -8,7 +8,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mutants, applyMutant, shuffle, relatedTests, mutate, parse, say } from '../tools/evolve/mutate.mjs';
+import { mutants, applyMutant, shuffle, relatedTests, mutate, parse, say, copied } from '../tools/evolve/mutate.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TOOL = join(ROOT, 'tools/evolve/mutate.mjs');
@@ -146,4 +146,11 @@ test('mutate: tests that fail before any mutation measure nothing (exit 1); a ba
     files: ['src/a.js'], tests: ['tests/a.test.mjs', 'tests/b.test.mjs'], seed: 1, max: Infinity, budgetMs: 90_000, timeoutMs: 20_000, timed: false, json: false,
     root: join(ROOT, 'tools/evolve/../..'),
   });
+});
+
+test('mutate: the copy keeps the tracked .evolve/ files (the pinned strategy) and leaves out the loop\'s local state and other worktrees', () => {
+  const r = '/repo', at = p => copied(r, join(r, p));
+  assert.equal(at('.evolve/STRATEGY.md'), true);
+  assert.equal(at('.evolve/strategy-feedback.md'), true);
+  for (const p of ['.evolve/fuzz', '.evolve/lease.json', '.evolve/lease.json.lock', '.git', 'node_modules', '.claude/worktrees/x', 'docs/.vitepress/dist']) assert.equal(at(p), false, p);
 });

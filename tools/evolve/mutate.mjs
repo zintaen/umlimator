@@ -115,9 +115,10 @@ export function relatedTests(root, file) {
   return [...names.filter(f => f === own), ...names.filter(f => f !== own)].map(f => `tests/${f}`);
 }
 
-// what the copy leaves out: big, generated or other worktrees, none of which a test reads
-const SKIP_NAMES = new Set(['.git', 'node_modules', '.claude', '.evolve']), SKIP_PATHS = new Set(['docs/.vitepress/dist', 'docs/.vitepress/cache', 'bench/results']);
-const copied = (root, s) => { const r = relative(root, s).split(sep).join('/'); return !r || (!r.split('/').some(p => SKIP_NAMES.has(p)) && !SKIP_PATHS.has(r)); };
+// what the copy leaves out: big, generated or other worktrees, and the loop's local state (the lease, the fuzz findings),
+// none of which a test reads; the tracked files of .evolve/ (the pinned strategy, the feedback file) are copied
+const SKIP_NAMES = new Set(['.git', 'node_modules', '.claude']), SKIP_PATHS = new Set(['docs/.vitepress/dist', 'docs/.vitepress/cache', 'bench/results', '.evolve/fuzz', '.evolve/lease.json', '.evolve/lease.json.lock']);
+export const copied = (root, s) => { const r = relative(root, s).split(sep).join('/'); return !r || (!r.split('/').some(p => SKIP_NAMES.has(p)) && !SKIP_PATHS.has(r)); };
 
 // the environment for a test run: without NODE_TEST_CONTEXT, which a run started from inside node --test inherits and which
 // makes the child report to that parent and exit 0 whatever its tests do

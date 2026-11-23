@@ -1,6 +1,6 @@
 # tools/evolve: the self-evolving loop's tools
 
-Five command-line tools for the audit and fix loop, written in Node with no dependency, plus the lessons file they feed. None of them is scheduled yet: the maintainer decides the times (proposed below). Each exits 0 when all is well, 1 when it has something to report (a refused lease, a tripped breaker, a new fuzz finding) and 2 on a usage error, so a scheduler or a script can act on the exit code alone. Tests: `node --test tests/evolve.test.mjs`.
+Command-line tools for the audit and fix loop, written in Node with no dependency, plus the lessons file they feed and the round templates. The loop follows the auto-evolve strategy pinned in [`.evolve/STRATEGY.md`](../../.evolve/STRATEGY.md); [`.evolve/README.md`](../../.evolve/README.md) says what each file there is. None of them is scheduled yet: the maintainer decides the times (proposed below). Each exits 0 when all is well, 1 when it has something to report (a refused lease, a tripped breaker, a new fuzz finding) and 2 on a usage error, so a scheduler or a script can act on the exit code alone. Tests: `node --test tests/evolve.test.mjs`.
 
 ## lease.mjs: one owner of the loop at a time
 
@@ -61,6 +61,35 @@ node tools/evolve/mutate.mjs <src files...> [--tests a,b] [--seed 1] [--max n] [
 
 Makes simple mutants of each source file (a comparison flipped, a logical or arithmetic operator swapped, a constant changed, an expression statement dropped), one at a time in a temporary copy of the repository, runs the related test files, and reports the share killed and each survivor's place. One seed picks the same mutants in the same order; the budget stops starting new ones. CONTRIBUTING.md ("Mutation testing") says more. Tests: `node --test tests/mutate.test.mjs`.
 
+## strategy-sync.mjs: the pinned strategy and its upstream
+
+```sh
+node tools/evolve/strategy-sync.mjs check   [--pinned .evolve/STRATEGY.md] [--upstream zintaen/auto-evolve-strategy]
+node tools/evolve/strategy-sync.mjs propose [--feedback .evolve/strategy-feedback.md] [--review <file>] [--dry-run]
+node tools/evolve/strategy-sync.mjs update  [--repo zintaen/umlimator] [--base main] [--dry-run]
+```
+
+umlimator follows a pinned copy of the auto-evolve strategy, never the newest upstream text (the strategy's A12). The canonical text is `STRATEGY.md` in the private repository zintaen/auto-evolve-strategy, versioned by tags; `.evolve/STRATEGY.md` holds one tagged version byte for byte under a header that names the version, the tag's commit, the date pinned and the text's sha256. The GitHub calls go through `gh api`, so export `GH_TOKEN=$(gh auth token --user zintaen)` first (the repository is private).
+
+- `check` compares the pinned version with the newest upstream `vX.Y.Z` tag. It exits 0 when they match, and 1 when upstream has a newer version, when the tag now names another commit, when the text under the header was edited in place (its hash no longer matches), or when upstream cannot be reached. Session start runs it.
+- `propose` reads the Open list of `.evolve/strategy-feedback.md` and opens one pull request against the canonical repository: a branch `feedback/umlimator-<date>`, STRATEGY.md with each entry's exact edits applied (a fenced `find` block and a fenced `replace` block; an edit whose text is not found exactly once is listed and left to the reviewer), an Unreleased entry in CHANGELOG.md per feedback entry, and the evidence in the body, with `--review`'s text as the independent review. It moves the entries to the Closed list with the pull request's number, and never merges anything. Nothing is opened while an earlier feedback pull request is still open. `--dry-run` prints the branch, the files and the body and writes nothing. The batch-to-main template runs it.
+- `update` opens a umlimator pull request (branch `strategy/vX.Y.Z`, base `main`) that replaces the pinned copy with the newest tagged version and lists the upstream changelog's sections since the pinned version. The maintainer merges it; the next round follows the new version. `--dry-run` prints what it would do.
+
+Feedback entries follow A12: date, round, rule (C or A number), what happened, the evidence and a proposed change. Only the combine step writes the file. Tests: `node --test tests/strategy-sync.test.mjs`, every mode against a fake upstream, with no network.
+
+## killswitch.mjs: the loop's stop file
+
+```sh
+node tools/evolve/killswitch.mjs [--ref origin/main] [--repo .]
+node tools/evolve/killswitch.mjs --file <path>
+```
+
+Exits 1 when `.evolve/STOP` exists in the given commit (main by default; run `git fetch` first), printing its text, and also when that commit cannot be read; exits 0 when there is no kill switch. `--file` checks a file beside the lease instead, where the rules file puts it there. Every session and round template runs it first, and the orchestrator before every step (the strategy's C3 step 3).
+
+## templates/: the round templates
+
+`tools/evolve/templates/` holds the runnable round scripts the orchestrator copies for each round (A7.3): `audit.js` (session checks, eight finders, dedupe, one adversarial verifier per finding, with the model rotation), `fix.js` (up to five lanes, then the combine step with the full local gate, the fixed-findings ledger and the strategy feedback), `batch.js` (batch to main with mutation testing, then `strategy-sync.mjs propose` with an independent review) and `release.sh` (merge a release pull request once green, patch only unless the maintainer approved, and watch CI's release jobs). Paths, round numbers and the commit identity come from `args`, so no machine path is written in them. `checklist.md` lists each standing rule with a string to search for; `tests/strategy-sync.test.mjs` fails when a template loses one.
+
 ## LESSONS.md
 
 [`docs/diagrams/LESSONS.md`](../../docs/diagrams/LESSONS.md) holds what went wrong in the loop and the rule that prevents it. Each round that goes wrong in a new way adds an entry, and the round templates are updated from it.
@@ -72,4 +101,6 @@ Nothing is scheduled by this change. The proposed defaults, for the maintainer t
 - lease: no schedule of its own. Every session runs `take` at start, `renew` every 15 minutes and before each push, and an hourly watcher runs `check` and takes the lease only when it has expired.
 - ledger: no schedule of its own; the orchestrator runs it after each audit is saved and stops on exit 1.
 - digest: weekly, Monday 09:00 (the maintainer's time), `--date` set to that day, the output sent to the maintainer.
+- strategy-sync: `check` at every session start; `propose` at each batch to main; `update` when `check` reports a newer version.
+- killswitch: no schedule of its own; first in every session and job, and before every step.
 - fuzz: nightly at 02:00 with `--budget 30m` and the seed left to the date, in a job with no push rights or secrets; a triage step reads the new files in the findings folder and turns each into an inbox finding.
