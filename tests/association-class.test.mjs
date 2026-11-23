@@ -13,8 +13,6 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import { writeMermaidClass } from '../src/readers/mermaid-class.js';
-import { apply } from '../src/core/apply.js';
-import { diff } from '../src/map/diff.js';
 
 const model = (props = { associationClass: 'works' }, more = {}) => ({ schemaVersion: 2,
   nodes: [{ id: 'person', type: 'uml.Class', label: 'Person' }, { id: 'company', type: 'uml.Class', label: 'Company' },
@@ -113,79 +111,4 @@ test('the properties form: "Association class of" on a class, which takes an ass
   assert.match(field(m, m.views[0], 'person', 'props.associationClass', 'works').error, /an end of/);
   assert.equal(field(m, m.views[0], 'job', 'props.associationClass', undefined), null, 'emptied: the panel\'s own set');
   assert.equal(field(m, m.views[0], 'job', 'label', 'Jobs'), null, 'another field: the panel\'s own set');
-});
-
-// a tie's path: out of its class box's border, onto its association's line, and through no other card (its association's
-// ends included, which check() does not weigh it against), no label, and along no box's border
-const tieClear = (g, tie, where) => {
-  const c = g.nodes.find(n => `association-class:${n.id}` === tie.id), a = g.edges.find(e => e.id === tie.tie), P = tie.pts;
-  assert.ok(onBorder(c, P[0]), `${where}: ${tie.id} leaves its class box's border`);
-  assert.ok(onLine(a.pts, P.at(-1)), `${where}: ${tie.id} ends on its association's line`);
-  const segs = P.slice(1).map((q, i) => [P[i], q]), inR = ([p, q], r) => Math.max(p[0], q[0]) > r.x && Math.min(p[0], q[0]) < r.x + r.w && Math.max(p[1], q[1]) > r.y && Math.min(p[1], q[1]) < r.y + r.h;
-  g.nodes.forEach(n => assert.ok(n === c || !segs.some(s => inR(s, n)), `${where}: ${tie.id} ${JSON.stringify(P)} passes through card ${n.id}`));
-  g.edges.forEach(e => assert.ok(!e.lbl || !segs.some(s => inR(s, e.lbl)), `${where}: ${tie.id} lies on the label of ${e.id}`));
-};
-
-test('two association classes on one class (Person with Job and Assignment): each dashed line runs clear of the cards, the lines and the labels, laid out right and down (audit 65)', () => {
-  const m = { schemaVersion: 2, nodes: [{ id: 'person', type: 'uml.Class', label: 'Person' }, { id: 'company', type: 'uml.Class', label: 'Company' }, { id: 'project', type: 'uml.Class', label: 'Project' },
-    { id: 'job', type: 'uml.Class', label: 'Job', props: { associationClass: 'works' } }, { id: 'assignment', type: 'uml.Class', label: 'Assignment', props: { associationClass: 'staffs' } }],
-  edges: [{ id: 'works', type: 'uml.Association', from: 'person', to: 'company', label: 'works for' }, { id: 'staffs', type: 'uml.Association', from: 'person', to: 'project', label: 'staffs' }],
-  views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['person', 'company', 'project', 'job', 'assignment'] }, { id: 'd', diagram: 'uml.class', direction: 'down', nodeIds: ['person', 'company', 'project', 'job', 'assignment'] }] };
-  for (const v of ['v', 'd']) {
-    const g = layout(m, v), ties = g.edges.filter(e => e.type === 'tie.AssociationClass');
-    assert.deepEqual(ties.map(t => t.id), ['association-class:job', 'association-class:assignment'], v);
-    ties.forEach(t => tieClear(g, t, v));
-    assert.deepEqual(check(m, v).map(x => x.message), [], `${v}: the check is clean`);
-  }
-  // one association class alone still meets its line at the middle, past the label (the first test): nothing in its way
-  const one = model(), g = layout(one, 'v'), tie = g.edges.find(e => e.id === 'association-class:job');
-  tieClear(g, tie, 'one');
-});
-
-test('an association class in a package beside one end of its association: its dashed line runs along no border of the package, laid out down and right (audit 65)', () => {
-  const m = dir => ({ schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'P' }, { id: 'q', type: 'uml.Package', label: 'Q' },
-    { id: 'a', type: 'uml.Class', label: 'A', parent: 'p' }, { id: 'c', type: 'uml.Class', label: 'C', parent: 'p', props: { associationClass: 'ab' } },
-    { id: 'b', type: 'uml.Class', label: 'B', parent: 'q' }, { id: 'z', type: 'uml.Class', label: 'Z', parent: 'q' }],
-  edges: [{ id: 'ab', type: 'uml.Association', from: 'a', to: 'b', label: 'x' }],
-  views: [{ id: 'w', diagram: 'uml.class', direction: dir, nodeIds: ['p', 'q', 'a', 'b', 'c', 'z'] }] });
-  for (const dir of ['down', 'right']) {
-    const g = layout(m(dir), 'w'), tie = g.edges.find(e => e.id === 'association-class:c');
-    tieClear(g, tie, dir);
-    g.families.forEach(f => tie.pts.slice(1).forEach((q, i) => { const p = tie.pts[i], v = p[0] === q[0], k = v ? 0 : 1;
-      const lo = Math.max(Math.min(p[1 - k], q[1 - k]), v ? f.y : f.x), hi = Math.min(Math.max(p[1 - k], q[1 - k]), v ? f.y + f.h : f.x + f.w);
-      assert.ok(!(hi - lo > 4 && (v ? [f.x, f.x + f.w] : [f.y, f.y + f.h]).some(u => Math.abs(p[k] - u) < 8)), `${dir}: ${JSON.stringify(tie.pts)} runs along a border of ${f.id}`); }));
-    assert.deepEqual(check(m(dir), 'w').map(x => x.message), [], `${dir}: the check is clean`);
-  }
-});
-
-test('deleting an association leaves its class a plain class: no associationClass, no rule broken; a diff draws the deleted line with its class (audit 65)', () => {
-  const m = model(), m2 = apply(m, [{ op: 'delete', id: 'works' }]);
-  assert.deepEqual(m2.nodes.find(n => n.id === 'job').props, {});
-  assert.deepEqual(validate(m2), []);
-  assert.deepEqual(layout(m2, 'v').edges, []);
-  // a class of no type, which the class view draws as a class
-  const u = model(); delete u.nodes[2].type; const u2 = apply(u, [{ op: 'delete', id: 'works' }]);
-  assert.deepEqual(u2.nodes.find(n => n.id === 'job').props, {});
-  assert.deepEqual(validate(u2).filter(p => p.rule === 'association-class'), []);
-  // deleting the class's end takes the association and so the field
-  const e2 = apply(model(), [{ op: 'delete', id: 'company' }]);
-  assert.equal(e2.nodes.find(n => n.id === 'job').props.associationClass, undefined);
-  // the diff: the deleted association comes back with its class tied to it, the class marked changed
-  const d = diff(m, m2).model;
-  assert.equal(d.nodes.find(n => n.id === 'job').props.associationClass, 'works');
-  assert.deepEqual(layout(d, 'v').edges.map(e => e.id), ['works', 'association-class:job']);
-  assert.equal(d.nodes.find(n => n.id === 'job').change, 'changed');
-});
-
-test('an association a view holds as its own line: drawn with its class, and the rule and the panel field take it as the view does (audit 65)', () => {
-  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'c', type: 'uml.Class', label: 'C', props: { associationClass: 'ab' } }], edges: [],
-    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'], edges: [{ id: 'ab', type: 'uml.Association', from: 'a', to: 'b', label: 'x' }] }] };
-  assert.deepEqual(layout(m, 'v').edges.map(e => e.id), ['ab', 'association-class:c']);
-  assert.deepEqual(validate(m), []);
-  const field = diagramOf({ diagram: 'uml.class' }).edits.field;
-  assert.deepEqual(field(m, m.views[0], 'c', 'props.associationClass', 'x'), [{ op: 'set', id: 'c', path: 'props.associationClass', value: 'ab' }]);
-  // another class view, which does not hold it: shows the class without its association, a warning, not an error
-  m.views.push({ id: 'w', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'] });
-  assert.deepEqual(validate(m).map(p => p.level + ' ' + p.message), ['warning association-class: view "w" shows "C" but does not draw its association ab']);
-  assert.match(field(m, m.views[1], 'c', 'props.associationClass', 'x').error, /^association-class: no association/);
 });

@@ -461,8 +461,7 @@ export function diff(before, after) {
       const l = v ? (v.fragments = [...arr(v.fragments)]) : (o.members = [...arr(o.members)]); l.splice(Math.min(i, l.length), 0, y);
       ownIn(y, have, up, i); if (v) back.push(y.parent); } }
 
-  /* what the core's delete took out of others' lists (a type's refs, 'drop': a BPMN element's groups), or the one id a field
-     held (a class's association, audit 65: the deleted association drawn with no class on it), comes back for an element
+  /* what the core's delete took out of others' lists (a type's refs, 'drop': a BPMN element's groups) comes back for an element
      that comes back removed, where it stood, so the type draws it as it was (audit 49: a deleted group drawn round nothing, so
      not drawn). After the summary: the element that named it changed, and is said and marked so */
   { const walk = (l, f) => { for (const s = [...arr(l)]; s.length;) { const x = s.pop(); if (x && typeof x === 'object' && !Array.isArray(x)) { f(x); s.push(...arr(x.members)); } } };
@@ -472,7 +471,6 @@ export function diff(before, after) {
       all1.forEach(l => walk(l, y => { const o = y.change === 'removed' ? null : old.get(y.id), R = o && propRefs(y.type);
         if (!R || !o.props || typeof o.props !== 'object' || !y.props || typeof y.props !== 'object') return;
         Object.keys(R).forEach(path => { const k = /^props\.([^.]+)$/.exec(path); if (R[path] !== 'drop' || !k) return; const was0 = o.props[k[1]], now = y.props[k[1]];
-          if (typeof was0 === 'string' && gone.has(was0) && now == null) { y.props = { ...y.props, [k[1]]: was0 }; return; } // one id (a class's association, audit 65)
           if (!Array.isArray(was0) || (now != null && !Array.isArray(now))) return; const res = [...arr(now)];
           was0.forEach((r, i) => { if (gone.has(r) && !res.includes(r)) res.splice(Math.min(i, res.length), 0, r); });
           if (res.length !== arr(now).length) y.props = { ...y.props, [k[1]]: res }; }); })); } }
