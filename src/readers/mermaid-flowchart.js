@@ -122,15 +122,17 @@ function mfLink(s, i) {
 // @{ key: value, ... } at i (the @ itself): its fields and where it ends, or null when it is not closed
 function mfFields(s, i) {
   const out = new Map();
-  let k = i + 2, key = '', val = '', inKey = true, q = null, quoted = false;
-  const put = () => { if (key.trim()) out.set(key.trim(), quoted ? val : val.trim()); key = ''; val = ''; inKey = true; quoted = false; };
+  // full: val holds a character that is not blank, kept as it grows: a val.trim() at each quote cost val's length (audit 65)
+  let k = i + 2, key = '', val = '', inKey = true, q = null, quoted = false, full = false;
+  const put = () => { if (key.trim()) out.set(key.trim(), quoted ? val : val.trim()); key = ''; val = ''; inKey = true; quoted = false; full = false; };
+  const add = c => { val += c; if (!full && /\S/.test(c)) full = true; };
   for (; k < s.length; k++) {
     const c = s[k];
-    if (q) { if (c === '\\' && k + 1 < s.length) val += s[++k]; else if (c === q) q = null; else val += c; continue; }
+    if (q) { if (c === '\\' && k + 1 < s.length) add(s[++k]); else if (c === q) q = null; else add(c); continue; }
     if (c === '}') { put(); return { fields: out, end: k + 1 }; }
     if (inKey) { if (c === ':') inKey = false; else if (c === ',') put(); else key += c; continue; }
     if (c === ',') put();
-    else if ((c === '"' || c === "'") && !val.trim()) { q = c; quoted = true; val = ''; } else val += c;
+    else if ((c === '"' || c === "'") && !full) { q = c; quoted = true; val = ''; } else add(c);
   }
   return null;
 }

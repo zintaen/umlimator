@@ -105,8 +105,32 @@ function cvOverlaps(model, spans, match) {
   const list = [].concat(spans || []).filter(s => s && Number.isFinite(+s.start) && Number.isFinite(+s.end)), span = new Map(list.map(s => [String(s.id), s]));
   const cardOf = cardMatcher(cards, match), up = s => (s.parent != null ? span.get(String(s.parent)) : null);
   const calls = list.filter(s => { const to = cardOf(s.service), p = up(s), from = p && cardOf(p.service); return to && from && from !== to; });
-  const under = (s, a) => { for (let p = s, seen = new Set(); p && !seen.has(p); seen.add(p), p = up(p)) if (p === a) return true; return false; };
-  return calls.filter(a => calls.some(b => a !== b && +a.start < +b.end && +b.start < +a.end && !under(a, b) && !under(b, a))).length;
+  if (calls.length < 2) return 0;
+  // the parent links as a forest, each loop of them one node (its spans are all above each other), numbered in depth-first
+  // order: a span's relatives above and below are then the ones whose range [pre, last] holds its own or sits inside it, the
+  // rest end before it starts (last < pre) or start after it ends (pre > last). The calls sorted by end, the calls that start
+  // before each one ends go into two max-of-end trees, one by pre and one by last, so each call asks two ranges for one that
+  // ends after it starts: n log n where a pairwise test with a walk up the parents took n³ on a deep chain (audit 65)
+  const ns = [...new Set(list)], ix = new Map(ns.map((s, i) => [s, i])), N = ns.length, par = ns.map(s => { const p = up(s); return p ? ix.get(p) : -1; });
+  const rep = ns.map((_, i) => i), loop = new Uint8Array(N), state = new Uint8Array(N), kids = ns.map(() => []), roots = [];
+  for (let i = 0; i < N; i++) {
+    const path = []; let j = i;
+    while (j >= 0 && !state[j]) { state[j] = 1; path.push(j); j = par[j]; }
+    if (j >= 0 && state[j] === 1) { loop[j] = 1; for (let k = path.length - 1; path[k] !== j; k--) rep[path[k]] = j; } // a new loop, from j round to it
+    for (const k of path) state[k] = 2;
+  }
+  for (let i = 0; i < N; i++) if (rep[i] === i) (loop[i] || par[i] < 0 ? roots : kids[rep[par[i]]]).push(i);
+  const pre = new Int32Array(N), last = new Int32Array(N); let t = 0;
+  for (const r of roots) for (const st = [r]; st.length;) { const x = st.pop(); if (x < 0) { last[~x] = t - 1; continue; } pre[x] = t++; st.push(~x); for (const k of kids[x]) st.push(k); }
+  const byPre = new Float64Array(t + 1).fill(-Infinity), byLast = new Float64Array(t + 1).fill(-Infinity);
+  const put = (f, i, v) => { for (i++; i <= t; i += i & -i) if (f[i] < v) f[i] = v; }, most = (f, i) => { let m = -Infinity; for (i++; i > 0; i -= i & -i) if (f[i] > m) m = f[i]; return m; };
+  const cs = calls.map(s => { const k = rep[ix.get(s)]; return { s: +s.start, e: +s.end, p: pre[k], l: last[k] }; }), starts = [...cs].sort((a, b) => a.s - b.s);
+  let n = 0, j = 0;
+  for (const a of cs.sort((a, b) => a.e - b.e)) {
+    for (; j < starts.length && starts[j].s < a.e; j++) { put(byPre, t - 1 - starts[j].p, starts[j].e); put(byLast, starts[j].l, starts[j].e); }
+    if (most(byPre, t - 2 - a.l) > a.s || most(byLast, a.p - 1) > a.s) n++;
+  }
+  return n;
 }
 
 function sequenceFromSpans(model, spans, options = {}) {

@@ -445,6 +445,23 @@ imp.read("mermaid", sys.stdin.read(), "flowchart")`], { input: long, encoding: '
   assert.ok(performance.now() - t < 5000, `${Math.round(performance.now() - t)} ms`);
 });
 
+// audit 65: mfFields asked val.trim() at each quote outside a quote while val grew, so an unclosed @{ field list of quotes and
+// colons took time in the square of its length (31 s at the size limit). Timed by growth against a quarter, never a wall clock
+test('an unclosed @{ field list of quotes and colons is read in linear time (audit 65) (timed)', () => {
+  const time = text => { const t = performance.now(); read(text); return performance.now() - t; };
+  for (const u of [':""', ' : "', 'shape: "', ": ''", ':" "']) {
+    const make = n => 'flowchart TD\nA@{ ' + u.repeat(Math.floor(n / u.length));
+    const q = time(make(100000)), ms = time(make(400000)); // quadratic was about 2 s at 260,000 characters and 16x a quarter
+    assert.ok(ms < 250 || (ms < 2000 && ms / Math.max(q, 1) < 8), `${JSON.stringify(u)}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  }
+  // the fields read as before: a quote opens a value only while the value is blank, and a quoted value keeps its commas
+  const fields = t => read('flowchart TD\n' + t).model.nodes.map(n => [n.id, n.label]);
+  assert.deepEqual(fields('A@{ label: "a, b" }'), [['A', 'a, b']]);
+  assert.deepEqual(fields('A@{ label: "" "z" }'), [['A', 'z']]);
+  assert.deepEqual(fields('A@{ label:   "x" }'), [['A', 'x']]);
+  assert.deepEqual(fields('A@{ label: x "y" }'), [['A', 'x "y"']]);
+});
+
 // audit 37: mfCloseAt ran over the whole run of one character before it said no close starts there, and the text scan moves on by
 // one character, so a long unclosed link text of one repeated character (x, [, ...) took time in the square of its length
 test('an unclosed link text of one repeated character is read in linear time, as before for each kind of character (audit 37)', () => {
