@@ -2,7 +2,9 @@
 // The protected core tests (tests/protected.json): the tests whose expectations change only with the maintainer's approval.
 // Each entry keeps a hash of the test's body and of the file's top-level declarations it uses (its helpers), with comments
 // and layout taken out, and how many times it calls assert. tests/protected.test.mjs fails when a protected test is gone
-// (deleted or renamed) or its hash changed (an assertion weakened, dropped or edited, or a helper changed).
+// (deleted or renamed), its hash changed (an assertion weakened, dropped or edited, or a helper changed), or it no longer
+// runs: node --test runs it only as a statement at the top level or in the callback of a describe, suite, test or it, so
+// one wrapped in a skipped describe, an if, a function or an expression is reported.
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
 //   node tools/protect.mjs --list                   print the entries
@@ -26,9 +28,15 @@ const GOES_ON = new Set([',', '=', '=>', '(', '[', '{', '?', ':', '+', '-', '*',
 // the tests a file declares with a literal title, and its top-level declarations
 export function scan(src) {
   const toks = tokenize(src), sig = significant(toks), tests = new Map(), decls = new Map();
-  const depthAt = []; // depth before each significant token
+  const depthAt = [], parent = [], opener = []; // depth before each significant token; the open bracket around it; a close's open
   let depth = 0;
-  for (const t of sig) { depthAt.push(depth); if (t.type === 'punct' && OPEN.has(t.text)) depth++; else if (t.type === 'punct' && CLOSE.has(t.text)) depth = Math.max(0, depth - 1); }
+  const stack = [];
+  for (let k = 0; k < sig.length; k++) {
+    const t = sig[k];
+    depthAt.push(depth); parent.push(stack.length ? stack[stack.length - 1] : -1);
+    if (t.type === 'punct' && OPEN.has(t.text)) { depth++; stack.push(k); }
+    else if (t.type === 'punct' && CLOSE.has(t.text)) { depth = Math.max(0, depth - 1); opener[k] = stack.length ? stack.pop() : -1; }
+  }
   const close = j => { // index in sig of the bracket that closes the one at j
     let d = 0;
     for (let k = j; k < sig.length; k++) {
@@ -43,6 +51,43 @@ export function scan(src) {
     return s;
   };
   const newLine = k => /\n/.test(src.slice(sig[k - 1].end, sig[k].start));
+  // why the call whose name is at j would not run as a test, or null when it runs: node --test runs a test written as a
+  // statement at the top level or in the callback of a describe, suite, test or it that is not skipped
+  const off = j => {
+    for (;;) {
+      let s = j;
+      if (sig[s - 1]?.text === 'await') s--;
+      const p = sig[s - 1];
+      if (p && p.text === ')' && /^(if|for|while|with)$/.test(sig[opener[s - 1] - 1]?.text)) return `after ${sig[opener[s - 1] - 1].text} (...)`;
+      if (p && p.text !== ';' && p.text !== '{' && p.text !== '}' && p.text !== '=>' && !(newLine(s) && !GOES_ON.has(p.text) && !['else', 'do', 'return', 'void', 'typeof', 'new', 'yield', '!'].includes(p.text))) return `after ${p.text}`;
+      const b = parent[s];
+      if (b < 0) return null;
+      // the function around it: an arrow's expression body, or a block that is an arrow's or a function's body
+      let f;
+      if (p?.text === '=>' && sig[b].text === '(') f = s - 1;
+      else if (sig[b].text === '{' && sig[b - 1]?.text === '=>') f = b - 1;
+      else if (sig[b].text === '{' && sig[b - 1]?.text === ')' && sig[opener[b - 1] - 1]?.text === 'function') f = opener[b - 1] - 1;
+      else if (sig[b].text === '{') {
+        const o = sig[b - 1]?.text === ')' ? sig[opener[b - 1] - 1]?.text : sig[b - 1]?.text;
+        return o && /^(if|else|for|while|do|try|catch|finally|switch|with)$/.test(o) ? `inside ${o} { ... }` : 'inside a block that is no test callback';
+      } else return 'inside an expression';
+      if (sig[f].text === '=>') f = sig[f - 1]?.text === ')' ? opener[f - 1] : f - 1; // the arrow's parameters
+      if (sig[f - 1]?.text === 'async') f--;
+      const c = parent[f]; // the call the function is passed to
+      if (c < 0 || sig[c].text !== '(' || !['(', ','].includes(sig[f - 1]?.text)) return 'inside a function that is no test callback';
+      let n = c - 1;
+      const mod = sig[n - 1]?.text === '.' ? sig[n].text : null;
+      if (mod) n -= 2;
+      if (sig[n]?.type !== 'id' || !['describe', 'suite', 'test', 'it'].includes(sig[n].text) || (mod && mod !== 'only') || ['.', '?.'].includes(sig[n - 1]?.text)) {
+        return mod === 'skip' || mod === 'todo' ? `inside ${sig[n].text}.${mod}` : 'inside a function that is no test callback';
+      }
+      const options = k => sig[parent[k]]?.text === '{' && parent[parent[k]] === c && !['=>', ')'].includes(sig[parent[k] - 1]?.text);
+      for (let k = c + 1; k < close(c); k++) if (options(k)) {
+        if ((sig[k].text === 'skip' || sig[k].text === 'todo') && sig[k + 1]?.text !== '(' && !(sig[k + 1]?.text === ':' && ['false', 'undefined', 'null', '0', "''", '""'].includes(sig[k + 2]?.text))) return `inside ${sig[n].text}(..., { ${sig[k].text} })`;
+      }
+      j = n;
+    }
+  };
   for (let j = 0; j < sig.length; j++) {
     const t = sig[j], prev = sig[j - 1];
     if (t.type !== 'id' || (prev && (prev.text === '.' || prev.text === '?.'))) continue;
@@ -55,7 +100,7 @@ export function scan(src) {
       const end = close(p);
       let key = title;
       for (let n = 2; tests.has(key); n++) key = `${title} #${n}`;
-      tests.set(key, { body: normalized(toks, t.k, sig[end].k), asserts: sig.slice(p, end).filter((x, i, a) => x.type === 'id' && x.text === 'assert' && a[i - 1]?.text !== '.').length, refs: refs(j, end) });
+      tests.set(key, { off: off(j), body: normalized(toks, t.k, sig[end].k), asserts: sig.slice(p, end).filter((x, i, a) => x.type === 'id' && x.text === 'assert' && a[i - 1]?.text !== '.').length, refs: refs(j, end) });
       continue;
     }
     if (depthAt[j] !== 0) continue;
@@ -117,6 +162,7 @@ export function check(root, list = readList(root)) {
     for (const [title, was] of Object.entries(entries)) {
       const now = record(src, title, scanned);
       if (!now) problems.push({ file, title, problem: 'gone: deleted or renamed', was });
+      else if (scanned.tests.get(title).off) problems.push({ file, title, problem: `no longer runs (${scanned.tests.get(title).off})`, was, now });
       else if (now.sha256 !== was.sha256) {
         const why = [now.asserts !== was.asserts ? `asserts ${was.asserts} -> ${now.asserts}` : 'its body or a helper changed'];
         const lost = was.helpers.filter(h => !now.helpers.includes(h)), added = now.helpers.filter(h => !was.helpers.includes(h));
@@ -141,6 +187,7 @@ export function update(root, file, titles = []) {
       if (titles.length && !titles.includes(title)) continue;
       const now = record(src, title, scanned);
       if (!now) throw new Error(`${f}: no test titled "${title}" (renamed? --remove it and --add the new title)`);
+      if (scanned.tests.get(title).off) throw new Error(`${f}: "${title}" does not run (${scanned.tests.get(title).off})`);
       entries[title] = now; done.push(`${f}: "${title}"`);
     }
   }
@@ -154,6 +201,7 @@ export function add(root, file, titles) {
   for (const title of titles) {
     const now = record(src, title, scanned);
     if (!now) throw new Error(`${file}: no test titled "${title}" (only tests with a literal title can be protected)`);
+    if (scanned.tests.get(title).off) throw new Error(`${file}: "${title}" does not run (${scanned.tests.get(title).off})`);
     entries[title] = now;
   }
   writeList(root, list);

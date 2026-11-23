@@ -106,6 +106,55 @@ test('protect: an assertion dropped, weakened or edited, a skip, or a helper cha
   assert.deepEqual(problems(dir), []);
 });
 
+test('protect: a protected test wrapped so that node --test no longer runs it is reported; one in a describe that runs is not (audit 65)', (t) => {
+  const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const DOUBLES = /test\('doubles', \(\) => \{\n[^]*?\n\}\);\n/, wrap = (pre, post) => s => s.replace(DOUBLES, m => `${pre}${m}${post}`);
+  const off = [
+    [wrap("describe('off', { skip: true }, () => {\n", '});\n'), 'inside describe(..., { skip })'],
+    [wrap("describe('off', { todo: 'later' }, () => {\n", '});\n'), 'inside describe(..., { todo })'],
+    [wrap("describe.skip('off', () => {\n", '});\n'), 'inside describe.skip'],
+    [wrap("describe('a', () => { describe.skip('b', () => {\n", '}); });\n'), 'inside describe.skip'],
+    [wrap("describe('a', () => { describe('b', { skip: 'no' }, async () => {\n", '}); });\n'), 'inside describe(..., { skip })'],
+    [wrap('if (false) {\n', '}\n'), 'inside if { ... }'],
+    [wrap('if (false)\n', ''), 'after if (...)'],
+    [wrap('false && ', ''), 'after &&'],
+    [wrap('function off() {\n', '}\n'), null], // inside a top-level declaration: the scanner reads it as a helper's body
+    [wrap('const off = () => {\n', '};\n'), null],
+    [wrap('setup(() => {\n', '});\n'), 'inside a function that is no test callback'],
+    [wrap('[].forEach(() => {\n', '});\n'), 'inside a function that is no test callback'],
+    [wrap('for (const x of []) {\n', '}\n'), 'inside for { ... }'],
+  ];
+  for (const [change, why] of off) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.notEqual(readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8'), before, 'the case edits the file');
+    assert.deepEqual(problems(dir), [why ? `doubles: no longer runs (${why})` : 'doubles: gone: deleted or renamed'], why);
+    assert.throws(() => update(dir), why ? /"doubles" does not run/ : /no test titled "doubles"/);
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+  const runs = [
+    wrap("describe('on', () => {\n", '});\n'),
+    wrap("describe('on', { skip: false }, function () {\n", '});\n'),
+    wrap("describe.only('on', async () => {\n", '});\n'),
+    wrap("suite('a', () => { describe('b', { timeout: 5 }, () => {\n", '}); });\n'),
+    wrap("test('outer', async t => {\n", '});\n'),
+    s => s.replace("test('doubles'", "await test('doubles'"),
+  ];
+  for (const change of runs) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.notEqual(readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8'), before, 'the case edits the file');
+    assert.deepEqual(problems(dir), []);
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+  edit(dir, wrap('if (process.env.X) {\n', '}\n'));
+  assert.throws(() => add(dir, 'tests/x.test.mjs', ['doubles']), /tests\/x\.test\.mjs: "doubles" does not run \(inside if \{ \.\.\. \}\)/);
+  let out = '', code = 0;
+  try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; out = e.stdout; }
+  assert.equal(code, 1);
+  assert.match(out, /^tests\/x\.test\.mjs: "doubles": no longer runs \(inside if \{ \.\.\. \}\)\n/);
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));
