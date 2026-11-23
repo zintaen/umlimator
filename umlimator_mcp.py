@@ -13,7 +13,7 @@ The protocol: JSON-RPC 2.0, one message per line on stdin and stdout; logs go to
 the current specification (per-request `_meta`, server/discover), and the `initialize` handshake of the versions before
 it, which a client sends that predates 2026-07-28 or falls back to it.
 """
-import hashlib, hmac, html, http.server, itertools, json, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
+import codecs, hashlib, hmac, html, http.server, itertools, json, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
 from pathlib import Path
 
 import umlimator as cli
@@ -273,8 +273,9 @@ def history_file():
 
 
 def history():
-    """{done: [...], undone: [...]}: each change written, {before, after_sha, summary, at}, the model file's text before
-    it and a hash of its text after; each change undo() took back, {after, before_sha, ...}, the other way round. A
+    """{done: [...], undone: [...]}: each change written, {before, form, after_sha, summary, at}, the model file's text
+    before it (and its encoding and BOM) and a hash of its text after; each change undo() took back, {after, form,
+    before_sha, ...}, the other way round. A
     history that is missing or unreadable is an empty one."""
     try:
         h = json.loads(history_file().read_text(encoding="utf-8"))
@@ -298,13 +299,26 @@ def kept(h):
     return json.dumps(h)
 
 
-def write(path, text):
+BOMS = ((codecs.BOM_UTF32_LE, "utf-32-le"), (codecs.BOM_UTF32_BE, "utf-32-be"), (codecs.BOM_UTF8, "utf-8"),
+        (codecs.BOM_UTF16_LE, "utf-16-le"), (codecs.BOM_UTF16_BE, "utf-16-be"))  # UTF-32 LE's BOM starts as UTF-16 LE's
+
+
+def encoded(text, form=None):
+    """text as the bytes of a file in form, {"codec", "bom"} as model_file() gives it (UTF-8 with no BOM when none)."""
+    form = form if isinstance(form, dict) and form.get("codec") in {c for _, c in BOMS} else {"codec": "utf-8"}
+    bom = form.get("bom")
+    return ("\ufeff" * (bom if type(bom) is int and 0 < bom < 64 else 0) + text).encode(form["codec"])
+
+
+def write(path, text, form=None):
     """path's text, replaced atomically: written to a file beside it, then renamed over it, so a reader (the page, an
-    editor, a build) sees the old file or the new one, never half of one."""
+    editor, a build) sees the old file or the new one, never half of one. Written in form, the encoding and BOM
+    model_file() found (UTF-8 with no BOM when none)."""
+    data = encoded(text, form)
     fd, tmp = tempfile.mkstemp(prefix="." + path.name + ".", suffix=".tmp", dir=path.parent)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
-            f.write(text)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
         if path.exists():
             os.chmod(tmp, path.stat().st_mode & 0o7777)
         os.replace(tmp, path)
@@ -313,13 +327,21 @@ def write(path, text):
         raise
 
 
-def model_text():
-    """The model file's text, as the CLI reads it: UTF-8 (a BOM too), UTF-16 or UTF-32. An edit writes it back as UTF-8."""
+def model_file():
+    """The model file's text, as the CLI reads it: UTF-8 (a BOM too), UTF-16 or UTF-32; and its form, {"codec", "bom"},
+    which write() keeps, so an edit and undo() leave the file in its own encoding, byte for byte (audit 65)."""
     try:
         data = MODEL.read_bytes()
-        return data.decode(json.detect_encoding(data)).lstrip("\ufeff")
+        codec = next((c for b, c in BOMS if data.startswith(b)), None) or json.detect_encoding(data)
+        text = data.decode(codec)
     except (OSError, UnicodeDecodeError) as e:
         raise Fail(f"cannot read the model {MODEL.name}: {getattr(e, 'strerror', None) or e}")
+    bare = text.lstrip("\ufeff")
+    return bare, {"codec": codec, **({"bom": len(text) - len(bare)} if len(text) > len(bare) else {})}
+
+
+def model_text():
+    return model_file()[0]
 
 
 def checked(name, a, where=""):
@@ -363,7 +385,7 @@ def change(steps):
     nodejs = cli.shutil.which("node")
     if not nodejs:
         raise Fail("the edit tools need Node.js 18 or later: they run the page's own editor")
-    text = model_text()
+    text, form = model_file()
     try:
         m = cli.load_json(text, MODEL.name)
     except (ValueError, RecursionError) as e:
@@ -380,7 +402,7 @@ def change(steps):
         raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said or "the editor ended with no answer"])[-1])
     if "error" in out:
         raise Fail((f"step {out['step'] + 1} of {len(steps)}: " if len(steps) > 1 else "") + out["error"] + "; nothing written")
-    out["before"] = text
+    out["before"], out["form"] = text, form
     return out
 
 
@@ -406,12 +428,12 @@ def commit(out):
     if not out["commands"]:
         raise Fail("nothing to change; nothing written")
     with rendering:  # one writer at a time, and the page is not drawn from a file half written
-        now = model_text()
+        now, form = model_file()
         if now != out["before"]:
             raise Fail("the model file changed while the change was made (another editor wrote it); nothing written: call it again")
-        write(MODEL, out["text"])
+        write(MODEL, out["text"], form)
     h = history()
-    h["done"].append({"before": out["before"], "after_sha": sha(out["text"]), "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
+    h["done"].append({"before": out["before"], "form": form, "after_sha": sha(out["text"]), "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
     h["undone"] = []
     try:
         write(history_file(), kept(h))
@@ -433,14 +455,14 @@ def undo(redo=False):
     if not isinstance(put, str):
         raise Fail(f"the undo history {history_file().name} does not hold that change's text; nothing written")
     with rendering:
-        now = model_text()
+        now, form = model_file()
         if sha(now) != want_now:
             raise Fail(f"the model file changed since that change was {'taken back' if redo else 'written'} (another editor wrote it): "
                        f"{'redo' if redo else 'undo'} would lose that; nothing written")
-        write(MODEL, put)
+        write(MODEL, put, c.get("form") or form)  # put's own encoding and BOM; a history from before audit 65 has none: the file's
     stack.pop()
-    keep = {k: v for k, v in c.items() if k not in ("before", "after", "before_sha", "after_sha")}
-    other.append({**keep, "before": now, "after_sha": sha(put)} if redo else {**keep, "after": now, "before_sha": sha(put)})
+    keep = {k: v for k, v in c.items() if k not in ("before", "after", "before_sha", "after_sha", "form")}
+    other.append({**keep, "before": now, "form": form, "after_sha": sha(put)} if redo else {**keep, "after": now, "form": form, "before_sha": sha(put)})
     try:
         write(history_file(), kept(h))
     except OSError:

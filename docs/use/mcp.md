@@ -62,7 +62,7 @@ Every edit tool, and `preview`, answers the same way: the commands, `diff()`'s s
 What a written change does:
 
 - It is written only when `validate()` finds no error that the change adds. Warnings it adds are in the answer, and do not stop it.
-- The file is replaced atomically, and kept in its own layout: every part the change leaves alone keeps its text, so a renamed card is a one-line diff.
+- The file is replaced atomically, and kept in its own layout and encoding: every part the change leaves alone keeps its text, so a renamed card is a one-line diff, and a file in UTF-8 with a byte order mark, UTF-16 or UTF-32 stays so.
 - Nothing is written over a file that another editor changed while the tool ran.
 - Each change is one step in `MODEL.json.undo`, a history kept next to the model (its last 50 changes, up to 16 MB of text). `undo()` puts the file back as it was, byte for byte. It is refused when someone else wrote the file since, so their change is never lost. A new change clears what `redo()` could write.
 - An open page reloads and draws the new version, and the answer says so.

@@ -334,6 +334,27 @@ except mcp.Fail as e:
     raced = str(e)
 ok("edit · a change is not written over a file another editor wrote meanwhile", raced and raced.startswith("the model file changed while the change was made")
    and '"Client"' in mcp.MODEL.read_text(encoding="utf-8") and '"Purchase"' not in mcp.MODEL.read_text(encoding="utf-8"), raced)
+# audit 65: a model file in UTF-8 with a BOM, UTF-16 or UTF-32 (a Windows editor, PowerShell 5.1) keeps its encoding and BOM
+# through an edit, and undo() puts it back byte for byte, redo() writes the edit's bytes again
+enc_got = {}
+for name, data in (("utf-8", first.encode()), ("utf-8 BOM", b"\xef\xbb\xbf" + first.encode()), ("utf-8 BOM CRLF", b"\xef\xbb\xbf" + first.replace("\n", "\r\n").encode()),
+                   ("utf-16 LE BOM", first.encode("utf-16")), ("utf-16 BE BOM", b"\xfe\xff" + first.encode("utf-16-be")), ("utf-16 LE", first.encode("utf-16-le")),
+                   ("utf-16 BE", first.encode("utf-16-be")), ("utf-32 BOM", first.encode("utf-32")), ("utf-8 two BOMs", b"\xef\xbb\xbf" * 2 + first.encode())):
+    edit_on("enc.json", CLASS).write_bytes(data)
+    r = ed("rename", id="order", label="Purchase")
+    mid = mcp.MODEL.read_bytes()
+    u_, back = ed("undo"), mcp.MODEL.read_bytes()
+    ed("redo")
+    enc_got[name] = (isinstance(r, dict) and r.get("written") is True, mid[:2] == data[:2] and mid != data and mcp.model_text() != first and '"Purchase"' in mcp.model_text(),
+                     isinstance(u_, dict) and back == data, mcp.MODEL.read_bytes() == mid)
+ok("edit · a model in UTF-8 (a BOM too, CRLF), UTF-16 (LE or BE, a BOM or none) or UTF-32 is edited in its own encoding, undo() puts it back byte for byte and redo() writes the edit again (audit 65)",
+   all(all(v) for v in enc_got.values()), enc_got)
+# audit 65: set_field cannot write a view's edges that is no list: validate() says it is one, an error the change would add
+edit_on("class.json", CLASS)
+no_list = [ed("set_field", view="sales", path="edges", value=v) for v in ("x", 5, {})]
+ok("edit · set_field refuses a view's edges that is no list, an error validate() finds, and writes nothing (audit 65)",
+   all(isinstance(r, str) and r.startswith("FAIL nothing written") and "edges is a list" in r for r in no_list) and mcp.MODEL.read_text(encoding="utf-8") == first
+   and not mcp.history_file().exists(), no_list)
 # the model file's text kept: an untouched file's every byte; each test model, a card renamed, as JSON the model
 import subprocess as sp
 kept = sp.run(["node", "--input-type=module", "-e", f"""
