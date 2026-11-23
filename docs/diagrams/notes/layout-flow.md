@@ -1,0 +1,256 @@
+# Layout by business flow: design note
+
+Status: **proposed, 22 Nov 2026**, against `audit-loop` at 7255202 (0.45.0 plus audit 63's fixes, fix round 64's pile rule, `tools/evolve/` and MCP editing). Design only: this note changes no file under `src/`. It covers product item 3 of the plan approved after 0.45.0 (layout by business flow) and sketches item 4 (stories) where it builds on item 3. Fix round 64 is changing `src/layout/layered.js` and `src/map/context.js` while this note is written (its first change, `unpile`, is in the pins table below); the function names are what the design relies on, and `tests/notes.test.mjs` fails when one is renamed or moved.
+
+The work splits into five pieces, each shippable on its own: a quality score and a bench mode that computes it (section 4), so every later piece is measured before it lands; dependency lines that do not pull the layout (section 5); a main flow on one straight row with branches above or below (section 6); semantic zones per diagram type (section 7); and a layout that stays put across edits (section 8). A weekly propose-measure-keep loop tunes the parameters the pieces expose (section 9). Section 10 sketches stories generated from the main flow, section 11 lists the risks, and section 12 gives the order of pull requests.
+
+## 1. The rule every piece keeps
+
+No map and no example draws differently unless its model asks for the new layout. Every piece is opt-in at the view (`arrange: "flow"`, section 3) or neutral by construction (the score, the bench mode, the parameter file), and `bench/expected.json` does not move in any PR of this plan until section 12's last step, which is the maintainer's call. Each behaviour lands with a test that fails without it. Pins win: a card the model or the host pins keeps its cell, as today, whatever the flow layout would give it.
+
+## 2. How layout works today
+
+### 2.1 The path from a model to a picture
+
+A view is drawn by `buildView` (`src/map/context.js`), which asks `buildGeo` for its geometry. `buildGeo` has two branches.
+
+A map view (or a typed view of a type with no layout of its own) gets cells from `fillLayout` when the view has a `layout` (its pins), else from `autoPos`, cached in `layoutCache`. A hub view (a view whose subject starts three or more things, `planOf`) goes to `hubGeo` instead, which lays its callees out in phase lanes (`hubPlan`, `HUB_PHASES`). The cells, the cards and the lines (`prepEdges`) go to `layoutGraph` (`src/layout/layered.js`) as `dg`.
+
+A typed view of a type with its own layout (`ownLayout`, the registry's `layout.run` or a layout function) gets cells the same way, `fillLayout(vid, v.layout, true)` or `autoPos`, and passes them to the type's `layout.run`, which builds its own `dg` and calls `layoutTyped` (`src/typed/layout.js`). `layoutTyped` calls `layoutGraph` with `typed: true`, turned for `direction: "down"` (`transpose`), and tries the variants `PLAIN`, `TURNS`, `SPAN` and `PORTS_PLAIN` when `check()` has more than crossings to say of the first layout, keeping the one with the least. A type may rank its own cells instead (`layout.rank: false`: component, BPMN, requirement, internal block, parametric, through `cpPlace` in `src/uml/component.js`), or take none (`layout.pins: false`: sequence, timing, mindmap, which lay out on a time axis, a time ruler or a tree).
+
+### 2.2 Ranks, columns and rows
+
+| Function | File | What it does |
+|---|---|---|
+| `autoPos` | `src/map/context.js` | Picks the placer: a typed view with boxes `blockPos(vid, { boxes, flip: T.rankFlip })`, without boxes `flowPos(vid, { flip: T.rankFlip })`; a map with containers `blockPos(vid)`; any other map `bestFlow(vid)`. |
+| `loopsOf` | `src/map/context.js` | The lines that close a cycle: `loop: true`, else a depth-first walk from the cards no line comes into, in the order of the view's edges. A numbered view (`render: "sequence"`) also counts a step back to a card an earlier step reached. These lines rank nothing. |
+| `flowPos` | `src/map/context.js` | Longest-path ranks over every forward line (`rank[to] >= rank[from] + 1`, relaxed `ids.length + 1` times), whatever the line's kind. Columns start in first-mention order (`seen`), then `untangle`. Rows from `rowsFor`, or packed from the top (`o.packed`). A `board` card no line leaves (`isState`) goes along the bottom of its column; cards with no line go in rows under the view (#46). |
+| `pullSources` | `src/layout/layered.js` | Moves a card no line comes into to just before its nearest callee (`o.pull`). |
+| `untangle` | `src/layout/layered.js` | Column order: a line that skips columns gets a point in each column it passes (Sugiyama's dummy nodes); 8 alternating barycentre sweeps; crossings counted per column pair with a Fenwick tree; the best order kept only when it crosses less than the order given. `fixed` holds items at set rows (a box's far ends). |
+| `rowsFor` | `src/layout/layered.js` | Rows: each item at the median row of its neighbours, three sweeps (forward, back, forward), heights kept apart by pooling adjacent violators, rounded to half rows. A line into a card's top or bottom (`level`) asks for no row. |
+| `bestFlow` | `src/map/context.js` | A plain map view of 3 to 30 cards is placed four ways (`flowPos` as is, `pull`, `packed`, both), each routed by `buildGeo` and scored by `scoreGeo`; the lowest score is kept and its routing reused (`drawn`). |
+| `blockPos` | `src/map/context.js` | Views with boxes: each box laid out as a block, inner boxes first (`tout` order), ranks inside the block, `untangle` and `rowsFor` with the lines to cards outside fixed at the rows the pass before gave them (#86); three passes. |
+| `planOf`, `hubPlan`, `keepHub` | `src/map/context.js` | The hub layout and its fallback to a plain flow when it routes worse (`bad`). |
+
+What ranks a card is only the direction of its forward lines. A `state` line (reads or writes a store) pulls its store one column right of its reader exactly as a `calls` line pulls its callee, so a logger that every step writes to lands after the last step and its lines run across the whole view. Nothing marks a main flow: steps (`step` on a line, or a numbered view) are drawn but rank nothing beyond what their lines do. The only semantic placement is a `board` sink along the bottom (`flowPos`), C4's people ranked first (`rankFlip` in `src/c4/c4.js`, which reads module state set by `boxes()`), the use case's actors kept in their rank (`layout.keepsRank`), and the inheritance-style flips of the class, package, profile, block and communication types (`rankFlip`).
+
+### 2.3 Pins
+
+| Function | File | What it does |
+|---|---|---|
+| `onGrid` | `src/map/context.js` | Holds a pin far off the grid at the view's card count plus 64; drops a pin that is not two numbers. |
+| `fillLayout` | `src/map/context.js` | Pinned cards keep their cells; every other card takes its `autoPos` cell, or the next free row down. With boxes, `boxFit` keeps a card's slot only when no box then lies over what it does not hold and its lines run ahead, else finds the nearest such slot. A typed view settles its pins (`typedPins`, up to 3 rounds). |
+| `unpile` | `src/layout/layered.js` | Three or more pins on one cell of a typed view (a host that writes one cell for every card) are a pile: the first in the view's order keeps the cell and the others are dropped, so their cards take a slot as unpinned cards do (fix round 64). Called by `fillLayout` and before `settlePins`. |
+| `settlePins` | `src/layout/layered.js` | A typed view's pins, in order, each kept where clean, else moved to the nearest clean cell in rings, else to a fresh row under its box (`MOVED` lists what moved down). |
+| `pinCells` | `src/layout/layered.js` | The same for the types that rank themselves (component, requirement, and BPMN through `cpPlace`). |
+| `pinsClear` | `src/map/context.js` | A typed view whose pins still draw a box over a card, two boxes or cards over each other, or a pinned card's line on another: each pin tries the cells round it (12 layouts at most), then pins that meet something are dropped; the lowest `score` kept. |
+| `withPlaces` | `src/canvas/render.js` | In a page handle, after `update()`, every card keeps the cell it had (soft pins in the handle only, never written to the model), a moved or added card takes its drop or the nearest free slot (`stableLayout`, default true). |
+
+### 2.4 Geometry and routing
+
+`layoutGraph` runs `layoutPass` and then up to three searches. `layoutPass` sizes columns and rows (column gap `CG` 66 px on a map, 38 for a process view; row gap `RG` 44), gives a labelled line between neighbouring columns room for its label, draws box frames and keeps boxes 32 px apart, spreads ports along each side 14 px apart (the steepest extras to the top or bottom), routes each line with `gridRoute` (a shortest-path search on a grid of the free space, with pooled arrays, `GR_POOL`), orders lines into one side so they nest, routes fan-in lines (six or more into one card) first, rips up and reroutes lines that had to cross, places labels with `placeLabel` and `fits` (passes 0 to 5, strict to relaxed), and repairs ports (a swap kept when the issues drop). A line with no route makes the view lay out again with room where it needs it (#40), and a label with no room does the same (`labelRoom`). After the pass, on views of up to 30 cards, `layoutGraph` tries a side change for lines that still cross, routes up to four lines round the outside, and runs the fan-in search (14 layouts at most), each kept only with fewer issues.
+
+`optimize` (`src/map/context.js`, the CLI's layout search) swaps cards inside a column and moves them a row at a time, scored by `scoreGeo`, with a cap on evaluations rather than on time so every machine bakes the same layout (audit 7).
+
+### 2.5 What is measured today
+
+`routeAudit`, `overlapIssues`, `throughIssues`, `leaveIssues` and `boxClash` (`src/layout/audit.js`) name what `check()` says: lines that cross or share a line, a label on a line or with no room, a line through or within a few pixels of a card, a line along a box border or through its title, a line that runs right to left, a detour (2.5 times the straight distance), a line round its own end, overlapping cards or boxes. `scoreGeo` turns a geometry into one number: `issues * 1000 + (cross + fallback) * 150 + labels not drawn * 40 + length / 15 + corners * 12 + area / 4e5`.
+
+`bench/bench.py` times map views in headless Chrome through the template's `benchView` (`engine/assets/template.html`): 10 models in `bench/models/` (34 views), plan, place, route and repair times, the route audit's count, and a hash of the geometry compared with `bench/expected.json`. Typed views are not timed. Nothing measures how straight a flow reads, which way lines run, or how much a picture moves after an edit.
+
+### 2.6 What is missing
+
+A line's meaning does not change where its ends go. There is no main flow. Semantic placement exists for three cases, each written its own way. Stability holds only inside one page handle: the CLI, `renderToString`, `diff()` of two files, the diff Action and an MCP edit all lay a changed model out from nothing, so adding one card can move every other. The bench times maps and checks hashes but has no quality score, no typed views and no held-out set.
+
+## 3. Model fields
+
+All new fields are optional; with none of them, nothing changes. `validate()` checks each, `lib/umlimator.d.ts` and the schema describe each, and `docs/maps/model.md` and `docs/api/typed-diagrams.md` list each in the PR that makes it do something.
+
+| On | Field | Values | What it does |
+|---|---|---|---|
+| view | `arrange` | `"flow"` | Turns on the flow layout for the view: section 5, section 6 and section 7 apply. Absent: the view lays out as today. |
+| edge | `flow` | `"main"`, `"branch"`, `"dep"` | The line's part in the flow: on the main flow, a flow line off it, or a dependency line that ranks nothing. Absent: from the line's kind (section 5). |
+| node (or a view's `nodeOverrides`) | `zone` | `"first"`, `"flow"`, `"last"`, `"under"` | Where the card sits: a column before the flow, in it, a column after it, or a band of rows under it. Absent: the type's default (section 7). |
+| view | `zones` | `false` | No default zones in an arranged view; a card's own `zone` still holds. |
+
+`validate()` warns, without refusing the model: `flow: "main"` lines that do not form one path (a card with two main lines out, or a main cycle), a `flow: "main"` line that `loopsOf` reads as closing a loop, `arrange: "flow"` on a type that does not rank (sequence, timing, mindmap), and `flow` or `zone` values outside the lists. `diff()` reports a change of `arrange`, `flow` or `zone` as a change of the view, the line or the card, as it does other layout fields.
+
+A typed type sets its own defaults through two registry fields, both optional: `flowRole(edge, model, view)` returns `"main"`, `"branch"`, `"dep"` or null (the map's default), and `zoneOf(node, model, view)` returns a zone or null. A type that defines neither gets nothing new. `arrange` stays a view field for every type, so no type changes its pictures until a view asks.
+
+## 4. The quality score and its bench mode
+
+This piece comes first: every later one is judged by it.
+
+### 4.1 The metrics
+
+Each is computed per view from the finished geometry `g` (as `buildGeo` returns it, port repair included) and the model; the code is one pure module, `src/layout/score.js`, that reuses `src/layout/audit.js` and adds nothing to what a host loads (it is imported by the bench and the tests only, and tree-shaken out of `lib/`).
+
+| Metric | Definition | Ideal |
+|---|---|---|
+| `hard` | Lines through cards, lines sharing a line, cards or boxes over each other, a box over a card it does not hold (`throughIssues`, `routeAudit`'s "share a line", `overlapIssues`, `boxClash`) | 0 |
+| `cross` | Pairs of lines that cross (`routeAudit`'s "cross") | low |
+| `labels` | Labels on another line, on a box border, with no room, cut to their step, or not drawn | 0 |
+| `straight` | For a view with a main flow: the number of distinct rows its cards use minus one, times 2, plus the corners on main-flow lines (route points past the two ends). Views without one: not counted | 0 |
+| `reverse` | Flow lines (not `dep`, not lines that close a loop) whose route has a stretch more than 8 px against the reading direction (right, or down when turned), plus main-flow cards whose centre is not past the one before | 0 |
+| `moved` | For an edit pair (section 4.3): the share of cards present before and after, and not touched by the edit, whose cell changed; and their mean shift in cells | 0 |
+| `ms` | The layout's median time over 5 runs, as a ratio to the base commit measured in the same job, and its absolute median against the view's budget | at most 1.10, within budget |
+
+The score of a view is one number, lower better: `1000 * hard + 100 * cross + 60 * labels + 40 * reverse + 30 * straight + 200 * moved + scoreGeo's length, corner and area terms`. The weights live in `bench/score-weights.json`, which only the maintainer changes; the tuning loop (section 9) may not. Time is a gate, not a term: a candidate that puts any view over its budget, or the corpus over 1.10 times the base, fails whatever its score. Budgets: the existing `--max-ms` values (m50 within 1000 ms), and 1.5 s for the C4 examples.
+
+### 4.2 The bench mode
+
+`python3 bench/bench.py --score` runs `node bench/score.mjs`, which lays out each view of the corpus with `lib/umlimator-all.js` in Node (so typed views count, and no browser is needed), prints a table per view and the totals, writes `bench/results/score-<date>-<commit>.json` with `--save`, and with `--expect bench/score-expected.json` fails when any view's `hard` rises, any view's score rises by more than 2 percent, or the total rises. `--corpus fixed`, `heldout` or `edits` picks the set; `--views` narrows it. Chrome timing stays where it is (`bench.py` without `--score`); the score's `ms` is Node's, compared only with the base commit run in the same job, never with a stored number.
+
+### 4.3 The corpora
+
+The fixed corpus is what the score is tuned and checked on, all committed: `bench/models/*.json` (10 models, 34 views), every view of `examples/*.json` (32 models, 93 views, every one of the 28 types), and the typed fixtures `tests/*-minimal.json` and `tests/*-stress.json` (52 models, 114 views). It also gets one new file, `bench/models/f12.json`: twelve views written for this work, each with `arrange: "flow"` and a main flow (an order pipeline, a sign-up with an approval branch, a support ticket with a loop back, a data pipeline whose steps each read and write a store, a C4 container view of a checkout, a DFD with two external entities and two stores, a flowchart with a decision, a cloud view with users and a database, and four with boxes), since the rest of the corpus has none.
+
+The held-out corpus is what the loop is never tuned on. Half is generated at check time by `bench/gen.py --heldout --seed S`, where S is the ISO week number hashed with a value only CI holds, so no proposal can be fitted to it: layered flows with main paths, branches, stores and loops back, 8 to 60 cards. The other half is hand-made maps in `bench/heldout/`, committed, which the loop's instructions forbid it to read, and whose per-view results CI reports to the maintainer only (the loop sees the total).
+
+The edit corpus is pairs: each fixed-corpus view, edited by seeded scripts of `apply()` commands (add a card with one line, remove a line, rename a card, add a line between two cards, move a card into a box), five per view. The pair's `moved` compares the layout of the edited model laid out with the original as its base (section 8) against the original's layout.
+
+### 4.4 Tests
+
+`tests/score.test.mjs`: each metric on hand-built geometries (two lines that cross count 1 in `cross`; a label set on another line counts 1 in `labels`; a main flow on two rows with one corner counts 3 in `straight`; a flow line that runs left for 40 px counts 1 in `reverse`, a `dep` line that does the same counts 0; a pair where one untouched card moves counts its share in `moved`); the score of a fixed geometry equals a stored number (so a weight change shows in the diff); `lib/umlimator.js` holds none of `score.js`'s code (a search of the built file for a name only `score.js` uses). `tests/cli.py`: `bench.py --score --views b10/overview` prints the table and exits 0, and exits 1 against an expect file whose score is lower.
+
+## 5. Flow lines decide columns; dependency lines do not
+
+### 5.1 Fields and defaults
+
+A line's role is its `flow` field, else its type's `flowRole`, else, on a map, its kind: `calls`, `feeds` and `triggers` are `branch`; `state` and `guard` are `dep`. A line whose label says "reads", "uses" or "logs" is a dependency only when it says so in `flow` or `kind`: the layout does not guess from words (a view with `kindsFromLabels` already turns "reads" into `state`, which then counts). Defaults for typed types (`flowRole`): C4, DFD and cloud take the map's rule on their own line kinds (a C4 relationship is `branch`; a DFD flow into or out of a data store is `dep`; a cloud line to a data service is `dep`); flowchart and activity lines are `branch`; class, object, package, profile, component, block, requirement and ER get no `flowRole` (they are structure, not flow, and `arrange` on them warns and does nothing new).
+
+### 5.2 The algorithm
+
+In an arranged view, `flowPos` and `blockPos` take ranks over `main` and `branch` lines only (`fwd` filtered by role). `untangle` and `rowsFor` get the same filtered links, so a dependency line moves no card's order or row either. A card whose only lines are dependency lines is placed by its zone (section 7): by default a store goes in the `under` band, in the column of the median of the cards it is joined to; a card in no zone with only dependency lines sits in that column at the foot of the flow rows. The router routes dependency lines last (after every flow line, before label placement), so the flow lines take the straight tracks; a dependency line may run against the reading direction, and `reverse` does not count it.
+
+### 5.3 With pins and typed layouts
+
+Pins are untouched: `fillLayout` still fills round them, and a dependency-only card that is pinned stays pinned. A typed type that ranks itself (`rank: false`) gets the filter only where its own ranking calls it: `cpPlace` takes an optional role function from the type, and BPMN's process passes one that makes associations to data objects and data stores `dep` (section 7.2). `rankFlip` is applied before the filter, so C4's people still rank first.
+
+### 5.4 Risks and proof
+
+A view whose flow lines alone leave cards unconnected splits into separate flows side by side; `untangle` already orders those, and the area term keeps them from spreading. Proof: `tests/flow-layout.test.mjs` (new), with a view A -> B -> C, each also writing to L with a `state` line: today L is in column 3 and two lines cross the view; arranged, L is in column 1, the `under` band, and `reverse` is 0. The same view without `arrange` keeps today's cells (the test asserts them, so it fails if the default moves). Bench: every fixed-corpus view without `arrange` keeps its hash.
+
+## 6. The main flow on one straight row
+
+### 6.1 Which lines are the main flow
+
+In an arranged view the main flow is, in this order: the lines with `flow: "main"`, which must form one path (else `validate()` warns and the longest path among them is taken); else the lines with a `step`, sorted by `stepOrder` (`src/layout/layered.js`: 2 < 2a < 2b < 3), chained where each line starts at the card the one before ends at, the first suffix of a step (2a) on the main flow and the others (2b) branches; the longest such chain is the main flow, and `validate()` warns where a chain breaks; else, in a numbered view (`render: "sequence"`), its run order as `runSteps` numbers it; else, the longest path of flow lines from a card no flow line comes into, ties broken by first mention. A type may give its own: BPMN's main flow is the path from the start event to an end event that takes each gateway's default flow (else its first), sequence and communication views pass theirs to stories (section 10) but are not arranged.
+
+### 6.2 The algorithm
+
+Ranks: longest path over the flow lines, as section 5.2, so every main card's rank is past the one before (consecutive, or with a gap where a branch between two main cards is longer). The main row: every main card gets row 0, held by a new `anchor` argument to `rowsFor` (`id -> row`). With anchors, `rowsFor` splits each column at its anchored card, fits the cards above it into rows below 0 and the cards under it into rows above 0, each side by the existing pooling, and never moves an anchor. `untangle` gets the same split: it orders each side of a column on its own and keeps the anchored card between them (its `fixed` argument already holds items at a row; the change lets a column hold fixed and free items together, which today it does only for columns that are all fixed).
+
+Branches above or below: each card off the main flow takes a side. Its zone decides first (`first` and `last` cards sit on the main row in their own columns; `under` cards go below). Otherwise a card takes the side of the branch it is on: a branch is a maximal chain of non-main cards between main cards (or hanging off one); a branch whose label or kind marks an exception (`kind: "guard"`, a BPMN error or boundary path, a flowchart decision's "no" branch) goes above, the others below, and when one side of a column holds two more cards than the other, the next branch takes the other side. A whole branch stays on one side so its own lines never cross the main row. `untangle` then orders each side to cut crossings.
+
+Lines: a main line leaves its source's right side and comes into its target's left side on the main row, so it is one straight segment; ports on that side give it the middle port first (a new rank in the port spread, `mainPort`). Lines that close a loop route under the frames as today (issue 128).
+
+With boxes (`blockPos`): a box that holds main cards is anchored by its first main card's row inside it, and the outer pass places the box so that row is row 0 (the far-end rows of #86 are the same mechanism). A main flow that enters and leaves a box twice is straight only when the box's height allows; the score's `straight` says when it does not.
+
+### 6.3 With pins and typed layouts
+
+A pinned main card keeps its pin; if the pin is off row 0 the main flow is not straight, `straight` counts it, and no other card moves to compensate. A pinned branch card may sit on the main row; `fillLayout` then moves the next card down as it does now. Laid out down, the main row is a column (`transpose`). The hub plan is skipped for arranged views (as for `mainSteps` views), since the main flow replaces its phase lanes. Types with `rank: false` take the main flow through `cpPlace`'s role function and an anchor list; types with `pins: false` are not arranged.
+
+### 6.4 Risks and proof
+
+A long main flow (more than about 10 steps) makes a wide view. The area term in the score counts it; wrapping the main row into a second row (a snake) is left out of this plan and listed as an open question. Exception branches above can collide with box titles; `throughIssues` and `labels` catch it. Proof in `tests/flow-layout.test.mjs`: an order pipeline of six main cards with a two-card refund branch: every main card has row 0, every main line is two points (no corner), the refund branch is on one side; the same with steps instead of `flow: "main"` gives the same cells; with one main card pinned at row 2, that card is at row 2 and the others stay at row 0; `rowsFor` with an anchor never moves it and keeps a column's order (a unit test on `rowsFor` alone); `untangle` with an anchored item keeps it between the two sides. Score: on `f12`, `straight` is 0 on every view without boxes and at most 2 with them.
+
+## 7. Semantic zones
+
+### 7.1 The zones
+
+A zone is a band along the rank axis or under it. `first`: a column before the first flow rank, on the main row where the card has a line into the main flow, else in rows round it. `flow`: ranked as section 5 and section 6 say. `last`: a column after the last rank, same rows rule. `under`: rows below every flow row (as `board` sinks are today), in the column of the median of the card's neighbours. Within a zone, `untangle` orders cards as usual. Cards in `first` and `last` take no rank from their lines (their lines run straight in or out), so a person who is also called back by the system stays at the start.
+
+### 7.2 Defaults per diagram type
+
+| Type | `first` | `last` | `under` |
+|---|---|---|---|
+| map | `shape: "person"`, kind `public` with no line in | kind `external` | kinds `database`, `file`, `board`, `state` |
+| C4 | `c4.Person` | external software systems | containers with the cylinder shape (databases) |
+| DFD | external entities that only send | external entities that only receive | data stores |
+| flowchart | the start terminal | end terminals | data and document symbols |
+| use case | primary actors (as `keepsRank` holds them today) | secondary actors | none |
+| BPMN | start events | end events | data objects and data stores (inside their lane) |
+| AWS, GCP, Azure | users and clients | outside services | data and storage services |
+| activity | initial node | final nodes | object nodes that only one action reads or writes |
+| every other type | none | none | none |
+
+Defaults apply only in arranged views, and `zones: false` turns them off. C4's `rankFlip` stays as it is for views that are not arranged; for arranged C4 views `zoneOf` replaces it and lifts the module state `c4People` (a known wart, `src/c4/c4.js` line 380).
+
+### 7.3 With pins and typed layouts
+
+A pin beats a zone. A zone moves no card out of its box: in `blockPos` the zones apply inside each box, so a store in a box sits under that box's flow, not under the view's. BPMN's lanes keep their order and bands (`src/layout/lanes.js`); zones apply along the rank axis within each lane.
+
+### 7.4 Risks and proof
+
+A view where every card is a store or a person has no flow; zones then fall back to ranks (a test holds this). People first on a view that is laid out down means people on top, which is C4's convention. Proof: `tests/flow-layout.test.mjs` per zone on a map (a person card is in column 0 though a line comes into it from column 3; an external card is in the last column; a database is below every flow row), and one test per typed type's `zoneOf` in that type's test file; with `zones: false` the same view ranks as section 5. Score: `reverse` and `cross` on `f12` not above the same views with `zones: false`.
+
+## 8. Stable layout across edits
+
+### 8.1 Fields and API
+
+No model field. `mapContext(model, opts)` takes `opts.base`, the model before the edit; `render()` and `renderToString()` take `stableFrom: model`; `diff(before, after)` lays the after model out with `base: before` when `stable: true` is passed (and, after the maintainer's call in section 12, by default); the CLI's `diff --base` and the diff Action pass the base model they already read; the MCP edit tools (product item 2) pass the model before each command from their undo history. The page handle keeps `withPlaces` as it is; `base` is what the other paths lacked.
+
+### 8.2 The algorithm
+
+For each view, the base's cells are what `autoPos` (or `fillLayout`, for a pinned view) gives the base model; they are computed lazily and cached per view in the context. A card is unchanged when it is on the view in both models, in the same box, and none of its flow lines was added, removed or turned round; every other card is changed. The unchanged cards become soft pins at their base cells, and `fillLayout` places the changed cards round them as it places unpinned cards today (`boxFit`, `typedPins`, `settlePins` for typed views), so the new code is only the choice of soft pins. The result is kept when its score (section 4) is not worse than the fresh layout's by more than one `labels` unit and no `hard` issue; else the fresh layout is used and the page says nothing (a stable layout that draws worse is no gain). Soft pins are never written to the model.
+
+### 8.3 With pins and typed layouts
+
+Real pins win over soft pins: a card pinned in the after model takes its pin even if it was elsewhere before. Soft pins come from one finished layout, so no two share a cell and `unpile` never drops one; a real pin that lands on a soft pin's cell moves the soft-pinned card, never the real pin. `pinsClear` treats soft pins as droppable first, before the model's pins. Typed types with `pins: false` (sequence, timing, mindmap) are already stable by construction (their axis order is the model's order) and take no `base`.
+
+### 8.4 Risks and proof
+
+Accumulated drift: a long run of edits, each kept stable, can leave a view worse than a fresh layout; the quality guard above bounds each step, and a host lays the view out fresh with `stableLayout: false` (or with no `base`). Cost: the base layout is one more `autoPos` per view (no routing), measured by `ms`. Proof: `tests/flow-layout.test.mjs`: adding one card with one line to a 10-card view leaves the other nine at their cells; removing a line moves only its two ends at most; a change that would add a crossing falls back to the fresh layout (a view built so the soft-pinned cells force one); `diff()` with `stable: true` keeps unchanged cards' cells. Score: on the edit corpus, `moved` of untouched cards is 0 in at least 95 percent of pairs, and no pair has `hard` above its fresh layout's.
+
+## 9. The weekly propose-measure-keep loop
+
+### 9.1 What it may change
+
+One file: `src/layout/tune.js`, which a first, picture-neutral PR creates by moving the layout's tuning constants into it under names, with today's values (so `bench/expected.json` and every example stay as they are). The first set: the barycentre sweep count (8), the `rowsFor` sweep order, `bestFlow`'s card cap (30) and its ways, the fan-in threshold (6) and the fan-in search's layout cap (14), `layoutGraph`'s crossing-search cap (30 cards, 4 round-the-outside tries), the branch side balance (2, section 6.2), the stability guard (section 8.2), `scoreGeo`'s weights (which choose among candidate layouts, not the bench's weights), and the label pass order. The loop never edits other code, the score's weights, the corpora or the tests; a change it wants elsewhere is a note in its report.
+
+### 9.2 The week
+
+Propose: on Monday, a scheduled job (the self-evolving loop's scheduler, holding the lease of `tools/evolve/lease.mjs` so it never runs beside an audit round) has an agent read last week's score report and the fixed corpus's worst views, and write up to four candidate `tune.js` files, each with one sentence on what it expects. Measure: CI runs `bench.py --score --corpus fixed` and `--corpus edits` on each candidate and the base, in one job on one machine. Keep: a candidate passes when no view's `hard` rises, no view's score rises by more than 2 percent, the fixed total falls by at least 1 percent, time stays within the gate, and then the held-out run (a separate CI job the agent cannot read, section 4.3) shows a total not worse than the base. The best passing candidate becomes a pull request to `audit-loop` with the score table, the held-out total, and stills of every example view whose picture changes; a candidate that changes an example's picture also updates `bench/expected.json`, with the reason in the PR. The maintainer approves or not; the loop never merges.
+
+### 9.3 Guards
+
+Two weeks with nothing kept: the loop stops and says so in the weekly digest. A kept change whose held-out total is worse the next week (with a new seed) is reverted by the next week's PR. The candidates, their scores and the decision go to `bench/results/tune-<date>.json`, so a spot check can redo any week, and the week's line goes into the weekly digest (`tools/evolve/digest.mjs`, which would read these files with a new `--tune` option). The loop runs only in maintenance mode (the strategy's mode rules), never while an audit round is open.
+
+### 9.4 Proof
+
+`tests/tune.test.mjs`: `tune.js`'s values are the ones today's code has (a test that pins each, so the moving PR is provably neutral, and a later change to one shows in review); a candidate file with a value out of its allowed range (each constant has one) is refused by the loop's script. CI: the score job is required on pull requests that touch `src/layout/` or `tune.js`.
+
+## 10. Stories from the main flow (sketch for product item 4)
+
+A main flow is a story already: a step per main line, in order. `storyFromFlow(model, viewId, opts)` (new, `src/map/stories.js`) returns a story that `validate()` accepts: one step per main card, each with `select` the card, `highlight` the card and the main line into it, `tour` the pair of main cards, and a caption from the line's label, `what` and step (`"2. Pays: the checkout charges the card"`). A branch becomes a chapter, offered at the step where it leaves the main flow (the branches and chapters of item 4); a dependency line is not a step, but its target is named in the caption of the step that reads or writes it (`"reads Orders"`). Sequence views give their messages in order, BPMN its main path (section 6.1), and a pull request's diff gives the cards and lines it adds or changes, ordered along the main flow. The MCP server gets a `story_from_flow` tool that returns the story without saving it (item 4's "plays without saving"), and the page's Stories menu offers "From the main flow" on an arranged view. Proof: on each `f12` view, the generated story passes `validate()`, has as many steps as main cards, and each `tour` is a pair joined by a drawn line (the `tour` refusal rules of 0.44.0 hold).
+
+## 11. Risks across the pieces
+
+The opt-in keeps old pictures, but it also means few views benefit until the maintainer turns `arrange` on by default for some source (the map-repo skill's generated maps, `umlimator.py import`), which is a picture change for those views and needs its own decision (section 12, last step). Two new placement rules (main row, zones) meet three old ones (pins, boxes, hub lanes); the order of precedence is fixed as pins, then boxes, then zones, then the main row, then ranks, and the tests above hold each pair. Time: arranged views add one `rowsFor` split and, for stability, one more `autoPos`; the C4 examples must stay within 1.5 s and m50 within 1000 ms, which the score's time gate checks on every PR. Determinism: every new step is a function of the model (and the base), with no clock and no random choice; the held-out seed is used only to generate models, never inside the layout. A score can be gamed by a layout that draws fewer labels or spreads cards apart; the `labels` term and the area term exist for that, and the held-out set catches tuning that fits the fixed corpus only.
+
+## 12. Order of pull requests
+
+Each is small, opt-in or neutral, and lands on `audit-loop` with its tests, its line in `docs/module-api.md`'s unreleased section, and the docs pages it touches.
+
+1. The score: `src/layout/score.js`, `bench/score.mjs`, `bench.py --score`, `bench/score-weights.json`, `bench/score-expected.json` for the fixed corpus as it draws now, `tests/score.test.mjs`. No picture changes.
+2. `tune.js`: the constants of section 9.1 moved under names, with today's values; `tests/tune.test.mjs`. No picture changes (`bench/expected.json` unchanged, which the PR's CI shows).
+3. The fields of section 3 in `validate()`, the schema, `lib/umlimator.d.ts`, `diff()` and the docs, with no layout effect yet; `bench/models/f12.json` added to the fixed corpus.
+4. Dependency lines (section 5) for arranged map views; the router's dependency-last order.
+5. `rowsFor` and `untangle` anchors, as functions with their own unit tests, unused by any view yet.
+6. The main flow (section 6) for arranged plain map views: main-flow extraction, anchors, branch sides, `mainPort`.
+7. The main flow with boxes (`blockPos`).
+8. Map zones (section 7.2's first row).
+9. Typed `flowRole` and `zoneOf`, two or three types a PR: C4 and DFD; flowchart and activity; cloud; BPMN and use case.
+10. Stability (section 8): `base` in `mapContext`, `stableFrom`, `diff(..., { stable: true })`, the edit corpus.
+11. The edit corpus and held-out corpus in CI, then the weekly loop's scripts and schedule (section 9), with the maintainer's times.
+12. `storyFromFlow` and its MCP tool (section 10), with product item 4.
+13. The maintainer's call: `arrange: "flow"` by default for some sources, and `diff()` stable by default. This is the only step that changes existing pictures, and its PR says which and updates `bench/expected.json` with that reason.
+
+## 13. Open questions for the maintainer
+
+1. Stores in an arranged view: `under` (a band below the flow, near their readers) as proposed, or `last` (a column at the end), as the plan's wording "stores and outside systems last" reads literally?
+2. Should `arrange: "flow"` become the default for maps generated by the map-repo skill and `umlimator.py import` (step 13), and if so with which release?
+3. A long main flow: accept a wide view, or plan a snake (wrap to a second row) as a follow-up?
+4. Should `diff()` and the diff Action lay the head out stable against the base by default (step 13), which changes diff pictures?
+5. The held-out maps in `bench/heldout/`: may they be committed to the public repository, or kept in a private store that only CI reads?

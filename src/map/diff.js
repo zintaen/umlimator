@@ -128,6 +128,11 @@ export function diff(before, after) {
   const stepped = x => x.render === 'sequence' || (diagramOf(x) || {}).steps === true; // a view that numbers its lines by their order (a C4 dynamic view's steps, audit 18)
   // a view its type lays out (version 2), which picks the lines it draws; version 1, or a map view, is drawn as a map
   const typedL = x => out.schemaVersion === 2 && (T => !!(T && T.layout && (T.layout.run || typeof T.layout === 'function')))(diagramOf(x));
+  // a free id for a typed view's copy of a re-pointed line between its old ends: the line's id and "~old" (then "~old2", ...),
+  // held by nothing in the model, which validate() reads as a line of the view's own (docs/diagrams/notes/typed-repoint.md)
+  let held1 = null; const oldId = id => { if (!held1) { held1 = new Set(); for (const s = [out], seen = new Set(); s.length;) { const y = s.pop(); if (!y || typeof y !== 'object' || seen.has(y)) continue;
+      seen.add(y); if (!Array.isArray(y) && typeof y.id === 'string') held1.add(y.id); (Array.isArray(y) ? y : Object.values(y)).forEach(z => { if (z && typeof z === 'object') s.push(z); }); } }
+    let k = `${id}~old`; for (let n = 2; held1.has(k); n++) k = `${id}~old${n}`; held1.add(k); return k; };
   const hidIn = [], rmTyped = []; // typed views whose lines to a card they no longer show, or that went, are marked in view.diffMarks
   const listedIn = new Map(); // a view's model lines it still lists to a card taken out of it, drawn removed (view.diffMarks.listed)
   // a line's ends as cards: each end, an end through a part, and the elements that hold them (a port by its card, audit 55: a
@@ -235,10 +240,13 @@ export function diff(before, after) {
     hid.forEach(id => { touched.add(v.id); if (!withCard(line0.get(id), left)) viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); });
     put.forEach(id => { if (withCard(moved1.get(id), came)) touched.add(v.id); else says(`puts ${ln(id, true)}`); });
     // a re-pointed line taken out, drawn back removed by its old ends wherever the view drew it (audit 60: only a view that stopped
-    // listing it drew it back; one that still lists it, or lists none, drew nothing). Without its id: a copy between other ends
-    // under the model line's id is a second line (validate()), and the sketch would draw it for the model's line. Not in a typed view,
-    // whose own line needs an id and whose type may read it as the model's (a C4 step): there it is as audit 59 left it
-    const ghost = new Map(typedL(v) ? [] : hid.filter(id => moved1.has(id)).map(id => [id, (({ id: _, ...e }) => line(e, 'removed'))(line0.get(id))]));
+    // listing it drew it back; one that still lists it, or lists none, drew nothing). Not under the model line's id: a copy between
+    // other ends under it is a second line (validate()), and the sketch would draw it for the model's line. In a map view with no id;
+    // in a typed one, whose own line needs an id, under a free one (oldId: audit 60's known gap of 0.45.0, drawn under the model
+    // line's id where the view stopped listing it). A view that numbers its steps draws none: its step names a model line (a C4
+    // dynamic step), so a copy of its own is no step; the summary says it is taken out (docs/diagrams/notes/typed-repoint.md)
+    const noCopy = typedL(v) && stepped(v), gone1 = id => noCopy && moved1.has(id);
+    const ghost = new Map(noCopy ? [] : hid.filter(id => moved1.has(id)).map(id => [id, (({ id: x, ...e }) => line(typedL(v) ? { id: oldId(x), ...e } : e, 'removed'))(line0.get(id))]));
     // the steps' order: a view's list as it runs (a model line by id, one of its own by its id), else its model lines. A step
     // with no id is matched by what it is (its ends and label), and by its Ref name only when nothing matches it, so taking
     // out an earlier a->b step does not read as the later one moving (audit 20)
@@ -258,14 +266,14 @@ export function diff(before, after) {
       if (k0.some((x, i) => x !== k1[i]) && reordered(o)) { const mv = movedIn(k0, k1), ovr = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {};
         const cn = id => { const x = Object.hasOwn(ovr, id) ? ovr[id] : null; return String(labelOr(x && typeof x === 'object' && x.label != null ? x.label : (at.get(id) || {}).label, id)); };
         if (mv.length > 3) says(`reorders ${mv.length} cards`); else mv.forEach(([id, p]) => says(`moves ${cn(id)} ${p == null ? 'to the start' : 'after ' + cn(p)}`)); } }
-    if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, ghost.get(id) || line(line0.get(id), 'removed')])]), now = new Set(v.edges);
+    if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.filter(id => !gone1(id)).map(id => [id, ghost.get(id) || line(line0.get(id), 'removed')])]), now = new Set(v.edges);
       // a model line the view listed to a card it no longer shows (hidden: the line stays in the model) goes with the card,
       // back in its place, removed (audit 51: the card was drawn back, its line was not)
-      const leftS = new Set(left); if (Array.isArray(o.edges)) o.edges.forEach(x => { const e = typeof x === 'string' && !now.has(x) && !back.has(x) && line0.get(x);
+      const leftS = new Set(left); if (Array.isArray(o.edges)) o.edges.forEach(x => { const e = typeof x === 'string' && !now.has(x) && !back.has(x) && !gone1(x) && line0.get(x);
         if (e && onCard(e, leftS)) back.set(x, line(e, 'removed')); });
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e !== 'string' ? e : put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : ghost.has(e) ? back.get(e) : e);
       w.edges.forEach(e => unmark(e, true)); // a line of its own the diff does not mark: no mark an author wrote, as a model line
-      hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); // hidden from a view that listed none: at the end
+      hid.forEach(id => { if (back.has(id) && !w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); // hidden from a view that listed none: at the end
       // a line it still lists to a card it no longer shows is drawn no more: removed, in its place; one to a card it now shows is
       // drawn now: added (audit 54: a dynamic view's steps through a card taken out of it were drawn live and numbered, and every
       // later step kept its old number). A model line it lists by id, and one of its own (audit 55: only the model's were marked),
