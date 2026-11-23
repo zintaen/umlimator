@@ -280,13 +280,31 @@ export function files() {
 // the folders whose every file this writes
 export const DIRS = ['docs/types/', 'docs/atlas/'];
 
-if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === '--docs-of') console.log(docsOf(process.argv[3] ?? stop('--docs-of takes a model\'s path')));
-else if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const f = files();
-  for (const d of DIRS) {
-    mkdirSync(new URL(d, ROOT), { recursive: true });
-    for (const old of readdirSync(new URL(d, ROOT))) if (!f[`${d}${old}`]) rmSync(new URL(`${d}${old}`, ROOT));
+// --docs-of's model, read as docsOf reads it (from the repository's root): the path, or a stop naming what is wrong with it
+const model = file => {
+  if (!file) stop('--docs-of takes a model\'s path: node tools/gallery.mjs --docs-of examples/x.json');
+  let m;
+  try { m = JSON.parse(read(file)); } catch (e) { stop(`${file}: ${e.code === 'ENOENT' ? 'no such file' : e.code === 'EISDIR' ? 'a folder, not a model' : e.code ? e.message : `not JSON (${e.message})`}`); }
+  if (!m || typeof m !== 'object' || Array.isArray(m)) stop(`${file}: not a model (a JSON object)`);
+  return file;
+};
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    if (process.argv[2] === '--docs-of') console.log(docsOf(model(process.argv[3])));
+    else {
+      const f = files();
+      for (const d of DIRS) {
+        mkdirSync(new URL(d, ROOT), { recursive: true });
+        for (const old of readdirSync(new URL(d, ROOT))) if (!f[`${d}${old}`]) rmSync(new URL(`${d}${old}`, ROOT));
+      }
+      for (const [p, s] of Object.entries(f)) writeFileSync(new URL(p, ROOT), s);
+      console.log(`${Object.keys(f).length} files written: ${Object.keys(f).join(', ')}`);
+    }
+  } catch (e) {
+    // a stop() or a file that is not there is the input's fault: one line, no stack trace; anything else is a bug here
+    if (!e.message.startsWith('tools/gallery.mjs: ') && e.code !== 'ENOENT') throw e;
+    console.error(e.message.startsWith('tools/gallery.mjs: ') ? e.message : `tools/gallery.mjs: ${e.message}`);
+    process.exitCode = 1;
   }
-  for (const [p, s] of Object.entries(f)) writeFileSync(new URL(p, ROOT), s);
-  console.log(`${Object.keys(f).length} files written: ${Object.keys(f).join(', ')}`);
 }
