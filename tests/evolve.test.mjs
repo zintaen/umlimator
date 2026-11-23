@@ -243,7 +243,9 @@ function digestFixture() {
   writeFileSync(join(audits, 'audit2.json'), JSON.stringify({ date: '2026-11-18T00:00:00Z', confirmed: [finding('x', 'medium'), finding('y', 'low')], rejected: rej(2, 4) }));
   writeFileSync(join(audits, 'audit3.json'), JSON.stringify({ confirmed: [finding('z', 'low')], rejected: rej(3, 3) })); // dated by its "Audit 3" commit
   writeFileSync(join(audits, 'fix2.json'), JSON.stringify([{ branch: 'fix2-a', fixed: [1, 2], skipped: [3] }]));
-  utimesSync(join(audits, 'fix2.json'), new Date('2026-11-19T00:00:00Z'), new Date('2026-11-19T00:00:00Z')); // dated by its modification time, fixed so the test does not depend on today
+  // a list file has no date and no "Audit 2" commit exists, so the digest falls back to its modification time: pin it
+  // inside the 2026-11-16 to 2026-11-22 week, or the test passes only while the real clock is in that week
+  utimesSync(join(audits, 'fix2.json'), new Date('2026-11-20T12:00:00Z'), new Date('2026-11-20T12:00:00Z'));
   repoWithTag(d);
   return { d, audits };
 }
