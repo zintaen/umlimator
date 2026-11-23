@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { files, inventory, types, groupOf, atlases, writing, EX, DIRS, NOTES } from '../tools/gallery.mjs';
+import { files, inventory, types, groupOf, atlases, writing, docsOf, EX, DIRS, NOTES } from '../tools/gallery.mjs';
 import { families } from '../tools/types.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8'), json = p => JSON.parse(read(p));
@@ -358,4 +358,22 @@ test('the Umlimator atlas says which formats umlimator.py import reads in Node, 
   for (const f of FORMATS.filter(f => name[f])) assert.ok(python.includes(name[f]) && !node.includes(name[f]), `${f}: read in Python (${how})`);
   const line = m.edges.find(e => e.from === 'cli' && e.to === 'readers');
   assert.notEqual(line.sublabel, 'in Node', 'the import line: not every format is read in Node');
+});
+
+// the site job renders each example with umlimator.py render --docs, a "Back to Docs" link in its header (tools/gallery.mjs
+// docsOf): a type's model to its type page, an atlas to its atlas page, another example to the type page of its first typed
+// view, a map with none to the maps guide. Each href, read from where the site job puts the page, is a docs page
+test('every rendered example links back to a docs page that exists, and the site job passes it to render --docs', () => {
+  const page = href => href.replace(/\.html$/, '.md'), at = (dir, href) => new URL(page(href), new URL(dir, new URL('docs/', root)));
+  const said = [...examples.map(n => [`examples/${n}.json`, 'examples/']), ...typePages.map(n => [`examples/types/${n}.json`, 'examples/types/'])]
+    .map(([f, dir]) => [f, docsOf(f), dir]);
+  for (const [f, href, dir] of said) assert.ok(existsSync(at(dir, href)), `${f}: ${href} is no docs page`);
+  const by = Object.fromEntries(said.map(([f, href]) => [f, href]));
+  assert.equal(by['examples/types/uml-class.json'], '../../types/uml-class.html', 'a type\'s model: its type page');
+  for (const A of atlases()) assert.equal(by[`examples/${A.file}.json`], `../atlas/${A.page}.html`, 'an atlas: its page');
+  assert.equal(by['examples/sales-classes.json'], '../types/uml-class.html', 'another example: its first typed view\'s type page');
+  assert.equal(by['examples/shapes.json'], '../maps/model.html', 'a map with no typed view: the maps guide');
+  const ci = read('.github/workflows/check.yml');
+  for (const out of ['_site/examples/$n.html', '_site/examples/types/$n.html'])
+    assert.ok(ci.includes(`python3 umlimator.py render "$m" --out "${out}" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"`), out);
 });

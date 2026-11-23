@@ -51,6 +51,8 @@ function toggleTheme() {
   try { localStorage.setItem('visual-theme', next); } catch (e) {}
 }
 
+// whether the page is in a frame: a cross-origin parent's window throws on reading, and is one
+const framed = () => { try { return window.self !== window.top; } catch (e) { return true; } };
 export function mountPage(container, model, options = {}) {
   const Q = options.params || new URLSearchParams();
   document.body.classList.add('map-mode');
@@ -82,6 +84,9 @@ export function mountPage(container, model, options = {}) {
   ];
   const ac = new AbortController(), signal = ac.signal; // the page's listeners on the document and window: destroy() takes them away
 
+  // options.docs: the docs page this page belongs to (umlimator.py render --docs), a "Back to Docs" link at the header's end; none
+  // in a frame (a docs page that frames it is that page already) or when the href is a script's (javascript:, data:)
+  const docs = typeof options.docs === 'string' && options.docs.trim() && !/^\s*(javascript|data|vbscript):/i.test(options.docs) && !framed() ? options.docs.trim() : null;
   const app = container; app.className = 'mapapp';
   app.innerHTML = `
     <header class="mbar">
@@ -97,7 +102,8 @@ export function mountPage(container, model, options = {}) {
       <div class="menu"><button class="pbtn" id="m-export" aria-controls="m-export-pop" aria-expanded="false">Export ▾</button>
         <div class="menu-pop" id="m-export-pop" hidden><button data-x="svg">SVG · this view</button><button data-x="png">PNG · this view (2×)</button><button data-x="link">Copy link to view</button><hr><button data-x="json">Map model (JSON)</button><button data-x="record">Record a story…</button></div></div>
       <button class="ibtn" id="m-pause" type="button" title="Pause" aria-label="Pause" aria-pressed="false">❚❚</button>
-      <button class="ibtn" id="m-help" title="Keys (?)" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-controls="m-helpbox" aria-expanded="false">?</button>
+      <button class="ibtn" id="m-help" title="Keys (?)" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-controls="m-helpbox" aria-expanded="false">?</button>${docs ? `
+      <a class="docslink" id="m-docs" href="${esc(docs)}"><span class="lbl">Back to </span>Docs</a>` : ''}
     </header>
     <aside class="outline" id="m-tree" aria-label="Views"></aside>
     <div class="mmain">

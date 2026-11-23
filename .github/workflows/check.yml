@@ -590,7 +590,7 @@ jobs:
           cp -r examples/traces _site/examples/   # replay.html's trace (#96)
           for m in examples/*.json; do
             n=$(basename "$m" .json)
-            python3 umlimator.py render "$m" --out "_site/examples/$n.html" --no-check
+            python3 umlimator.py render "$m" --out "_site/examples/$n.html" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"   # Back to Docs: its atlas or type page
             python3 umlimator.py stills "_site/examples/$n.html" --out "_site/examples/stills/$n"
             python3 umlimator.py pdf "_site/examples/$n.html" --out "_site/examples/$n.pdf"   # every view in one PDF (#93)
             for s in $(python3 -I -c "import json, sys; print(' '.join(s['id'] for s in json.load(open(sys.argv[1])).get('stories', [])))" "$m"); do
@@ -603,7 +603,7 @@ jobs:
           cp examples/types/*.json _site/examples/types/
           for m in examples/types/*.json; do
             n=$(basename "$m" .json)
-            python3 umlimator.py render "$m" --out "_site/examples/types/$n.html" --no-check
+            python3 umlimator.py render "$m" --out "_site/examples/types/$n.html" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"   # Back to Docs: the type's page
             python3 umlimator.py stills "_site/examples/types/$n.html" --out "_site/examples/types/stills/$n"
             python3 umlimator.py pdf "_site/examples/types/$n.html" --out "_site/examples/types/$n.pdf"
           done

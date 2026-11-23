@@ -113,6 +113,10 @@
   .crumb-sep { color: var(--um-dim); font-size: 12px; }
   @media (prefers-reduced-motion: reduce) { #m-pause { display: none; } }
   .ibtn.txt { width: auto; padding: 0 11px; font-size: 13px; white-space: nowrap; }
+  /* umlimator.py render --docs: the docs page this page belongs to, at the header's end, in either theme */
+  .docslink { display: inline-flex; align-items: center; height: 32px; padding: 0 11px; flex: none; border-radius: 8px; border: 1px solid var(--um-border-2); background: var(--um-panel); color: var(--um-text); font: 600 13px var(--um-sans); text-decoration: none; white-space: nowrap; }
+  .docslink:hover { border-color: var(--um-accent); color: var(--um-accent); }
+  .docslink:focus-visible { outline: 2px solid var(--um-cyan); outline-offset: 2px; }
   /* stories (#69): the legend gives way to the story's caption bar; recording a story, a panel top right */
   .mapapp.story .m-legend { display: none; }
   .m-rec { position: absolute; right: 16px; top: 14px; z-index: 6; width: min(330px, calc(100% - 32px)); max-height: calc(100% - 140px); overflow: auto; box-sizing: border-box; background: var(--um-panel); border: 1px solid var(--um-border-2); border-radius: 12px; box-shadow: var(--um-shadow); padding: 10px 12px; font: 12.5px var(--um-sans); }
@@ -198,7 +202,8 @@
     .mbar { gap: 8px; padding: 0 10px; }
     .crumbs, .menu:has(#m-export), #m-help, .findbtn .ft, .findbtn .kbd { display: none; }
     .mbar .ibtn.txt { width: 32px; padding: 0; } /* Stories and Lenses stay, as their glyphs; their names are still read out */
-    .mbar .ibtn.txt .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .mbar .ibtn.txt .lbl, .docslink .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* Back to Docs: "Docs", its whole name read out */
+    .docslink { padding: 0 9px; }
     .findbtn { width: 32px; padding: 0; justify-content: center; }
     .mbrand { flex: 1; } .mbrand span { overflow: hidden; text-overflow: ellipsis; }
     .outline { position: fixed; top: 48px; bottom: 0; left: 0; width: min(320px, 88vw); z-index: 20; box-shadow: var(--um-shadow); }
@@ -277,10 +282,13 @@
 <div class="bar"><div class="wrap"><span class="brand">/visual</span><nav id="nav"></nav><button class="btn" id="theme" type="button" aria-label="Toggle theme">◐</button></div></div>
 <main class="wrap" id="app"></main>
 <script id="visual-data" type="application/json">/*__VISUAL_DATA__*/null</script>
+<script id="umlimator-docs" type="application/json">/*__UMLIMATOR_DOCS__*/null</script>
 <script type="module">
 /*__UMLIMATOR_LIB__*/
 /* ================= the page (umlimator.py render): the map viewer, or a recap / plan / explore document ================= */
 const D = JSON.parse(document.getElementById('visual-data').textContent) || {};
+// the docs page this page belongs to (umlimator.py render --docs HREF), a "Back to Docs" link in the header; none in a still, a PDF or a check
+const DOCS = (() => { try { const x = JSON.parse(document.getElementById('umlimator-docs').textContent); return typeof x === 'string' ? x : null; } catch { return null; } })();
 const Q = new URLSearchParams(location.hash.slice(1));
 if (Q.get('reader')) [...(D.nodes || []), ...(D.views || []).flatMap(v => Object.values(v.nodeOverrides || {}))].forEach(n => { // a reader copy drops "check" marks
   const clean = b => String(b).replace(/\s*·\s*check$/i, '').replace(/^check$/i, '');
@@ -577,7 +585,7 @@ try {
   if (D.kind === 'map') {
     mapCtx = mapContext(D, { kinds: true });
     // the map's handle (setView, highlight, tour, play ...) on window.umlimatorMap, for scripts and tests: umlimator.py mcp's page drives it
-    if (!Q.get('bench')) { document.querySelector('.bar').remove(); window.umlimatorMap = mountPage(app, D, { params: Q, instant: INSTANT }); }
+    if (!Q.get('bench')) { document.querySelector('.bar').remove(); window.umlimatorMap = mountPage(app, D, { params: Q, instant: INSTANT, docs: INSTANT ? null : DOCS }); }
   } else renderDoc();
 } catch (err) { errors.push('render: ' + err.message); console.error(err); }
 

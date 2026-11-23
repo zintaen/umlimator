@@ -70,8 +70,10 @@ export type UmlClassMemberType = 'uml.Property' | 'uml.Operation' | 'uml.Enumera
  *  a comment link from the comment. */
 export type UmlClassLineType = 'uml.Association' | 'uml.Generalization' | 'uml.InterfaceRealization' | 'uml.Dependency' | 'uml.CommentLink';
 export type UmlVisibility = 'public' | 'private' | 'protected' | 'package';
-/** A classifier's or a package's props. Stereotypes are drawn «in guillemets»; any UML element or line may have them. */
-export interface UmlClassifierProps { isAbstract?: boolean; stereotypes?: string[]; [key: string]: unknown }
+/** A classifier's or a package's props. Stereotypes are drawn «in guillemets»; any UML element or line may have them.
+ *  associationClass (unreleased): on a uml.Class, the id of the uml.Association it is the association class of, drawn joined to
+ *  the middle of the association's line by a dashed line. */
+export interface UmlClassifierProps { isAbstract?: boolean; stereotypes?: string[]; associationClass?: string; [key: string]: unknown }
 /** An attribute's props: its UML text `+ {static} /total: Money [1] = 0` as fields. Types and defaults are text. */
 export interface UmlPropertyProps { visibility?: UmlVisibility; valueType?: string; multiplicity?: string; default?: string; isStatic?: boolean; isDerived?: boolean; stereotypes?: string[]; [key: string]: unknown }
 /** An operation's props: `+ {static} place(at: Date, in qty: Int): Order` as fields. */

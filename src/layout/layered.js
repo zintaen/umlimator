@@ -252,7 +252,7 @@ function layoutGraph(dg, map) {
   return best;
 }
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
-  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN]; let used = false, turns = false, grew = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
+  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
@@ -1205,7 +1205,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // ponytail: a dozen grid searches a layout, and a line that only runs through a box tried in views of up to 30 cards (as
   // bestFlow): the stress file's 50 states laid out in twice the time
   let boxBudget = 12;
-  if (NEST) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
+  // (BOXES) a typed view that asks for this pass alone (dg.shutBoxes, the class view): a line that runs through a box holding
+  // neither of its ends, just under its title, read as one along the box's border (a «use» line past a package it has no end in)
+  if (BOXES) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
     is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box || r0[k].some(y => y.s === y.t)))) r0[k].forEach(x => bad.add(x)); });
     const todo = free.filter(e => !e.fixed && !e.inner && e.fromPort == null && e.toPort == null && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
     const v0 = todo.length ? boxSaid() : null, snap = todo.length ? edges.map(e => [e, e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl, e.stubs]) : null, snapR = todo.length ? [routed.slice(), reserved.slice(), placed.slice()] : null, used0 = used;
@@ -1222,7 +1224,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
           if (P && !roundOwn(e, P) && !through(P, e)) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = boxSaid(new Set([e]));
             if (lt3(k1, k0) && (!best || lt3(k1, best[0]) || (!lt3(best[0], k1) && lenOf(P) < lenOf(best[1])))) best = [k1, P, k, fk, e[k], side]; ripUp(e); }
           [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
-      if (best) { e[best[2]] = best[4]; e[best[3]] = best[5]; restub(e); e.pts = best[1]; e.how = 'grid'; used = true; e.lbl = null; routed.push(e); placeLabel(e); }
+      if (best) { e[best[2]] = best[4]; e[best[3]] = best[5]; restub(e); e.pts = best[1]; e.how = 'grid'; if (NEST) used = true; e.lbl = null; routed.push(e); placeLabel(e); }
       else { e.pts = was[4]; e.how = was[5]; relabel(e, was[6]); } });
     if (todo.length && !lt3(boxSaid(), v0)) { snap.forEach(([e, p1, p2, fs, ts, pts, how, lbl, stubs]) => Object.assign(e, { p1, p2, fs, ts, pts, how, lbl, stubs }));
       routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); used = used0; } }

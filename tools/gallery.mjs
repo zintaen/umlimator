@@ -15,7 +15,8 @@
 // The rendered pages, their stills and PDFs are not VitePress pages: the site job (.github/workflows/check.yml) builds them
 // under /umlimator/examples/, and the docs pages link them with plain hrefs (target="_self", past the router). No
 // dependency. `node tools/gallery.mjs` writes the files; tests/gallery.test.mjs fails when a committed file is not what
-// this writes, and when a link, picture or frame names a file the site does not serve.
+// this writes, and when a link, picture or frame names a file the site does not serve. `node tools/gallery.mjs --docs-of
+// <model>` prints the docs page a model's rendered page links back to (docsOf).
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
@@ -64,6 +65,16 @@ export function inventory() {
 }
 // the atlases, in order
 export const atlases = () => json('tools/gallery.json').atlases.list;
+// the docs page a model's rendered page belongs to, as its "Back to Docs" link (umlimator.py render --docs), relative to where
+// the site job puts that page (EX, EX + 'types/'): a type's model its type page, an atlas its atlas page, another example the
+// type page of its first typed view, and a map with none the maps guide. `node tools/gallery.mjs --docs-of <model>` prints it
+export function docsOf(file) {
+  const p = posix.normalize(String(file).replaceAll('\\', '/')), base = posix.basename(p, '.json');
+  if (/(^|\/)examples\/types\/[^/]+\.json$/.test(p)) return `../../types/${base}.html`;
+  const A = atlases().find(a => a.file === base); if (A) return `../atlas/${A.page}.html`;
+  const v = (json(p).views || []).find(x => x && typeof x.diagram === 'string' && x.diagram !== 'map');
+  return v ? `../types/${groupOf(v)}.html` : '../maps/model.html';
+}
 
 // where the site job puts the rendered pages, and a link to one of them: past VitePress's router, which serves only its
 // own pages
@@ -269,7 +280,8 @@ export function files() {
 // the folders whose every file this writes
 export const DIRS = ['docs/types/', 'docs/atlas/'];
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === '--docs-of') console.log(docsOf(process.argv[3] ?? stop('--docs-of takes a model\'s path')));
+else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const f = files();
   for (const d of DIRS) {
     mkdirSync(new URL(d, ROOT), { recursive: true });

@@ -15,7 +15,8 @@ import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay
    an id the reader would not derive, as `%% id: <id>` (and `%% link-id:` for a note's line) above its statement; an
    element the subset leaves out, as `%% not written: <id> (<type>)`, and a property of one Mermaid has no place for, as
    `%% not written: <id>: <what>` (navigable on an end with a diamond, a parent the view does not show or that is not a
-   namespace, a note's parent, an unknown visibility, a stereotype the reader would read as something else). A namespace
+   namespace, a note's parent, an unknown visibility, a stereotype the reader would read as something else, an association
+   class's tie to its association). A namespace
    with no class in it is not written, as Mermaid reads no empty one. A member whose text has a line break is not
    written, nor one holding a { or }, nor a line that ends on a member. A model with views is written through its uml.class view; with none of them,
    the text is one `%% not written:` line. A view's layout and present are not written.
@@ -668,7 +669,10 @@ function writeMermaidClass(model, viewId) {
     const rows = [], np = isObj(n.props) ? n.props : {};
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
     if (untyped(n)) lose(n.id, 'no type, written as a class (uml.Class)');
-    extra(n, ['id', 'type', 'label', 'members', 'parent'], ['isAbstract', 'stereotypes']);
+    extra(n, ['id', 'type', 'label', 'members', 'parent'], ['isAbstract', 'stereotypes', 'associationClass']);
+    // an association class (props.associationClass): Mermaid has no notation for one, so the class and its association are written
+    // apart, and the tie between them is said
+    if (np.associationClass != null) lose(n.id, `association class of ${flat(np.associationClass)}, which Mermaid has no notation for: the class and the association are written apart`);
     const anns = [...(KIND[n.type] ? [KIND[n.type]] : []), ...(np.isAbstract ? ['abstract'] : []), ...arr(np.stereotypes).filter(s => {
       const k = String(s).toLowerCase(), ok = !badId(s) && s !== '' && !String(s).includes('>>') && !String(s).endsWith('>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself
       if (!ok) lose(n.id, `stereotype ${s}`);
