@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>The docs link in a frame</title>
+<!-- tests/embed.py: the page umlimator.py render --docs wrote (tests/fixtures/docs-link.html), in a frame as a docs page frames
+     it, draws no "Back to Docs" link: the docs page around it is that page already. Says "no link in a frame" once drawn. -->
+<iframe id="f" src="fixtures/docs-link.html" width="1000" height="600"></iframe>
+<pre id="out"></pre>
+<script>
+const f = document.getElementById('f'), t0 = Date.now();
+const look = () => {
+  const d = f.contentDocument, drawn = d && d.getElementById('m-help');
+  if (!drawn && Date.now() - t0 < 20000) return setTimeout(look, 100);
+  const r = document.createElement('pre'); r.id = 'result';
+  r.textContent = !drawn ? 'the framed page did not draw' : d.getElementById('m-docs') ? 'a link in a frame' : 'no link in a frame';
+  document.body.appendChild(r);
+};
+f.addEventListener('load', look);
+</script>

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """umlimator: layered, animated architecture maps, built on super-board's /visual renderer (MIT).
 
-  umlimator.py render MODEL.json --out PAGE.html [--no-check]   # interactive drill-down page (one self-contained file)
+  umlimator.py render MODEL.json --out PAGE.html [--no-check] [--docs HREF]   # interactive drill-down page (one self-contained file);
+                                                       # --docs: a "Back to Docs" link in its header to HREF
   umlimator.py stills PAGE.html --out DIR [--views a,b] [--scale 2] [--theme light|dark] [--reader]   # each view as DIR/<view>.svg and .png;
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
   umlimator.py check PAGE.html [--views a,pic-*] [--expand] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only;
@@ -61,12 +62,14 @@ class Terminal:
         return getattr(self.to, name)
 
 
-def visual_cmd(tmp, *args):
+def visual_cmd(tmp, *args, docs=None):
     """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator-all.js inlined: one
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
-    pointed at that page, written into the directory `tmp`."""
+    pointed at that page, written into the directory `tmp`. docs: the href of render's "Back to Docs" link, or None."""
     page = Path(tmp) / "template.html"
     html = PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
+    if docs is not None:
+        html = html.replace("/*__UMLIMATOR_DOCS__*/null", script_json(docs), 1)
     page.write_text(html.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
     run = ("import importlib.util, pathlib, sys\n"
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
@@ -827,9 +830,14 @@ def bpmn(fn, a, *args):
     return json.loads(r.stdout)
 
 
+DOCS_HREF = re.compile(r"(?:https?://|[./]|[A-Za-z0-9_-])[^\s<>\"'`]*")  # a web address or a relative path: never javascript: or data:
+
+
 def cmd_render(a):
     if not Path(a.model).is_file():
         sys.exit(f"no model at {a.model}")
+    if a.docs is not None and (not DOCS_HREF.fullmatch(a.docs) or re.match(r"(?i)[a-z][a-z0-9+.-]*:", a.docs) and not re.match(r"(?i)https?://", a.docs)):
+        sys.exit(f"render: --docs {a.docs!r} is not a web address (http:// or https://) or a relative path")
     model = page_model(a.model, a.out)
     try:
         render(a, model)
@@ -847,7 +855,7 @@ def render(a, model, show=print):
     if all(isinstance(v, dict) and v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
-        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp])))
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), docs=getattr(a, "docs", None)))
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
@@ -1926,7 +1934,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
-    r.add_argument("--no-check", action="store_true"); r.set_defaults(f=cmd_render)
+    r.add_argument("--no-check", action="store_true")
+    r.add_argument("--docs", metavar="HREF", help="a Back to Docs link in the page's header to HREF (a relative path or an http(s) address)")
+    r.set_defaults(f=cmd_render)
     s = sub.add_parser("stills"); s.add_argument("page"); s.add_argument("--out", required=True)
     s.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); s.add_argument("--scale", type=above_0, default=2.0); s.add_argument("--theme", default="light", choices=["light", "dark"])
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
