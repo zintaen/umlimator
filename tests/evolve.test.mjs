@@ -3,7 +3,7 @@
 // made here in a temporary folder, with no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -243,6 +243,7 @@ function digestFixture() {
   writeFileSync(join(audits, 'audit2.json'), JSON.stringify({ date: '2026-11-18T00:00:00Z', confirmed: [finding('x', 'medium'), finding('y', 'low')], rejected: rej(2, 4) }));
   writeFileSync(join(audits, 'audit3.json'), JSON.stringify({ confirmed: [finding('z', 'low')], rejected: rej(3, 3) })); // dated by its "Audit 3" commit
   writeFileSync(join(audits, 'fix2.json'), JSON.stringify([{ branch: 'fix2-a', fixed: [1, 2], skipped: [3] }]));
+  utimesSync(join(audits, 'fix2.json'), new Date('2026-11-19T00:00:00Z'), new Date('2026-11-19T00:00:00Z')); // dated by its modification time, fixed so the test does not depend on today
   repoWithTag(d);
   return { d, audits };
 }
