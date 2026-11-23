@@ -1,0 +1,245 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Deployment diagram",
+ "root": "production",
+ "nodes": [
+  {
+   "id": "shopper-device",
+   "type": "uml.Device",
+   "label": "Shopper's device"
+  },
+  {
+   "id": "browser",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Web browser",
+   "parent": "shopper-device"
+  },
+  {
+   "id": "storefront-js",
+   "type": "uml.Artifact",
+   "label": "storefront.js",
+   "parent": "browser"
+  },
+  {
+   "id": "edge",
+   "type": "uml.Node",
+   "label": "Edge proxy",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
+  },
+  {
+   "id": "routes",
+   "type": "uml.Artifact",
+   "label": "routes.conf"
+  },
+  {
+   "id": "datacentre",
+   "type": "uml.Node",
+   "label": "Shop data centre"
+  },
+  {
+   "id": "app-server",
+   "type": "uml.Device",
+   "label": "Application server",
+   "parent": "datacentre"
+  },
+  {
+   "id": "jvm",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Java 21 runtime",
+   "parent": "app-server"
+  },
+  {
+   "id": "api-jar",
+   "type": "uml.Artifact",
+   "label": "shop-api.jar",
+   "parent": "jvm"
+  },
+  {
+   "id": "worker-jar",
+   "type": "uml.Artifact",
+   "label": "order-worker.jar",
+   "parent": "jvm"
+  },
+  {
+   "id": "api-config",
+   "type": "uml.DeploymentSpecification",
+   "label": "shop-api.yaml",
+   "parent": "jvm"
+  },
+  {
+   "id": "db-host",
+   "type": "uml.Node",
+   "label": "Database host",
+   "parent": "datacentre",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
+  },
+  {
+   "id": "queue",
+   "type": "uml.Node",
+   "label": "Order queue"
+  },
+  {
+   "id": "shop-api",
+   "type": "uml.Component",
+   "label": "Shop API"
+  },
+  {
+   "id": "order-worker",
+   "type": "uml.Component",
+   "label": "Order worker"
+  },
+  {
+   "id": "note-config",
+   "type": "uml.Comment",
+   "label": "Holds the pool size and the card gateway's keys"
+  }
+ ],
+ "edges": [
+  {
+   "id": "routes-on-edge",
+   "type": "uml.Deployment",
+   "from": "routes",
+   "to": "edge"
+  },
+  {
+   "id": "api-jar-manifests",
+   "type": "uml.Manifestation",
+   "from": "api-jar",
+   "to": "shop-api"
+  },
+  {
+   "id": "worker-jar-manifests",
+   "type": "uml.Manifestation",
+   "from": "worker-jar",
+   "to": "order-worker"
+  },
+  {
+   "id": "config-for-api",
+   "type": "uml.Dependency",
+   "from": "api-config",
+   "to": "api-jar"
+  },
+  {
+   "id": "device-to-edge",
+   "type": "uml.CommunicationPath",
+   "from": "shopper-device",
+   "to": "edge",
+   "label": "HTTPS"
+  },
+  {
+   "id": "edge-to-app",
+   "type": "uml.CommunicationPath",
+   "from": "edge",
+   "to": "app-server",
+   "label": "HTTP"
+  },
+  {
+   "id": "app-to-db",
+   "type": "uml.CommunicationPath",
+   "from": "app-server",
+   "to": "db-host",
+   "label": "PostgreSQL wire protocol"
+  },
+  {
+   "id": "app-to-queue",
+   "type": "uml.CommunicationPath",
+   "from": "app-server",
+   "to": "queue",
+   "label": "AMQP"
+  },
+  {
+   "id": "note-config-link",
+   "type": "uml.CommentLink",
+   "from": "note-config",
+   "to": "api-config"
+  }
+ ],
+ "views": [
+  {
+   "id": "production",
+   "diagram": "uml.deployment",
+   "title": "The bookshop in production",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "shopper-device",
+    "browser",
+    "storefront-js",
+    "edge",
+    "routes",
+    "datacentre",
+    "app-server",
+    "jvm",
+    "api-jar",
+    "worker-jar",
+    "api-config",
+    "db-host",
+    "queue",
+    "shop-api",
+    "order-worker",
+    "note-config"
+   ],
+   "edges": [
+    "routes-on-edge",
+    "api-jar-manifests",
+    "worker-jar-manifests",
+    "config-for-api",
+    "device-to-edge",
+    "edge-to-app",
+    "app-to-db",
+    "app-to-queue",
+    "note-config-link"
+   ]
+  },
+  {
+   "id": "production-right",
+   "diagram": "uml.deployment",
+   "title": "The same deployment, laid out right",
+   "parent": "production",
+   "layout": {
+    "queue": [
+     4,
+     1
+    ]
+   },
+   "nodeIds": [
+    "shopper-device",
+    "browser",
+    "storefront-js",
+    "edge",
+    "routes",
+    "datacentre",
+    "app-server",
+    "jvm",
+    "api-jar",
+    "worker-jar",
+    "api-config",
+    "db-host",
+    "queue",
+    "shop-api",
+    "order-worker",
+    "note-config"
+   ],
+   "edges": [
+    "routes-on-edge",
+    "api-jar-manifests",
+    "worker-jar-manifests",
+    "config-for-api",
+    "device-to-edge",
+    "edge-to-app",
+    "app-to-db",
+    "app-to-queue",
+    "note-config-link"
+   ]
+  }
+ ]
+}

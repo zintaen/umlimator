@@ -996,13 +996,14 @@ test('audit 43: the example\'s timer moved to each side by Alt + arrows, laid ou
 });
 
 // 0.45.0's known gap (audit 61 finding 6): Alt + Up on the gallery example's timer put "Payment result" on the Charge request
-// line, as the line was routed again after the label was placed; a line's label on another line now slides along its own line
+// line, as the line was routed again after the label was placed; a line's label on another line now slides along its own line.
+// The models are copies in tests/fixtures/ of the bookshop order-to-shipment example and the gallery BPMN example
 test('known gap of 0.45.0: Alt + each arrow on every boundary event of the BPMN examples, laid out as is, right or down, puts no label on another line', () => {
   const quiet = f => { const k = console.warn; console.warn = () => {}; try { return f(); } finally { console.warn = k; } };
   const onLine = (m, vid) => quiet(() => check(m, vid)).map(p => p.message).filter(t => / lies on edge /.test(t));
   const by = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
   let moves = 0;
-  for (const file of ['../examples/bookshop-order-to-shipment.json', '../examples/types/bpmn.json']) {
+  for (const file of ['./fixtures/bookshop-order-to-shipment.json', './fixtures/bpmn-gallery.json']) {
     const M = JSON.parse(readFileSync(new URL(file, import.meta.url), 'utf8'));
     for (const v of M.views.filter(w => w.diagram === 'bpmn')) for (const direction of [null, 'right', 'down']) {
       const base = structuredClone(M); if (direction) V(base, v.id).direction = direction;
@@ -1015,7 +1016,7 @@ test('known gap of 0.45.0: Alt + each arrow on every boundary event of the BPMN 
   }
   assert.ok(moves >= 40, `every move tried (${moves})`);
   // the case of the note: the label is drawn by its own line, clear of the Charge request line
-  const G = JSON.parse(readFileSync(new URL('../examples/types/bpmn.json', import.meta.url), 'utf8'));
+  const G = JSON.parse(readFileSync(new URL('./fixtures/bpmn-gallery.json', import.meta.url), 'utf8'));
   const m = apply(G, bzMoveTo(G, V(G), 'payment-timeout', { by: [0, -1] })), g = layout(m, VID), e = g.edges.find(x => x.id === 'm-result');
   assert.ok(e.lbl && !segs(g.edges.find(x => x.id === 'bp-m-charge').pts).some(s => meets(s, { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 })), 'Payment result off Charge request');
   assert.ok(segs(e.pts).some(s => meets(s, { x: e.lbl.x - 5, y: e.lbl.y - 5, w: e.lbl.w + 10, h: e.lbl.h + 10 })), 'and by its own line');

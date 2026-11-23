@@ -501,7 +501,7 @@ test('audit 56: every count a name says on the diff page is the model after\'s: 
 test('known gap of 0.45.0: a typed view\'s re-pointed line it stopped listing or lost an end of comes back under a free id, or not at all in a C4 dynamic view; the diff model validates', () => {
   const quiet = f => { const k = console.warn; console.warn = () => {}; try { return f(); } finally { console.warn = k; } };
   const twice = m => quiet(() => all.validate(m)).filter(p => p.level === 'error' && /used twice|needs an id/.test(p.message)).map(p => p.message);
-  const files = ['c4', 'sysml-block-definition', 'uml-class', 'uml-communication', 'uml-deployment', 'uml-package'].map(f => `examples/types/${f}.json`);
+  const files = ['c4-gallery', 'sysml-block-definition', 'uml-class', 'uml-communication', 'uml-deployment', 'uml-package'].map(f => `tests/fixtures/${f}.json`); // copies of the gallery models
   let cases = 0;
   for (const f of files) { const M = load(f);
     M.views.forEach((v, vi) => { if (!Array.isArray(v.edges)) return; const lid = v.edges.find(x => typeof x === 'string' && M.edges.some(e => e.id === x && v.nodeIds.includes(e.to)));
@@ -518,7 +518,7 @@ test('known gap of 0.45.0: a typed view\'s re-pointed line it stopped listing or
       } }); }
   assert.ok(cases >= 20, `every view tried (${cases})`);
   // drawn removed between its old ends, under its own id; an id the model holds already is passed over
-  const C = load('examples/types/uml-class.json'), B = edit(C, x => { x.edges.find(y => y.id === 'customer-orders').to = 'line'; x.views[0].edges = x.views[0].edges.filter(y => y !== 'customer-orders'); });
+  const C = load('tests/fixtures/uml-class.json'), B = edit(C, x => { x.edges.find(y => y.id === 'customer-orders').to = 'line'; x.views[0].edges = x.views[0].edges.filter(y => y !== 'customer-orders'); });
   const g = quiet(() => all.layout(all.diff(C, B).model, 'sales'));
   assert.deepEqual(g.edges.filter(x => x.change).map(x => [x.id, x.from, x.to, x.change]), [['customer-orders~old', 'customer', 'order', 'removed']]);
   const held = edit(C, x => { x.nodes.find(n => n.id === 'note-total').id = 'customer-orders~old'; x.edges.forEach(y => { if (y.from === 'note-total') y.from = 'customer-orders~old'; }); x.views.forEach(w => { w.nodeIds = w.nodeIds.map(i => i === 'note-total' ? 'customer-orders~old' : i); }); });
