@@ -322,6 +322,22 @@ test('audit 19: a view\'s stepIds, tour or browserOrder that is no list is warne
   }
 });
 
+test('audit 65: a view\'s edges that is no list is an error, as a nodeIds that is no list is, on a map view and on a typed one', () => {
+  const map = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], edges: ['e'] }] };
+  const typed = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'], edges: ['e'] }] };
+  for (const [base, check] of [[map, validate], [typed, validateAll]]) {
+    assert.deepEqual(check(base).filter(p => p.level === 'error'), [], 'a list is fine');
+    for (const x of ['x', 5, {}, { 0: 'e' }, true]) {
+      const m = structuredClone(base); m.views[0].edges = x;
+      assert.deepEqual(check(m).filter(p => p.path === 'views[0].edges').map(p => [p.level, p.message]),
+        [['error', 'edges is a list: read as not given, so the view draws the lines between its cards']], JSON.stringify(x));
+    }
+    const none = structuredClone(base); none.views[0].edges = null;
+    assert.deepEqual(check(none).filter(p => p.path === 'views[0].edges'), [], 'null is not given');
+  }
+});
+
 test('audit 21: diff() of a 20,000-step trace view pairs its steps in linear memory, in under CI\'s 1.5 s, and still finds a reorder (timed)', async () => {
   const { sequenceFromTrace } = await import('../lib/umlimator.js');
   const n = 20000, nodes = Array.from({ length: 20 }, (_, i) => ({ id: 's' + i, label: 'svc' + i })), spans = [{ id: 'root', service: 's0', start: 0, end: n + 10 }];
