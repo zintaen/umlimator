@@ -78,6 +78,24 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: PR #549 (head 780f4aac, merge commit ed903455, tag v0.45.0 at ed903455, `git diff 780f4aac ed903455` empty); `.github/workflows/check.yml`, jobs release, smoke and promote; CONTRIBUTING.md, "Releases".
 - Proposed change: Add to A4.5 and A11.4 a "release on merge" mapping: where the host's CI tags and publishes on the merge of a version bump, the release PR merges after its reviews and green CI, the tag goes on the merge commit, and the release counts as from the audited commit only when the merge commit's tree equals the release PR head's tree (checked by the release script before tagging); pre-release channel, smoke test and promotion stay as A4.5 orders them.
 
+### F7. A lane merged by fast-forward cannot be reverted with revert -m 1, and stays an ancestor after its revert
+
+- Date: 2026-11-24
+- Round: fix round 65 (combine)
+- Rule: A3.4, A8.6
+- What happened: The integration branch was still at the base commit, so merging the first lane (fix65-assoc, one commit) was a fast-forward and made no merge commit. When the gate then failed on that lane, the prescribed `git revert -m 1 <merge>` had nothing to point at; the lane's own commit was reverted instead. After that revert, `git merge-base --is-ancestor origin/fix65-assoc HEAD`, the check A3.5 uses to prove a lane merged, is still true for a lane that is not in the tree.
+- Evidence: audit-loop e92f9ad8 (fast-forwarded) and its revert 9eb52af5; handoff log, 24 Nov 2026, fix round 65 combine.
+- Proposed change: In A3.4, merge each lane with `--no-ff`, so every lane has a merge commit to revert and bisect over. In A3.5, a lane counts as merged when it is an ancestor of the integration head and no later commit on the integration branch reverts its merge.
+
+### F8. The local gate ran a different interpreter version from CI and failed on the base commit
+
+- Date: 2026-11-24
+- Round: fix round 65 (combine)
+- Rule: A1 (Gate), A10.0, C9
+- What happened: `python3` on the machine running the combine is Python 3.14, while CI pins 3.12. Two existing checks that expect a deeply nested JSON line to be a parse error (audit 20) fail on 3.14, whose parser accepts it: `tests/cli.py` failed one check at the baseline, and `tests/mcp.py` stopped with a TypeError. Neither is a umlimator regression. The combine reran the gate with Python 3.13, where both pass, and recorded it.
+- Evidence: audit-loop 135f6117 (baseline, no lane merged); `.github/workflows/check.yml`, `python-version: "3.12"`; handoff log, 24 Nov 2026, fix round 65 combine.
+- Proposed change: Add to A10.0 that the rules file names the interpreter and runtime versions the gate uses, taken from the CI configuration, and the gate command runs those versions (or records a mismatch as a gate failure of the environment, not of a lane). A check that fails on the base commit only because of the local version goes to the inbox as one finding, as F4 proposes for date-bound checks.
+
 ## Closed
 
 None.
