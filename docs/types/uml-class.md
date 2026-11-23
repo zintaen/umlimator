@@ -65,7 +65,7 @@ The view's `diagram`, the types its elements, members and lines may have, and it
 | `UmlClassElementType` | `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType`, `uml.Package`, `uml.Comment` |
 | `UmlClassMemberType` | `uml.Property`, `uml.Operation`, `uml.EnumerationLiteral` |
 | `UmlClassLineType` | `uml.Association`, `uml.Generalization`, `uml.InterfaceRealization`, `uml.Dependency`, `uml.CommentLink` (from client to supplier) |
-| `UmlClassifierProps` | `isAbstract`, `stereotypes` |
+| `UmlClassifierProps` | `isAbstract`, `stereotypes`; on a `uml.Class`, `associationClass`: the id of the `uml.Association` it is the association class of, drawn joined to the middle of that line by a dashed line |
 | `UmlPropertyProps` | `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `stereotypes`: `+ {static} /total: Money [1] = 0` as fields |
 | `UmlOperationProps` | `visibility`, `parameters` (`name`, `valueType`, `direction`), `returnType`, `isStatic`, `isAbstract`, `stereotypes` |
 | `UmlLineProps` | `ends.from` and `ends.to`, each a `UmlAssociationEnd`; `stereotypes` |
@@ -102,6 +102,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 10.4 InterfaceRealization | `uml.InterfaceRealization`, to the interface | a dashed line, a hollow triangle |
 | 7.7 Dependency, Usage | `uml.Dependency`, from the client; `props.stereotypes: ["use"]` | a dashed line, an open arrowhead, «use» as its label |
 | other diagrams' lines | `uml.Usage`, `uml.Abstraction`, `uml.Realization`, `uml.ComponentRealization`, `uml.Connector`, drawn only when the view's `edges` lists them (a view with no list draws the five kinds above: audit 9) | a usage and an abstraction dashed with an open arrowhead, «use» or «abstraction»; a realization dashed with a hollow triangle; a connector a plain line, none between two members of one class |
+| 11.5.4 AssociationClass (after 0.45.0) | a `uml.Class` whose `props.associationClass` is a `uml.Association`'s id | the class box joined to the middle of the association's line by a dashed line with no ends (moved along the line just past its label when the label sits on the middle); drawn when the view shows the class and draws the association; a reflexive association's class is drawn without the dashed line |
 | 7.2 Comment | `uml.Comment`, `uml.CommentLink` from the comment | a note with a folded corner; a dashed line with no ends |
 | 12.3 stereotype notation, as text | `props.stereotypes` on any element or line | «entity» over a name, before a line's label |
 | 12.2 Package | `uml.Package`; ownership is `parent` | from 0.19.0: a package owning something the view shows is a box holding it, its name in a tab; one owning nothing shown is a closed folder (`uml-package.md`). Names are qualified from the nearest shown owner, the view's `subject`, or the top (`sales::Order`). Until 0.19.0: a named box, its classes beside it |
@@ -112,13 +113,15 @@ Rules, each `validate()` problem naming its `rule` and its elements (`docs/diagr
 `owner-kinds`, `line-inside` and `own-boxes` (warnings, `uml-package.md`); ownership cycles and references that do not
 resolve are the core's checks.
 
+Rule `association-class` (after 0.45.0, the class view's own): an error when a class's `props.associationClass` is not the id of a `uml.Association`, when an element other than a class has it, when the class is an end of its own association (UML 2.5.1 11.8.2, cannot_be_defined) and when two classes name one association; a warning when a class view shows the class but does not draw its association, draws the association but does not show its class, or draws the association as a loop (no dashed line then). The properties panel's "Association class of" field on a class takes the association's id or its name, when one association has it, and refuses anything else in the rule's words. `describe()` says the class as "the association class of the association between Person and Company" and the association's ends as "associated with Company ... through Job"; the class's accessible name ends in ", the association class of the Association from ..."; the dashed line's own accessible name says both; the PDF's Kind column says "Association class"; the legend has an Association class key, dashed.
+
 A view may set `direction: "down"`, pins in `layout`, `subject` (names are qualified from it), and per element in
 `present`: `collapsed` (compartments not drawn) and `rows` (at most n rows, then "+k more"). A line between a package and
 something it holds is not drawn (`line-inside`).
 
 ### Left out
 
-- Templates and template bindings; association classes; n-ary associations; qualifiers; signals and receptions;
+- Templates and template bindings; n-ary associations (and so an n-ary association's class); qualifiers; signals and receptions;
   constraints and OCL; generalization sets; nested classifiers (a class's `parent` is a package, never a class).
 - Object diagrams and package import and merge: their own types from 0.19.0 (`uml-object.md`, `uml-package.md`).
   Until 0.19.0 a package in a class view is a named box, and the view draws its classes beside it. From 0.19.0 every
@@ -132,6 +135,7 @@ something it holds is not drawn (`line-inside`).
 - A type is text (`"valueType": "Money"`), not a reference: renaming a class does not rename the types that name it
   (`docs/diagrams/risks.md` M8).
 - XMI and UML diagram interchange; code generation and reverse engineering.
+- Mermaid's `classDiagram` has no association class: the writer writes the class and its association apart and says the tie on a `%% not written: <class>: association class of <association>` line; the reader reads none.
 - A member held in the model whose label has a space, or whose type holds `=`, prints a line the member syntax does not
   read back (`docs/diagrams/README.md`, log of 1.9).
 - Lines cross where the layered layout finds no better order, more often past 40 elements. In `tests/class-stress.json`
@@ -176,7 +180,7 @@ editing gesture has a key (`docs/editing.md`).
 
 ### Tests
 
-`tests/class.test.mjs` and `tests/class.html` (the type, its rules, layout under three fonts and both themes, editing
+`tests/association-class.test.mjs` (association classes: the dashed line, the rule, `describe()`, names, the PDF's Kind, the Mermaid writer and the panel's field); `tests/class-box-lines.test.mjs` (no line through a package box holding neither of its ends, such as a «use» line past the card package); `tests/class.test.mjs` and `tests/class.html` (the type, its rules, layout under three fonts and both themes, editing
 through `apply()`, the `sales` box); `tests/package.test.mjs` (boxes and qualified names in class views); `tests/class-fixtures.test.mjs` with `tests/class-minimal.json` and `tests/class-stress.json`
 (`risks.md` G1, and P1's budget); `tests/mermaid-class.test.mjs` (interchange); `tests/class-editor.html` (the host
 page); `tests/cli.py` (render, check, stills and pdf).

@@ -22,6 +22,7 @@ The same viewer is `mountPage(container, model)` in the module, built on `render
 | Light and dark | the ◐ toggle |
 | Motion speed | the speed button on the map's controls (`1×`) steps through 0.5x, 1x, 1.5x and 2x for tours, story steps and the flow along lines; the page remembers it per reader ([Stories](../maps/stories-lenses-live.md#stories)) |
 | Export | SVG · this view, PNG · this view (2×), Copy link to view, Map model (JSON), and Record a story… |
+| Back to Docs | a link at the header's end to the docs page the page belongs to, when it was rendered with `umlimator.py render --docs HREF` (the site's example pages link their type or atlas page); a Tab stop, in both themes, shown as Docs on a phone and left out in a frame, a still, a PDF and a check |
 
 ## Links
 

@@ -21,6 +21,7 @@ python3 umlimator.py render examples/sales-classes.json --out classes.html   # a
 ```
 
 - `render` writes [the standalone page](./standalone-page.md), then runs the layout check on it.
+- `render --docs HREF` puts a Back to Docs link to HREF (a relative path or an http(s) address) at the end of the page's header; the site's example pages link their type page or atlas page this way (`node tools/gallery.mjs --docs-of MODEL.json` prints the href).
 - `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view), and exits 1,
   saying why, when a view can't be exported.
 - In `stills`, `check` and `pdf`, `--views` takes view ids, and a trailing `*` is a prefix; a name that matches no view
