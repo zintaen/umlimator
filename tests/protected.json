@@ -1,0 +1,600 @@
+{
+  "about": "The core tests whose expectations change only with the maintainer's approval. tests/protected.test.mjs fails when one is deleted, renamed or edited; after approving a change the maintainer runs node tools/protect.mjs --update. See CONTRIBUTING.md.",
+  "tests": {
+    "tests/layout.test.mjs": {
+      "layout() draws every benchmark view exactly as the browser did (bench/expected.json)": {
+        "sha256": "6eb30b74e1b1c117",
+        "asserts": 2,
+        "helpers": [
+          "expected",
+          "hash",
+          "read"
+        ]
+      },
+      "layout() is deterministic and leaves the model alone": {
+        "sha256": "9aa5e550f0f07ca7",
+        "asserts": 2,
+        "helpers": [
+          "hash",
+          "read"
+        ]
+      },
+      "edges carry stable ids: the model id, else from->to#n; a drawn line lists every model edge it stands for": {
+        "sha256": "82f6cbe428a6974b",
+        "asserts": 2,
+        "helpers": []
+      },
+      "nothing is fetched at runtime: no web fonts, stylesheets or imports in the module or the page": {
+        "sha256": "8a1b222c364d630d",
+        "asserts": 1,
+        "helpers": []
+      }
+    },
+    "tests/unfold.test.mjs": {
+      "layout() unfolds every benchmark view the bench unfolds exactly as the browser did (bench/expected.json)": {
+        "sha256": "f9b02aad52b7ddfd",
+        "asserts": 2,
+        "helpers": [
+          "hash",
+          "read"
+        ]
+      },
+      "unfolding leaves the model alone and lays out the same every time": {
+        "sha256": "edeadfdb0096e251",
+        "asserts": 2,
+        "helpers": [
+          "PRINT",
+          "SHOP",
+          "read"
+        ]
+      }
+    },
+    "tests/model.test.mjs": {
+      "validate() finds nothing wrong in the test fixtures and the benchmark models": {
+        "sha256": "3ae43277e18328f7",
+        "asserts": 3,
+        "helpers": [
+          "read"
+        ]
+      },
+      "validate() names each error and warning by where it is, and accepts what render() draws (lines to a box, a view loaded later)": {
+        "sha256": "c3186dd1cc0faf0f",
+        "asserts": 3,
+        "helpers": []
+      },
+      "validate() says a cycle on each element of it, in model order, and nothing on a chain that only leads into one (4a.2)": {
+        "sha256": "64f927f28901b50b",
+        "asserts": 3,
+        "helpers": [
+          "cycles",
+          "owners"
+        ]
+      },
+      "an icon's src and an author's avatar are escaped in href: an SVG data URL draws, and a model adds no attributes (audit 1)": {
+        "sha256": "6f6e82b51344289f",
+        "asserts": 2,
+        "helpers": []
+      },
+      "audit 20: every exported function reads a hostile model (an object with a toString or valueOf key in a label, a title, an id, a rule, a story) as validate() does: none throws": {
+        "sha256": "dac1780abc03fb82",
+        "asserts": 2,
+        "helpers": [
+          "modelFiles",
+          "read"
+        ]
+      },
+      "audit 30: an object with no prototype is read as a plain object: validate(), the writers, layout() and apply() never throw on it": {
+        "sha256": "b6f8a6744e31de0c",
+        "asserts": 9,
+        "helpers": []
+      },
+      "a card, box or view whose id is an Object.prototype name lays out, validates and breaks rules as any other id (audit 8, M3)": {
+        "sha256": "9c9ecc10a1b661ed",
+        "asserts": 6,
+        "helpers": []
+      }
+    },
+    "tests/schema.test.mjs": {
+      "a newer schemaVersion is an error: migrate() throws and validate() says so (F6); other values read as a map": {
+        "sha256": "953e393e4895b4eb",
+        "asserts": 5,
+        "helpers": []
+      }
+    },
+    "tests/registry.test.mjs": {
+      "validate() on version 2 runs the typed core's checks on typed parts and the map's on the rest; version 1 is checked as before": {
+        "sha256": "c3b60b35bb8ba084",
+        "asserts": 3,
+        "helpers": [
+          "said"
+        ]
+      }
+    },
+    "tests/apply.test.mjs": {
+      "apply() runs a command on a copy: the model given is never changed": {
+        "sha256": "897264d0cd677c43",
+        "asserts": 2,
+        "helpers": [
+          "base",
+          "errors",
+          "frozen",
+          "run"
+        ]
+      },
+      "set: a field of an element or a view by a path; a list of keys for a key with a dot; undefined removes it; objects only": {
+        "sha256": "b8bde9e25b2452d2",
+        "asserts": 6,
+        "helpers": [
+          "base",
+          "frozen",
+          "run"
+        ]
+      },
+      "a transaction is all or nothing: a command that fails leaves the model as it was": {
+        "sha256": "e4c333dbf0489488",
+        "asserts": 2,
+        "helpers": [
+          "base"
+        ]
+      },
+      "add: a node shown in a view at a place, a line listed in it, a member at a place; ids are new and never positional": {
+        "sha256": "063dc06caff35760",
+        "asserts": 6,
+        "helpers": [
+          "base",
+          "errors",
+          "frozen",
+          "run"
+        ]
+      },
+      "move: a member to another place or owner, keeping its id and lines; an element to another place in a view's order": {
+        "sha256": "faae3cee2b878fb9",
+        "asserts": 7,
+        "helpers": [
+          "base",
+          "frozen",
+          "run"
+        ]
+      },
+      "hide takes an element out of one view with all that view says of it; the model and the other views keep it (E5)": {
+        "sha256": "33c8189f3475e936",
+        "asserts": 15,
+        "helpers": [
+          "base",
+          "errors",
+          "frozen",
+          "run"
+        ]
+      },
+      "delete takes out the element, its members, what it owns, the lines to them, and everything that names them (M4)": {
+        "sha256": "1dea57861ccd2e6c",
+        "asserts": 20,
+        "helpers": [
+          "base",
+          "errors",
+          "frozen",
+          "run"
+        ]
+      },
+      "delete and hide leave a model that validates, for every element in every view of every example and target example": {
+        "sha256": "3c8bea82638a3f3c",
+        "asserts": 5,
+        "helpers": [
+          "errors",
+          "read"
+        ]
+      },
+      "reparent moves an element to a new owner, or out with null; never into itself, onto a line, or out of the members it is one of": {
+        "sha256": "4c04bbdb94ed49f9",
+        "asserts": 7,
+        "helpers": [
+          "base",
+          "frozen",
+          "run"
+        ]
+      },
+      "a 30-step script of every command undoes and redoes, through history(), to byte-identical models": {
+        "sha256": "70a4430d05e8627b",
+        "asserts": 5,
+        "helpers": [
+          "base",
+          "errors",
+          "frozen",
+          "run"
+        ]
+      },
+      "audit 36: a hostile model: hide and validate() read lines and steps that are no objects, ends that are no ids and ids named for Object's keys": {
+        "sha256": "281d802460adb567",
+        "asserts": 5,
+        "helpers": []
+      }
+    },
+    "tests/change.test.mjs": {
+      "diff() says what changed in words, marks it on the after model, and names the views that show it": {
+        "sha256": "6e4b78c0827ffeb5",
+        "asserts": 8,
+        "helpers": [
+          "fx",
+          "modelUrl",
+          "next"
+        ]
+      },
+      "diff() of a model with itself changes nothing; from nothing, everything is new; to nothing, everything is gone": {
+        "sha256": "1ac3c2a7f888cb90",
+        "asserts": 5,
+        "helpers": [
+          "fx",
+          "modelUrl"
+        ]
+      },
+      "diff() marks a card put into a view or taken out of one there only, and a view's own cards and lines": {
+        "sha256": "32a22d97983f46bb",
+        "asserts": 4,
+        "helpers": []
+      },
+      "diff() says a pin, a caption, lanes, a box tone and a rule, and lists the view": {
+        "sha256": "c7f766ad8b5eda51",
+        "asserts": 5,
+        "helpers": []
+      },
+      "audit 47: hostile diffMarks: prototype keys, values that are no mark, a ghost line with a URL or markup for its label or ends draw nothing fetched and mark only what they say": {
+        "sha256": "02e003261457a179",
+        "asserts": 7,
+        "helpers": [
+          "fromSrc"
+        ]
+      }
+    },
+    "tests/typed-diff.test.mjs": {
+      "maps diff as before, and lib/umlimator.js (no typed words) says what it said": {
+        "sha256": "fe80bec4445ad713",
+        "asserts": 3,
+        "helpers": [
+          "comm",
+          "edit",
+          "fixtures",
+          "load",
+          "seq",
+          "swap"
+        ]
+      }
+    },
+    "tests/mermaid-class.test.mjs": {
+      "read(write(model)) is the class example, view by view, less the owners a view does not show, which the text names": {
+        "sha256": "b5b85fc8c9ffc14d",
+        "asserts": 4,
+        "helpers": [
+          "byId",
+          "canon",
+          "hiddenOwners",
+          "json",
+          "notWritten",
+          "project",
+          "roundTrip"
+        ]
+      },
+      "read(write(model)) equals the model, less the owners the view does not show, for 500 generated models in the subset": {
+        "sha256": "9403c9d048cbee11",
+        "asserts": 9,
+        "helpers": [
+          "byId",
+          "canon",
+          "generate",
+          "hiddenOwners",
+          "pick",
+          "project",
+          "rng",
+          "roundTrip"
+        ]
+      },
+      "names that are Object.prototype's read and write as any other": {
+        "sha256": "ae028ff80cb8d175",
+        "asserts": 3,
+        "helpers": []
+      }
+    },
+    "tests/mermaid-er.test.mjs": {
+      "read(write(model)) is example 20, ids and references included, and nothing is reported": {
+        "sha256": "eb203507253b57b9",
+        "asserts": 9,
+        "helpers": [
+          "byId",
+          "canon",
+          "core",
+          "json",
+          "project"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models in the subset": {
+        "sha256": "ddcc6300f3889af2",
+        "asserts": 4,
+        "helpers": [
+          "COLUMNS",
+          "MULTS",
+          "NAMES",
+          "ONCE",
+          "TEXT",
+          "TYPES",
+          "byId",
+          "canon",
+          "generate",
+          "pick",
+          "project",
+          "rng"
+        ]
+      },
+      "text over the size limit is refused with a report; hostile input reads in under a second and never throws (§8, R2) (timed)": {
+        "sha256": "1ce366b584dace8e",
+        "asserts": 14,
+        "helpers": [
+          "byId",
+          "canon",
+          "core"
+        ]
+      }
+    },
+    "tests/mermaid-flowchart.test.mjs": {
+      "read(write(model)) is example 21, ids included, and nothing is reported": {
+        "sha256": "e636bd437135a133",
+        "asserts": 13,
+        "helpers": [
+          "byId",
+          "canon",
+          "json",
+          "project"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models in the subset": {
+        "sha256": "d5afd6c6c6fb1ec9",
+        "asserts": 5,
+        "helpers": [
+          "NAMES",
+          "TEXT",
+          "TYPES",
+          "byId",
+          "canon",
+          "core",
+          "generate",
+          "pick",
+          "project",
+          "rng"
+        ]
+      },
+      "text over the size limit is refused with a report; links past the cap are not read; hostile input reads in under a second and never throws (R2) (timed)": {
+        "sha256": "87893d8d41baeb68",
+        "asserts": 12,
+        "helpers": [
+          "core"
+        ]
+      }
+    },
+    "tests/mermaid-mindmap.test.mjs": {
+      "read(write(model)) is example 25, ids and sides included, and nothing is reported": {
+        "sha256": "5a829333e4c10dbc",
+        "asserts": 6,
+        "helpers": [
+          "byId",
+          "canon",
+          "example",
+          "project"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models of at most 64 levels and one root": {
+        "sha256": "62ffd38ae80d6a12",
+        "asserts": 5,
+        "helpers": [
+          "NAMES",
+          "SHAPES",
+          "TEXT",
+          "byId",
+          "canon",
+          "core",
+          "generate",
+          "pick",
+          "project",
+          "rng"
+        ]
+      },
+      "hostile input (§8.2) reads in under a second and never throws; over 1 MiB is refused (R2) (timed)": {
+        "sha256": "7a8dd3351ebfc59b",
+        "asserts": 20,
+        "helpers": [
+          "best",
+          "core",
+          "cpu",
+          "lines",
+          "text"
+        ]
+      }
+    },
+    "tests/mermaid-requirement.test.mjs": {
+      "read(write(model)) is example 16 without its comment, and nothing is reported": {
+        "sha256": "15e11db30282cbdb",
+        "asserts": 11,
+        "helpers": [
+          "SHOWN",
+          "byId",
+          "canon",
+          "core",
+          "json",
+          "project"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models in the subset": {
+        "sha256": "911f7999392aeabb",
+        "asserts": 4,
+        "helpers": [
+          "IDS",
+          "KINDS",
+          "NAMES",
+          "ONCE",
+          "RELS",
+          "REQIDS",
+          "SHOWN",
+          "TEXT",
+          "byId",
+          "canon",
+          "generate",
+          "keeps",
+          "pick",
+          "project",
+          "rng"
+        ]
+      }
+    },
+    "tests/mermaid-sequence.test.mjs": {
+      "read(write(model)) is example 11, ids included, and nothing is reported": {
+        "sha256": "e904c8c947b071a3",
+        "asserts": 6,
+        "helpers": [
+          "byId",
+          "canon",
+          "json",
+          "project"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models in the subset": {
+        "sha256": "d3e2e386ef3bcaee",
+        "asserts": 5,
+        "helpers": [
+          "OPS",
+          "byId",
+          "canon",
+          "generate",
+          "pick",
+          "project",
+          "rng"
+        ]
+      }
+    },
+    "tests/mermaid-state.test.mjs": {
+      "read(write(model)) is example 10, ids included, and nothing is reported": {
+        "sha256": "f05a970ff415208d",
+        "asserts": 11,
+        "helpers": [
+          "byId",
+          "canon",
+          "json",
+          "project",
+          "rank"
+        ]
+      },
+      "read(write(model)) equals the model, for 500 generated models in the subset": {
+        "sha256": "7411109bdf9612c3",
+        "asserts": 4,
+        "helpers": [
+          "EFFECTS",
+          "GUARDS",
+          "TEXT",
+          "TRIGGERS",
+          "byId",
+          "canon",
+          "generate",
+          "pick",
+          "project",
+          "rank",
+          "rng"
+        ]
+      },
+      "text over the size limit is refused with a report; hostile input reads in under a second and never throws (R2) (timed)": {
+        "sha256": "d12f023176c50079",
+        "asserts": 11,
+        "helpers": []
+      }
+    },
+    "tests/bpmn-xml.test.mjs": {
+      "read(write(model)) is the BPMN example, ids included; the writer reports nothing, the reader only positions": {
+        "sha256": "91fe1cf213671943",
+        "asserts": 11,
+        "helpers": [
+          "BpmnModdle",
+          "R5",
+          "byId",
+          "canon",
+          "example",
+          "file",
+          "needs",
+          "roundTrip",
+          "why"
+        ]
+      },
+      "hostile files are read or refused in under a second each, and never throw (R2) (timed)": {
+        "sha256": "90958547a14cb797",
+        "asserts": 14,
+        "helpers": [
+          "BpmnModdle",
+          "R5",
+          "best",
+          "cpu",
+          "file",
+          "needs",
+          "why"
+        ]
+      }
+    },
+    "tests/structurizr.test.mjs": {
+      "ids are stable: two reads give one model, and so does the workspace with new numeric ids (R3)": {
+        "sha256": "1c187ebb0c647d79",
+        "asserts": 6,
+        "helpers": [
+          "both",
+          "renumber"
+        ]
+      },
+      "a name or key that is __proto__ or constructor is an ordinary name, and nothing is polluted": {
+        "sha256": "4484079d688a8de9",
+        "asserts": 6,
+        "helpers": [
+          "lines"
+        ]
+      },
+      "hostile workspaces each read in under a second of CPU time (R2) (timed)": {
+        "sha256": "31d168ffbec91e9f",
+        "asserts": 2,
+        "helpers": [
+          "nest"
+        ]
+      }
+    },
+    "tests/dbml.test.mjs": {
+      "input that is not a Database, and fields of the wrong kind, are skipped and reported, never thrown on (R2)": {
+        "sha256": "1dfa3775046ef5cc",
+        "asserts": 17,
+        "helpers": [
+          "approx",
+          "db",
+          "ref",
+          "rel",
+          "skip",
+          "table"
+        ]
+      },
+      "names are ordinary, prototype names and \"->\" included; a circular Database (as @dbml/core builds it) is walked once (R2, R3)": {
+        "sha256": "8157339ba4c656e6",
+        "asserts": 7,
+        "helpers": [
+          "approx",
+          "db",
+          "ref",
+          "rel",
+          "skip",
+          "table"
+        ]
+      }
+    },
+    "tests/usecase.test.mjs": {
+      "a view's own nodes in a hostile model: no throw, nothing fetched, a delete ends (audit 23)": {
+        "sha256": "14f3c5d19195bf46",
+        "asserts": 8,
+        "helpers": []
+      }
+    },
+    "tests/layout-typed.test.mjs": {
+      "audit 9: a card, line, box and view named constructor, toString, valueOf or __proto__ in every example draw, read and print as any other name": {
+        "sha256": "a04b83bb67cb51c4",
+        "asserts": 6,
+        "helpers": []
+      }
+    }
+  }
+}
