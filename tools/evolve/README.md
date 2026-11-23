@@ -1,6 +1,6 @@
 # tools/evolve: the self-evolving loop's tools
 
-Four command-line tools for the audit and fix loop, written in Node with no dependency, plus the lessons file they feed. None of them is scheduled yet: the maintainer decides the times (proposed below). Each exits 0 when all is well, 1 when it has something to report (a refused lease, a tripped breaker, a new fuzz finding) and 2 on a usage error, so a scheduler or a script can act on the exit code alone. Tests: `node --test tests/evolve.test.mjs`.
+Five command-line tools for the audit and fix loop, written in Node with no dependency, plus the lessons file they feed. None of them is scheduled yet: the maintainer decides the times (proposed below). Each exits 0 when all is well, 1 when it has something to report (a refused lease, a tripped breaker, a new fuzz finding) and 2 on a usage error, so a scheduler or a script can act on the exit code alone. Tests: `node --test tests/evolve.test.mjs`.
 
 ## lease.mjs: one owner of the loop at a time
 
@@ -52,6 +52,14 @@ The targets (`fuzz-targets.mjs`) are the module's Structurizr JSON, seven Mermai
 It also runs any fuzz script it finds (a `*fuzz*` or `*hostile*` `.mjs`, `.js` or `.py` file under `tests/`, other than a `*.test.mjs`, and under each `--scripts` folder or `$EVOLVE_FUZZ_SCRIPTS`, such as the handoff's repro folder) for its share of the budget, keeping its output as a log.
 
 The whole run, shrinking included, stays within `--budget`: each target and script gets an even share of the time left when it starts. Each new failure is shrunk (lines, then characters; for JSON, keys and items) while it fails the same way, and written to the findings folder as `<target>-<hash>.<ext>` with `<target>-<hash>.finding.json` (kind, message, stack, seed and the repro command). A failure already in the folder is not written again. The seed (today's date by default) makes a run repeatable.
+
+## mutate.mjs: do the tests notice wrong code?
+
+```sh
+node tools/evolve/mutate.mjs <src files...> [--tests a,b] [--seed 1] [--max n] [--budget 10m] [--timeout 60s] [--timed] [--json]
+```
+
+Makes simple mutants of each source file (a comparison flipped, a logical or arithmetic operator swapped, a constant changed, an expression statement dropped), one at a time in a temporary copy of the repository, runs the related test files, and reports the share killed and each survivor's place. One seed picks the same mutants in the same order; the budget stops starting new ones. CONTRIBUTING.md ("Mutation testing") says more. Tests: `node --test tests/mutate.test.mjs`.
 
 ## LESSONS.md
 

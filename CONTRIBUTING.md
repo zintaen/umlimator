@@ -55,6 +55,32 @@ UMLIMATOR_BPMN_MODDLE=/tmp/moddle npm test
 
 The bench lays out fixed models in headless Chrome and fails on a view that no longer draws as recorded in `bench/expected.json`. A change that moves lines on purpose refreshes it with `--write-expected` and says why in the pull request.
 
+### Protected tests
+
+Some tests hold the module's core promises: the bench hashes (`layout()` draws each benchmark view as recorded), `validate()` and `apply()`, `diff()`'s invariants, the readers' round trips, and the hostile-input and prototype-key tests. `tests/protected.json` lists them by file and title, with a hash of each test's body and of the file's top-level helpers it uses, and how many asserts it makes. `tests/protected.test.mjs` fails when a protected test is deleted, renamed or edited, an assertion dropped or weakened, the test skipped, or a helper it calls changed. A change of layout or of a comment is no change.
+
+Their expectations change only with the maintainer's approval. When a pull request has to change one, say which and why in the pull request; after approving, the maintainer records it:
+
+```bash
+node tools/protect.mjs                                 # check every protected test; exit 1 on one gone or changed
+node tools/protect.mjs --list                          # the protected tests, with their asserts and helpers
+node tools/protect.mjs --update [file [title...]]      # the maintainer: record the approved change
+node tools/protect.mjs --add tests/x.test.mjs "title"  # the maintainer: protect another test
+node tools/protect.mjs --remove tests/x.test.mjs "title"
+```
+
+Only a test with a literal title can be protected. A renamed protected test is removed and added again under its new name.
+
+### Mutation testing
+
+`tools/evolve/mutate.mjs` asks whether the tests notice when the code is wrong. It makes small wrong versions of a source file (a comparison flipped, `&&` and `||` or `+` and `-` swapped, a number or `true` changed, an expression statement dropped), one at a time, runs the test files that import the file, and reports the share of mutants a test failed on (killed) and every survivor with its line and column. A survivor is a change no test notices: a missing assertion, or a line that does nothing.
+
+```bash
+node tools/evolve/mutate.mjs src/core/history.js --tests tests/apply.test.mjs --seed 3 --max 40 --budget 10m
+```
+
+Without `--tests` it runs every `tests/*.test.mjs` that names the file, the one named after it first, and stops a mutant's run at the first test file that fails. The same `--seed` picks the same mutants in the same order; `--budget` (seconds, or `90s`, `10m`) stops starting new mutants once spent and says how many were not run; a mutant that runs past `--timeout` counts as killed. When the tests read `lib/`, each mutant is built first. All the work happens in a temporary copy of the repository, removed at the end, so the tree is never changed. A line that holds `mutate: skip` is never mutated. Exit 0 when it ran, 1 when the tests fail before any mutation, 2 on a usage error; `--json` prints the report as JSON. Its tests are `node --test tests/mutate.test.mjs`.
+
 ## Rules a pull request must keep
 
 - `lib/` is built and committed. Edit the sources in `src/`, run `node tools/build.mjs`, and commit `src/` and `lib/` together. CI fails when `lib/` is not what `src/` builds.
