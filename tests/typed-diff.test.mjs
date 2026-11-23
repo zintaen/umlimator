@@ -493,3 +493,35 @@ test('audit 56: every count a name says on the diff page is the model after\'s: 
   const sm = load('examples/types/uml-state-machine.json'), parcel = sm.nodes.filter(n => n.parent === 'fulfilling.parcel').map(n => n.id);
   assert.equal(name(all.diff(sm, all.apply(sm, del(...parcel)())).model, 'order-life', 'fulfilling.parcel'), 'Region Parcel of Fulfilling');
 });
+
+// audit 60's known gap of 0.45.0 (docs/diagrams/notes/typed-repoint.md): in a typed view that lists its lines, a line re-pointed
+// while the view stopped listing it, or while its old end left the view, was drawn back removed under the model line's id between
+// its old ends, and validate() said the id was used twice. Its copy now has an id of its own, the line's id and "~old"; a view
+// that numbers its steps (a C4 dynamic view, whose step names a model relationship) draws none and says it is taken out
+test('known gap of 0.45.0: a typed view\'s re-pointed line it stopped listing or lost an end of comes back under a free id, or not at all in a C4 dynamic view; the diff model validates', () => {
+  const quiet = f => { const k = console.warn; console.warn = () => {}; try { return f(); } finally { console.warn = k; } };
+  const twice = m => quiet(() => all.validate(m)).filter(p => p.level === 'error' && /used twice|needs an id/.test(p.message)).map(p => p.message);
+  const files = ['c4', 'sysml-block-definition', 'uml-class', 'uml-communication', 'uml-deployment', 'uml-package'].map(f => `examples/types/${f}.json`);
+  let cases = 0;
+  for (const f of files) { const M = load(f);
+    M.views.forEach((v, vi) => { if (!Array.isArray(v.edges)) return; const lid = v.edges.find(x => typeof x === 'string' && M.edges.some(e => e.id === x && v.nodeIds.includes(e.to)));
+      if (!lid) return; const e = M.edges.find(x => x.id === lid), type = id => (M.nodes.find(n => n.id === id) || {}).type;
+      const to = M.nodes.find(n => n.id !== e.to && n.id !== e.from && n.type === type(e.to)); if (!to) return;
+      for (const hide of [false, true]) {
+        const b = edit(M, x => { x.edges.find(y => y.id === lid).to = to.id; x.views[vi].edges = x.views[vi].edges.filter(y => y !== lid); if (hide) x.views[vi].nodeIds = x.views[vi].nodeIds.filter(y => y !== e.to); });
+        const d = quiet(() => all.diff(M, b)), tag = `${f} ${v.id} ${lid}${hide ? ' with its old end hidden' : ''}`; cases++;
+        assert.deepEqual(twice(d.model), [], tag);
+        const own = d.model.views[vi].edges.filter(x => x && typeof x === 'object' && x.type === e.type && x.from === e.from && x.to === e.to && x.change === 'removed');
+        if (v.diagram === 'c4.dynamic') assert.deepEqual(own, [], tag + ': no step of its own');
+        else assert.deepEqual(own.map(x => x.id), [`${lid}~old`], tag);
+        if (!hide) assert.ok(d.summary.some(s => s.startsWith('takes the line from ') && s.includes(' out of the view ')), tag + ': said');
+      } }); }
+  assert.ok(cases >= 20, `every view tried (${cases})`);
+  // drawn removed between its old ends, under its own id; an id the model holds already is passed over
+  const C = load('examples/types/uml-class.json'), B = edit(C, x => { x.edges.find(y => y.id === 'customer-orders').to = 'line'; x.views[0].edges = x.views[0].edges.filter(y => y !== 'customer-orders'); });
+  const g = quiet(() => all.layout(all.diff(C, B).model, 'sales'));
+  assert.deepEqual(g.edges.filter(x => x.change).map(x => [x.id, x.from, x.to, x.change]), [['customer-orders~old', 'customer', 'order', 'removed']]);
+  const held = edit(C, x => { x.nodes.find(n => n.id === 'note-total').id = 'customer-orders~old'; x.edges.forEach(y => { if (y.from === 'note-total') y.from = 'customer-orders~old'; }); x.views.forEach(w => { w.nodeIds = w.nodeIds.map(i => i === 'note-total' ? 'customer-orders~old' : i); }); });
+  const d2 = quiet(() => all.diff(held, edit(held, x => { x.edges.find(y => y.id === 'customer-orders').to = 'line'; x.views[0].edges = x.views[0].edges.filter(y => y !== 'customer-orders'); })));
+  assert.deepEqual(twice(d2.model), []); assert.ok(d2.model.views[0].edges.some(x => x && x.id === 'customer-orders~old2'));
+});
