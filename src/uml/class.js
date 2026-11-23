@@ -204,6 +204,8 @@ SHAPE.note = {
 };
 
 /* ---- lines: how each kind is drawn (src/typed/draw.js's ENDS), and its words ---- */
+// an association class's tie (below, typeGeo): a layout line of its own, no model element
+const TIE = 'association-class:', TIE_T = 'uml.AssociationClassLink';
 const endOfLine = (e, w) => { const at = ((UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {})[w]) || {};
   return at.aggregation === 'composite' ? 'filled-diamond' : at.aggregation === 'shared' ? 'diamond' : at.navigable ? 'open' : 'none'; };
 const endsOf = e => (UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {});
@@ -213,7 +215,7 @@ function lineLook(e) {
     case 'uml.InterfaceRealization': case 'uml.Realization': case 'uml.ComponentRealization': return { from: 'none', to: 'triangle', dashed: true };
     case 'uml.Dependency': case 'uml.Usage': case 'uml.Abstraction': return { from: 'none', to: 'open', dashed: true };
     case 'uml.Connector': return { from: 'none', to: 'none' };
-    case 'uml.CommentLink': return { from: 'none', to: 'none', dashed: true };
+    case 'uml.CommentLink': case TIE_T: return { from: 'none', to: 'none', dashed: true }; // TIE_T: an association class's tie
     case 'uml.PackageImport': case 'uml.PackageMerge': case 'uml.ProfileApplication': return { from: 'none', to: 'open', dashed: true };
     case 'uml.Extension': return { from: 'none', to: 'filled-triangle' }; // to the metaclass (notes/stage-6.md §4.1)
     case 'uml.Association': { const E = endsOf(e), lab = w => ({ role: (E[w] || {}).role, mult: (E[w] || {}).multiplicity });
@@ -245,7 +247,7 @@ const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instance
   'uml.ProfileApplication': ['Profile application', '«apply»: the package may use the profile\'s stereotypes'],
   'uml.Usage': ['Usage', '«use»: needs the one it points to'], 'uml.Realization': ['Realization', 'realizes the one it points to'],
   'uml.ComponentRealization': ['Component realization', 'realizes the component it points to'], 'uml.Abstraction': ['Abstraction', '«abstraction»: a more abstract view of the one it points to'],
-  'uml.Connector': ['Connector', 'a link between parts'] };
+  'uml.Connector': ['Connector', 'a link between parts'], [TIE_T]: ['Association class', 'the class that details the association it meets'] };
 const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>',
@@ -286,7 +288,9 @@ const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
    with its kind's keyword, as its accessible name says it (audit 19); own: the line types a view with no `edges` list draws (none: every type); word: the
    diagram's name in describe(). The class view's own: its row's lines (model.md); another diagram's (a usage, a connector) only when listed */
 const CLASS_LINES = ['uml.Association', 'uml.Generalization', 'uml.InterfaceRealization', 'uml.Dependency', 'uml.CommentLink'];
-const CLASS_LOOK = { members: true, own: CLASS_LINES, word: 'class diagram', kinds: true };
+// dg.shutBoxes: a line through a package that holds neither of its ends is routed again round it (layered.js's box pass), as a
+// state machine's is: laid out right, the example's «use» line from Payable to Money ran inside the card package, under its title
+const CLASS_LOOK = { members: true, own: CLASS_LINES, word: 'class diagram', kinds: true, assocClass: true, dg: { shutBoxes: true } };
 // an element's accessible name: "Class Order (entity, abstract), 5 attributes, 3 operations", by its drawn name (pic: the
 // view's owners, owners.js); "Package sales, holding 4 elements"; "Package payments (closed)"
 function nodeName(n, pic, look = CLASS_LOOK) {
@@ -338,10 +342,68 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
   // its label, which is then not drawn: laid out left to right, a view with boxes and labelled lines spreads its columns by its
   // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
   const down = view.direction === 'down', wide = !down && boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
-  const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
+  // the association classes it draws (look.assocClass, the class view): each class's accessible name says its association
+  const tied = look.assocClass ? tiesIn(at, nodes.map(d => d.id), lines.filter(({ from, to }) => !holdsLine(pic, from, to))) : new Map(), ties = tiesOf(tied, edges, nodes);
+  ties.forEach(t => { const d = nodes.find(x => x.id === t.to); d.aria += `, the association class of the ${edges.find(x => x.id === t.tie).aria}`; });
+  const g = layoutTyped({ nodes, edges: [...edges, ...ties], ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
+  if (ties.length) tieDraw(g);
   g.legend = legendOf(g.edges); g.order = [...readingOrder(pic), ...edges.map(e => e.id)]; // Tab: the elements, then the lines
   return placeTabs(g);
 };
+
+/* ---- association classes (UML 2.5.1 §11.5.4): a class whose props.associationClass is an association's id is that
+   association's class, drawn as a class box joined to the middle of the association's line by a dashed line (the tie).
+   tiesIn: the ties a view draws, association id -> class id: each association the view draws with the first class it shows
+   that names it, the class at neither end of it (UML's cannot_be_defined, said by rule association-class), the line no loop
+   (its middle is far round the box: drawn without the tie, a warning). tiesOf: a layout
+   line for each, from the association's source end to the class, so the layout puts the class by the line (TIE_T, no model
+   element: its id TIE + the class's id, no _id, so no Ref names it and Tab skips it); tieDraw: each tie, once laid out,
+   redrawn from the class box to the middle of its association's line as drawn ---- */
+const assocOf = x => (UML_OBJ(x) && UML_OBJ(x.props) && typeof x.props.associationClass === 'string' && x.props.associationClass ? x.props.associationClass : null);
+// lines: the view's drawn lines ({ e, from, to }, a member's end at its owner); ids: the elements it shows as cards
+function tiesIn(at, ids, lines) {
+  const byId = new Map(lines.map(l => [l.e.id, l])), out = new Map(), taken = new Set();
+  ids.forEach(id => { const r = at.get(id), a = r && r.kind === 'node' && (r.x.type || 'uml.Class') === 'uml.Class' ? assocOf(r.x) : null, l = a && byId.get(a);
+    if (!l || l.e.type !== 'uml.Association' || l.from === l.to || out.has(a) || taken.has(id) || l.from === id || l.to === id) return; // a loop's middle is far round it: no tie
+    out.set(a, id); taken.add(id); });
+  return out;
+}
+function tiesOf(ties, edges, nodes) {
+  const byId = new Map(edges.map(e => [e.id, e])), card = new Map(nodes.map(d => [d.id, d]));
+  return [...ties].map(([a, c]) => { const e = byId.get(a), d = card.get(c);
+    return { id: TIE + c, type: TIE_T, from: e.from, to: c, tie: a, end: lineLook({ type: TIE_T }), aria: `Association class ${d.label} of the ${e.aria}` }; });
+}
+// the middle of a line by its length, and which way the segment there runs
+function midOf(pts) {
+  const segs = pts.slice(1).map((q, i) => [pts[i], q, Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1])]), half = segs.reduce((s, x) => s + x[2], 0) / 2;
+  let run = 0; for (const [p, q, L] of segs) { if (run + L >= half && L > 0) { const t = (half - run) / L; return { at: [r2(p[0] + (q[0] - p[0]) * t), r2(p[1] + (q[1] - p[1]) * t)], flat: Math.abs(q[1] - p[1]) < Math.abs(q[0] - p[0]), seg: [p, q] }; } run += L; }
+  return { at: pts[0], flat: true, seg: [pts[0], pts[0]] };
+}
+// the middle moved along its segment past the line's label when the label sits on it, 6 px clear, to the side nearer the class
+// (toward(flat): the class's middle across the segment's run); left where it is when the segment has no room past the label
+function offLabel(m, L, toward) {
+  if (!L || !Number.isFinite(L.x)) return m;
+  const [x, y] = m.at, k = m.flat ? 0 : 1, [p, q] = m.seg, lo = Math.min(p[k], q[k]), hi = Math.max(p[k], q[k]);
+  const on = m.flat ? y >= L.y - 6 && y <= L.y + L.h + 6 : x >= L.x - 6 && x <= L.x + L.w + 6, a = m.flat ? L.x - 6 : L.y - 6, b = m.flat ? L.x + L.w + 6 : L.y + L.h + 6;
+  if (!on || m.at[k] < a || m.at[k] > b) return m;
+  const ok = [a, b].filter(v => v > lo + 2 && v < hi - 2).sort((u, w) => Math.abs(u - toward(m.flat)) - Math.abs(w - toward(m.flat)));
+  if (!ok.length) return m;
+  const at = m.flat ? [r2(ok[0]), y] : [x, r2(ok[0])];
+  return { ...m, at };
+}
+function tieDraw(g) {
+  const byId = new Map(g.edges.map(e => [e.id, e]));
+  g.edges = g.edges.map(e => { if (e.type !== TIE_T) return e; const a = byId.get(e.tie), c = e.t;
+    if (!a || !a.pts || a.pts.length < 2 || !c) return null;
+    const cx = c.x + c.w / 2, cy = c.y + c.h / 2, { at: [mx, my], flat } = offLabel(midOf(a.pts), a.lbl, flat0 => (flat0 ? cx : cy));
+    // straight from the box's side that faces the middle when the middle is across from it, else one turn, meeting the line
+    // square: out of the box's side, then down or up onto a flat segment; out of its top or bottom, then across onto an upright one
+    const side = mx < cx ? c.x : c.x + c.w, end = my < cy ? c.y : c.y + c.h;
+    const pts = mx > c.x + 4 && mx < c.x + c.w - 4 ? [[mx, end], [mx, my]] : my > c.y + 4 && my < c.y + c.h - 4 ? [[side, my], [mx, my]]
+      : flat ? [[side, r2(cy)], [mx, r2(cy)], [mx, my]] : [[r2(cx), end], [r2(cx), my], [mx, my]];
+    return { ...e, pts, p1: pts[0], p2: pts[pts.length - 1], stubs: [], lbl: null, how: 'tie', fixed: pts };
+  }).filter(Boolean);
+}
 const classGeo = typeGeo(CLASS_LOOK);
 
 /* ---- validators (proposal.md §8.3). Each problem: { level, rule, path, message, ids }; the message names the rule and
@@ -417,6 +479,41 @@ function classProblems(model, view) {
   return out;
 }
 
+/* ---- association-class (the class view's alone): a class's props.associationClass is the id of a uml.Association that
+   no other class names, with the class at neither of its ends (UML 2.5.1 §11.8.2, cannot_be_defined), errors; and in each
+   class view, the class shown with its association not drawn, or the association drawn with its class not shown, a warning:
+   the view draws neither the box's tie nor the line's class ---- */
+const ASSOC_RULE = { 'association-class': 'an association class names one association, at neither of its ends, and is drawn with it' };
+function assocClassProblems(model, view) {
+  const out = [], at = classIndex(UML_OBJ(model) ? model : {}), q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x)), first = new Map();
+  const say = (level, path, ids, msg) => out.push({ level, rule: 'association-class', path, ids: ids.filter(x => x != null), message: `association-class: ${msg}` });
+  const named = [...at.values()].filter(r => r.kind === 'node' && UML_OBJ(r.x.props) && r.x.props.associationClass != null);
+  named.forEach(({ x, path }) => { const a = x.props.associationClass, p = `${path}.props.associationClass`, e = typeof a === 'string' && at.get(a);
+    if (typeof a !== 'string' || !a) return say('error', p, [x.id], `${q(x.id)} names ${jsonText(a)}, which is not an association's id`);
+    if ((x.type || 'uml.Class') !== 'uml.Class') return say('error', p, [x.id], `${q(x.id)} is ${aWord(typeWord(x.type).toLowerCase())}: only a class is an association class`);
+    if (!e || e.kind !== 'edge' || e.x.type !== 'uml.Association') return say('error', p, [x.id, a], `${q(x.id)} names ${q(a)}, which is ${!e ? 'not in the model' : `${aWord(typeWord(e.x.type).toLowerCase())}, not an association`}`);
+    if (e.x.from === x.id || e.x.to === x.id) return say('error', p, [x.id, a], `${q(x.id)} is an end of its own association ${a}`);
+    if (first.has(a)) return say('error', p, [x.id, first.get(a), a], `${q(x.id)} and ${q(first.get(a))} both name association ${a}, which has one class`);
+    first.set(a, x.id); });
+  if (!UML_OBJ(view)) return out;
+  const { pic, lines } = drawnLines(model, view, CLASS_LINES), cards = new Set(pic.ids.filter(id => !pic.open.has(id))), drawn = new Set(lines.filter(({ from, to }) => !holdsLine(pic, from, to)).map(l => l.e.id));
+  first.forEach((c, a) => { const r = at.get(c), vi = UML_ARR(model.views).indexOf(view), where = `view ${jsonText(view.id)}`;
+    const l = lines.find(x => x.e.id === a);
+    if (cards.has(c) && l && l.from === l.to) say('warning', `${r.path}.props.associationClass`, [c, a], `${where} draws ${a}, a loop, with no tie to its class ${q(c)}`);
+    else if (cards.has(c) && !drawn.has(a)) say('warning', `${r.path}.props.associationClass`, [c, a], `${where} shows ${q(c)} but does not draw its association ${a}`);
+    else if (!cards.has(c) && drawn.has(a)) say('warning', vi >= 0 ? `views[${vi}].nodeIds` : `${r.path}.props.associationClass`, [a, c], `${where} draws association ${a} but does not show its class ${q(c)}`); });
+  return out;
+}
+// the panel's "Association class of" field (edits.field): an association's id, or the name of one, as an id; anything else
+// refused in the rule's words. Null: another field, or the field emptied
+function classField(model, view, id, path, value) {
+  if (String(path) !== 'props.associationClass' || value == null) return null;
+  const t = String(value).trim(), es = UML_ARR(model && model.edges).filter(e => UML_OBJ(e) && e.type === 'uml.Association');
+  const e = es.find(x => x.id === t) || (es.filter(x => String(x.label ?? '') === t).length === 1 ? es.find(x => String(x.label ?? '') === t) : null);
+  if (!e) return { error: `association-class: no association has the id or the one name ${JSON.stringify(t)}` };
+  if (e.from === id || e.to === id) return { error: 'association-class: a class is not the association class of an association it is an end of' };
+  return [{ op: 'set', id, path: 'props.associationClass', value: e.id }];
+}
 /* ---- a line that would close a cycle (connect, audit 36): a generalization from `from` to `to` closes one when `from` is
    `to` or an ancestor of it already, through the model's lines and the view's own (each id's first, as classProblems and
    ucProblems weigh them). A walk on a stack from `to`, each element once. The words: { error } naming every element on the
@@ -478,11 +575,16 @@ const describeAs = look => (model, viewId) => {
   const nm = id => (at.get(id).x.type === 'uml.Comment' ? nameOfEl(at.get(id).x) : pic.name(id));
   const end = (e, w) => { const E = endsOf(e)[w] || {}, t = [E.role, E.multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
   const out = [`${labelOr(v.title, v.id)}: a ${look.word} of ${plural(pic.ids.length, 'element')} and ${plural(lines.length, 'line')}.`];
+  // an association class (the class view's): its association said with it, and the association's class said with the line
+  const tied = look.assocClass ? tiesIn(at, pic.ids.filter(x => !pic.open.has(x)), lines) : new Map(), tieOf = new Map([...tied].map(([a, c]) => [c, a]));
+  const through = e => (tied.has(e.id) ? ` through ${nm(tied.get(e.id))}` : '');
   readingOrder(pic).forEach(id => { const said = [];
+    if (tieOf.has(id)) { const { e, from: f, to: t } = lines.find(l => l.e.id === tieOf.get(id));
+      said.push(`the association class of the association between ${nm(f)} and ${nm(t)}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
     lines.forEach(({ e, from: f, to: t }) => { const E = endsOf(e);
       if (e.type === 'uml.Association' && (f === id || t === id)) { const [me, far] = f === id ? ['from', 'to'] : ['to', 'from'], agg = (E[me] || {}).aggregation, whole = (E[far] || {}).aggregation;
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
-        said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
+        said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}${through(e)}`); }
       else if (f !== id) return;
       else { const verb = lineVerb(e) || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
         said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
@@ -496,6 +598,8 @@ const classDescribe = describeAs(CLASS_LOOK);
 const CLASS_TYPE = registerDiagramType('uml.class', {
   untyped: 'Class', untypedAs: 'uml.Class', // an element of no type (or ""): a class, as drawn, named, edited and judged (audit 30)
   ...CLASS_DEF,
+  // a class's "Association class of": an association's id or name (classField), on the class view's form alone, as it alone draws one
+  props: { ...CLASS_DEF.props, 'uml.Class': [...CLASS_DEF.props['uml.Class'], { key: 'associationClass', label: 'Association class of', kind: 'text' }] },
   // the layered layout ranks the view's lines as maps are ranked, a generalization and a realization turned round so the
   // general one comes first: above its specializations in a view laid out down (risks.md L6)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization',
@@ -504,14 +608,17 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   boxes: (model, view) => ownersOn(model, view).boxes,
   owners: ownerChoices,
   member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
-  validate: (model, view) => [...classProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
-  rules: { ...RULES, ...OWNER_RULES },
+  validate: (model, view) => [...classProblems(model, view), ...assocClassProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
+  rules: { ...RULES, ...ASSOC_RULE, ...OWNER_RULES },
   describe: classDescribe,
   // the PDF's Members: what the box draws, its compartments' rows, so a port or a reception it does not draw is not listed as if
   // it were (audit 31, as the object type's since audit 30); null (a comment, a package): its members
   rows: (model, view, id) => { const x = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
     return compartmentsOf(x).flatMap(c => c.members.map(rowMember)); },
-  edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
+  // the PDF's Kind (asked with no view): a class that is an association's class, rule association-class kept, is "Association
+  // class"; null: the element's kind
+  word: (model, id) => (assocClassProblems(model).some(p => p.ids[0] === id) || !UML_ARR(model && model.nodes).some(n => UML_OBJ(n) && n.id === id && assocOf(n)) ? null : 'Association class'),
+  edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner, field: classField },
 });
 
 export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
