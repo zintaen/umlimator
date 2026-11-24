@@ -5,6 +5,7 @@ import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
 import { TYPED, idTable } from '../core/registry.js';
+import { BARY_SWEEPS, CROSS_CAP, FAN_IN, FAN_TRIES, LABEL_PASSES, OUTSIDE_TRIES, ROW_SWEEPS } from './tune.js';
 
 const CHG = Object.assign(Object.create(null), { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] }); // no prototype: a change named constructor is none
 // a line's fromSide or toSide, as its side's letter; no prototype: a side named toString is none, as validate() says (audit 28: it was a function)
@@ -79,7 +80,7 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
       L.forEach(([, v], seen) => { const r = rank.get(v); let le = 0; for (let i = r; i > 0; i -= i & -i) le += bit[i]; n += seen - le; for (let i = r; i <= vs.length; i += i & -i) bit[i]++; }); }
     return n; };
   let best = segs.length > 1 ? crossings() : 0, keep = cols.map(c => c.slice()); // the order given, unless one crosses less
-  for (let it = 0; it < 8 && best; it++) {
+  for (let it = 0; it < BARY_SWEEPS && best; it++) {
     const down = it % 2 === 0, seq = cols.map((_, k) => k).filter(k => (down ? k > 0 : k < cols.length - 1) && !cols[k].every(id => id in fixed));
     if (!down) seq.reverse();
     for (const k of seq) { const at = tops(), side = down ? k - 1 : k + 1; // where each item would be for its lines to run level
@@ -114,8 +115,8 @@ function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
     list.forEach(id => { blocks.push({ ids: [id], sum: want[id] - off, n: 1 }); off += h(id);
       while (blocks.length > 1 && blocks.at(-2).sum / blocks.at(-2).n > blocks.at(-1).sum / blocks.at(-1).n) { const b = blocks.pop(), a = blocks.at(-1); a.ids.push(...b.ids); a.sum += b.sum; a.n += b.n; } });
     off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = b.sum / b.n + off; off += h(id); })); };
-  for (const [from, to, step] of [[1, cols.length, 1], [cols.length - 2, -1, -1], [1, cols.length, 1]])
-    for (let k = from; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
+  for (const step of ROW_SWEEPS)
+    for (let k = step > 0 ? 1 : cols.length - 2, to = step > 0 ? cols.length : -1; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
       cols[k].forEach(id => { const nb = (step > 0 ? ins : outs)[id] || []; want[id] = nb.length ? median(nb.map(([x, ox, o]) => row[x] + ox - o)) : row[id]; });
       fit(cols[k], want); }
   const low = Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));
@@ -204,7 +205,7 @@ function layoutGraph(dg, map) {
   // records); of two other lines, the steeper comes into its target's top or bottom (clinic's "Sends texts" with Clinic bookings
   // unfolded, up past Patient records into the SMS gateway's bottom). ponytail: a layout more, so only up to 30 cards (as
   // bestFlow); a larger view keeps its crossings
-  const refs = [], pairs = map && !dg.quick && !dg.flipped && dg.nodes.length <= 30 ? routeAudit(g, '', null, refs).flatMap((s, k) => s.endsWith(' cross') ? [refs[k]] : []) : [];
+  const refs = [], pairs = map && !dg.quick && !dg.flipped && dg.nodes.length <= CROSS_CAP ? routeAudit(g, '', null, refs).flatMap((s, k) => s.endsWith(' cross') ? [refs[k]] : []) : [];
   const far = { L: 'right', R: 'left', T: 'bottom', B: 'top' }, dy = e => (e.s.y + e.s.h / 2) - (e.t.y + e.t.h / 2), out = new Map();
   pairs.forEach(p => p.forEach(e => { if (e.back && !e.fixed && !e.fromSide) out.set(e.from + '>' + e.to, ['fromSide', far[e.fs]]); }));
   pairs.forEach(p => { const e = p.filter(e => !e.back && !e.fixed && !e.toSide && /[LR]/.test(e.ts) && dy(e)).sort((a, b) => Math.abs(dy(b)) - Math.abs(dy(a)))[0];
@@ -221,7 +222,7 @@ function layoutGraph(dg, map) {
   const r2 = [], left = n && best !== g ? routeAudit(best, '', null, r2).flatMap((s, k) => s.endsWith(' cross') ? [r2[k]] : []) : pairs;
   const feeds = (s, t) => best.edges.some(o => o.s === s && o.t === t), both = ([a, b]) => { const k = a.t !== b.t && best.edges.filter(o => [a.t, b.t].includes(o.t) && feeds(o.s, a.t) && feeds(o.s, b.t)); return k && k.length >= 4 ? k : []; };
   const round = [...new Set([...left.slice(0, 2).flatMap(both), ...left.slice(0, 2).flat()])].filter(e => !e.back && !e.fixed && !e.fromSide && !e.toSide && /[LR]/.test(e.fs) && /[LR]/.test(e.ts));
-  let tries = 4;
+  let tries = OUTSIDE_TRIES;
   round.forEach(e => { const side = { fromSide: e.fs === 'R' ? 'left' : 'right', toSide: dy(e) >= 0 ? 'top' : 'bottom' };
     [...new Set([bestDg, dg])].forEach(d => { if (n && tries-- > 0) attempt({ ...d, edges: d.edges.map(x => x.from === e.from && x.to === e.to ? { ...x, ...side } : x) }); }); });
   // fan-in (issue 149): lines into a card that six or more lines come into still cross. One line of such a pair at a time, of
@@ -231,11 +232,11 @@ function layoutGraph(dg, map) {
   // r19's logger: boxed 5 → 1, plain 6 → 3. ponytail: 14 layouts more at most, on views of up to 30 cards; a crossing-aware
   // placement would reach plain's last ones (search beside db)
   const fan = Object.create(null); best.edges.forEach(e => { if (!e.back) fan[e.to] = (fan[e.to] || 0) + 1; });
-  if (map && dg.fan && !dg.quick && !dg.flipped && dg.nodes.length <= 30 && Object.values(fan).some(k => k >= 6)) {
-    const audit = h => { const r = [], is = routeAudit(h, '', null, r), hot = r.filter((p, k) => / (cross|share a line)$/.test(is[k]) && p.some(e => fan[e.to] >= 6));
+  if (map && dg.fan && !dg.quick && !dg.flipped && dg.nodes.length <= CROSS_CAP && Object.values(fan).some(k => k >= FAN_IN)) {
+    const audit = h => { const r = [], is = routeAudit(h, '', null, r), hot = r.filter((p, k) => / (cross|share a line)$/.test(is[k]) && p.some(e => fan[e.to] >= FAN_IN));
       return { hot, n: is.length }; };
     const far = { L: 'right', R: 'left', T: 'bottom', B: 'top' }, tried = new Set(), start = audit(best), g0 = [best, bestDg], lined = new Set(dg.edges.flatMap(e => [e.from, e.to]));
-    let cur = start, left = 14;
+    let cur = start, left = FAN_TRIES;
     const ways = e => [['fromSide', far[e.fs]], ['toSide', far[e.ts]], ['foot', e.to]].map(([k, s]) => {
       if (k !== 'foot') return !e[k] && s && { key: e.from + '>' + e.to + k, d: { ...bestDg, edges: bestDg.edges.map(x => x.from === e.from && x.to === e.to ? { ...x, [k]: s } : x) } };
       const nodes = bestDg.nodes.map(n => ({ ...n })), me = nodes.find(n => n.id === s), col = nodes.filter(n => n !== me && n.col === me.col), rows = col.filter(n => lined.has(n.id)).map(n => n.row);
@@ -925,7 +926,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
       for (const so of fits(o, was.text, 0)) { put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
-    for (const pass of (late ? (map ? [4, 3] : [0, 4, 3, 5, 1, 2]) : map ? [0, 1, 2] : [0])) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
   }
   let stats = {};
   free.forEach(e => { // every port's stub is reserved before routing starts
@@ -963,7 +964,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // between two states took the inner tracks, and those the other way went round them and crossed (audit 39: eight
   // transitions, laid out right)
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
-  const fan = Object.create(null), hot = e => fan[e.t.id] >= 6 && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
+  const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
   order = [...order.filter(hot), ...order.filter(e => !hot(e))];
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
@@ -1122,7 +1123,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a labelled line with no spot for its label yet: 1 when the first spot the late tries find (placeLabel, the labels before it
   // left where they are) lies on another line, or there is none
   const lateOn = e => { if (e.lbl || (!e.label && e.step == null)) return 0; const full = fullOf(e), tries = [full, ...(e.step != null && e.label && !dg.abs ? [String(e.step)] : [])];
-    for (const pass of [0, 4, 3, 5, 1, 2]) for (const text of tries) { if (!pass && text === full) continue; const s = fits(e, text, pass).next().value; if (!s) continue;
+    for (const pass of LABEL_PASSES.late) for (const text of tries) { if (!pass && text === full) continue; const s = fits(e, text, pass).next().value; if (!s) continue;
       const r = { x: s.box.x + 1, y: s.box.y + 1, w: s.box.w - 2, h: s.box.h - 2 }; return edges.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, b]) => segHitsRect(a, b, r))) ? 1 : 0; }
     return 1; };
   const heads = P => dg.typed && families.some(f => segsOf(P).some(([a, b]) => segHitsRect(a, b, headRect(f))));
