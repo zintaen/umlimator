@@ -233,7 +233,7 @@ The opt-in keeps old pictures, but it also means few views benefit until the mai
 
 Each is small, opt-in or neutral, and lands on `audit-loop` with its tests, its line in `docs/module-api.md`'s unreleased section, and the docs pages it touches.
 
-1. The score: `src/layout/score.js`, `bench/score.mjs`, `bench.py --score`, `bench/score-weights.json`, `bench/score-expected.json` for the fixed corpus as it draws now, `tests/score.test.mjs`. No picture changes.
+1. The score: `src/layout/score.js`, `bench/score.mjs`, `bench.py --score`, `bench/score-weights.json`, `bench/score-expected.json` for the fixed corpus as it draws now, `tests/score.test.mjs`. No picture changes. Built: until step 6 gives the layout its own main flow, `straight` reads the lines marked `flow: "main"`; `--corpus heldout` and `edits` are refused until step 11, and a bench model's `benchViews` are not scored.
 2. `tune.js`: the constants of section 9.1 moved under names, with today's values; `tests/tune.test.mjs`. No picture changes (`bench/expected.json` unchanged, which the PR's CI shows).
 3. The fields of section 3 in `validate()`, the schema, `lib/umlimator.d.ts`, `diff()` and the docs, with no layout effect yet; `bench/models/f12.json` added to the fixed corpus.
 4. Dependency lines (section 5) for arranged map views; the router's dependency-last order.
