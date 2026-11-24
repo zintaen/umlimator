@@ -963,9 +963,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // (NEST) not a card whose lines all come from one other, which nest (shortest first, above): taken first, the lines one way
   // between two states took the inner tracks, and those the other way went round them and crossed (audit 39: eight
   // transitions, laid out right)
+  // dependency lines (an arranged view's, layout-flow.md section 5.2: dep on the line) go after every flow line, so the flow
+  // lines take the straight tracks; a view with none keeps its order
+  const depLast = list => list.some(e => e.dep) ? [...list.filter(e => !e.dep), ...list.filter(e => e.dep)] : list;
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
   const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
-  order = [...order.filter(hot), ...order.filter(e => !hot(e))];
+  order = depLast([...order.filter(hot), ...order.filter(e => !hot(e))]);
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
@@ -976,7 +979,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     return L.length > 0 && order.some(e => e.how !== 'grid' && L.some(l => (l.s === e.s || l.s === e.t) && segsOf(e.pts || []).some(([p, q]) => segsOf(l.pts).some(([r, s]) => crosses(p, q, r, s))))); };
   for (let tries = 0; bad && (dg.reroute !== false || !tries && acrossLoop()) && (!last || room.lx) && tries < 4; tries++) {
     const stuck = order.filter(e => e.how !== 'grid');
-    const next = [...stuck, ...order.filter(e => e.how === 'grid')];
+    const next = depLast([...stuck, ...order.filter(e => e.how === 'grid')]);
     const snap = order.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
     const b2 = runRouting(next);
     if (b2 < bad) { bad = b2; order = next; }

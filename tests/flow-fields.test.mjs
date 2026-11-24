@@ -1,6 +1,6 @@
 // Layout by business flow, step 3 (docs/diagrams/notes/layout-flow.md sections 3 and 12): the model fields arrange, zones,
-// flow and zone, checked by validate(), described by the schema and lib/umlimator.d.ts, reported by diff(), and read by no
-// layout yet: an arranged view draws exactly as the same view without the fields. bench/models/f12.json is the fixed
+// flow and zone, checked by validate(), described by the schema and lib/umlimator.d.ts, reported by diff(); from step 4 an
+// arranged map view's dependency lines rank nothing (tests/flow-layout.test.mjs), and no other layout reads them yet. bench/models/f12.json is the fixed
 // corpus's flow model: it validates clean, and its map views are in bench/expected.json.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,11 +72,13 @@ test('arrange on a type that lays out on its own axis (sequence, timing, mindmap
   assert.ok(at(mm, 'views[0].arrange').some(s => /a mindmap view lays out on its own axis/.test(s)));
 });
 
-test('no layout reads the fields yet: every view of f12 draws as it does with them taken out', () => {
+// step 4 (section 5) gives arranged map views their dependency lines; tests/flow-layout.test.mjs holds what they do. The rest
+// reads the fields still not: a typed view, and a map view with no dependency line, draw as with the fields taken out
+test('no typed layout reads the fields yet, nor a map view with no dependency line: each draws as with them taken out', () => {
   const m = read('../bench/models/f12.json'), bare = strip(m);
   assert.ok(m.views.every(v => v.arrange === 'flow') && m.views.length === 12);
-  for (const v of m.views) assert.deepEqual(drawn(quiet(() => layout(m, v.id))), drawn(quiet(() => layout(bare, v.id))), v.id);
-  const s = MAP();
+  for (const v of m.views.filter(v => v.diagram)) assert.deepEqual(drawn(quiet(() => layout(m, v.id))), drawn(quiet(() => layout(bare, v.id))), v.id);
+  const s = MAP(); s.edges = s.edges.filter(e => e.flow !== 'dep'); s.nodes[2].zone = 'last';
   assert.deepEqual(drawn(layout(s, 'v')), drawn(layout(strip(s), 'v')));
 });
 
