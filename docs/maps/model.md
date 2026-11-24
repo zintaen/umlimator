@@ -85,9 +85,9 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `repair: false` | no port repair (a map view; a typed view's lines are never port-repaired) |
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
-| view | `arrange: "flow"` | lay the view out by business flow ([design note](../diagrams/notes/layout-flow.md)); not read by any layout yet, so the view draws as without it. `validate()` checks it, and `diff()` reports a change |
+| view | `arrange: "flow"` | lay the view out by business flow ([design note](../diagrams/notes/layout-flow.md)). So far its dependency lines (a line whose `flow` is `dep`, else one whose kind is `state` or `guard`) rank nothing: a card whose lines are all dependencies, such as a store every step writes to, sits under the flow in the column of the middle card it is joined to, and its lines are routed after the flow lines and may run right to left. A view with no flow line, or a typed view, draws as without it. `validate()` checks it, and `diff()` reports a change |
 | view | `zones: false` | no default zones in an arranged view; a card's own `zone` still holds (not read yet) |
-| edge | `flow` | the line's part in an arranged view: `main`, `branch` or `dep` (not read yet). `validate()` warns when an arranged view's `main` lines are not one path |
+| edge | `flow` | the line's part in an arranged view: `main`, `branch` or `dep`. `dep` ranks nothing (as `state` and `guard` lines do without it), and `main` or `branch` makes a `state` line rank as a flow line; `main` lays out as `branch` so far. `validate()` warns when an arranged view's `main` lines are not one path |
 | node (or a view's `nodeOverrides`) | `zone` | where the card sits in an arranged view: `first`, `flow`, `last` or `under` (not read yet) |
 | container | `badges` | tabs on the box's border |
 | container | `tone` | a palette name, as a badge's: the region behind the box tinted in it, its border dashed and its title in the tone |

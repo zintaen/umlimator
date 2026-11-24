@@ -411,7 +411,8 @@ export interface MapEdge {
   fromSide?: 'top' | 'bottom' | 'left' | 'right';
   toSide?: 'top' | 'bottom' | 'left' | 'right';
   /** The line's part in a view with `arrange: 'flow'` (layout by business flow): without it, from the line's kind. A typed
-   *  line takes it too. Read by no layout yet: validate() warns on any other value, and in an arranged view on main-flow
+   *  line takes it too. Read on map views so far: a 'dep' line (or a state or guard line with no flow) ranks nothing, and is
+   *  routed after the flow lines. validate() warns on any other value, and in an arranged view on main-flow
    *  lines that are not one path (a card with two main lines out or in, a main line that closes a loop); diff() reports a
    *  change of it. */
   flow?: FlowRole;
@@ -433,7 +434,8 @@ export interface MapView {
    *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
   kindsFromLabels?: boolean;
   /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
-   *  lays out as always. Read by no layout yet: validate() warns on any other value and on a sequence, timing or mindmap
+   *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
+   *  dependencies sits under the flow; typed views do not read it yet. validate() warns on any other value and on a sequence, timing or mindmap
    *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
