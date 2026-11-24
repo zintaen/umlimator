@@ -102,7 +102,7 @@ test('score: bench/score-expected.json covers the fixed corpus with the score.js
   assert.equal(e.corpus, 'fixed');
   const keys = Object.keys(e.views);
   assert.equal(keys.length, e.total.views);
-  assert.ok(keys.includes('b10/overview') && keys.some(k => k.startsWith('examples/')) && keys.some(k => k.startsWith('tests/')));
+  assert.ok(keys.includes('b10/overview') && ['examples', 'tests'].every(dir => keys.some(k => k.split('/')[0] === dir)));
   for (const k of keys) assert.deepEqual(Object.keys(e.views[k]), ['hard', 'cross', 'labels', 'straight', 'reverse', 'score'], k);
   assert.ok(Math.abs(keys.reduce((a, k) => a + e.views[k].score, 0) - e.total.score) < 0.01 * keys.length);
 });
