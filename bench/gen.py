@@ -12,7 +12,8 @@ r19 is not written here: a made-up monorepo's 19 packages and 30 imports, as a m
 them (a box per folder, nested, and the same cards with no boxes), where most lines skip columns (0.11.0). Nor is r15, the
 same monorepo with fewer imports (15 packages and 16 imports, near a tree), whose boxes are fed from outside (#86). Nor
 is u21: a made-up shop whose services open into views of their parts, with the views it unfolds in place listed (0.12.0,
-#71).
+#71). Nor is f12: twelve views laid out by business flow (arrange: flow, each with a main flow), written by hand for
+the layout-flow note's fixed corpus (docs/diagrams/notes/layout-flow.md section 4.3).
 """
 import json, random
 from pathlib import Path

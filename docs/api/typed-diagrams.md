@@ -83,6 +83,7 @@ have:
 | `present` | Per element id, what the view shows of it: [`UmlPresent`](#umlpresent), [`UmlStructurePresent`](../types/uml-component.md#model), [`UmlTimingPresent`](../types/uml-timing.md#model), a side. |
 | `fragments` | A sequence view's combined fragments. |
 | `timeline` | A timing view's changes and constraints ([`UmlTimeline`](../types/uml-timing.md#model)). |
+| `arrange`, `zones` | Layout by business flow, as on a map view ([`MapView`](./model-and-schema.md#mapview)); its elements take `zone` and its lines `flow`. No layout reads them yet. A sequence, timing or mindmap view does not rank its elements, and `validate()` warns on `arrange` there. |
 
 A view whose `diagram` is a type the release does not draw shows its nodes as plain cards, with a warning.
 
