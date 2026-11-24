@@ -65,8 +65,9 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
         if (segHit({ x: n.x - ex + .5, y: n.y - ex + .5, w: n.w + 2 * ex - 1, h: n.h + 2 * ex - 1 }, i)) say(`${where}: edge ${name(e)} passes within ${ex}px of node "${nm(n)}"`, e, n); });
       const dt = detour(e.pts); if (dt) say(`${where}: edge ${name(e)} takes a detour (${Math.round(dt[0])}px for ${Math.round(dt[1])}px)`, e);
       const r = roundEnd(e); if (r) say(`${where}: edge ${name(e)} runs round its own end "${nm(r[0])}"`, e, r[0].box ? (geo.families || []).find(f => f.id === r[0].id) : r[0]);
-      // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs)
-      if (!e.back && !e.both && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
+      // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs), or a
+      // dependency line of an arranged view (layout-flow.md section 5.2), which may run either way
+      if (!e.back && !e.both && !e.dep && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
     });
     if (geo.hub) { // hub views: one visible line into each callee
       const into = Object.create(null); geo.edges.forEach(e => { (into[e.to] ||= []).push(e); });

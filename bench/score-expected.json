@@ -2,8 +2,8 @@
  "commit": "17939850",
  "corpus": "fixed",
  "total": {
-  "views": 241,
-  "score": 597723.87
+  "views": 253,
+  "score": 607744.08
  },
  "views": {
   "b10/overview": {
@@ -77,6 +77,102 @@
    "straight": null,
    "reverse": 4,
    "score": 2097.59
+  },
+  "f12/order": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 867.93
+  },
+  "f12/signup": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "score": 626.23
+  },
+  "f12/ticket": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 492.77
+  },
+  "f12/pipeline": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 5,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1107.43
+  },
+  "f12/checkout-c4": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 10,
+   "reverse": 0,
+   "score": 726.91
+  },
+  "f12/orders-dfd": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 12,
+   "reverse": 0,
+   "score": 823.34
+  },
+  "f12/request-flow": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 14,
+   "reverse": 0,
+   "score": 813.93
+  },
+  "f12/shop-gcp": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 91.02
+  },
+  "f12/order-boxed": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 1,
+   "straight": 6,
+   "reverse": 0,
+   "score": 1101.58
+  },
+  "f12/signup-boxed": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 2,
+   "straight": 10,
+   "reverse": 4,
+   "score": 1542.83
+  },
+  "f12/ticket-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 4,
+   "reverse": 0,
+   "score": 758.72
+  },
+  "f12/pipeline-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 3,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1067.52
   },
   "i59/context": {
    "hard": 0,
