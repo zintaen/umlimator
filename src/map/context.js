@@ -4,9 +4,9 @@ import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
-import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
+import { boxClash, leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
-import { FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS } from '../layout/tune.js';
+import { FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS, STABLE_SLACK } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
@@ -229,7 +229,7 @@ function mapContext(model, opts = {}) {
     // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
     if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
     planCache[vid] = { ...hubPlan(v, hub, lp), hub, backKeys: lp.keys, steps };
-    const was = opts.prev && opts.prev[vid]; // after an update: cards keep the lane, column and order they had
+    const was = (opts.prev && opts.prev[vid]) || basePlan(vid); // after an update, or against a base: cards keep the lane, column and order they had
     if (was && was.hub === hub && was.lanes) return (planCache[vid] = keepHub(planCache[vid], was));
     // a hub plan that cannot route cleanly gives way to the plain left-to-right flow, if that does better
     const bad = g => { const st = g.stats || {}; return routeAudit(g, '').length + ((st.cross || 0) + (st.fallback || 0)) * 5; };
@@ -253,11 +253,11 @@ function mapContext(model, opts = {}) {
   // one that is not two numbers is no pin (validate warns of both)
   function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && !(typeof p[0] === 'number' && typeof p[1] === 'number') ? null : Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
     return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)]).filter(e => e[1])) : L; }
-  function fillLayout(vid, L, typed = false) {
+  function fillLayout(vid, L, typed = false, auto = null) { // auto: the auto-layout slots, when the caller has them
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null);
-    let A = null; const autoOf = () => (A ||= autoPos(vid));
+    let A = null; const autoOf = () => (A ||= auto ? auto() : autoPos(vid));
     const fill = L => {
       if (ids.every(i => Array.isArray(L[i]))) return L;
       const auto = autoOf(), out = O(), taken = (c, r) => Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
@@ -588,6 +588,45 @@ function mapContext(model, opts = {}) {
       const c = gw(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
       if (c) e.change = c; else delete e.change; });
     return g; }
+  /* ---------- a layout that stays put across edits (docs/diagrams/notes/layout-flow.md section 8) ----------
+     opts.base: the model before an edit. A card of a view that did not change (on the view in both models, in the same box,
+     none of its flow lines added, removed or turned round) is a soft pin at the cell the base's layout gave it, and fillLayout
+     places the other cards round the soft pins as it places unpinned cards. A real pin wins: its card takes it, and the card
+     a soft pin would hold on its cell is placed afresh. The stable layout is drawn unless it has more hard issues than the
+     fresh one, or scoreGeo scores it worse by more than STABLE_SLACK labels not drawn; then the fresh one is. Soft pins live
+     in this context only, never in the model. A hub view keeps its lanes, columns and order (keepHub), as after an update */
+  let baseCx; const baseOf = () => { if (baseCx === undefined) { baseCx = null;
+    if (opts.base && typeof opts.base === 'object' && !Array.isArray(opts.base)) try { baseCx = held(() => mapContext(opts.base, { measure: M, kinds: opts.kinds }))[0]; } catch { baseCx = null; } } return baseCx; };
+  const basePlan = vid => { const B = baseOf(); if (!B || !B.V[vid] || ownLayout(vid)) return null; try { const p = held(() => B.planOf(vid))[0]; return p && p.hub ? p : null; } catch { return null; } };
+  // the cells a view's cards take (its pins and the layout round them), null for a view not laid out on cells (a hub, a type
+  // that ranks its own cards or takes no pins); the box a card is drawn in; a card's flow lines by their ends
+  function cellsOf(vid) { const v = V[vid], T = v && ownLayout(vid); if (!v) return null;
+    if (T) return T.layout.pins === false || T.layout.rank === false ? null : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid));
+    return planOf(vid).hub ? null : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)); }
+  const homeOf = (vid, id) => { const bx = ownLayout(vid) ? boxesOf(vid) : arrOf(V[vid].containers).filter(b => b && b.id != null), b = bx.filter(x => x.id !== id && arrOf(x.nodeIds).includes(id)).pop(); return b ? b.id : null; };
+  const flowKeys = (vid, id) => viewEdges(V[vid]).filter(e => e.flow !== 'dep' && e.from !== e.to && (e.from === id || e.to === id)).map(e => e.from + '\u0000' + e.to).sort().join('\u0001');
+  const softCache = O(), stableAt = O(), picked = O();
+  function softOf(vid) { if (Object.hasOwn(softCache, vid)) return softCache[vid]; softCache[vid] = null;
+    const B = baseOf(), v = V[vid], w = B && B.V[vid];
+    if (!w || (v.diagram || 'map') !== (w.diagram || 'map') || (!ownLayout(vid) && planOf(vid).hub)) return null;
+    let cells = null; try { cells = held(() => B.cellsOf(vid))[0]; } catch { cells = null; } if (!cells) return null;
+    const was = new Set(arrOf(w.nodeIds)), real = v.layout && typeof v.layout === 'object' ? onGrid(vid, v.layout) : O(), pins = Object.values(real).filter(Array.isArray), S = O();
+    arrOf(v.nodeIds).forEach(id => { const c = cells[id]; if (!N[id] || !was.has(id) || Array.isArray(real[id]) || !Array.isArray(c) || Object.hasOwn(S, id)) return;
+      if (homeOf(vid, id) !== B.homeOf(vid, id) || flowKeys(vid, id) !== B.flowKeys(vid, id)) return;
+      if (pins.some(p => p[0] === c[0] && Math.abs(p[1] - c[1]) < 1)) return; // a real pin on its cell
+      S[id] = [c[0], c[1]]; });
+    // a changed card that was on the view starts from its cell there, a new one from its fresh slot
+    const from = O(); arrOf(v.nodeIds).forEach(id => { if (N[id] && was.has(id) && !S[id] && Array.isArray(cells[id])) from[id] = cells[id]; }); startAt[vid] = from;
+    return (softCache[vid] = Object.keys(S).length ? S : null); }
+  // the cells with the soft pins: the view's real pins over them, the other cards placed round both
+  const startAt = O(), stablePos = (vid, S, typed) => stableAt[vid] ||= fillLayout(vid, { ...S, ...(V[vid].layout && typeof V[vid].layout === 'object' ? V[vid].layout : {}) }, typed,
+    () => ({ ...(layoutCache[vid] ||= autoPos(vid)), ...startAt[vid] }));
+  const sameCells = (vid, a, b) => (V[vid].nodeIds || []).every(i => { const p = a[i], q = b[i]; return Array.isArray(p) ? Array.isArray(q) && p[0] === q[0] && p[1] === q[1] : !Array.isArray(q); });
+  // hard issues as the quality score counts them (src/layout/score.js, which no host loads): lines through cards or on another
+  // line, cards or boxes over each other, a box over what it does not hold
+  const hardOf = g => { const A = routeAudit(g, ''), n = re => A.filter(m => re.test(m)).length;
+    return n(/ share a line$/) + n(/ which it does not hold$/) + n(/^: families .* overlap$/) + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length; };
+  const keepStable = (g0, g1) => { try { return hardOf(g1) <= hardOf(g0) && scoreGeo(g1) <= scoreGeo(g0) + STABLE_SLACK * SCORE_WEIGHTS.dropped; } catch { return false; } };
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
@@ -605,6 +644,9 @@ function mapContext(model, opts = {}) {
         // four crossings, was kept)
         const said = h => { const is = routeAudit(h, ''); return [g.nested || g2.nested ? is.filter(s => !/ cross$/.test(s)).length : 0, is.length]; }, a = said(g2), b = said(g);
         if (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) { g = g2; Object.assign(memo, { key: m2.key, g: m2.g, dg: m2.dg }); } }
+      // against a base (opts.base): the cards that did not change at their cells there, kept when it draws no worse
+      const S = !override && L.pins !== false && L.rank !== false ? softOf(vid) : null, p1 = S && stablePos(vid, S, true);
+      if (p1 && !sameCells(vid, p1, pos)) { const m1 = {}, [g1, w1] = held(() => run(p1, m1)); if (keepStable(g, g1)) { g = g1; Object.keys(memo).forEach(x => { delete memo[x]; }); Object.assign(memo, m1); w1.forEach(warn); } }
       // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
@@ -618,13 +660,22 @@ function mapContext(model, opts = {}) {
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: O() };
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
     const pos = override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
-    const ready = drawn[vid]; delete drawn[vid]; if (ready && !override && ready.pos === pos && repair === (v.repair !== false) && !quick) return ready.g;
+    const ready = drawn[vid]; delete drawn[vid];
+    const S = !override && !quick ? softOf(vid) : null, p1 = S && stablePos(vid, S, false), mine = p1 && !sameCells(vid, p1, pos) ? p1 : null, key = repair ? 1 : 0;
+    // a stable layout chosen before in this context is laid out alone; else the fresh one, and the stable one beside it
+    if (mine && picked[vid] && picked[vid][key] === true) return geoAt(mine);
+    const g0 = ready && !override && ready.pos === pos && repair === (v.repair !== false) && !quick ? ready.g : geoAt(pos);
+    if (!mine || (picked[vid] && picked[vid][key] === false)) return g0;
+    const g1 = geoAt(mine), keep = keepStable(g0, g1); (picked[vid] ||= [])[key] = keep;
+    return keep ? g1 : g0;
+    function geoAt(pos) {
     const mainSteps = v.mainSteps || v.render === 'process';
     const stepIds = v.stepIds || ids;
     const dg = { nodeH: mainSteps ? 82 : v.subAndChips ? 80 : 64, subAndChips: !!v.subAndChips, mainSteps, containers: v.containers, nodes: ids.map(i => { const n = nodeIn(i, vid), step = mainSteps && stepIds.includes(i); return { ...n, sub: n.sub || n.sublabel, emphasis: !!step || !!n.emphasis, step: step ? stepIds.indexOf(i) + 1 : (v.cardSteps || O())[i] || null, verbs: step ? [] : n.verbs, kids: kidCount(i, vid), opens: !!opensOf(i, vid), col: (pos[i] || [0, 0])[0], row: (pos[i] || [0, 0])[1] }; }),
       edges: prepEdges(vid, edges, P.backKeys) };
     dg.authors = D.authors; dg.fan = !scouting; dg.repair = repair; dg.intake = v.intake; dg.tour = v.tour; dg.gap = v.gap; dg.rgap = v.rgap; dg.quick = quick;
     return layoutGraph(dg, true);
+    }
   }
   /* a typed view whose pins, as drawn, leave a box over a card it does not hold, two boxes over each other or two cards over each
      other (settlePins goes by cells, and a tall row reaches over the half row after it: audit 58, the profile example's Order
@@ -927,7 +978,7 @@ function mapContext(model, opts = {}) {
     const n = (v.nodeIds || []).length;
     return key(n > FLOW_CAP || n < FLOW_MIN ? [flowPos(vid, FLOW_WAYS[0])] : FLOW_WAYS.map(o => flowPos(vid, o))); }
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), cellsOf: withM(cellsOf), homeOf, flowKeys, softOf: withM(softOf), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
 }
 
 export { mapContext, boxHolds, elementCount };
