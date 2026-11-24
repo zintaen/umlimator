@@ -443,8 +443,12 @@ function tieClash(W, P, c) {
 // the way round (audit 65: a second association class on one class ran through a card, across lines and over a label; one in a
 // package along the package's border): a shortest path on a grid of the coordinates round the obstacles near box c and line
 // a, from a side of c out square to a point along a (spots) in square, by length, 16 per turn, half its distance from the
-// line's middle, 1000 per line crossed; never into a hard rect, along a line, a border or its own line. Null when none
-function tieRoute(g, c, a, W, spots) {
+// line's middle, 1000 per line crossed; never into a hard rect, along a line, a border or its own line. Null when none, or
+// when the grid passes TIE_CELLS or the layout's work (budget.left, each obstacle weighed, each grid cell made and each step
+// taken one) runs out: the tie is then drawn its fixed way (tiePath), as a large or hostile view would otherwise hold
+// hundreds of MB or hang the page (audit 65 review)
+const TIE_CELLS = 250000, TIE_WORK = 2e7;
+function tieRoute(g, c, a, W, spots, budget) {
   const B = g.bounds || { x: -50, y: -50, w: 1e9, h: 1e9 }, box = [c.x, c.y, c.x + c.w, c.y + c.h], X = new Set(), Y = new Set();
   a.pts.forEach(([x, y]) => { box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); });
   const lo = [Math.max(B.x + 12, box[0] - 160), Math.max(B.y + 12, box[1] - 160)], hi = [Math.min(B.x + B.w - 12, box[2] + 160), Math.min(B.y + B.h - 12, box[3] + 160)];
@@ -460,13 +464,15 @@ function tieRoute(g, c, a, W, spots) {
   starts.forEach(([[x, y]]) => { X.add(r2(x)); Y.add(r2(y)); });
   const goal = new Map(); spots.forEach(s => { X.add(s.at[0]); Y.add(s.at[1]); goal.set(s.at[0] + ',' + s.at[1], s); });
   const xs = [...X].sort((u, v) => u - v), ys = [...Y].sort((u, v) => u - v), xi = new Map(xs.map((v, i) => [v, i])), yi = new Map(ys.map((v, i) => [v, i])), nx = xs.length, ny = ys.length;
+  if (nx * ny * 2 > TIE_CELLS || (budget.left -= nx * ny * 2) <= 0) return null; // the grid's cells, each made once
   const cIn = { x: c.x - 1, y: c.y - 1, w: c.w + 2, h: c.h + 2 }, cost = new Float64Array(nx * ny * 2).fill(Infinity), from = new Int32Array(nx * ny * 2).fill(-1);
   // what lies within 9 px of a grid row (k 1) or column (k 0): all a step along it may meet, each row and column's found once
   const bands = [new Map(), new Map()], band = (k, v) => { const M = bands[k]; if (M.has(v)) return M.get(v);
     const by = ([p, q]) => Math.min(p[k], q[k]) <= v + 9 && Math.max(p[k], q[k]) >= v - 9, b = { hard: W.hard.filter(r => (k ? r.y : r.x) <= v + 9 && (k ? r.y + r.h : r.x + r.w) >= v - 9), walls: W.walls.filter(by), own: W.own.filter(by), lines: W.lines.filter(by) };
-    M.set(v, b); return b; };
+    budget.left -= W.hard.length + W.walls.length + W.own.length + W.lines.length; M.set(v, b); return b; };
   // a step from grid point p to q: its cost past its length, Infinity when barred; out: a first step out of box c, square
   const step = (p, q, out, arrive) => { const s = [p, q], W = p[1] === q[1] ? band(1, p[1]) : band(0, p[0]);
+    budget.left -= 1 + W.hard.length + W.walls.length + W.own.length + W.lines.length;
     if (!out && tieIn(s, cIn)) return Infinity;
     if (W.hard.some(r => tieIn(s, r)) || W.walls.some(u => tieMeet(s, u, 8) === 'run') || W.own.some(u => { const k = tieMeet(s, u, 4); return k && !(arrive && k === 'cross'); })) return Infinity;
     let n = 0; for (const u of W.lines) { const k = tieMeet(s, u, 4); if (k === 'run') return Infinity; if (k && !(u[0][0] === u[1][0] ? u[0][0] === p[0] && p[0] === q[0] : u[0][1] === p[1] && p[1] === q[1])) { const at = u[0][0] === u[1][0] ? [u[0][0], p[1]] : [p[0], u[0][1]]; if (at[0] !== p[0] || at[1] !== p[1]) n++; } }
@@ -477,7 +483,7 @@ function tieRoute(g, c, a, W, spots) {
   starts.forEach(([[x, y], d, sg]) => { const k = id(xi.get(r2(x)), yi.get(r2(y)), d); startAt.set(k, sg); push(k, 0); });
   let best = null;
   const memo = new Float64Array(nx * ny * 2).fill(-1); // a step's cost by its lower grid point and its axis: each weighed once
-  while (heap.length) { const [d0, k] = pop(); if (best && d0 >= best.cost) break; if (d0 > cost[k]) continue;
+  while (heap.length) { if (--budget.left <= 0) return null; const [d0, k] = pop(); if (best && d0 >= best.cost) break; if (d0 > cost[k]) continue;
     const dir = k & 1, j = (k >> 1) % ny, i = Math.floor((k >> 1) / ny), p = [xs[i], ys[j]], sg = startAt.get(k);
     for (const nd of [0, 1]) for (const sgn of [-1, 1]) { if (sg != null && (nd !== dir || sgn !== sg)) continue; // out of the box square
       const i2 = nd === 0 ? i + sgn : i, j2 = nd === 1 ? j + sgn : j; if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
@@ -491,14 +497,16 @@ function tieRoute(g, c, a, W, spots) {
   pts.push(at(best.k)); for (let k = best.prev; k >= 0; k = from[k]) pts.unshift(at(k));
   return pts.filter((p, i) => i === 0 || i === pts.length - 1 || !((pts[i - 1][0] === p[0] && p[0] === pts[i + 1][0]) || (pts[i - 1][1] === p[1] && p[1] === pts[i + 1][1])));
 }
-function tieDraw(g) {
-  const byId = new Map(g.edges.map(e => [e.id, e])), done = new Set();
+function tieDraw(g, budget = { left: TIE_WORK }) {
+  const byId = new Map(g.edges.map(e => [e.id, e])), done = new Set(), world = (g.nodes.length + g.edges.length + (g.families || []).length) * 2;
   g.edges = g.edges.map(e => { if (e.type !== TIE_T) return e; const a = byId.get(e.tie), c = e.t;
     if (!a || !a.pts || a.pts.length < 2 || !c) return null;
-    const cx = c.x + c.w / 2, cy = c.y + c.h / 2, m = offLabel(midOf(a.pts), a.lbl, flat0 => (flat0 ? cx : cy)), W = tieWorld(g, c, a, done);
-    // as before when that meets nothing it should not; else the way round, when there is one that meets less
+    const cx = c.x + c.w / 2, cy = c.y + c.h / 2, m = offLabel(midOf(a.pts), a.lbl, flat0 => (flat0 ? cx : cy));
+    // as before when that meets nothing it should not; else the way round, when there is one that meets less, and the layout's
+    // work left to look for it (each tie's obstacles weighed against it): once that runs out, each tie left is drawn as before
     let pts = tiePath(c, m.at, m.flat);
-    if (tieClash(W, pts, c)) { const r = tieRoute(g, c, a, tieWorld(g, c, a, done, 10), tieSpots(a)); if (r && tieClash(W, r, c) < tieClash(W, pts, c)) pts = r; }
+    if (budget.left > 0 && (budget.left -= 2 * world) > 0) { const W = tieWorld(g, c, a, done);
+      if (tieClash(W, pts, c)) { const r = tieRoute(g, c, a, tieWorld(g, c, a, done, 10), tieSpots(a), budget); if (r && tieClash(W, r, c) < tieClash(W, pts, c)) pts = r; } }
     const t = { ...e, pts, p1: pts[0], p2: pts[pts.length - 1], stubs: [], lbl: null, how: 'tie', fixed: pts }; done.add(t); return t;
   }).filter(Boolean);
 }
@@ -725,4 +733,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   refs: { 'uml.Class': { 'props.associationClass': 'drop' }, '': { 'props.associationClass': 'drop' } },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines, tieDraw, tiePath, TIE_CELLS, TIE_WORK };

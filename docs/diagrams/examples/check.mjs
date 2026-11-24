@@ -5,7 +5,7 @@
 // draws nothing. An example whose type draws moves to examples/ (plan.md §2, item 10) and is listed in MOVED, where it is
 // checked as before.
 // What a registered type's props
-// name comes from its own declaration (the registry's `refs`); model.md's hand list covers the types not registered yet.
+// name comes from its own declaration (the registry's `refs`); model.md's hand list covers the fields no declaration covers.
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { typedProblems } from '../../../src/core/model.js';
@@ -66,8 +66,11 @@ export function check(model, expected) {
   arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
   const T = diagramOf({ diagram: expected }), declared = T && T.refs; // a registered type's refs, else the hand list
   all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view
-    if (declared) Object.keys(Object.hasOwn(declared, x.type) ? declared[x.type] : {}).forEach(k => [].concat(k.split('.').reduce((o, j) => o && o[j], x)).forEach(id => has(id, `${x.id}.${k}`)));
-    else { REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`))); }
+    // a declared field by its type's declaration (no type is '', as the registry reads it); the hand list for every field the
+    // declaration does not cover, so a type that declares some refs keeps the hand list's checks of the rest (audit 65)
+    const D = declared && Object.hasOwn(declared, x.type ?? '') ? declared[x.type ?? ''] : {}, mine = k => Object.hasOwn(D, `props.${k}`);
+    Object.keys(D).forEach(k => [].concat(k.split('.').reduce((o, j) => o && o[j], x)).forEach(id => has(id, `${x.id}.${k}`)));
+    REF.forEach(k => { if (!mine(k)) has(p[k], `${x.id}.props.${k}`); }); REFS.forEach(k => { if (!mine(k)) arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`)); });
     if (p.refersTo != null && !vids.has(p.refersTo)) say(`${x.id}.props.refersTo: ${p.refersTo} is not a view`); });
   if (!views.length) say('no views');
   if (model.root != null && !vids.has(model.root)) say(`root ${model.root} is not a view`);

@@ -3,9 +3,10 @@
 // the accessible names, the PDF's Kind, the Mermaid writer and the properties form's field.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import '../src/map/typed.js';
-import '../src/uml/class.js';
+import * as classTies from '../src/uml/class.js';
 import '../src/uml/package.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
@@ -188,4 +189,56 @@ test('an association a view holds as its own line: drawn with its class, and the
   m.views.push({ id: 'w', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'] });
   assert.deepEqual(validate(m).map(p => p.level + ' ' + p.message), ['warning association-class: view "w" shows "C" but does not draw its association ab']);
   assert.match(field(m, m.views[1], 'c', 'props.associationClass', 'x').error, /^association-class: no association/);
+});
+
+// the tie's way round is bounded (audit 65 review): its grid is at most TIE_CELLS cells, and a layout's ties share TIE_WORK
+// of work; past either a tie is drawn its fixed way, as before audit 65. A view as the layout draws a large one: n associations
+// down the page, their classes in a column below them all, so each tie's way round spans the view
+const stacked = n => { const nodes = [], edges = [];
+  for (let i = 0; i < n; i++) { const y = i * 100; nodes.push({ id: 'a' + i, x: 0, y, w: 96, h: 48 }, { id: 'b' + i, x: 228, y, w: 96, h: 48 });
+    edges.push({ id: 'e' + i, pts: [[96, y + 24], [228, y + 24]], lbl: { x: 140, y: y + 6, w: 40, h: 14 } }); }
+  for (let i = 0; i < n; i++) { const c = { id: 'c' + i, x: 0, y: n * 100 + i * 70, w: 96, h: 48 }; nodes.push(c); edges.push({ id: 'association-class:c' + i, type: 'tie.AssociationClass', tie: 'e' + i, t: c }); }
+  return { nodes, edges, bounds: { x: -50, y: -50, w: 500, h: n * 170 + 100 } }; };
+const tieEnds = (g, where) => g.edges.filter(e => e.type === 'tie.AssociationClass').forEach(t => { const a = g.edges.find(e => e.id === t.tie);
+  assert.ok(onBorder(t.t, t.pts[0]), `${where}: ${t.id} leaves its class box's border`); assert.ok(onLine(a.pts, t.pts.at(-1)), `${where}: ${t.id} ends on its association's line`); });
+
+test('the ties of a large class view: drawing them at twice the size takes at most a small multiple of the time, each still from its box to its line (timed, audit 65 review)', () => {
+  const tieDraw = classTies.tieDraw, time = n => { let best = Infinity; for (let r = 0; r < 3; r++) { const g = stacked(n), t = performance.now(); tieDraw(g); best = Math.min(best, performance.now() - t); tieEnds(g, `${n}`); } return best; };
+  time(10); // warm
+  const t1 = time(50), t2 = time(100);
+  assert.ok(t2 <= 3 * t1 + 20, `100 associations took ${t2.toFixed(0)} ms, 50 took ${t1.toFixed(0)} ms: more than 3 times`);
+  // past the work, a tie is drawn its fixed way: the same as with no work at all
+  const g = stacked(100), fixed = stacked(100), b = { left: classTies.TIE_WORK }; tieDraw(g, b); tieDraw(fixed, { left: 0 });
+  assert.ok(b.left <= 0, 'the work ran out');
+  const last = id => g.edges.find(e => e.id === id).pts, fix = id => fixed.edges.find(e => e.id === id).pts;
+  assert.deepEqual(last('association-class:c99'), fix('association-class:c99'));
+  assert.notDeepEqual(last('association-class:c0'), fix('association-class:c0'), 'the first ties, before it ran out, go round');
+});
+
+test('a huge class view: a tie whose way round would pass TIE_CELLS is drawn its fixed way, without a throw (audit 65 review)', () => {
+  // 90,000 cards with room between them, the class among them and its association round the field's top and right
+  const field = () => { const nodes = [], k = 300;
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) nodes.push({ id: `n${i}_${j}`, x: 40 + i * 60, y: 40 + j * 50, w: 20, h: 14 });
+    const S = 40 + k * 60, c = { id: 'c', x: 40 + 60 * 150 + 24, y: 40 + 50 * 150 + 2, w: 12, h: 10 }; nodes.push(c);
+    return { nodes, edges: [{ id: 'a', pts: [[10, 20], [S, 20], [S, S]], lbl: { x: 100, y: 5, w: 30, h: 10 } }, { id: 'association-class:c', type: 'tie.AssociationClass', tie: 'a', t: c }], bounds: { x: 0, y: 0, w: S + 200, h: S + 200 } }; };
+  const g = field(), fixed = field(), b = { left: classTies.TIE_WORK };
+  assert.doesNotThrow(() => classTies.tieDraw(g, b));
+  classTies.tieDraw(fixed, { left: 0 });
+  assert.ok(b.left > 0, 'the cells, not the work, stopped it');
+  assert.deepEqual(g.edges[1].pts, fixed.edges[1].pts);
+  tieEnds(g, 'huge');
+});
+
+test('check.mjs: a type that declares some refs keeps the hand list\'s checks of the fields it does not declare (class, sequence, BPMN; audit 65)', async () => {
+  const { check } = await import('../docs/diagrams/examples/check.mjs');
+  const read = f => JSON.parse(readFileSync(new URL(`./fixtures/${f}`, import.meta.url)));
+  for (const [f, d] of [['uml-class.json', 'uml.class'], ['mcp-sequence.json', 'uml.sequence'], ['bookshop-order-to-shipment.json', 'bpmn']]) {
+    const m = read(f); assert.deepEqual(check(m, d), [], f);
+    const x = [...m.nodes, ...m.edges].find(n => n && n.type); x.props = { ...x.props, references: 'nope' };
+    assert.ok(check(m, d).includes(`${x.id}.props.references: "nope" is not an element`), `${f}: ${check(m, d)}`);
+  }
+  // a declared field still checked by its declaration: a class's association class, of type uml.Class and of no type
+  const m = read('uml-class.json'), c = m.nodes.find(n => n.type === 'uml.Class'); c.props = { ...c.props, associationClass: 'nope' };
+  assert.ok(check(m, 'uml.class').includes(`${c.id}.props.associationClass: "nope" is not an element`));
+  delete c.type; assert.ok(check(m, 'uml.class').includes(`${c.id}.props.associationClass: "nope" is not an element`));
 });
