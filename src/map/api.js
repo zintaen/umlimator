@@ -6,7 +6,7 @@ const edgeRefIds = e => [...new Set((e.all || [e]).map(x => x._id).filter(Boolea
 
 /* layout(model, viewId): one view's geometry, as the canvas draws it. No DOM. */
 export function layout(model, viewId, options = {}) {
-  const ctx = mapContext(model, { measure: options.measure, ...(options.expand ? { expand: { [viewId]: options.expand } } : {}) }); // expand: cards unfolded in place (#71)
+  const ctx = mapContext(model, { measure: options.measure, ...(options.expand ? { expand: { [viewId]: options.expand } } : {}), ...(options.stableFrom ? { base: options.stableFrom } : {}) }); // expand: cards unfolded in place (#71); stableFrom: the model before an edit, whose cells the cards it left alone keep (layout-flow.md section 8)
   if (!ctx.V[viewId]) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   ctx.planOf(viewId);
   const g = ctx.buildGeo(viewId, undefined, options.repair);

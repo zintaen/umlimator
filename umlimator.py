@@ -7,8 +7,8 @@
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
   umlimator.py check PAGE.html [--views a,pic-*] [--expand] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only;
                                                        # it exits 1 on a rule the model breaks (rules)
-  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]   # what changed, marked on one map, and in words
-  umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
+  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR] [--stable]   # what changed, marked on one map, and in words
+  umlimator.py diff --base REF --out DIR [--models 'docs/*.json'] [--stable]   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T] [--diagram uml.sequence]   # a trace (OTLP JSON) kept as a numbered view, or as a UML sequence diagram
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 30]   # the model's versions in git history, on a slider
@@ -885,18 +885,31 @@ def quiet(*a, **k):
     pass
 
 
-def render_model(m, near, out):
+def render_model(m, near, out, base=None):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
-    the render, so it is drawn as that file would be."""
+    the render, so it is drawn as that file would be. base: the model before an edit, which the page draws it against
+    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8)."""
     tmp = temp_json(m, near, ".change.json")
     try:
         model = page_model(tmp, out, source=near)
         try:
-            return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
+            rep = render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
         finally:
             untemp(model)
     finally:
         untemp(tmp)
+    if isinstance(base, dict):
+        with_base(Path(rep["out"]), base)
+    return rep
+
+
+def with_base(page, base):
+    """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
+    script (each "</" in it escaped, so no text in the model ends the script)."""
+    text = page.read_text(encoding="utf-8")
+    tag = '<script id="umlimator-base" type="application/json">' + json.dumps(base).replace("</", "<\\/") + "</script>\n"
+    at = text.find('<script id="visual-data"')
+    page.write_text(text[:at] + tag + text[at:] if at >= 0 else text, encoding="utf-8")
 
 
 def shots(page, out, views):
@@ -931,21 +944,22 @@ def cmd_diff(a):
     before, after = map(read_model, a.files)
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
-    r = diff_page(before, after, a.files[1], a.out, a.stills)
+    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=False):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
-    leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent)."""
-    d = js("diff", before, after)
+    leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
+    stable: the page draws the model after against the model before, so the cards the change left alone keep their cells."""
+    d = js("diff", before, after, {"stable": True}) if stable else js("diff", before, after)
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
     m["title"] = f"{title_of(m, near)}: what changed"
-    rep = render_model(m, near, out)
+    rep = render_model(m, near, out, d.get("stableFrom") if stable else None)
     pngs, failed = shots(out, stills, d["views"])
     return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
 
@@ -1119,7 +1133,7 @@ def diff_since(a):
             # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
             # symbolic link, so a deleted model never writes outside it (audit 19)
             near = top / name if after or inside(top / name, folder=True) else out / f"{stem}.json"
-            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False)
+            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False, stable=a.stable)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
@@ -1966,6 +1980,7 @@ def main():
     d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
     d.add_argument("--stills", help="a folder for stills of the views that show a change"); d.add_argument("--base", help="a git ref: diff the working tree's models against it")
     d.add_argument("--models", nargs="*", help="with --base, git pathspecs of the model files (default: every .json that is a map model)")
+    d.add_argument("--stable", action="store_true", help="draw the model after against the model before: the cards the change left alone keep their places")
     d.set_defaults(f=cmd_diff)
     dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
     dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")

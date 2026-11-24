@@ -88,8 +88,11 @@ const sameOrder = (p, q, cap = LCS) => { let s = 0, e = 0; while (s < p.length &
 /** What changed from one model to the next, as one model to draw: `after`, with each card and line marked added, changed
  *  or removed (removed ones come back from `before`, in their views, boxes and places), a summary in words, and the
  *  views that show a change. Cards and lines are matched by id (a line without one by its ends, as a Ref names it). */
-export function diff(before, after) {
+export function diff(before, after, options = {}) {
   before = unreadable(before).model; after = unreadable(after).model; // each read as validate() and mapContext read it (audit 20)
+  // stable: the model before comes back as stableFrom, for render(), layout() and check() to draw the model after with: the cards
+  // the change left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8). Opt-in: the result is otherwise as it was
+  const stable = !!(options && typeof options === 'object' && options.stable === true), base = stable ? copyOf(before || {}) : null;
   const arr = arrOf, A = copyOf(before || {}), out = copyOf(after || {}); // a host's function stays as it is (audit 24)
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
   const ours = new WeakSet(), our = y => (ours.add(y), y); // the marks this diff writes
@@ -668,7 +671,7 @@ export function diff(before, after) {
   // a model line the view after still lists, drawn removed with a card taken out of it: view.diffMarks.listed, so a reader of
   // the model after (describe()) tells it from a line the view stopped listing, drawn back removed alike (audit 59)
   listedIn.forEach((ids, v) => { v.diffMarks = { ...(v.diffMarks && typeof v.diffMarks === 'object' ? v.diffMarks : {}), listed: [...new Set(ids)] }; });
-  return { model: out, summary: said, views: views.filter(v => isView(v) && changed.has(v.id)).map(v => v.id) };
+  return { model: out, summary: said, views: views.filter(v => isView(v) && changed.has(v.id)).map(v => v.id), ...(stable ? { stableFrom: base } : {}) };
 }
 
 /** The map against the traffic seen: a line that carries traffic but is not drawn comes in, dashed rose ("not drawn",
