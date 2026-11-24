@@ -42,6 +42,31 @@ const grPool = N => { const P = N > GR_MAX ? { n: 0, hn: 0 } : GR_POOL; if (P.n 
   return P; };
 const labelW = e => widest(String((e.step != null ? e.step + ' · ' : '') + (e.label || '')).split(EDGE_BREAK), r => textW(fit(r, 10, e.cut || 150), 10)) + 12; // its widest line
 
+/* Anchors (layout-flow note, sections 6.2 and 14): an id -> row map, or a Map, read for the ids in cols with a finite row.
+   null when there is none, so a view with no anchor takes the paths it took before anchors were added. */
+function anchorsIn(cols, anchor) {
+  if (!anchor) return null; const get = anchor instanceof Map ? id => anchor.get(id) : id => (Object.hasOwn(anchor, id) ? anchor[id] : undefined);
+  const pin = Object.create(null); let any = false;
+  cols.forEach(c => c.forEach(id => { const r = get(id); if (typeof r === 'number' && Number.isFinite(r)) { pin[id] = r; any = true; } }));
+  return any ? pin : null;
+}
+/* A column with anchors, in order: its anchored items by row (the order given breaking ties), and the free items between
+   them on the side each was on (the number of anchored items before it in the column as it is), each side by key, then by
+   its place. keyed: [id, key] in the column's order. */
+function bySide(c, pin, keyed) {
+  if (!c.some(id => id in pin)) return c;
+  const anchored = c.filter(id => id in pin).map((id, i) => [id, i]).sort((x, y) => pin[x[0]] - pin[y[0]] || x[1] - y[1]), rank = new Map(anchored.map(([id], j) => [id, j]));
+  let seen = 0; return keyed.map(([id, key], i) => { const part = id in pin ? 2 * rank.get(id) + 1 : 2 * seen; if (id in pin) seen++; return [id, part, key ?? 0, i]; })
+    .sort((p, q) => p[1] - q[1] || p[2] - q[2] || p[3] - q[3]).map(x => x[0]);
+}
+/* Each item's top row in a column with anchors: an anchored item at its row, the items before the first stacked up from it,
+   the items after each stacked down from it (a fixed item at its row, as without anchors). Writes into at. */
+function stackAt(c, h, fixed, pin, at) {
+  const js = []; c.forEach((id, i) => { if (id in pin) js.push(i); });
+  let r = pin[c[js[0]]]; for (let i = js[0] - 1; i >= 0; i--) { r -= h(c[i]); at[c[i]] = fixed[c[i]] ?? r; }
+  js.forEach((j, n) => { at[c[j]] = pin[c[j]]; let r = pin[c[j]] + h(c[j]); for (let i = j + 1, e = n + 1 < js.length ? js[n + 1] : c.length; i < e; i++) { at[c[i]] = fixed[c[i]] ?? r; r += h(c[i]); } });
+  return at;
+}
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
 /* Lines cross as little as the order of the cards in a column allows (#53): a few barycentre sweeps (each card goes where
@@ -52,11 +77,16 @@ const labelW = e => widest(String((e.step != null ? e.step + ' · ' : '') + (e.l
    A box is one item of its column, h(id) rows tall, and a line meets it at the row of its card inside (#86): [a, b, oa, ob]
    leaves a at row oa inside it and reaches b at row ob, as rowsFor's links do (the middle when not given). Each line into a
    box has its own entry, so two that cross on the way in to its cards count as crossing; they all met it at one point.
-   fixed: items at a set row in columns of their own, which stay as they are (a box's far ends, in blockPos). */
-function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // maps by id: no prototype (M3)
+   fixed: items at a set row in columns of their own, which stay as they are (a box's far ends, in blockPos).
+   anchor: id -> row (layout-flow note, section 6.2), items held at a row in a column that may hold free items too (a main
+   flow's cards; two rows a column when it wraps, section 14). Each anchored item stays between the free items before it in
+   the order given and those after it, which are ordered each side on their own; a column's anchored items go in order of
+   their rows. With no anchor in cols, untangle is as it was. */
+function untangle(cols, links, h = () => 1, fixed = Object.create(null), anchor = null) { // maps by id: no prototype (M3)
   const colOf = Object.create(null); cols.forEach((c, k) => c.forEach(id => { colOf[id] = k; }));
+  const pin = anchorsIn(cols, anchor); if (pin) cols.forEach((c, k) => { cols[k] = bySide(c, pin, c.map((id, i) => [id, i])); });
   const segs = [], extra = new Set(), want = Object.create(null), hh = id => extra.has(id) ? 1 : h(id), mid = (id, o) => o ?? (hh(id) - 1) / 2;
-  const tops = () => { const at = Object.create(null); cols.forEach(c => { let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
+  const tops = () => { const at = Object.create(null); cols.forEach(c => { if (pin && c.some(id => id in pin)) return stackAt(c, hh, fixed, pin, at); let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
   const at0 = tops();
   links.forEach(([a, b, oa, ob], n) => {
     const ka = colOf[a], kb = colOf[b]; if (ka == null || kb == null || kb <= ka) return;
@@ -66,8 +96,12 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
       segs.push([prev, p, po, 0]); prev = p; po = 0; }
     segs.push([prev, b, po, mid(b, ob)]);
   });
-  if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k);
-    if (ps.length) cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
+  if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k); if (!ps.length) return;
+    if (pin && c.some(id => id in pin)) { // the points merged in by row, the column's own order kept (a crowded side may overrun the anchor's row)
+      const ds = ps.map(p => [p, want[p]]).sort((x, y) => x[1] - y[1]), out = []; let d = 0;
+      c.forEach(id => { while (d < ds.length && ds[d][1] < at0[id]) out.push(ds[d++][0]); out.push(id); }); while (d < ds.length) out.push(ds[d++][0]);
+      cols[k] = out; return; }
+    cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
   const ins = Object.create(null), outs = Object.create(null); segs.forEach(([a, b, oa, ob]) => { (outs[a] ||= []).push([b, ob, oa]); (ins[b] ||= []).push([a, oa, ob]); });
   // two lines out of one column cross when their order at its end is the other way round from their order at their start (a
   // tie either end is no crossing): sorted by their start (ties by their end), the crossings are the pairs an earlier one ends
@@ -86,6 +120,7 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
     for (const k of seq) { const at = tops(), side = down ? k - 1 : k + 1; // where each item would be for its lines to run level
       const key = id => { const nb = ((down ? ins : outs)[id] || []).filter(([x]) => colOf[x] === side).map(([x, ox, o]) => at[x] + ox - o);
         return nb.length ? nb.reduce((x, y) => x + y, 0) / nb.length : at[id]; };
+      if (pin && cols[k].some(id => id in pin)) { cols[k] = bySide(cols[k], pin, cols[k].map(id => [id, key(id)])); continue; }
       cols[k] = cols[k].map((id, i) => [id, key(id), i]).sort((p, q) => p[1] - q[1] || p[2] - q[2]).map(x => x[0]); }
     const n = crossings(); if (n < best) { best = n; keep = cols.map(c => c.slice()); }
   }
@@ -103,24 +138,38 @@ function pullSources(ids, links, rank) {
    to, then again from the left, as near as the order allows with its height between it and the next (least squares: pool
    adjacent violators); on half rows from 0. A line between cards on one row runs straight, past fewer cards. h: an item's
    height in rows (a box in a view with boxes); a link [a, b, oa, ob] leaves a at row oa inside it and reaches b at row
-   ob (a box's card), else at its middle. fixed: items at a set row, in columns of their own that stay (as untangle's). */
-function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
+   ob (a box's card), else at its middle. fixed: items at a set row, in columns of their own that stay (as untangle's).
+   anchor: id -> row (layout-flow note, section 6.2), items that keep that row, never moved, in columns that may hold free
+   items too; more than one a column (two main rows, section 14) splits it into more sides. Each column is split at its
+   anchored items: the items before an anchored item fit into the rows above it (its row less their heights), those after
+   it into the rows from its row plus its height, and those between two into the rows between, each side by the same
+   pooling, with the column's order kept (its anchored items in order of their rows, as untangle leaves them). Rows are
+   then not moved to start at 0: an anchor's row is the row it asked for, and an item above row 0's anchor has a row
+   below 0. With no anchor in cols, rowsFor is as it was. */
+function rowsFor(cols, links, h = () => 1, fixed = Object.create(null), anchor = null) {
   const row = Object.create(null); if (!cols.length) return row; // an empty view
-  const colOf = Object.create(null); cols.forEach((c, k) => { let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); colOf[id] = k; }); });
+  const pin = anchorsIn(cols, anchor), held = c => !!pin && c.some(id => id in pin);
+  const colOf = Object.create(null); cols.forEach((c, k) => { c.forEach(id => { colOf[id] = k; }); if (held(c)) return stackAt(c, h, fixed, pin, row); let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); }); });
   const ins = Object.create(null), outs = Object.create(null), at = (id, o) => o ?? (h(id) - 1) / 2; // where a link meets an item, in rows from its top
   links.forEach(([a, b, oa, ob]) => { if (colOf[a] == null || colOf[b] == null || colOf[b] <= colOf[a]) return;
     (outs[a] ||= []).push([b, at(b, ob), at(a, oa)]); (ins[b] ||= []).push([a, at(a, oa), at(b, ob)]); });
   const median = xs => { const s = xs.slice().sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-  const fit = (list, want) => { const blocks = []; let off = 0;
+  // lo, hi: the least and the most the first item's top may be (its side's room between anchors), the pooled rows held to them
+  const fit = (list, want, lo = -Infinity, hi = Infinity) => { const blocks = []; let off = 0;
     list.forEach(id => { blocks.push({ ids: [id], sum: want[id] - off, n: 1 }); off += h(id);
       while (blocks.length > 1 && blocks.at(-2).sum / blocks.at(-2).n > blocks.at(-1).sum / blocks.at(-1).n) { const b = blocks.pop(), a = blocks.at(-1); a.ids.push(...b.ids); a.sum += b.sum; a.n += b.n; } });
-    off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = b.sum / b.n + off; off += h(id); })); };
+    off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = (pin ? Math.max(lo, Math.min(hi, b.sum / b.n)) : b.sum / b.n) + off; off += h(id); })); };
+  const fitSides = (list, want) => { let from = 0, top = -Infinity; // each run of free items between anchored ones, in the room it has
+    list.forEach((id, i) => { if (!(id in pin) && i < list.length - 1) return; const end = id in pin ? i : i + 1, side = list.slice(from, end);
+      if (side.length) fit(side, want, top, id in pin ? row[id] - side.reduce((t, x) => t + h(x), 0) : Infinity);
+      if (id in pin) { from = i + 1; top = row[id] + h(id); } }); };
   for (const step of ROW_SWEEPS)
     for (let k = step > 0 ? 1 : cols.length - 2, to = step > 0 ? cols.length : -1; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
       cols[k].forEach(id => { const nb = (step > 0 ? ins : outs)[id] || []; want[id] = nb.length ? median(nb.map(([x, ox, o]) => row[x] + ox - o)) : row[id]; });
-      fit(cols[k], want); }
-  const low = Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));
-  cols.forEach(c => !c.every(id => id in fixed) && c.forEach((id, i) => { row[id] = Math.round((row[id] - low) * 2) / 2; if (i) row[id] = Math.max(row[id], row[c[i - 1]] + h(c[i - 1])); }));
+      if (held(cols[k])) fitSides(cols[k], want); else fit(cols[k], want); }
+  const low = pin ? 0 : Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));
+  cols.forEach(c => !c.every(id => id in fixed) && c.forEach((id, i) => { if (pin && id in pin) return; row[id] = Math.round((row[id] - low) * 2) / 2; if (i) row[id] = Math.max(row[id], row[c[i - 1]] + h(c[i - 1])); }));
+  if (pin) cols.forEach(c => { if (held(c)) for (let i = c.length - 2; i >= 0; i--) if (!(c[i] in pin)) row[c[i]] = Math.min(row[c[i]], row[c[i + 1]] - h(c[i])); }); // above an anchor: up from it, not over it
   return row;
 }
 /* A typed view's pins, settled (audit 58): two pins on one cell, a pin on the cell of a card in a box it is not in or in such
