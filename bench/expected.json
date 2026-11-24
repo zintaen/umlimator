@@ -46,6 +46,46 @@
     "22a8212e"
    ]
   },
+  "f12/order": {
+   "hashes": [
+    "a7ac8030"
+   ]
+  },
+  "f12/order-boxed": {
+   "hashes": [
+    "adf4790b"
+   ]
+  },
+  "f12/pipeline": {
+   "hashes": [
+    "b4a50e9a"
+   ]
+  },
+  "f12/pipeline-boxed": {
+   "hashes": [
+    "749bb03e"
+   ]
+  },
+  "f12/signup": {
+   "hashes": [
+    "2af303a1"
+   ]
+  },
+  "f12/signup-boxed": {
+   "hashes": [
+    "209836b"
+   ]
+  },
+  "f12/ticket": {
+   "hashes": [
+    "7eb99879"
+   ]
+  },
+  "f12/ticket-boxed": {
+   "hashes": [
+    "6d0d9174"
+   ]
+  },
   "i59/api": {
    "hashes": [
     "3bab4983"

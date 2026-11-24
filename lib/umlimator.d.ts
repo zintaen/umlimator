@@ -48,6 +48,10 @@ export interface MapNode {
   owner?: string;
   /** The card's own shape (0.15.0); without it, a map draws the card by its kind. */
   shape?: Shape;
+  /** Where the card sits in a view with `arrange: 'flow'` (layout by business flow, docs/diagrams/notes/layout-flow.md):
+   *  without it, the diagram type's default. A view's `nodeOverrides` may set it for that view. Read by no layout yet:
+   *  validate() warns on any other value, and diff() reports a change of it. */
+  zone?: FlowZone;
   /** In schema version 2 (0.17.0) a node may also be a typed Element: type, parent, props, members. */
   [key: string]: unknown;
 }
@@ -406,8 +410,18 @@ export interface MapEdge {
    *  warns about any other value, which is ignored. */
   fromSide?: 'top' | 'bottom' | 'left' | 'right';
   toSide?: 'top' | 'bottom' | 'left' | 'right';
+  /** The line's part in a view with `arrange: 'flow'` (layout by business flow): without it, from the line's kind. A typed
+   *  line takes it too. Read by no layout yet: validate() warns on any other value, and in an arranged view on main-flow
+   *  lines that are not one path (a card with two main lines out or in, a main line that closes a loop); diff() reports a
+   *  change of it. */
+  flow?: FlowRole;
   [key: string]: unknown;
 }
+/** A line's part in a flow (docs/diagrams/notes/layout-flow.md section 3): on the main flow, a flow line off it, or a
+ *  dependency line that ranks nothing. */
+export type FlowRole = 'main' | 'branch' | 'dep';
+/** Where a card sits in an arranged view: a column before the flow, in it, a column after it, or a band of rows under it. */
+export type FlowZone = 'first' | 'flow' | 'last' | 'under';
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   /** Model line ids or lines of its own; in a sequence view (0.20.0) its messages and interaction uses (Elements), in time order. */
@@ -418,6 +432,12 @@ export interface MapView {
   /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
    *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
   kindsFromLabels?: boolean;
+  /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
+   *  lays out as always. Read by no layout yet: validate() warns on any other value and on a sequence, timing or mindmap
+   *  view, which does not rank its elements; diff() reports a change of it. */
+  arrange?: 'flow';
+  /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
+  zones?: boolean;
   /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
    *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string; change?: 'added' | 'new' | 'modified' | 'changed' | 'removed' | 'planned' }[];
