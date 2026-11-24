@@ -77,6 +77,7 @@ interface MapNode {
   opensCount?: number;
   owner?: string;
   shape?: Shape;
+  zone?: FlowZone;
   [key: string]: unknown;
 }
 ```
@@ -93,6 +94,7 @@ interface MapNode {
 | `opensView`, `opensCount` | The view the card opens on drill-down, which may not be loaded yet, and the number on its ⤢ badge until it is. |
 | `owner` | Who owns the card (a team). Selectors pick by it, and a lens with `color: 'owner'` rings cards in their owner's tone. |
 | `shape` | The card's own [`Shape`](#shape), over the one its kind draws. |
+| `zone` | Where the card sits in a view with `arrange: 'flow'`: a [`FlowZone`](#flowzone). A view's `nodeOverrides` may set it for that view. Not read by any layout yet. |
 
 In schema version 2 a node may also be a typed [`Element`](./typed-diagrams.md#element).
 
@@ -133,6 +135,7 @@ interface MapEdge {
   drift?: 'undrawn' | 'idle';
   latency?: number;
   cost?: number;
+  flow?: FlowRole;
   [key: string]: unknown;
 }
 ```
@@ -151,6 +154,7 @@ interface MapEdge {
 | `drift` | What [`drift()`](./apply-and-commands.md#drift) found: `undrawn` or `idle`. |
 | `latency`, `cost` | Budgets, in ms and in any unit, that [`critical()`](./apply-and-commands.md#critical) sums along a path. Not drawn. |
 | `edited` | Draws a marker at the middle of the line. |
+| `flow` | The line's part in a view with `arrange: 'flow'`: a [`FlowRole`](#flowrole). Without it, the line's kind decides. A typed line takes it too. Not read by any layout yet. |
 
 Other fields the map reads: `fromSide` and `toSide` (the card sides the line uses).
 
@@ -164,6 +168,22 @@ What a line means: `calls` (the default), `feeds` (hands work on), `triggers` (s
 or writes a file, board or config: a thinner line, a muted label, no flow) and `guard` (a hook steps in). Colours are
 `--um-w-<kind>`. A view with `kindsFromLabels` guesses the kind from a line's label when its edges name none.
 
+## FlowRole
+
+```ts
+type FlowRole = 'main' | 'branch' | 'dep';
+```
+
+A line's part in a view laid out by business flow ([design note](../diagrams/notes/layout-flow.md)): on the main flow, a flow line off it, or a dependency line that ranks nothing. No layout reads it yet. In a view with `arrange: 'flow'`, `validate()` warns when the `main` lines are not one path: a card with two main lines out or in, or a main line that closes a loop.
+
+## FlowZone
+
+```ts
+type FlowZone = 'first' | 'flow' | 'last' | 'under';
+```
+
+Where a card sits in a view laid out by business flow: a column before the flow, in it, a column after it, or a band of rows under it. Without one, the diagram type's default. No layout reads it yet.
+
 ## MapView
 
 ```ts
@@ -172,6 +192,8 @@ interface MapView {
   edges?: (string | MapEdge | Element)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   subAndChips?: boolean;
   kindsFromLabels?: boolean;
+  arrange?: 'flow';
+  zones?: boolean;
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string; change?: 'added' | 'new' | 'modified' | 'changed' | 'removed' | 'planned' }[];
   [key: string]: unknown;
 }
@@ -188,6 +210,8 @@ interface MapView {
 | `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, a `tone` that tints the region behind it, and a `change` mark, as a card's, that [`diff()`](./apply-and-commands.md#diff) sets on a box the view gained or lost, written in lower case (`validate()` warns on another case or a value with no mark). |
 | `subAndChips` | Cards 80 px tall that show their sub-line, then their chips. |
 | `kindsFromLabels` | Guess a line's kind from its label's words when its edges name none. The standalone page always guesses. |
+| `arrange` | `'flow'`: lay the view out by business flow, where [`FlowRole`](#flowrole) and [`FlowZone`](#flowzone) apply. No layout reads it yet, so the view draws as without it. `validate()` warns on another value, and on a sequence, timing or mindmap view, which does not rank its elements. `diff()` reports a change of it, of a line's `flow` and of a card's `zone`. |
+| `zones` | `false`: no default zones in an arranged view; a card's own `zone` still holds. |
 
 Other view fields: `gap` and `rgap` (space between columns and rows), `keepPairs` (A→B and B→A drawn as two lines),
 `render: "sequence"` (a numbered run-order view) and `tour` (a path for a dot to ride). A typed view also has `diagram`;
