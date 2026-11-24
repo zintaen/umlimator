@@ -1,0 +1,1181 @@
+{
+ "title": "bench flow layouts",
+ "schemaVersion": 2,
+ "nodes": [
+  {
+   "id": "o-web",
+   "label": "Storefront",
+   "kind": "frontend"
+  },
+  {
+   "id": "o-api",
+   "label": "Order API",
+   "kind": "backend"
+  },
+  {
+   "id": "o-cart",
+   "label": "Cart",
+   "kind": "backend"
+  },
+  {
+   "id": "o-pay",
+   "label": "Payments",
+   "kind": "backend"
+  },
+  {
+   "id": "o-ship",
+   "label": "Shipping",
+   "kind": "backend"
+  },
+  {
+   "id": "o-mail",
+   "label": "Notify",
+   "kind": "queue"
+  },
+  {
+   "id": "o-db",
+   "label": "Orders",
+   "kind": "database"
+  },
+  {
+   "id": "o-bank",
+   "label": "Card network",
+   "kind": "external"
+  },
+  {
+   "id": "o-refund",
+   "label": "Refunds",
+   "kind": "backend"
+  },
+  {
+   "id": "o-ledger",
+   "label": "Ledger",
+   "kind": "database"
+  },
+  {
+   "id": "s-user",
+   "label": "New user",
+   "kind": "public"
+  },
+  {
+   "id": "s-form",
+   "label": "Sign-up form",
+   "kind": "frontend"
+  },
+  {
+   "id": "s-acct",
+   "label": "Accounts",
+   "kind": "backend"
+  },
+  {
+   "id": "s-check",
+   "label": "Risk check",
+   "kind": "security"
+  },
+  {
+   "id": "s-review",
+   "label": "Manual review",
+   "kind": "backend"
+  },
+  {
+   "id": "s-staff",
+   "label": "Reviewer",
+   "kind": "public"
+  },
+  {
+   "id": "s-active",
+   "label": "Activate",
+   "kind": "backend"
+  },
+  {
+   "id": "s-welcome",
+   "label": "Welcome mail",
+   "kind": "queue"
+  },
+  {
+   "id": "s-users",
+   "label": "Users",
+   "kind": "database"
+  },
+  {
+   "id": "t-cust",
+   "label": "Customer",
+   "kind": "public"
+  },
+  {
+   "id": "t-desk",
+   "label": "Help desk",
+   "kind": "frontend"
+  },
+  {
+   "id": "t-triage",
+   "label": "Triage",
+   "kind": "backend"
+  },
+  {
+   "id": "t-fix",
+   "label": "Fix",
+   "kind": "backend"
+  },
+  {
+   "id": "t-verify",
+   "label": "Verify",
+   "kind": "backend"
+  },
+  {
+   "id": "t-close",
+   "label": "Close",
+   "kind": "backend"
+  },
+  {
+   "id": "t-kb",
+   "label": "Knowledge base",
+   "kind": "file"
+  },
+  {
+   "id": "t-tickets",
+   "label": "Tickets",
+   "kind": "board"
+  },
+  {
+   "id": "p-src",
+   "label": "Event source",
+   "kind": "external"
+  },
+  {
+   "id": "p-ingest",
+   "label": "Ingest",
+   "kind": "backend"
+  },
+  {
+   "id": "p-clean",
+   "label": "Clean",
+   "kind": "backend"
+  },
+  {
+   "id": "p-enrich",
+   "label": "Enrich",
+   "kind": "ai"
+  },
+  {
+   "id": "p-load",
+   "label": "Load",
+   "kind": "backend"
+  },
+  {
+   "id": "p-report",
+   "label": "Reports",
+   "kind": "frontend"
+  },
+  {
+   "id": "p-raw",
+   "label": "Raw store",
+   "kind": "database"
+  },
+  {
+   "id": "p-stage",
+   "label": "Staging",
+   "kind": "database"
+  },
+  {
+   "id": "p-wh",
+   "label": "Warehouse",
+   "kind": "database"
+  },
+  {
+   "id": "p-log",
+   "label": "Run log",
+   "kind": "file"
+  },
+  {
+   "id": "c-shopper",
+   "type": "c4.Person",
+   "label": "Shopper",
+   "props": {
+    "description": "Buys things."
+   },
+   "zone": "first"
+  },
+  {
+   "id": "c-sys",
+   "type": "c4.SoftwareSystem",
+   "label": "Checkout",
+   "props": {
+    "description": "Takes orders and payments."
+   }
+  },
+  {
+   "id": "c-web",
+   "type": "c4.Container",
+   "label": "Web app",
+   "parent": "c-sys",
+   "props": {
+    "description": "The checkout pages.",
+    "technology": "React"
+   }
+  },
+  {
+   "id": "c-api",
+   "type": "c4.Container",
+   "label": "Checkout API",
+   "parent": "c-sys",
+   "props": {
+    "description": "Prices and places orders.",
+    "technology": "Go"
+   }
+  },
+  {
+   "id": "c-worker",
+   "type": "c4.Container",
+   "label": "Payment worker",
+   "parent": "c-sys",
+   "props": {
+    "description": "Charges cards.",
+    "technology": "Go"
+   }
+  },
+  {
+   "id": "c-db",
+   "type": "c4.Container",
+   "label": "Orders DB",
+   "parent": "c-sys",
+   "props": {
+    "description": "Orders and payments.",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   },
+   "zone": "under"
+  },
+  {
+   "id": "c-psp",
+   "type": "c4.SoftwareSystem",
+   "label": "Payment provider",
+   "props": {
+    "description": "Charges cards.",
+    "external": true
+   }
+  },
+  {
+   "id": "d-cust",
+   "type": "dfd.ExternalEntity",
+   "label": "Customer"
+  },
+  {
+   "id": "d-bank",
+   "type": "dfd.ExternalEntity",
+   "label": "Bank"
+  },
+  {
+   "id": "d-take",
+   "type": "dfd.Process",
+   "label": "Take order",
+   "props": {
+    "number": "1"
+   }
+  },
+  {
+   "id": "d-bill",
+   "type": "dfd.Process",
+   "label": "Bill",
+   "props": {
+    "number": "2"
+   }
+  },
+  {
+   "id": "d-ship",
+   "type": "dfd.Process",
+   "label": "Ship",
+   "props": {
+    "number": "3"
+   }
+  },
+  {
+   "id": "d-orders",
+   "type": "dfd.DataStore",
+   "label": "Orders",
+   "props": {
+    "number": "D1"
+   }
+  },
+  {
+   "id": "d-stock",
+   "type": "dfd.DataStore",
+   "label": "Stock",
+   "props": {
+    "number": "D2"
+   }
+  },
+  {
+   "id": "f-start",
+   "type": "flow.Terminator",
+   "label": "Start"
+  },
+  {
+   "id": "f-read",
+   "type": "flow.InputOutput",
+   "label": "Read request"
+  },
+  {
+   "id": "f-ok",
+   "type": "flow.Decision",
+   "label": "Valid?"
+  },
+  {
+   "id": "f-do",
+   "type": "flow.Process",
+   "label": "Handle it"
+  },
+  {
+   "id": "f-save",
+   "type": "flow.Database",
+   "label": "Save"
+  },
+  {
+   "id": "f-reject",
+   "type": "flow.Process",
+   "label": "Reject"
+  },
+  {
+   "id": "f-end",
+   "type": "flow.Terminator",
+   "label": "End"
+  },
+  {
+   "id": "g-users",
+   "type": "gcp.User",
+   "label": "Shoppers"
+  },
+  {
+   "id": "g-project",
+   "type": "gcp.Zone",
+   "label": "shop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "g-lb",
+   "type": "gcp.Product",
+   "label": "Load balancer",
+   "parent": "g-project",
+   "props": {
+    "icon": "Cloud-Load-Balancing"
+   }
+  },
+  {
+   "id": "g-run",
+   "type": "gcp.Product",
+   "label": "Shop API",
+   "parent": "g-project",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "g-sql",
+   "type": "gcp.Product",
+   "label": "Orders",
+   "parent": "g-project",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "o-m0",
+   "from": "o-web",
+   "to": "o-api",
+   "label": "places",
+   "flow": "main",
+   "step": 1
+  },
+  {
+   "id": "o-m1",
+   "from": "o-api",
+   "to": "o-cart",
+   "label": "checks",
+   "flow": "main",
+   "step": 2
+  },
+  {
+   "id": "o-m2",
+   "from": "o-cart",
+   "to": "o-pay",
+   "label": "charges",
+   "flow": "main",
+   "step": 3
+  },
+  {
+   "id": "o-m3",
+   "from": "o-pay",
+   "to": "o-ship",
+   "label": "ships",
+   "flow": "main",
+   "step": 4
+  },
+  {
+   "id": "o-m4",
+   "from": "o-ship",
+   "to": "o-mail",
+   "label": "tells",
+   "flow": "main",
+   "step": 5
+  },
+  {
+   "id": "o-b1",
+   "from": "o-pay",
+   "to": "o-bank",
+   "label": "authorises",
+   "flow": "branch"
+  },
+  {
+   "id": "o-b2",
+   "from": "o-pay",
+   "to": "o-refund",
+   "label": "on failure",
+   "kind": "guard",
+   "flow": "branch"
+  },
+  {
+   "id": "o-b3",
+   "from": "o-refund",
+   "to": "o-mail",
+   "label": "tells"
+  },
+  {
+   "id": "o-d1",
+   "from": "o-api",
+   "to": "o-db",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "o-d2",
+   "from": "o-ship",
+   "to": "o-db",
+   "label": "reads",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "o-d3",
+   "from": "o-refund",
+   "to": "o-ledger",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "s-m0",
+   "from": "s-user",
+   "to": "s-form",
+   "label": "fills in",
+   "flow": "main"
+  },
+  {
+   "id": "s-m1",
+   "from": "s-form",
+   "to": "s-acct",
+   "label": "creates",
+   "flow": "main"
+  },
+  {
+   "id": "s-m2",
+   "from": "s-acct",
+   "to": "s-check",
+   "label": "scores",
+   "flow": "main"
+  },
+  {
+   "id": "s-m3",
+   "from": "s-check",
+   "to": "s-active",
+   "label": "passes",
+   "flow": "main"
+  },
+  {
+   "id": "s-m4",
+   "from": "s-active",
+   "to": "s-welcome",
+   "label": "sends",
+   "flow": "main"
+  },
+  {
+   "id": "s-b1",
+   "from": "s-check",
+   "to": "s-review",
+   "label": "flags",
+   "flow": "branch"
+  },
+  {
+   "id": "s-b2",
+   "from": "s-staff",
+   "to": "s-review",
+   "label": "approves"
+  },
+  {
+   "id": "s-b3",
+   "from": "s-review",
+   "to": "s-active",
+   "label": "releases"
+  },
+  {
+   "id": "s-d1",
+   "from": "s-acct",
+   "to": "s-users",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "s-d2",
+   "from": "s-active",
+   "to": "s-users",
+   "label": "updates",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "t-m0",
+   "from": "t-cust",
+   "to": "t-desk",
+   "label": "reports",
+   "flow": "main"
+  },
+  {
+   "id": "t-m1",
+   "from": "t-desk",
+   "to": "t-triage",
+   "label": "opens",
+   "flow": "main"
+  },
+  {
+   "id": "t-m2",
+   "from": "t-triage",
+   "to": "t-fix",
+   "label": "assigns",
+   "flow": "main"
+  },
+  {
+   "id": "t-m3",
+   "from": "t-fix",
+   "to": "t-verify",
+   "label": "hands over",
+   "flow": "main"
+  },
+  {
+   "id": "t-m4",
+   "from": "t-verify",
+   "to": "t-close",
+   "label": "confirms",
+   "flow": "main"
+  },
+  {
+   "id": "t-l1",
+   "from": "t-verify",
+   "to": "t-fix",
+   "label": "reopens",
+   "loop": true
+  },
+  {
+   "id": "t-b1",
+   "from": "t-triage",
+   "to": "t-kb",
+   "label": "answers from",
+   "kind": "feeds",
+   "flow": "branch"
+  },
+  {
+   "id": "t-b2",
+   "from": "t-kb",
+   "to": "t-close",
+   "label": "solves"
+  },
+  {
+   "id": "t-d1",
+   "from": "t-desk",
+   "to": "t-tickets",
+   "label": "writes",
+   "kind": "state"
+  },
+  {
+   "id": "t-d2",
+   "from": "t-close",
+   "to": "t-tickets",
+   "label": "updates",
+   "kind": "state"
+  },
+  {
+   "id": "p-m0",
+   "from": "p-src",
+   "to": "p-ingest",
+   "flow": "main"
+  },
+  {
+   "id": "p-m1",
+   "from": "p-ingest",
+   "to": "p-clean",
+   "flow": "main"
+  },
+  {
+   "id": "p-m2",
+   "from": "p-clean",
+   "to": "p-enrich",
+   "flow": "main"
+  },
+  {
+   "id": "p-m3",
+   "from": "p-enrich",
+   "to": "p-load",
+   "flow": "main"
+  },
+  {
+   "id": "p-m4",
+   "from": "p-load",
+   "to": "p-report",
+   "flow": "main"
+  },
+  {
+   "id": "p-d0",
+   "from": "p-ingest",
+   "to": "p-raw",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-d1",
+   "from": "p-clean",
+   "to": "p-raw",
+   "label": "reads",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-d2",
+   "from": "p-clean",
+   "to": "p-stage",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-d3",
+   "from": "p-enrich",
+   "to": "p-stage",
+   "label": "reads",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-d4",
+   "from": "p-load",
+   "to": "p-wh",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-d5",
+   "from": "p-report",
+   "to": "p-wh",
+   "label": "reads",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "p-g0",
+   "from": "p-ingest",
+   "to": "p-log",
+   "label": "logs",
+   "kind": "state"
+  },
+  {
+   "id": "p-g1",
+   "from": "p-clean",
+   "to": "p-log",
+   "label": "logs",
+   "kind": "state"
+  },
+  {
+   "id": "p-g2",
+   "from": "p-enrich",
+   "to": "p-log",
+   "label": "logs",
+   "kind": "state"
+  },
+  {
+   "id": "p-g3",
+   "from": "p-load",
+   "to": "p-log",
+   "label": "logs",
+   "kind": "state"
+  },
+  {
+   "id": "c-r1",
+   "type": "c4.Relationship",
+   "from": "c-shopper",
+   "to": "c-web",
+   "label": "Checks out with",
+   "flow": "main"
+  },
+  {
+   "id": "c-r2",
+   "type": "c4.Relationship",
+   "from": "c-web",
+   "to": "c-api",
+   "label": "Places order",
+   "flow": "main"
+  },
+  {
+   "id": "c-r3",
+   "type": "c4.Relationship",
+   "from": "c-api",
+   "to": "c-worker",
+   "label": "Queues payment",
+   "flow": "main"
+  },
+  {
+   "id": "c-r4",
+   "type": "c4.Relationship",
+   "from": "c-worker",
+   "to": "c-psp",
+   "label": "Charges",
+   "flow": "main"
+  },
+  {
+   "id": "c-r5",
+   "type": "c4.Relationship",
+   "from": "c-api",
+   "to": "c-db",
+   "label": "Writes",
+   "flow": "dep"
+  },
+  {
+   "id": "c-r6",
+   "type": "c4.Relationship",
+   "from": "c-worker",
+   "to": "c-db",
+   "label": "Reads and writes",
+   "flow": "dep"
+  },
+  {
+   "id": "d-f1",
+   "type": "dfd.DataFlow",
+   "from": "d-cust",
+   "to": "d-take",
+   "label": "order",
+   "flow": "main"
+  },
+  {
+   "id": "d-f2",
+   "type": "dfd.DataFlow",
+   "from": "d-take",
+   "to": "d-bill",
+   "label": "priced order",
+   "flow": "main"
+  },
+  {
+   "id": "d-f3",
+   "type": "dfd.DataFlow",
+   "from": "d-bill",
+   "to": "d-ship",
+   "label": "paid order",
+   "flow": "main"
+  },
+  {
+   "id": "d-f4",
+   "type": "dfd.DataFlow",
+   "from": "d-bill",
+   "to": "d-bank",
+   "label": "charge",
+   "flow": "branch"
+  },
+  {
+   "id": "d-f5",
+   "type": "dfd.DataFlow",
+   "from": "d-take",
+   "to": "d-orders",
+   "label": "saved order",
+   "flow": "dep"
+  },
+  {
+   "id": "d-f6",
+   "type": "dfd.DataFlow",
+   "from": "d-stock",
+   "to": "d-ship",
+   "label": "stock level",
+   "flow": "dep"
+  },
+  {
+   "id": "d-f7",
+   "type": "dfd.DataFlow",
+   "from": "d-ship",
+   "to": "d-stock",
+   "label": "stock taken",
+   "flow": "dep"
+  },
+  {
+   "id": "f-1",
+   "type": "flow.Flow",
+   "from": "f-start",
+   "to": "f-read",
+   "flow": "main"
+  },
+  {
+   "id": "f-2",
+   "type": "flow.Flow",
+   "from": "f-read",
+   "to": "f-ok",
+   "flow": "main"
+  },
+  {
+   "id": "f-3",
+   "type": "flow.Flow",
+   "from": "f-ok",
+   "to": "f-do",
+   "label": "yes",
+   "flow": "main"
+  },
+  {
+   "id": "f-4",
+   "type": "flow.Flow",
+   "from": "f-do",
+   "to": "f-end",
+   "flow": "main"
+  },
+  {
+   "id": "f-5",
+   "type": "flow.Flow",
+   "from": "f-ok",
+   "to": "f-reject",
+   "label": "no",
+   "flow": "branch"
+  },
+  {
+   "id": "f-6",
+   "type": "flow.Flow",
+   "from": "f-reject",
+   "to": "f-end"
+  },
+  {
+   "id": "f-7",
+   "type": "flow.Flow",
+   "from": "f-do",
+   "to": "f-save",
+   "flow": "dep"
+  },
+  {
+   "id": "g-p1",
+   "type": "gcp.Path",
+   "from": "g-users",
+   "to": "g-lb",
+   "flow": "main",
+   "label": "HTTPS"
+  },
+  {
+   "id": "g-p2",
+   "type": "gcp.Path",
+   "from": "g-lb",
+   "to": "g-run",
+   "flow": "main"
+  },
+  {
+   "id": "g-p3",
+   "type": "gcp.Path",
+   "from": "g-run",
+   "to": "g-sql",
+   "flow": "dep",
+   "label": "SQL"
+  }
+ ],
+ "views": [
+  {
+   "id": "order",
+   "title": "Order pipeline",
+   "arrange": "flow",
+   "nodeIds": [
+    "o-web",
+    "o-api",
+    "o-cart",
+    "o-pay",
+    "o-bank",
+    "o-refund",
+    "o-ship",
+    "o-mail",
+    "o-db",
+    "o-ledger"
+   ]
+  },
+  {
+   "id": "signup",
+   "title": "Sign-up with approval",
+   "arrange": "flow",
+   "nodeIds": [
+    "s-user",
+    "s-form",
+    "s-acct",
+    "s-check",
+    "s-review",
+    "s-staff",
+    "s-active",
+    "s-welcome",
+    "s-users"
+   ]
+  },
+  {
+   "id": "ticket",
+   "title": "Support ticket",
+   "arrange": "flow",
+   "nodeIds": [
+    "t-cust",
+    "t-desk",
+    "t-triage",
+    "t-fix",
+    "t-verify",
+    "t-close",
+    "t-kb",
+    "t-tickets"
+   ]
+  },
+  {
+   "id": "pipeline",
+   "title": "Data pipeline",
+   "arrange": "flow",
+   "nodeIds": [
+    "p-src",
+    "p-ingest",
+    "p-clean",
+    "p-enrich",
+    "p-load",
+    "p-report",
+    "p-raw",
+    "p-stage",
+    "p-wh",
+    "p-log"
+   ]
+  },
+  {
+   "id": "checkout-c4",
+   "diagram": "c4.container",
+   "title": "Checkout containers",
+   "subject": "c-sys",
+   "arrange": "flow",
+   "nodeIds": [
+    "c-shopper",
+    "c-sys",
+    "c-web",
+    "c-api",
+    "c-worker",
+    "c-db",
+    "c-psp"
+   ]
+  },
+  {
+   "id": "orders-dfd",
+   "diagram": "dfd",
+   "title": "Orders data flow",
+   "arrange": "flow",
+   "nodeIds": [
+    "d-cust",
+    "d-take",
+    "d-bill",
+    "d-ship",
+    "d-bank",
+    "d-orders",
+    "d-stock"
+   ]
+  },
+  {
+   "id": "request-flow",
+   "diagram": "flowchart",
+   "title": "Request handling",
+   "arrange": "flow",
+   "nodeIds": [
+    "f-start",
+    "f-read",
+    "f-ok",
+    "f-do",
+    "f-save",
+    "f-reject",
+    "f-end"
+   ]
+  },
+  {
+   "id": "shop-gcp",
+   "diagram": "gcp",
+   "title": "Shop on Google Cloud",
+   "arrange": "flow",
+   "nodeIds": [
+    "g-users",
+    "g-project",
+    "g-lb",
+    "g-run",
+    "g-sql"
+   ]
+  },
+  {
+   "id": "order-boxed",
+   "title": "Order pipeline by team",
+   "arrange": "flow",
+   "nodeIds": [
+    "o-web",
+    "o-api",
+    "o-cart",
+    "o-pay",
+    "o-bank",
+    "o-refund",
+    "o-ship",
+    "o-mail",
+    "o-db",
+    "o-ledger"
+   ],
+   "containers": [
+    {
+     "id": "ob-front",
+     "label": "Front",
+     "nodeIds": [
+      "o-web",
+      "o-api",
+      "o-cart"
+     ]
+    },
+    {
+     "id": "ob-money",
+     "label": "Money",
+     "nodeIds": [
+      "o-pay",
+      "o-refund",
+      "o-ledger"
+     ]
+    },
+    {
+     "id": "ob-ship",
+     "label": "Fulfilment",
+     "nodeIds": [
+      "o-ship",
+      "o-mail"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "signup-boxed",
+   "title": "Sign-up by team",
+   "arrange": "flow",
+   "nodeIds": [
+    "s-user",
+    "s-form",
+    "s-acct",
+    "s-check",
+    "s-review",
+    "s-staff",
+    "s-active",
+    "s-welcome",
+    "s-users"
+   ],
+   "containers": [
+    {
+     "id": "sb-app",
+     "label": "App",
+     "nodeIds": [
+      "s-form",
+      "s-acct",
+      "s-active",
+      "s-welcome"
+     ]
+    },
+    {
+     "id": "sb-risk",
+     "label": "Risk",
+     "nodeIds": [
+      "s-check",
+      "s-review"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ticket-boxed",
+   "title": "Support ticket by desk",
+   "arrange": "flow",
+   "nodeIds": [
+    "t-cust",
+    "t-desk",
+    "t-triage",
+    "t-fix",
+    "t-verify",
+    "t-close",
+    "t-kb",
+    "t-tickets"
+   ],
+   "containers": [
+    {
+     "id": "tb-l1",
+     "label": "First line",
+     "nodeIds": [
+      "t-desk",
+      "t-triage",
+      "t-kb"
+     ]
+    },
+    {
+     "id": "tb-l2",
+     "label": "Engineering",
+     "nodeIds": [
+      "t-fix",
+      "t-verify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pipeline-boxed",
+   "title": "Data pipeline by stage",
+   "arrange": "flow",
+   "zones": false,
+   "nodeIds": [
+    "p-src",
+    "p-ingest",
+    "p-clean",
+    "p-enrich",
+    "p-load",
+    "p-report",
+    "p-raw",
+    "p-stage",
+    "p-wh",
+    "p-log"
+   ],
+   "containers": [
+    {
+     "id": "pb-in",
+     "label": "Ingest",
+     "nodeIds": [
+      "p-ingest",
+      "p-raw"
+     ]
+    },
+    {
+     "id": "pb-tr",
+     "label": "Transform",
+     "nodeIds": [
+      "p-clean",
+      "p-enrich",
+      "p-stage"
+     ]
+    },
+    {
+     "id": "pb-out",
+     "label": "Serve",
+     "nodeIds": [
+      "p-load",
+      "p-wh",
+      "p-report"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -2580,5 +2580,23 @@ if part("bench views"):
     ok("bench · a version-2 model's map views and their benchViews are timed, its typed views not; a version-1 model's every view; a benchViews entry naming no view stops it",
        bench.bench_views(v2) == ["m", "d", "m+x"] and bench.bench_views(v1) == ["m", "c", "c+y"] and stopped == "gone+x: benchViews names no view",
        (bench.bench_views(v2), bench.bench_views(v1), stopped))
+if part("bench score"):
+    # bench.py --score (docs/diagrams/notes/layout-flow.md section 4.4): the score table for one view in Node, with no browser;
+    # it passes against bench/score-expected.json and fails against an expect file whose score for that view is lower
+    go = lambda *x: subprocess.run([sys.executable, str(ROOT / "bench" / "bench.py"), "--score", "--views", "b10/overview", "--runs", "1", *x],
+                                   capture_output=True, text=True, cwd=ROOT)
+    r = go("--expect", str(ROOT / "bench" / "score-expected.json"))
+    ok("bench --score · prints the view's row and the total, and passes against bench/score-expected.json",
+       r.returncode == 0 and re.search(r"^b10/overview +10 +14 ", r.stdout, re.M) is not None and "total: 1 views" in r.stdout, (r.stdout[-800:], r.stderr[-800:]))
+    exp = json.loads((ROOT / "bench" / "score-expected.json").read_text())
+    exp["views"]["b10/overview"]["score"] = round(exp["views"]["b10/overview"]["score"] * 0.9, 2)
+    with tempfile.TemporaryDirectory() as t:
+        lower = Path(t) / "lower.json"; lower.write_text(json.dumps(exp))
+        r = go("--expect", str(lower))
+    ok("bench --score · exits 1 against an expect file whose score is lower, and says which view",
+       r.returncode == 1 and "b10/overview: score" in r.stdout and "FAILED" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-800:]))
+    r = go("--corpus", "edits")
+    ok("bench --score · a corpus not built yet is refused in one line",
+       r.returncode == 2 and "only fixed for now" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)

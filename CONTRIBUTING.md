@@ -43,6 +43,7 @@ python3 tests/steps.py
 python3 tests/outcomes.py
 python3 tests/import.py
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
+python3 bench/bench.py --score --expect bench/score-expected.json        # the layout quality score, in Node
 npm --prefix docs run build && node --test tests/site.test.mjs            # the site builds with no dead links
 ```
 
@@ -54,6 +55,8 @@ UMLIMATOR_BPMN_MODDLE=/tmp/moddle npm test
 ```
 
 The bench lays out fixed models in headless Chrome and fails on a view that no longer draws as recorded in `bench/expected.json`. A change that moves lines on purpose refreshes it with `--write-expected` and says why in the pull request.
+
+The layout quality score (`python3 bench/bench.py --score`, which runs `bench/score.mjs`) lays out every view of the fixed corpus in Node with `lib/umlimator-all.js`, typed views included, and scores each with `src/layout/score.js`: hard issues, crossings, labels, how straight a main flow runs and lines against the reading direction, weighted by `bench/score-weights.json` (lower is better). With `--expect bench/score-expected.json` it fails when a view's hard count rises, a view's score rises by more than 2 percent or the total rises; with `--base REF` it also lays the corpus out with that commit's `lib/` in the same run and fails when the whole takes more than 1.10 times as long. `--views b10/overview,examples/bookshop-c4` narrows it. Only the maintainer changes the weights or rewrites the expect file (`--write-expected`), and says why in the pull request. See `docs/diagrams/notes/layout-flow.md` section 4.
 
 ### Protected tests
 

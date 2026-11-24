@@ -406,6 +406,15 @@
      "type": "string",
      "description": "Where an external skill comes from."
     },
+    "zone": {
+     "enum": [
+      "first",
+      "flow",
+      "last",
+      "under"
+     ],
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default. Read by no layout yet: validate() checks it and diff() reports a change of it."
+    },
     "credits": {
      "type": "array",
      "items": {
@@ -1007,6 +1016,15 @@
      "type": "string",
      "description": "Where an external skill comes from."
     },
+    "zone": {
+     "enum": [
+      "first",
+      "flow",
+      "last",
+      "under"
+     ],
+     "description": "The card's zone in this view, as a card's zone (layout by business flow)."
+    },
     "credits": {
      "type": "array",
      "items": {
@@ -1151,6 +1169,14 @@
     "loop": {
      "type": "boolean",
      "description": "The view's loop back, whatever the cards' order."
+    },
+    "flow": {
+     "enum": [
+      "main",
+      "branch",
+      "dep"
+     ],
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): the line's part in a view with arrange: flow, on the main flow (main), a flow line off it (branch), or a dependency line that ranks nothing (dep). Absent: from the line's kind. validate() warns when an arranged view's main lines are not one path. Read by no layout yet: validate() checks it and diff() reports a change of it."
     },
     "what": {
      "type": "string",
@@ -1660,6 +1686,16 @@
     "kindsFromLabels": {
      "type": "boolean",
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
+    },
+    "arrange": {
+     "enum": [
+      "flow"
+     ],
+     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read by no layout yet: validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
+    },
+    "zones": {
+     "type": "boolean",
+     "description": "false: no default zones in a view with arrange: flow; a card's own zone still holds. Default true."
     },
     "diagram": {
      "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); sysml.requirement, sysml.block-definition, sysml.internal-block and sysml.parametric SysML v1.7's four diagrams, each in a frame (0.25.0); mindmap a mindmap, and gcp, azure and aws Google Cloud, Azure and AWS architecture diagrams (0.26.0); bpmn a BPMN diagram (0.27.0); a type this release does not draw is drawn as plain cards, with a warning.",
