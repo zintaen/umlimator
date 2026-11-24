@@ -6,6 +6,7 @@ import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
+import { FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
@@ -434,10 +435,10 @@ function mapContext(model, opts = {}) {
      neighbours, or packed from the top as before, with cards no line comes into beside their callee or not. A cheap
      version of the CLI's search (optimize), affordable up to 30 cards; a larger view takes the first way. */
   function bestFlow(vid) {
-    const first = flowPos(vid), n = ((V[vid] || {}).nodeIds || []).length;
-    if (n > 30 || n < 3) return first;
+    const first = flowPos(vid, FLOW_WAYS[0]), n = ((V[vid] || {}).nodeIds || []).length;
+    if (n > FLOW_CAP || n < FLOW_MIN) return first;
     const seen = new Set([JSON.stringify(first)]), ways = [first];
-    for (const o of [{ pull: true }, { packed: true }, { pull: true, packed: true }]) { const p = flowPos(vid, o), k = JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push(p); } }
+    for (const o of FLOW_WAYS.slice(1)) { const p = flowPos(vid, o), k = JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push(p); } }
     if (ways.length < 2) return first;
     let best = first, score = Infinity;
     scouting = true; ways.forEach(p => { const g = buildGeo(vid, p), s = scoreGeo(g); if (s < score - 0.5) { score = s; best = p; drawn[vid] = { pos: p, g }; } }); scouting = false; // as it will be drawn: with port repair
@@ -445,7 +446,7 @@ function mapContext(model, opts = {}) {
     return best;
   }
   let scouting = false;
-  const fanIn = vid => { const k = O(); return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= 6); };
+  const fanIn = vid => { const k = O(); return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= FAN_IN); };
   const drawn = O(); // the way bestFlow kept, routed already: the view's next buildGeo takes it once instead of routing it again
   const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
   function flowPos(vid, o = {}) {
@@ -739,7 +740,8 @@ function mapContext(model, opts = {}) {
     const bad = routeAudit(g, '').length, len = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0);
     const bends = g.edges.reduce((a, e) => a + e.pts.length, 0), drop = g.edges.filter(e => e.label && !e.lbl).length;
     const st = g.stats || {};
-    return bad * 1000 + ((st.cross || 0) + (st.fallback || 0)) * 150 + drop * 40 + len / 15 + bends * 12 + g.bounds.w * g.bounds.h / 4e5;
+    const W = SCORE_WEIGHTS;
+    return bad * W.issue + ((st.cross || 0) + (st.fallback || 0)) * W.cross + drop * W.dropped + len / W.lengthPer + bends * W.corner + g.bounds.w * g.bounds.h / W.areaPer;
   }
   function optimize(vid, budget = 160) {
     budget = Math.max(budget, Math.min(400, 20 * (V[vid].nodeIds || []).length));
@@ -923,7 +925,7 @@ function mapContext(model, opts = {}) {
     if (v.layout) { if (viewEdges(v).length) return null; const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
     if ((v.containers || []).length) return key([blockPos(vid)]);
     const n = (v.nodeIds || []).length;
-    return key(n > 30 || n < 3 ? [flowPos(vid)] : [{}, { pull: true }, { packed: true }, { pull: true, packed: true }].map(o => flowPos(vid, o))); }
+    return key(n > FLOW_CAP || n < FLOW_MIN ? [flowPos(vid, FLOW_WAYS[0])] : FLOW_WAYS.map(o => flowPos(vid, o))); }
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
     layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
 }
