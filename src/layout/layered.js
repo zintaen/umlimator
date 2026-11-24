@@ -67,6 +67,51 @@ function stackAt(c, h, fixed, pin, at) {
   js.forEach((j, n) => { at[c[j]] = pin[c[j]]; let r = pin[c[j]] + h(c[j]); for (let i = j + 1, e = n + 1 < js.length ? js[n + 1] : c.length; i < e; i++) { at[c[i]] = fixed[c[i]] ?? r; r += h(c[i]); } });
   return at;
 }
+/* A view's main flow (layout-flow note, section 6.1), from its lines as the layout reads them: lines, [{ from, to, flow, step,
+   change }]; o.back, the indexes of the lines that close a loop (loopsOf's); o.dep(line), true for a dependency line; o.cards,
+   the view's cards in order (ties go to the first mentioned); o.run, a numbered view (render "sequence"), whose lines are its
+   steps in order. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
+   chain of stepped lines in step order (2 < 2a < 2b < 3), each starting where the one before ends, the first of a step's
+   suffixes on it and the others branches; else, in a numbered view, the longest such chain in run order; else the longest
+   path of flow lines from a card no flow line comes into. Returns null when the view has no flow line, else { cards, lines,
+   by, breaks }: the main cards in order, the indexes of the main lines, how it was found ("main", "step", "run" or "path"),
+   and for a chain, each stepped line that did not start where the one before it ended ([its index, that line's index]).
+   Pure: the layout (flowPos), validate() and the score read it, and stories (section 10) will. */
+function mainFlow(lines, o = {}) {
+  const back = o.back || new Set(), dep = o.dep || (() => false), list = Array.from(lines || []);
+  const flowK = list.map((e, k) => k).filter(k => { const e = list[k]; return e && e.from != null && e.to != null && e.from !== e.to && !back.has(k) && !dep(e); });
+  if (!flowK.length) return null;
+  const first = new Map(); [...(o.cards || []), ...flowK.flatMap(k => [list[k].from, list[k].to])].forEach(id => { if (!first.has(id)) first.set(id, first.size); });
+  const pathOf = ks => { // the longest path over the lines ks (a DAG once loops are out), ties to the earlier line and the first card
+    const ins = new Map(), outs = new Map(), ids = [...new Set(ks.flatMap(k => [list[k].from, list[k].to]))].sort((a, b) => first.get(a) - first.get(b));
+    ks.forEach(k => { const { from, to } = list[k]; (outs.get(from) || outs.set(from, []).get(from)).push(k); ins.set(to, (ins.get(to) || 0) + 1); });
+    const len = new Map(ids.map(id => [id, 0])), pred = new Map(), queue = ids.filter(id => !ins.get(id));
+    for (let q = 0; q < queue.length; q++) for (const k of outs.get(queue[q]) || []) { const { from, to } = list[k];
+      if (len.get(from) + 1 > len.get(to)) { len.set(to, len.get(from) + 1); pred.set(to, k); }
+      ins.set(to, ins.get(to) - 1); if (!ins.get(to)) queue.push(to); }
+    let end = queue[0]; queue.forEach(id => { if (len.get(id) > len.get(end) || len.get(id) === len.get(end) && first.get(id) < first.get(end)) end = id; });
+    const out = []; for (let id = end; pred.has(id); id = list[pred.get(id)].from) out.unshift(pred.get(id));
+    return out; };
+  const chainOf = ks => { // ks in order: chains of lines each starting where the one before ended, the longest kept (the first of equals)
+    const chains = [], breaks = []; let cur = null, seen = null;
+    ks.forEach(k => { const e = list[k], last = cur && list[cur.at(-1)];
+      if (last && e.from === last.to && !seen.has(e.to)) { cur.push(k); seen.add(e.to); return; }
+      if (last) breaks.push([k, cur.at(-1)]);
+      chains.push(cur = [k]); seen = new Set([e.from, e.to]); });
+    return { ks: chains.reduce((a, c) => c.length > a.length ? c : a, []), breaks }; };
+  const done = (ks, by, breaks = []) => { if (!ks.length) return null; const cards = [list[ks[0]].from, ...ks.map(k => list[k].to)]; return { cards, lines: ks, by, breaks }; };
+  const marked = flowK.filter(k => list[k].flow === 'main');
+  if (marked.length) return done(pathOf(marked), 'main');
+  const stepped = flowK.filter(k => list[k].step != null && list[k].step !== '');
+  if (stepped.length) { // each step's first suffix: 2 and 2a and 2b are one step, 2 (else 2a) on the main flow
+    const num = s => { const m = /^\d+(?:\.\d+)?/.exec(String(s)); return m ? 'n' + +m[0] : 't' + String(s); }, taken = new Set();
+    const ks = stepped.map((k, i) => [k, i]).sort((a, b) => stepOrder(list[a[0]].step, list[b[0]].step) || a[1] - b[1]).map(x => x[0])
+      .filter(k => { const n = num(list[k].step); if (taken.has(n)) return false; taken.add(n); return true; });
+    const c = chainOf(ks); return done(c.ks, 'step', c.breaks);
+  }
+  if (o.run) { const ks = flowK.filter(k => !(typeof list[k].change === 'string' && list[k].change.toLowerCase() === 'removed')), c = chainOf(ks); return done(c.ks, 'run', c.breaks); }
+  return done(pathOf(flowK), 'path');
+}
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
 /* Lines cross as little as the order of the cards in a column allows (#53): a few barycentre sweeps (each card goes where
@@ -617,9 +662,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     list.sort((a, b) => vertical ? ((a.e.under || 0) - (b.e.under || 0)) || (a.other.y - b.other.y) || (lean(a) - lean(b)) || ((side === 'R' ? -1 : 1) * (a.other.x - b.other.x)) : turn(a) - turn(b));
     const sp = vertical ? null : sideSpan(n, side);
     const len = vertical ? n.h : sp ? sp[1] - sp[0] : n.w, mid = sp ? (sp[0] + sp[1]) / 2 : n.x + n.w / 2;
-    const gap = Math.min(vertical ? 16 : 26, (len * 0.84) / Math.max(1, list.length)), cy = n.y + n.h / 2;
+    // mainPort (layout-flow note, section 6.2): a main-flow line takes the side's middle, the others spread round it in their
+    // order, closer (not under 10 px apart) when they would not fit the side else, so it runs straight between two cards on
+    // the main row; as near the middle as they fit when even that is too little
+    const mp = vertical ? list.findIndex(it => it.e.mainLine) : -1, reach = mp >= 0 ? Math.max(mp, list.length - 1 - mp) : 0;
+    const gap = Math.min(vertical ? 16 : 26, (len * 0.84) / Math.max(1, list.length), reach ? Math.max(10, len * 0.42 / reach) : Infinity), cy = n.y + n.h / 2;
+    const lim = len * 0.42 / gap, mid0 = mp >= 0 ? Math.min(lim, Math.max(list.length - 1 - lim, mp)) : (list.length - 1) / 2;
     list.forEach((it, i) => {
-      const off = (i - (list.length - 1) / 2) * gap;
+      const off = (i - mid0) * gap;
       const p = side === 'R' ? [n.x + n.w, cy + off] : side === 'L' ? [n.x, cy + off]
         : side === 'T' ? [mid + off, n.y] : [mid + off, n.y + n.h];
       portAt(it, side, p);
@@ -1346,4 +1396,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
+export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };

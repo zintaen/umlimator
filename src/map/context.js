@@ -5,8 +5,8 @@ import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
-import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
-import { FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS } from '../layout/tune.js';
+import { layoutGraph, mainFlow, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
+import { BRANCH_BALANCE, FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
@@ -227,7 +227,7 @@ function mapContext(model, opts = {}) {
     const steps = O(); if (v.render === 'sequence') { const k = runSteps(lp.edges); lp.edges.forEach((e, i) => { if (k[i] != null) (steps[e.to] ||= []).push(k[i]); }); }
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
     // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
-    if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
+    if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || v.arrange === 'flow' || ownLayout(vid)) return (planCache[vid] = flow); // an arranged view's main flow replaces the hub's lanes (section 6.3)
     planCache[vid] = { ...hubPlan(v, hub, lp), hub, backKeys: lp.keys, steps };
     const was = opts.prev && opts.prev[vid]; // after an update: cards keep the lane, column and order they had
     if (was && was.hub === hub && was.lanes) return (planCache[vid] = keepHub(planCache[vid], was));
@@ -461,9 +461,31 @@ function mapContext(model, opts = {}) {
      dependency line ranks, orders and rows nothing, so a store every step writes to no longer pulls itself past the last step;
      the router takes it after the flow lines. Typed views get their type's flowRole with section 12 step 10: none yet */
   const FLOW_ROLES = ['main', 'branch', 'dep'], MEDIAN = n => n >> 1;
+  const depRule = v => e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : ['state', 'guard'].includes(wireKind(e, opts.kinds || v.kindsFromLabels));
+  const flowing = (vid, dep) => viewEdges(V[vid] || {}).some(e => e.from !== e.to && !dep(e)); // a view with no flow line ranks as before (section 7.4)
   const depOf = vid => { const v = V[vid] || {}; if (v.arrange !== 'flow' || ownLayout(vid)) return () => false;
-    const dep = e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : ['state', 'guard'].includes(wireKind(e, opts.kinds || v.kindsFromLabels));
-    return viewEdges(v).some(e => e.from !== e.to && !dep(e)) ? dep : () => false; }; // a view with no flow line ranks as before (section 7.4)
+    const dep = depRule(v); return flowing(vid, dep) ? dep : () => false; };
+  /* The main flow (section 6): in an arranged map view, mainFlow's (layered.js) over the view's lines as loopsOf reads them,
+     dependency lines left out; null in any other view, or one with no flow line. Its cards hold one row (flowPos), its lines
+     take the middle port of the sides they leave and come into (prepEdges' mainLine, layoutPass's port spread) */
+  const mainOf = vid => { const v = V[vid] || {}; if (v.arrange !== 'flow' || ownLayout(vid) || arrOf(v.containers).length) return null; // boxes: section 12 step 7
+    const dep = depRule(v); if (!flowing(vid, dep)) return null;
+    const lp = loopsOf(v), M = mainFlow(lp.edges, { back: lp.back, dep, cards: v.nodeIds, run: v.render === 'sequence' });
+    return M && { ...M, keys: new Set(M.lines.map(k => lp.edges[k].from + '>' + lp.edges[k].to)) }; };
+  /* Each card off the main flow takes a side of the main row (section 6.2): -1 above, 1 below. A branch (the cards a chain of
+     flow lines off the main flow joins) keeps to one side, so its lines never cross the main row: above when one of its lines
+     is a guard (an exception), else below; when one side of a column it sits in already holds BRANCH_BALANCE more cards than
+     the other, the other side. Branches in the order the view first mentions them */
+  const sidesOf = (ids, fwd, onMain, rank, seen, guard) => { const side = O(), root = O(), find = i => root[i] === i ? i : (root[i] = find(root[i]));
+    const off = ids.filter(i => !onMain.has(i)); off.forEach(i => { root[i] = i; });
+    fwd.forEach(e => { if (e.from in root && e.to in root) root[find(e.from)] = find(e.to); });
+    const groups = O(); off.forEach(i => (groups[find(i)] ||= []).push(i));
+    const count = O(), held = (c, s) => (count[c] || O())[s] || 0;
+    Object.values(groups).map(g => g.sort((a, b) => seen(a) - seen(b))).sort((a, b) => seen(a[0]) - seen(b[0])).forEach(g => {
+      const has = new Set(g), up = fwd.some(e => (has.has(e.from) || has.has(e.to)) && guard(e));
+      let s = up ? -1 : 1; if (!up && g.some(i => held(rank[i], s) - held(rank[i], -s) >= BRANCH_BALANCE)) s = -s;
+      g.forEach(i => { side[i] = s; const c = count[rank[i]] ||= O(); c[s] = (c[s] || 0) + 1; }); });
+    return side; };
   // the cards (of ids) every line of which is a dependency
   const depCards = (edges, dep, ids) => { const own = edges.filter(e => e.from !== e.to), flow = own.filter(e => !dep(e));
     return ids.filter(i => own.some(e => e.from === i || e.to === i) && !flow.some(e => e.from === i || e.to === i)); };
@@ -477,7 +499,7 @@ function mapContext(model, opts = {}) {
       pos[i] = [c, top + (at[c] = (at[c] ?? -1) + 1)]; left.splice(k--, 1); } };
   const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
   function flowPos(vid, o = {}) {
-    const v = flipView(vid, o.flip), dep = depOf(vid);
+    const v = flipView(vid, o.flip), dep = depOf(vid), M = !o.flip && mainOf(vid), onMain = new Set(M ? M.cards : []);
     const lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && !dep(e));
     // cards with no line go in rows of their own under the view (#46), as wide as its columns; they stacked with the sources
     const all = (v.nodeIds || []).filter(i => N[i]), lined = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
@@ -487,11 +509,16 @@ function mapContext(model, opts = {}) {
     const seen = id => { const k = lp.edges.findIndex(e => e.to === id || e.from === id); return k < 0 ? 999 : k; };
     const sink = i => isState(i) && !fwd.some(e => e.from === i); // state that leads nowhere sits along the bottom
     const pos = Object.create(null), links = fwd.map(e => [e.from, e.to]);
-    const order = rk => { const cols = {}; ids.forEach(i => (cols[rk[i]] ||= []).push(i));
+    // an arranged view's main cards anchored at row 0, each other card on its branch's side of them (section 6.2); the snake
+    // (section 14) will anchor a long flow's second run at a second row through the same map
+    const anchor = M ? byId(M.cards.filter(i => ids.includes(i)).map(i => [i, 0])) : null, guard = e => wireKind(e, opts.kinds || v.kindsFromLabels) === 'guard';
+    const order = rk => { const cols = {}; ids.forEach(i => (cols[rk[i]] ||= []).push(i)); const side = M && sidesOf(ids, fwd, onMain, rk, seen, guard);
       const ranks = Object.keys(cols).map(Number).sort((a, b) => a - b), mains = ranks.map(c => cols[c].filter(i => !sink(i)).sort((a, b) => seen(a) - seen(b)));
-      untangle(mains, links); return { cols, ranks, mains }; }; // in reading order, unless another order crosses less (#53)
+      if (M) mains.forEach((m, k) => { mains[k] = [...m.filter(i => side[i] === -1), ...m.filter(i => onMain.has(i)), ...m.filter(i => side[i] === 1)]; });
+      untangle(mains, links, undefined, undefined, anchor); return { cols, ranks, mains }; }; // in reading order, unless another order crosses less (#53)
     const { cols, ranks, mains } = order((o.pull && pullSources(ids, links, rank)) || rank);
-    const row = o.packed ? byId(mains.flatMap(m => m.map((i, r) => [i, r]))) : rowsFor(mains, fwd.filter(level).map(e => [e.from, e.to]));
+    const row = o.packed && !anchor ? byId(mains.flatMap(m => m.map((i, r) => [i, r]))) : rowsFor(mains, fwd.filter(level).map(e => [e.from, e.to]), undefined, undefined, anchor);
+    if (anchor) { const low = Math.min(0, ...Object.values(row)); if (low < 0) Object.keys(row).forEach(i => { row[i] -= low; }); } // a branch above: the main row moves down to make room
     const height = Math.max(0, ...Object.values(row)) + 1;
     Object.entries(cols).forEach(([c, list]) => {
       const main = mains[ranks.indexOf(+c)], st = list.filter(sink).sort((a, b) => seen(a) - seen(b));
@@ -533,7 +560,7 @@ function mapContext(model, opts = {}) {
     if (words && /\b(feeds?|hands? off|routes?|passes|returns|bounces|then)\b/i.test(l)) return 'feeds';
     return 'calls'; };
   function prepEdges(vid, edges, backKeys) {
-    const dep = depOf(vid), par = {}; // parallel edges between one pair read as one edge listing every relation
+    const dep = depOf(vid), M = mainOf(vid), par = {}; // parallel edges between one pair read as one edge listing every relation
     const merged = edges.filter(e => { const k = e.from + '>' + e.to + ((V[vid] || {}).keepPairs ? '#' + e.id : ''), m = par[k]; if (!m) { par[k] = e; e.all = [e]; return true; } m.all.push(e); return false; })
       .map(e => e.all.length < 2 ? e : { ...e, label: (e.label || '') + ' +' + (e.all.length - 1), when: e.all.map(x => (x.step != null ? x.step + '. ' : '') + (x.label || '')).join('\n') });
     const out = merged.map(e => ({ ...e, back: !(V[vid] || {}).keepPairs && backKeys && backKeys.has(e.from + '>' + e.to) }));
@@ -541,7 +568,7 @@ function mapContext(model, opts = {}) {
     return out.filter(e => { const r = !(V[vid] || {}).keepPairs && pair[e.to + '>' + e.from]; if (r) { r.both = true; r.back = false; r.all = [...(r.all || [r]), ...(e.all || [e])]; if (e.label && e.label !== r.label) r.label = (r.label ? r.label + ' / ' : '') + e.label;
       if (r.all.some(x => x.step != null)) r.when = r.all.map(x => (x.step != null ? x.step + '. ' : '') + (x.label || '')).join('\n'); else if (e.when) r.when = [r.when, e.when].filter(Boolean).join(' · '); return false; } pair[e.from + '>' + e.to] = e; return true; })
       .map(e => { const all = e.all || [e], subs = [...new Set(all.map(x => x.sublabel).filter(x => x != null && x !== '').map(String))];
-        return { ...e, ...(all.every(dep) && { dep: true }), wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all), ...chOfAll(all) }; });
+        return { ...e, ...(all.every(dep) && { dep: true }), mainLine: !!M && !e.both && M.keys.has(e.from + '>' + e.to) || undefined, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all), ...chOfAll(all) }; });
   }
   // the change a line that stands for several edges says in its title and key: the strongest of theirs, as markOf draws it
   // (audit 51: a pair drawn removed was named with the first edge's change, none)

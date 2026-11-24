@@ -3,6 +3,7 @@ import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
+import { mainFlow } from '../layout/layered.js';
 import { boxHolds, mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
 
@@ -39,8 +40,8 @@ function fieldTextProblems(m, v, T, memos = new Map()) {
 }
 
 /* Layout by business flow (docs/diagrams/notes/layout-flow.md section 3): a view's arrange and zones, a line's flow, a card's zone,
-   on maps and typed views alike. No layout reads them yet; each is checked here, and an arranged view's main-flow lines are
-   checked for one path. Warnings only: the model draws as it does without them */
+   on maps and typed views alike. Each is checked here, an arranged view's main-flow lines for one path and its steps, when
+   no line is marked main, for one chain (section 6.1). Warnings only: the model draws as it does without them */
 const FLOW_ROLES = ['main', 'branch', 'dep'], FLOW_ZONES = ['first', 'flow', 'last', 'under'];
 function arrangeProblems(m, views, warn) {
   const arr = x => (Array.isArray(x) ? x : []), obj = x => x && typeof x === 'object' && !Array.isArray(x), say = ok => ok.map(s => `"${s}"`).join(', ').replace(/, ([^,]*)$/, ' or $1');
@@ -77,6 +78,13 @@ function arrangeProblems(m, views, warn) {
     main.forEach(([e, k]) => { if (back.has(k)) warn(edgeAt.get(e) || at, `a main-flow line from "${name(e.from)}" to "${name(e.to)}" closes a loop (the line back ranks nothing): a main flow is one path, never a cycle, so it ends before this line`); });
     for (const end of ['from', 'to']) { const seen = new Map(); main.filter(([, k]) => !back.has(k)).forEach(([e]) => seen.set(e[end], (seen.get(e[end]) || 0) + 1));
       seen.forEach((n, id) => { if (n > 1) warn(at, `"${name(id)}" has ${n} main-flow lines ${end === 'from' ? 'out' : 'in'} (flow: "main"): a main flow is one path, so the longest path among them is taken`); }); }
+    // with no line marked main, a main flow from steps (section 6.1): each step should start where the one before it ends
+    // a dependency line as the layout reads one (context.js depRule, wireKind): its flow, else its kind, else a hook's or a board's line
+    const kindOfCard = id => (card.get(id) || {}).kind, dep = e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : WIRE_KINDS.includes(e.kind) ? ['state', 'guard'].includes(e.kind)
+      : kindOfCard(e.from) === 'hook' || [e.from, e.to].some(id => kindOfCard(id) === 'board');
+    const M = !main.length && mainFlow(lines, { back, dep, cards });
+    if (M && M.by === 'step') M.breaks.forEach(([k, j]) => { const e = lines[k], p = lines[j];
+      warn(edgeAt.get(e) || at, `step ${jsonText(e.step)} starts at "${name(e.from)}", not at "${name(p.to)}" where step ${jsonText(p.step)} ends: the steps break into chains here, and the longest chain (${M.lines.length} lines, from "${name(M.cards[0])}") is the main flow`); });
   });
 }
 

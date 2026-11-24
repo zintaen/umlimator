@@ -240,7 +240,7 @@ Each is small, opt-in or neutral, and lands on `audit-loop` with its tests, its 
 3. The fields of section 3 in `validate()`, the schema, `lib/umlimator.d.ts`, `diff()` and the docs, with no layout effect yet; `bench/models/f12.json` added to the fixed corpus.
 4. Dependency lines (section 5) for arranged map views; the router's dependency-last order.
 5. `rowsFor` and `untangle` anchors, as functions with their own unit tests, unused by any view yet.
-6. The main flow (section 6) for arranged plain map views: main-flow extraction, anchors, branch sides, `mainPort`.
+6. The main flow (section 6) for arranged plain map views: main-flow extraction, anchors, branch sides, `mainPort`. Built: the extraction is `mainFlow(lines, { back, dep, cards, run })` in `src/layout/layered.js`, which `flowPos`, `validate()` and the score read and `storyFromFlow` (step 13) will; the score's `straight` reads the lines the layout drew as the main flow (`mainLine`), else those marked `flow: "main"`.
 7. The main flow with boxes (`blockPos`).
 8. The snake (section 14): a main flow longer than `SNAKE_AT` cards wraps onto a second row, for arranged map views with and without boxes; the route audit and the score read each row's direction; `tests/flow-layout.test.mjs` and a long-flow view added to `f12`.
 9. Map zones (section 7.2's first row).
