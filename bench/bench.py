@@ -9,6 +9,9 @@
   python3 bench/bench.py --check-determinism      # fail if two page loads lay any view out differently
   python3 bench/bench.py --max-ms m50=1000        # fail if a view of m50 takes longer (plan + layout, median)
   python3 bench/bench.py --expect bench/results/X.json   # fail if a view's geometry differs from that run's
+  python3 bench/bench.py --score                  # the layout quality score in Node, no browser (bench/score.mjs)
+  python3 bench/bench.py --score --views b10/overview --expect bench/score-expected.json
+  python3 bench/bench.py --score --base main      # also lay out with main's lib/, in turn: its scores and time compared
 
 Per view, the median of --runs runs, each with fresh caches (patch 30 in patches/apply.py): plan is lane planning
 (planOf; a hub view tries lane orders), place is everything before routing, route the first routing and the reorder
@@ -91,7 +94,30 @@ def view_edges(m, v):
     return sum(1 for e in m.get("edges", []) if e["from"] in ids and e["to"] in ids)
 
 
+def score(argv):
+    """--score: run bench/score.mjs with the other arguments (docs/diagrams/notes/layout-flow.md section 4.2). --base REF
+    hands it REF's lib/umlimator-all.js, read with git, so the base is laid out and timed in the same run."""
+    rest, base = list(argv), None
+    if "--base" in rest:
+        i = rest.index("--base")
+        if i + 1 >= len(rest):
+            sys.exit("--base needs a commit")
+        base = rest[i + 1]
+        del rest[i:i + 2]
+    with tempfile.TemporaryDirectory() as tmp:
+        if base:
+            r = subprocess.run(["git", "show", f"{base}:lib/umlimator-all.js"], capture_output=True, text=True, cwd=ROOT)
+            if r.returncode:
+                sys.exit(f"--base {base}: {r.stderr.strip() or 'no lib/umlimator-all.js there'}")
+            path = Path(tmp) / "base-all.mjs"
+            path.write_text(r.stdout, encoding="utf-8")
+            rest += ["--base-lib", str(path)]
+        return subprocess.run(["node", str(HERE / "score.mjs"), *rest], cwd=ROOT).returncode
+
+
 def main():
+    if "--score" in sys.argv[1:]:
+        sys.exit(score([x for x in sys.argv[1:] if x != "--score"]))
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--models", help="comma list of names in bench/models/ (default: all)")
     p.add_argument("--runs", type=int, default=5)
