@@ -2,7 +2,7 @@
 // The weekly digest to the maintainer (auto-evolve strategy, section 7), in Markdown:
 //
 //   node tools/evolve/digest.mjs --audits <folder> [--fixes <folder>] [--repo <folder>] [--date YYYY-MM-DD] [--days 7]
-//                                [--trend 8] [--gaps <file>] [--out <file>]
+//                                [--trend 8] [--gaps <file>] [--tune <folder>] [--out <file>]
 //
 // What it holds: the rounds of the week (a round's time is its audit file's date field, else its first "Audit <N>"
 // commit in the repository, else the file's modification time) (the `--days` days up to the end of `--date`, UTC,
@@ -11,8 +11,10 @@
 // the circuit breakers (ledger.mjs); the open known gaps (the last "Known gaps" item of `--gaps`, docs/module-api.md by
 // default, or every bullet of a file that has no such item); and a spot check: 2 or 3 rejected findings of the week (of
 // the last three audits when the week has none), each with the verifier's reason, picked at random with the date as
-// the seed, so the same date always picks the same ones. `--fixes` defaults to the audits folder.
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+// the seed, so the same date always picks the same ones. `--fixes` defaults to the audits folder. With `--tune`, the
+// weekly layout loop's records of the week (tune-*.json under that folder, tools/evolve/tune-loop.mjs): what it proposed,
+// whether it kept it and why, and its totals; a loop that stopped says so (docs/diagrams/notes/layout-flow.md 9.3).
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -75,7 +77,28 @@ export function sample(pool, k, rnd) {
   return a.slice(0, k);
 }
 
-export function digest({ audits: auditsDir, fixes: fixesDir, repo = process.cwd(), date, days = 7, trend = 8, gaps } = {}) {
+// the layout loop's records (tune-*.json, anywhere under dir) whose date is in [from, to], by date
+export function tuneRecords(dir, from, to) {
+  const out = [], walk = p => { for (const f of readdirSync(p)) { const q = join(p, f);
+    if (statSync(q).isDirectory()) walk(q);
+    else if (/^tune-.*\.json$/.test(f)) { try { const r = JSON.parse(readFileSync(q, 'utf8')); const t = Date.parse(r && r.date); if (r && r.week && t >= from.getTime() && t <= to.getTime()) out.push(r); } catch {} } } };
+  if (existsSync(dir)) walk(dir);
+  const by = new Map(out.map(r => [r.week, r]));
+  return [...by.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+export function tuneLines(records) {
+  if (!records.length) return ['No layout loop record this week.'];
+  const n = x => (x == null ? '-' : String(Math.round(x * 100) / 100));
+  return records.flatMap(r => {
+    const head = `- ${r.week}: ${r.status}${r.proposal ? `, ${r.proposal.path} ${JSON.stringify(r.proposal.from)} to ${JSON.stringify(r.proposal.to)}` : ''}.`;
+    const tot = r.fixed ? ` Fixed ${n(r.fixed.baseScore)} to ${n(r.fixed.score)}; edits ${n(r.edits && r.edits.baseScore)} to ${n(r.edits && r.edits.score)}; held-out ${r.heldout ? `${n(r.heldout.baseScore)} to ${n(r.heldout.score)}` : 'not measured'}.` : '';
+    const why = (r.decision || []).length ? ` ${one(r.decision.join('; '))}.` : '';
+    return [head + tot + why];
+  });
+}
+
+export function digest({ audits: auditsDir, fixes: fixesDir, repo = process.cwd(), date, days = 7, trend = 8, gaps, tune } = {}) {
   const day = date ? new Date(`${date}T00:00:00Z`) : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
   if (Number.isNaN(day.getTime())) throw new Error(`--date is YYYY-MM-DD, not ${date}`);
   const to = new Date(day.getTime() + DAY - 1), from = new Date(day.getTime() + DAY - days * DAY);
@@ -135,6 +158,13 @@ export function digest({ audits: auditsDir, fixes: fixesDir, repo = process.cwd(
   else for (const g of list) out.push(`- ${one(g)}`);
   out.push('');
 
+  if (tune) {
+    const recs = tuneRecords(tune, from, to);
+    out.push('## Layout tuning loop', '', ...tuneLines(recs));
+    if (recs.some(r => r.status === 'stopped')) out.push('', 'The loop has stopped: two weeks in a row kept nothing. It runs again when the maintainer starts it with restart (section 9.3 of the layout-flow note).');
+    out.push('');
+  }
+
   out.push('## Spot check: rejected findings', '');
   let pool = week.flatMap(a => a.rejected.map(r => ({ round: a.round, ...r })));
   let note = 'of this week';
@@ -155,10 +185,10 @@ export function main(argv = process.argv.slice(2)) {
   const { flags } = parseArgs(argv);
   let md;
   try {
-    if (typeof flags.audits !== 'string') throw new Error('usage: digest.mjs --audits <folder> [--fixes <folder>] [--repo <folder>] [--date YYYY-MM-DD] [--days 7] [--trend 8] [--gaps <file>] [--out <file>]');
+    if (typeof flags.audits !== 'string') throw new Error('usage: digest.mjs --audits <folder> [--fixes <folder>] [--repo <folder>] [--date YYYY-MM-DD] [--days 7] [--trend 8] [--gaps <file>] [--tune <folder>] [--out <file>]');
     md = digest({ audits: flags.audits, fixes: typeof flags.fixes === 'string' ? flags.fixes : undefined, repo: typeof flags.repo === 'string' ? resolve(flags.repo) : process.cwd(),
       date: typeof flags.date === 'string' ? flags.date : undefined, days: flags.days ? Number(flags.days) : 7, trend: flags.trend ? Number(flags.trend) : 8,
-      gaps: typeof flags.gaps === 'string' ? flags.gaps : undefined });
+      gaps: typeof flags.gaps === 'string' ? flags.gaps : undefined, tune: typeof flags.tune === 'string' ? flags.tune : undefined });
   } catch (e) {
     process.stderr.write(`digest: ${e.message}\n`);
     return 2;

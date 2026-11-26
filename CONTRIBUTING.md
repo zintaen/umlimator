@@ -44,6 +44,7 @@ python3 tests/outcomes.py
 python3 tests/import.py
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
 python3 bench/bench.py --score --expect bench/score-expected.json        # the layout quality score, in Node
+python3 bench/bench.py --score --corpus edits --expect bench/score-expected-edits.json   # the same on the edit corpus
 npm --prefix docs run build && node --test tests/site.test.mjs            # the site builds with no dead links
 ```
 
@@ -57,6 +58,19 @@ UMLIMATOR_BPMN_MODDLE=/tmp/moddle npm test
 The bench lays out fixed models in headless Chrome and fails on a view that no longer draws as recorded in `bench/expected.json`. A change that moves lines on purpose refreshes it with `--write-expected` and says why in the pull request.
 
 The layout quality score (`python3 bench/bench.py --score`, which runs `bench/score.mjs`) lays out every view of the fixed corpus in Node with `lib/umlimator-all.js`, typed views included, and scores each with `src/layout/score.js`: hard issues, crossings, labels, how straight a main flow runs and lines against the reading direction, weighted by `bench/score-weights.json` (lower is better). With `--expect bench/score-expected.json` it fails when a view's hard count rises, a view's score rises by more than 2 percent or the total rises; with `--base REF` it also lays the corpus out with that commit's `lib/` in the same run and fails when the whole takes more than 1.10 times as long. `--views b10/overview,examples/bookshop-c4` narrows it. Only the maintainer changes the weights or rewrites the expect file (`--write-expected`), and says why in the pull request. See `docs/diagrams/notes/layout-flow.md` section 4.
+
+Two more corpora come with it. The edit corpus, `bench/edits/edits.json`, holds five edits per bench map view as `apply()` commands (a card added with one line, a line removed, a card renamed, a line added, a card moved into a box); `node bench/gen-edits.mjs` writes it from a fixed seed and `--check` fails when the committed file differs, so change the generator, never the file. `--corpus edits` lays each edited model out against the model before (`stableFrom`), adds the `moved` share of untouched cards to the score, compares with `bench/score-expected-edits.json`, fails when a pair draws more hard issues than the same edit laid out fresh, and reports how many pairs keep every untouched card in place (section 8.4 asks 95 percent; it is reported, not enforced). The held-out corpus is never committed: `bench/gen.py --heldout --week YYYY-Www --out DIR` writes it from a seed (`--seed`, or `LAYOUT_HELDOUT_SEED`) hashed with the week, refuses a folder inside the repository and prints nothing about the maps, and `--corpus heldout` builds it in a temporary folder and prints totals only (no `--views`, `--expect`, `--save` or `--write-expected`). The `layout-score` workflow runs the fixed and edit corpora on pull requests that touch the layout or the bench, and the held-out corpus on pushes to `audit-loop` and by hand only, with the repository secret `LAYOUT_HELDOUT_SEED`; without it, as on a pull request or a fork, the job says so and passes.
+
+## The weekly layout loop
+
+`.github/workflows/layout-loop.yml` runs `tools/evolve/tune-loop.mjs` every Saturday at 20:00 UTC (Sunday 03:00 in the maintainer's time, UTC+7): it proposes one change to one value of `src/layout/tune.js`, inside the range the script declares for it, measures the fixed, edit and held-out corpora with that change against `audit-loop` as it is, and keeps it only when no view's hard count rises, no view's score rises by more than 2 percent, the time stays within the gate, the fixed total falls by at least 1 percent, the edit corpus is no worse and the held-out total is no worse (section 9 of the layout-flow note). A kept change becomes a pull request against `audit-loop` from a branch `layout-tune/<week>` with the totals before and after; the workflow never merges. `tests/tune.test.mjs` pins every value of `tune.js`, so the pull request's check fails on that pin until the maintainer, approving the change, moves the pin. Two weeks in a row with nothing kept stop the loop until it is run by hand with `restart`; a change kept one week whose held-out total is worse the next (with a new seed) is reverted by that week's pull request.
+
+It is off until both of these exist in the repository settings:
+
+- the repository variable `LAYOUT_LOOP_ENABLED` set to `true`, once the audit loop is in maintenance mode;
+- the repository secret `LAYOUT_HELDOUT_SEED`, any long random text: the seed of the held-out corpus. Only the step that measures receives it, and it prints and records totals only.
+
+The measuring job has a read-only token; the publishing job has `contents` and `pull-requests` write and no secret, checks the candidate again and pushes only its new branch. As with the bug agent, a pull request opened by the workflow's own token does not start the `check` workflow until a maintainer closes and reopens it. Each week's record (the proposal, each corpus's totals and the decision) is kept as the run's `tune-record` artifact for 90 days, and in `bench/results/tune-<date>.json` when a change is kept; `tools/evolve/digest.mjs --tune <folder>` lists them in the weekly digest. Tests: `tests/tune-loop.test.mjs` and `tests/corpora.test.mjs`, with fakes for the build, the scorer, git and `gh`.
 
 ### Protected tests
 
