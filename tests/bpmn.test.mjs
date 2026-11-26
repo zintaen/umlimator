@@ -19,6 +19,8 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { storyFromFlow } from '../src/map/stories.js';
+import { diff } from '../src/map/diff.js';
 import { tablesOf } from '../src/page/print.js';
 import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners, bzOwner } from '../src/bpmn/process.js';
 
@@ -74,9 +76,12 @@ test('the definition: bpmn with row 24\'s palette, its lines, properties, refs, 
   assert.deepEqual(T.props['bpmn.BoundaryEvent'].map(f => f.key), ['documentation', 'definition', 'categoryValueRef', 'cancelActivity']);
   assert.deepEqual(T.props['bpmn.IntermediateThrowEvent'][1].options, ['none', 'message'], 'decision 21: the none intermediate throw event');
   assert.deepEqual(T.refs['bpmn.BoundaryEvent'], { 'props.categoryValueRef': 'drop', 'props.attachedTo': 'cascade' });
+  // a default flow: an exclusive gateway's or an activity's, never a parallel gateway's; a deleted flow is dropped
+  assert.deepEqual(['bpmn.ExclusiveGateway', 'bpmn.ParallelGateway', 'bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity'].map(t => [T.props[t].some(f => f.key === 'default'), T.refs[t]['props.default']]),
+    [[true, 'drop'], [false, undefined], [true, 'drop'], [true, 'drop'], [true, 'drop']]);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'moveTo', 'owner', 'remove']);
   assert.deepEqual(Object.keys(T.rules), ['sequence-scope', 'sequence-ends', 'message-scope', 'message-ends', 'event-definition', 'boundary-host', 'boundary-out', 'flow-start', 'gateway-flows',
-    'lane-owner', 'in-lane', 'data-ends', 'group-ref', 'opens-view']);
+    'lane-owner', 'in-lane', 'data-ends', 'group-ref', 'opens-view', 'default-flow']);
   for (const k of ['layout', 'draw', 'boxes', 'owners', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
 });
 
@@ -263,6 +268,11 @@ const cases = {
   'data-ends': [[N('d', 'DataObject', 'D', { parent: 'p' }), N('n', 'TextAnnotation', 'Why')], [F('x', 'd', 's', 'DataAssociation'), F('y', 'e', 'd', 'DataAssociation'), F('z', 'a', 'e', 'Association'), F('w', 'd', 'd', 'DataAssociation'), F('ok', 'n', 'a', 'Association')], ['error', 'error', 'error', 'error']],
   'group-ref': [[N('b', 'Task', 'B', { parent: 'l1', props: { categoryValueRef: ['nowhere', 'a'] } })], [F('x', 'a', 'b')], ['warning', 'warning']],
   'opens-view': [[N('S', 'SubProcess', 'S', { parent: 'l1', opensView: 'nowhere' }), N('c', 'CallActivity', 'C', { parent: 'l1', opensView: 'v2' })], [F('x', 'a', 'S'), F('y', 'S', 'c'), F('z', 'c', 'e')], ['warning', 'warning']],
+  // a default that is no flow out of its gateway, on a parallel gateway, naming no line, and one with a condition
+  'default-flow': [[N('g', 'ExclusiveGateway', 'G', { parent: 'l1', props: { default: 'f1' } }), N('h', 'ParallelGateway', null, { parent: 'l1', props: { default: 'u' } }),
+    N('b', 'Task', 'B', { parent: 'l1', props: { default: 'v' } }), N('c', 'Task', 'C', { parent: 'l1', props: { default: 'nowhere' } })],
+  [F('x', 'a', 'g'), F('y', 'g', 'b', 'SequenceFlow', { label: 'yes' }), F('z', 'g', 'h', 'SequenceFlow', { label: 'no' }), F('u', 'h', 'c'), F('t', 'h', 'e'), F('v', 'b', 'e', 'SequenceFlow', { ext: { bpmn: { condition: '${ok}' } } }), F('w', 'c', 'e')],
+  ['error', 'error', 'error', 'warning']],
 };
 test('§4\'s rules: each fails on its case at its level, naming its rule and its elements, and passes on example 24', () => {
   assert.deepEqual(Object.keys(cases), Object.keys(BZ_RULES));
@@ -1159,4 +1169,42 @@ test('flowRole: the main flow runs from the start event along each gateway\'s fi
   assert.ok(g.edges.find(e => e.id === 'da').dep);
   assert.ok(g.edges.filter(e => e.mainLine).every(e => e.pts.length === 2), 'each main line one straight segment: in no pool, a column the main flow passes keeps its row free');
   delete v.arrange; const g0 = layout(m, 'v'); assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
+});
+
+/* ---- a default flow (props.default): an exclusive gateway's or an activity's, the way taken when no condition holds. The
+   view draws it with a slash near its source and names it; the main flow (an arranged view's), describe() and storyFromFlow
+   follow it, not the first flow out; deleting the flow drops it; diff() says the gateway changed ---- */
+test('a gateway\'s default flow: a slash near its source, named; the main flow and storyFromFlow take it; a delete drops it; diff() says it', () => {
+  const m = one([N('s', 'StartEvent', 'Go', { props: { definition: 'none' } }), N('g', 'ExclusiveGateway', 'Big?', { props: { default: 'g-b' } }), N('a', 'Task', 'Ask'), N('b', 'Task', 'Book'),
+    N('e', 'EndEvent', 'Done', { props: { definition: 'none' } })], [F('s-g', 's', 'g'), F('g-a', 'g', 'a', 'SequenceFlow', { label: 'yes' }), F('g-b', 'g', 'b', 'SequenceFlow', { label: 'no' }), F('a-e', 'a', 'e'), F('b-e', 'b', 'e')], { arrange: 'flow' });
+  assert.deepEqual(validate(m), []);
+  const g = layout(m, 'v'), by = Object.fromEntries(g.edges.map(e => [e.id, e]));
+  assert.deepEqual(g.edges.filter(e => e.end.from === 'slash').map(e => e.id), ['g-b']);
+  assert.equal(by['g-b'].aria, 'Sequence flow from Big? to Book, named no, the default flow');
+  assert.match(svgOf(g), /<marker id="[^"]*-slash-[^"]*"[^>]*><path d="M-14 1L-8 11"/, 'the slash marker is drawn');
+  assert.match(g.legend.join(''), /<b>Default flow<\/b>/);
+  assert.match(describe(m, 'v'), /^Exclusive gateway Big\?; then Ask \(yes\); then Book \(no\) by default\.$/m);
+  // the main flow takes the default, not the first flow out; without one, the first
+  const role = (x, id) => T.flowRole(x.edges.find(e => e.id === id), x, x.views[0]);
+  assert.deepEqual(['g-a', 'g-b'].map(id => role(m, id)), ['branch', 'main']);
+  assert.deepEqual(storyFromFlow(m, 'v').steps.map(x => x.select), ['s', 'g', 'b', 'e']);
+  const plain = structuredClone(m); delete plain.nodes[1].props;
+  assert.deepEqual(['g-a', 'g-b'].map(id => role(plain, id)), ['main', 'branch']);
+  assert.deepEqual(storyFromFlow(plain, 'v').steps.map(x => x.select), ['s', 'g', 'a', 'e']);
+  assert.ok(layout(plain, 'v').edges.every(e => e.end.from === 'none'), 'no default: no slash');
+  // the flow deleted: the gateway names none (refs: drop), and the model stays valid
+  const cut = apply(m, [{ op: 'delete', id: 'g-b' }]);
+  assert.deepEqual(cut.nodes.find(n => n.id === 'g').props, {});
+  assert.deepEqual(validate(cut).filter(p => p.rule === 'default-flow'), []);
+  // diff(): another default is a change of the gateway, drawn on the diff page
+  const moved = structuredClone(m); moved.nodes[1].props.default = 'g-a';
+  const d = diff(m, moved);
+  assert.deepEqual(d.summary, ['changes Big? (props)']);
+  assert.equal(d.model.nodes.find(n => n.id === 'g').change, 'changed');
+  // an activity's default flow, out of a task with two flows out
+  const t = one([N('s', 'StartEvent', 'Go', { props: { definition: 'none' } }), N('a', 'Task', 'Ask', { props: { default: 'a-e2' } }), N('e', 'EndEvent', 'Done', { props: { definition: 'none' } }), N('e2', 'EndEvent', 'Other', { props: { definition: 'none' } })],
+    [F('s-a', 's', 'a'), F('a-e', 'a', 'e'), F('a-e2', 'a', 'e2')]);
+  assert.deepEqual(validate(t), []);
+  assert.deepEqual(layout(t, 'v').edges.filter(e => e.end.from === 'slash').map(e => e.id), ['a-e2']);
+  assert.deepEqual(storyFromFlow(t, 'v').steps.map(x => x.select), ['s', 'a', 'e2']);
 });
