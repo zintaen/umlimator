@@ -60,13 +60,17 @@ function viewMetrics(g, o = {}) {
   const down = !!g.down, at = n => down ? n.x + n.w / 2 : n.y + n.h / 2, along = n => down ? n.y + n.h / 2 : n.x + n.w / 2, byId = g.byId || Object.fromEntries(g.nodes.map(n => [n.id, n]));
   const main = o.main || mainFlowOf(g, model, view);
   let straight = null;
-  if (main) { const rows = new Set(main.cards.map(id => byId[id]).filter(Boolean).map(n => Math.round(at(n))));
-    straight = 2 * Math.max(0, rows.size - 1) + main.lines.reduce((a, e) => a + corners(e.pts), 0); }
+  // a snake (section 14.2) counts per run: each run's rows used minus one, times 2, and the corners of its main lines but the
+  // turn line's; a line reads against its dir ("left": a stretch more than 8 px the other way, "down": up), and a main card
+  // against the one before on its run (or, past a turn, a card not below it)
+  if (main) { const rows = new Map(); main.cards.map(id => byId[id]).filter(Boolean).forEach(n => { const r = n.run ?? 0; rows.has(r) || rows.set(r, new Set()); rows.get(r).add(Math.round(at(n))); });
+    straight = [...rows.values()].reduce((a, s) => a + 2 * Math.max(0, s.size - 1), 0) + main.lines.filter(e => e.dir !== 'down').reduce((a, e) => a + corners(e.pts), 0); }
   let reverse = null;
   if (flowType(view)) {
-    const k = down ? 1 : 0;
-    reverse = g.edges.filter(e => !e.back && roleOf(e, model, view) !== 'dep' && e.pts.some((p, i) => i && e.pts[i - 1][k] - p[k] > 8)).length;
-    if (main) for (let i = 1; i < main.cards.length; i++) { const a = byId[main.cards[i - 1]], b = byId[main.cards[i]]; if (a && b && along(b) <= along(a)) reverse++; }
+    const k = down ? 1 : 0, against = (e, p, q) => e.dir === 'left' ? q[k] - p[k] > 8 : e.dir === 'down' ? p[1 - k] - q[1 - k] > 8 : p[k] - q[k] > 8;
+    reverse = g.edges.filter(e => !e.back && roleOf(e, model, view) !== 'dep' && e.pts.some((q, i) => i && against(e, e.pts[i - 1], q))).length;
+    if (main) for (let i = 1; i < main.cards.length; i++) { const a = byId[main.cards[i - 1]], b = byId[main.cards[i]]; if (!a || !b) continue; const ra = a.run ?? 0, rb = b.run ?? 0;
+      if (ra !== rb ? at(b) <= at(a) : ra % 2 ? along(b) >= along(a) : along(b) <= along(a)) reverse++; }
   }
   const length = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0);
   const points = g.edges.reduce((a, e) => a + e.pts.length, 0), area = g.bounds.w * g.bounds.h;
