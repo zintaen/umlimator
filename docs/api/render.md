@@ -310,7 +310,7 @@ await r.done;
 ### play
 
 ```ts
-play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
+play(id: string | Story | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
 ```
 
 Tells one of the model's [stories](./model-and-schema.md#story): each step sets the view, camera, selection,
@@ -318,9 +318,12 @@ highlight and caption, then plays its tour. `step` is where to start (0-based); 
 step's time is up. Returns a [`StoryPlayer`](./events-and-state.md#storyplayer), or `null` when the model has no story
 `id` with steps (the story shown, if any, plays on). `play(null)` stops the story shown.
 
+A [`Story`](./model-and-schema.md#story) object plays as it is given, such as one [`storyFromFlow()`](./apply-and-commands.md#storyfromflow) told from a view's main flow: it is not added to the model, and the standalone page's link does not name it. It plays while the views its steps name are in the model.
+
 ```js
 const player = map.play('checkout');
 if (player && await player.done) console.log('told to the end');
+map.play(storyFromFlow(model, 'order'));   // told from the view's main flow, not saved
 ```
 
 ### destroy

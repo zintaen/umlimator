@@ -309,6 +309,28 @@ try {
   const D5 = await pageIn('speed=2', TINY, true); let d0 = [D5.w.pgErr || null, D5.w.pg && D5.w.pg.speed];
   if (D5.w.pg) { D5.btn().click(); d0.push(D5.w.pg.speed); D5.w.pg.destroy(); } D5.f.remove();
   check('…with storage that throws (a private window, blocked site data), the page opens at the link\'s speed and the button still steps it', d0.join() === ',2,0.5', d0);
+  // the page's Stories menu on an arranged view (layout-flow note, section 10): "From the main flow" plays a story told from the
+  // view's main flow, as given: not saved in the model and not named in the link; on a view that is not arranged it is not offered
+  const F12 = await (await fetch('../bench/models/f12.json')).json();
+  const FLOWED = { ...F12, views: [...F12.views.filter(v => !v.diagram), { id: 'plain', title: 'Plain', nodeIds: ['o-web', 'o-api'] }] };
+  const G = await pageIn('view=order', FLOWED), gd = G.w.document, gbar = () => gd.querySelector('#p .umlimator').shadowRoot.querySelector('.um-story');
+  const item = gd.getElementById('m-flow-story');
+  const g0 = [!!gd.getElementById('m-stories'), item && item.tagName, item && item.hidden, item && item.tabIndex, gd.getElementById('m-flow-hr') && gd.getElementById('m-flow-hr').hidden];
+  gd.getElementById('m-stories').click(); const g1 = !gd.getElementById('m-stories-pop').hidden;
+  item.focus(); const g2 = gd.activeElement === item; item.click();
+  await until(() => gbar() && /1 \/ 6/.test(gbar().textContent));
+  const g3 = [G.w.pg.story && G.w.pg.story.story, G.w.pg.story && G.w.pg.story.steps, gd.getElementById('m-stories-pop').hidden, /story=/.test(G.w.location.hash), gd.querySelectorAll('#m-stories-pop [data-story]').length];
+  check('an arranged view: the Stories menu offers "From the main flow", a button in Tab order, with no model story above it', g0.join() === 'true,BUTTON,false,0,true' && g1 && g2, [g0, g1, g2]);
+  check('…pressing it plays the main flow\'s story, a step per main card, not saved in the model and not in the link', g3[0] === 'flow-order' && g3[1] === 6 && g3[2] && !g3[3] && g3[4] === 0, g3);
+  G.w.pg.story.next(); await until(() => gbar() && /2 \/ 6/.test(gbar().textContent));
+  const g4 = gbar() && gbar().querySelector('p').textContent;
+  G.w.pg.play(null); await G.w.pg.setView('plain'); await until(() => gd.getElementById('m-stories-menu').hidden, 3000);
+  const g5 = [gd.getElementById('m-stories-menu').hidden, item.hidden];
+  await G.w.pg.setView('order'); await until(() => !gd.getElementById('m-stories-menu').hidden, 3000);
+  const g6 = [gd.getElementById('m-stories-menu').hidden, item.hidden];
+  check('…its steps say the main line: "2. Places: Storefront places Order API; writes Orders."', g4 === '2. Places: Storefront places Order API; writes Orders.', g4);
+  check('…on a view that is not arranged it is not offered (the menu, with no story of its own, is hidden), and back on one it is', g5.join() === 'true,true' && g6.join() === 'false,false', [g5, g6]);
+  G.w.pg.destroy(); G.f.remove();
   }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
