@@ -2,8 +2,8 @@
  "commit": "a61c3422",
  "corpus": "fixed",
  "total": {
-  "views": 253,
-  "score": 605342.4
+  "views": 255,
+  "score": 607425.94
  },
  "views": {
   "b10/overview": {
@@ -173,6 +173,22 @@
    "straight": 0,
    "reverse": 0,
    "score": 1069.31
+  },
+  "f12/onboard": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1002
+  },
+  "f12/onboard-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1081.54
   },
   "i59/context": {
    "hard": 0,
