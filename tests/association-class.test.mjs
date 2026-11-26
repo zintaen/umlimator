@@ -202,7 +202,7 @@ const stacked = n => { const nodes = [], edges = [];
 const tieEnds = (g, where) => g.edges.filter(e => e.type === 'tie.AssociationClass').forEach(t => { const a = g.edges.find(e => e.id === t.tie);
   assert.ok(onBorder(t.t, t.pts[0]), `${where}: ${t.id} leaves its class box's border`); assert.ok(onLine(a.pts, t.pts.at(-1)), `${where}: ${t.id} ends on its association's line`); });
 
-test('the ties of a large class view: drawing them at twice the size takes at most a small multiple of the time, each still from its box to its line (timed, audit 65 review)', () => {
+test('the ties of a large class view: drawing them at twice the size takes at most a small multiple of the time, each still from its box to its line (timed, audit 65 review) (timed)', () => {
   const tieDraw = classTies.tieDraw, time = n => { let best = Infinity; for (let r = 0; r < 3; r++) { const g = stacked(n), t = performance.now(); tieDraw(g); best = Math.min(best, performance.now() - t); tieEnds(g, `${n}`); } return best; };
   time(10); // warm
   const t1 = time(50), t2 = time(100);

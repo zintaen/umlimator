@@ -45,7 +45,7 @@ if (!spec) fail("usage", "node tools/smoke.mjs <spec> [--repo <dir>] [--no-cli]"
 // the example: the smallest model in examples/types/, by bytes (the same file on every run of one commit)
 const typesDir = join(repo, "examples", "types");
 if (!existsSync(typesDir)) fail("example", `${typesDir} does not exist: --repo must be a checkout of the released commit`);
-const example = readdirSync(typesDir).filter((f) => f.endsWith(".json")).map((f) => join(typesDir, f))
+const example = readdirSync(typesDir).filter((f) => f.endsWith(".json") && !f.startsWith(".")).map((f) => join(typesDir, f))
   .sort((a, b) => statSync(a).size - statSync(b).size || a.localeCompare(b))[0];
 if (!example) fail("example", `no model in ${typesDir}`);
 
@@ -107,8 +107,11 @@ if (!args.includes("--no-cli")) {
     else symlinkSync(join(repo, f), join(cli, f));
   }
   cpSync(join(pkgDir, "lib"), join(cli, "lib"), { recursive: true });
-  const page = join(dir, "page.html");
-  const r = run("python3", ["umlimator.py", "render", example, "--out", page, "--no-check"], cli);
+  // a copy of the model in this run's own folder: render writes its temporary copies beside the model it reads, and in
+  // examples/types/ they would show up in what the test suites running beside this one list there
+  const model = join(dir, basename(example)), page = join(dir, "page.html");
+  cpSync(example, model);
+  const r = run("python3", ["umlimator.py", "render", model, "--out", page, "--no-check"], cli);
   if (r.code !== 0 || !existsSync(page)) fail("cli render", r.out);
   if (!readFileSync(page, "utf8").includes(readFileSync(join(pkgDir, "lib", "umlimator-all.js"), "utf8").slice(0, 4000)))
     fail("cli render", "the page does not hold the installed package's lib/umlimator-all.js");

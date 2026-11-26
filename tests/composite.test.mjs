@@ -1008,7 +1008,7 @@ test('connect: a comment link drawn to a comment is added from it on the other U
   assert.deepEqual(c('order-service.checkout', 'order-service.pricing'), { error: 'A comment link runs from a comment' });
 });
 
-test('audit 50: a part\'s text parses in linear time, a run of spaces too (as the timing view\'s F2), and as before', () => {
+test('audit 50: a part\'s text parses in linear time, a run of spaces too (as the timing view\'s F2), and as before (timed)', () => {
   const sp = ' '.repeat(64000);
   for (const s of ['a' + sp + 'x', 'a' + sp + ': T' + sp + 'x', 'a : T' + sp + '[1' + sp + 'x]', 'a' + sp + '[1]']) {
     const t = performance.now(); csParse(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); }
