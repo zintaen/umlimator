@@ -329,6 +329,8 @@ test('audit 20: every exported function reads a hostile model (an object with a 
       otlpSpans: () => U.otlpSpans(otlp), sequenceFromTrace: () => U.sequenceFromTrace(m, spans, { match: { [a]: B() } }),
       layout: () => U.layout(m, v), check: () => U.check(m, v), describe: () => U.describe(m, v), paths: () => U.paths(m, v, a, b), reach: () => U.reach(m, v, a),
       critical: () => U.critical(m, v, { from: a }), whatIf: () => U.whatIf(m, v, { remove: [a] }),
+      // a view with no main flow is said by a throw that names it, as the docs give it; any other throw fails
+      storyFromFlow: () => { try { return U.storyFromFlow(m, v); } catch (e) { if (/has no main flow|has no messages to tell/.test(e.message)) return null; throw e; } },
     };
     for (const [k, fn] of Object.entries(runs)) try { call(k, fn); } catch (e) { thrown.push(`${f} ${bad} ${k}: ${e.message}`); }
   }
