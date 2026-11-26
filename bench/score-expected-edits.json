@@ -1,9 +1,9 @@
 {
- "commit": "5e5204c8",
+ "commit": "07effce2",
  "corpus": "edits",
  "total": {
   "views": 236,
-  "score": 314709.33
+  "score": 315687.75
  },
  "views": {
   "edits/a8/dsl-context/1-add-card": {
@@ -22,7 +22,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 490.84
+   "score": 242.78
   },
   "edits/a8/dsl-context/3-rename": {
    "hard": 0,
@@ -53,48 +53,48 @@
   },
   "edits/a8/dsl-containers/1-add-card": {
    "hard": 0,
-   "cross": 3,
-   "labels": 0,
-   "straight": 0,
-   "reverse": 0,
-   "moved": 0,
-   "score": 1425.08
-  },
-  "edits/a8/dsl-containers/2-remove-line": {
-   "hard": 0,
-   "cross": 0,
-   "labels": 0,
-   "straight": 2,
-   "reverse": 0,
-   "moved": 0,
-   "score": 1030.97
-  },
-  "edits/a8/dsl-containers/3-rename": {
-   "hard": 0,
-   "cross": 3,
-   "labels": 0,
-   "straight": 2,
-   "reverse": 1,
-   "moved": 0,
-   "score": 1372.98
-  },
-  "edits/a8/dsl-containers/4-add-line": {
-   "hard": 0,
-   "cross": 0,
-   "labels": 1,
-   "straight": 2,
-   "reverse": 1,
-   "moved": 0,
-   "score": 1402.42
-  },
-  "edits/a8/dsl-containers/5-move-into-box": {
-   "hard": 0,
    "cross": 1,
    "labels": 0,
    "straight": 0,
    "reverse": 1,
    "moved": 0,
-   "score": 1046.85
+   "score": 1380.83
+  },
+  "edits/a8/dsl-containers/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.625,
+   "score": 1053.73
+  },
+  "edits/a8/dsl-containers/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1171.53
+  },
+  "edits/a8/dsl-containers/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 2,
+   "moved": 0,
+   "score": 1464.19
+  },
+  "edits/a8/dsl-containers/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0.889,
+   "score": 1359.96
   },
   "edits/a8/dsl-api-components/1-add-card": {
    "hard": 0,
@@ -143,12 +143,12 @@
   },
   "edits/a8/puml-components/1-add-card": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 0,
    "straight": 0,
-   "reverse": 0,
+   "reverse": 1,
    "moved": 0,
-   "score": 904.5
+   "score": 865.24
   },
   "edits/a8/puml-components/2-remove-line": {
    "hard": 0,
@@ -157,7 +157,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 590.49
+   "score": 455.67
   },
   "edits/a8/puml-components/3-rename": {
    "hard": 0,
@@ -166,7 +166,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 727.98
+   "score": 655.37
   },
   "edits/a8/puml-components/4-add-line": {
    "hard": 0,
@@ -175,7 +175,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 822.35
+   "score": 750.41
   },
   "edits/a8/puml-components/5-move-into-box": {
    "hard": 0,
@@ -184,7 +184,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 584.39
+   "score": 605.44
   },
   "edits/a8/checkout-flowchart/1-add-card": {
    "hard": 0,
@@ -193,7 +193,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 437.72
+   "score": 378.26
   },
   "edits/a8/checkout-flowchart/2-remove-line": {
    "hard": 0,
@@ -202,7 +202,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 301.96
+   "score": 242.5
   },
   "edits/a8/checkout-flowchart/3-rename": {
    "hard": 0,
@@ -211,7 +211,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 373.69
+   "score": 311.63
   },
   "edits/a8/checkout-flowchart/4-add-line": {
    "hard": 0,
@@ -220,7 +220,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 443.79
+   "score": 376.87
   },
   "edits/a8/checkout-flowchart/5-move-into-box": {
    "hard": 0,
@@ -229,52 +229,52 @@
    "straight": 4,
    "reverse": 2,
    "moved": 0,
-   "score": 653.84
+   "score": 592.18
   },
   "edits/a8/meals-context/1-add-card": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 360.42
+   "score": 401.56
   },
   "edits/a8/meals-context/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0.25,
-   "score": 253.06
+   "score": 296.49
   },
   "edits/a8/meals-context/3-rename": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 285.8
+   "score": 326.99
   },
   "edits/a8/meals-context/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 325.98
+   "score": 367.18
   },
   "edits/a8/meals-context/5-move-into-box": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 278.92
+   "score": 277.71
   },
   "edits/a8/compose-services/1-add-card": {
    "hard": 0,
@@ -306,11 +306,11 @@
   "edits/a8/compose-services/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 475.57
+   "score": 528.67
   },
   "edits/a8/compose-services/5-move-into-box": {
    "hard": 0,
@@ -733,34 +733,34 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 849.97
+   "score": 924.6
   },
   "edits/f12/order/2-remove-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 898.99
+   "score": 682.87
   },
   "edits/f12/order/3-rename": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 793.43
+   "score": 883.98
   },
   "edits/f12/order/4-add-line": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 884.86
+   "score": 980.62
   },
   "edits/f12/order/5-add-line": {
    "hard": 0,
@@ -769,7 +769,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 743.34
+   "score": 773.58
   },
   "edits/f12/signup/1-add-card": {
    "hard": 0,
@@ -822,8 +822,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.286,
-   "score": 667.56
+   "moved": 0,
+   "score": 602.92
   },
   "edits/f12/ticket/2-remove-line": {
    "hard": 0,
@@ -832,7 +832,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 477.13
+   "score": 459.14
   },
   "edits/f12/ticket/3-rename": {
    "hard": 0,
@@ -841,7 +841,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 509.21
+   "score": 491.24
   },
   "edits/f12/ticket/4-add-line": {
    "hard": 0,
@@ -850,7 +850,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 609.24
+   "score": 591.26
   },
   "edits/f12/ticket/5-add-line": {
    "hard": 0,
@@ -859,97 +859,97 @@
    "straight": 2,
    "reverse": 0,
    "moved": 0,
-   "score": 759.26
+   "score": 754.14
   },
   "edits/f12/pipeline/1-add-card": {
    "hard": 0,
-   "cross": 1,
-   "labels": 0,
+   "cross": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "moved": 0,
-   "score": 1139.22
+   "moved": 0.444,
+   "score": 1058.95
   },
   "edits/f12/pipeline/2-remove-line": {
    "hard": 0,
-   "cross": 0,
-   "labels": 0,
+   "cross": 1,
+   "labels": 3,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 926.99
+   "score": 1105.6
   },
   "edits/f12/pipeline/3-rename": {
    "hard": 0,
-   "cross": 1,
-   "labels": 0,
+   "cross": 0,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 950.48
+   "score": 1043.19
   },
   "edits/f12/pipeline/4-add-line": {
    "hard": 0,
-   "cross": 1,
-   "labels": 0,
+   "cross": 0,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 1072.12
+   "score": 1175.49
   },
   "edits/f12/pipeline/5-add-line": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 1114.85
+   "score": 1245.03
   },
   "edits/f12/order-boxed/1-add-card": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 789.3
+   "score": 910.73
   },
   "edits/f12/order-boxed/2-remove-line": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 1,
-   "score": 925.75
+   "score": 978.76
   },
   "edits/f12/order-boxed/3-rename": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 681.91
+   "score": 738.55
   },
   "edits/f12/order-boxed/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 924.39
+   "score": 974.24
   },
   "edits/f12/order-boxed/5-move-into-box": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 686.76
+   "score": 729.35
   },
   "edits/f12/signup-boxed/1-add-card": {
    "hard": 0,
@@ -1044,47 +1044,47 @@
   "edits/f12/pipeline-boxed/1-add-card": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 2,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 919.91
+   "score": 1069.25
   },
   "edits/f12/pipeline-boxed/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 868.85
+   "score": 967.56
   },
   "edits/f12/pipeline-boxed/3-rename": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 2,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 927.46
+   "score": 1012
   },
   "edits/f12/pipeline-boxed/4-add-line": {
    "hard": 0,
-   "cross": 0,
-   "labels": 0,
+   "cross": 1,
+   "labels": 3,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 963.72
+   "score": 1204.39
   },
   "edits/f12/pipeline-boxed/5-move-into-box": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
-   "straight": 0,
+   "labels": 4,
+   "straight": 2,
    "reverse": 0,
    "moved": 0,
-   "score": 909.48
+   "score": 1219.61
   },
   "edits/f12/onboard/1-add-card": {
    "hard": 0,
@@ -1145,9 +1145,9 @@
    "cross": 0,
    "labels": 0,
    "straight": 0,
-   "reverse": 8,
-   "moved": 0,
-   "score": 1448.04
+   "reverse": 0,
+   "moved": 0.765,
+   "score": 1328
   },
   "edits/f12/onboard-boxed/3-rename": {
    "hard": 0,

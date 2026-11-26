@@ -23,10 +23,6 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 const OWN_ROUTE = Symbol('own route');
 // a snake (layout-flow note, section 14): a map view whose lines say their reading way (dir)
 const snaked = dg => (dg.edges || []).some(e => e.dir);
-// an arranged map view (layout-flow note, sections 6 and 7): one with a main flow, whose stores sit in a band under it; a label
-// on a store's line there that leaves too little of its line widens its row gap, as a snake's does (the imported maps of
-// .evolve/decisions.md D13: "Reads and writes", 12 px of a line into a store straight under its card)
-const banded = dg => snaked(dg) || (dg.edges || []).some(e => e.mainLine);
 // a typed view laid out as before audit 38 (layoutTyped's try when the new one leaves check() something to say): a symbol, so
 // no field of a model's view can set it
 const PLAIN = Symbol('plain');
@@ -301,7 +297,7 @@ function layoutGraph(dg, map) {
   let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew;
   if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
-  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (banded(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
+  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (snaked(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
     delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
   if (grew) g.grew = true; // and a side grown over a box's title
@@ -1390,7 +1386,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // more doubled the time of a generated view of 50 (requirement-stress, past CI's 1 s); a larger one keeps the looser spot
   // a snake's (layout-flow note, section 14) label that leaves too little of its line, on the turn line or a store's line
   // between two runs' rows, widens the gap it is in too
-  const leaves = e => map && e.lbl && banded(dg) && leaveIssues({ map: true, edges: [e] }, '').some(m => / leaves its line /.test(m));
+  const leaves = e => map && e.lbl && snaked(dg) && leaveIssues({ map: true, edges: [e] }, '').some(m => / leaves its line /.test(m));
   const tight = !last && !dg.quick && !dg.abs ? free.filter(e => (e.label || e.step != null) && (lost(e) && (map || dg.labelGaps || nodes.length <= 30) || (map || dg.labelGaps) && (e.lbl.short || families.some(f => onBorder(e.lbl, f))) || leaves(e))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
