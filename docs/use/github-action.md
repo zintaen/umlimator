@@ -26,6 +26,7 @@ jobs:
 | Input | Default | What it does |
 |---|---|---|
 | `models` | `*.json` | git pathspecs of the model files, separated by spaces; only files that are models count |
+| `stable` | `false` | draw each changed model against its version on the base branch, so the cards the pull request left alone keep their places and the pictures show only what moved; off, each model is drawn fresh, as before |
 | `comment` | `true` | post one comment on the pull request with the summary, and update it on later pushes |
 | `github-token` | the job's token | the token that posts the comment (`pull-requests: write`) |
 
@@ -42,14 +43,15 @@ jobs:
 
 ## diff() and the CLI
 
-`diff(before, after)` returns `{ model, summary, views }`: the `after` model with each card and line marked added, changed or removed (and only those: a mark the model carries of its own, such as a NEW tab an author put on a card, is dropped where the change leaves the card or line as it was, and a planned mark stays), what changed in words (for example "adds Readers, from umlimator.py"), and the views that show it. On a typed diagram, a reordered member or message reads "moves". On any view whose picture follows the order of its cards (a map's ranks, a sequence view's lifelines, a timing view's lanes, an activity's partitions, a mindmap's subtopics), cards in a new order read "moves X after Y" or "moves X to the start", or "reorders N cards" when more than three move. A reorder that leaves the picture as it was, such as one on a view whose cards are all pinned, is not said and its view is not listed. The marks are the model's own fields, so a page or a still the CLI makes shows them with nothing to call.
+`diff(before, after)` returns `{ model, summary, views }` (and, with `{ stable: true }`, `stableFrom`, below): the `after` model with each card and line marked added, changed or removed (and only those: a mark the model carries of its own, such as a NEW tab an author put on a card, is dropped where the change leaves the card or line as it was, and a planned mark stays), what changed in words (for example "adds Readers, from umlimator.py"), and the views that show it. On a typed diagram, a reordered member or message reads "moves". On any view whose picture follows the order of its cards (a map's ranks, a sequence view's lifelines, a timing view's lanes, an activity's partitions, a mindmap's subtopics), cards in a new order read "moves X after Y" or "moves X to the start", or "reorders N cards" when more than three move. A reorder that leaves the picture as it was, such as one on a view whose cards are all pinned, is not said and its view is not listed. The marks are the model's own fields, so a page or a still the CLI makes shows them with nothing to call.
 
 ```bash
 python3 umlimator.py diff before.json after.json --out diff.html --stills diff/   # what changed, marked and in words
 python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
+python3 umlimator.py diff --base origin/main --out diff/ --stable     # the same, each page drawn against the model before
 ```
 
-`diff --base` is what the Action runs, against the merge commit's first parent.
+`diff --base` is what the Action runs, against the merge commit's first parent. With `--stable` (the Action's `stable: true`) each page is drawn against the model before: the cards the change left alone keep the places they had there, and a removed card comes back where it was, so the picture moves only where the change does. A view whose stable picture would draw worse than a fresh one (a new crossing, a line through a card) is drawn fresh. Without it the pages are drawn as before. In code, `diff(before, after, { stable: true })` returns the model before as `stableFrom`, which `render()`, `layout()` and `check()` take as an option of the same name.
 
 ## Rules in CI
 
