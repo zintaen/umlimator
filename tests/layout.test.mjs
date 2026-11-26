@@ -23,7 +23,7 @@ const expected = read('../bench/expected.json').results; // the reference geomet
 
 test('the module built from src/ exports what 0.16.0 exported, and migrate() from 0.17.0 (stage 1 note, §2.3)', async () => {
   assert.deepEqual(Object.keys(await import('../lib/umlimator.js')).sort(), ['apply', 'check', 'critical', 'describe', 'diff', 'drift', 'history',
-    'layout', 'migrate', 'mountPage', 'otlpSpans', 'paths', 'reach', 'references', 'render', 'rules', 'sequenceFromTrace', 'validate', 'whatIf']);
+    'layout', 'migrate', 'mountPage', 'otlpSpans', 'paths', 'reach', 'references', 'render', 'rules', 'sequenceFromTrace', 'storyFromFlow', 'validate', 'whatIf']);
 });
 
 test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
