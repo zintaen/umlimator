@@ -1,9 +1,9 @@
 {
- "commit": "635fe9e4",
+ "commit": "4d75a74d",
  "corpus": "fixed",
  "total": {
   "views": 253,
-  "score": 605765.96
+  "score": 605766.38
  },
  "views": {
   "b10/overview": {
@@ -140,7 +140,7 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 91.02
+   "score": 91.44
   },
   "f12/order-boxed": {
    "hard": 0,
