@@ -374,7 +374,7 @@ test('audit 27: a line out of a box to something outside it keeps out of that bo
 // pinned to scattered cells; several pinned to one cell) took seconds a layout to settle (settlePins found each box's cells
 // again for every cell it tried, and tried as far as the count of cards) and still drew a card over a card, or a package over
 // a card it does not hold, where no clean cell was near: the pin now goes in a fresh row under its box
-test('pins that ignore the packages settle clean, in milliseconds (audit 59)', () => {
+test('pins that ignore the packages settle clean, in milliseconds (audit 59) (timed)', () => {
   const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
   const classes = (N, P, view = 'uml.package', chain = false) => { const nodes = [...Array.from({ length: P }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'package' + i })),
     ...Array.from({ length: N }, (_, i) => ({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i, parent: 'p' + (i % P) }))];

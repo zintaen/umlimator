@@ -128,7 +128,7 @@ test('audit 12: the schema names every type laid out down with no direction, and
   const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, said = console.warn, seen = new Set(), down = [];
   console.warn = () => {};
   try {
-    for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) {
+    for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).sort()) {
       const m = JSON.parse(doc('../examples/' + f));
       for (const v of Array.isArray(m.views) ? m.views : []) { if (!v || !v.diagram || v.diagram === 'map' || seen.has(v.diagram)) continue; seen.add(v.diagram);
         const at = d => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id); if (d) w.direction = d; else delete w.direction; return JSON.stringify(layout(c, v.id).byId); };
@@ -416,7 +416,7 @@ test('audit 51: a parameter\'s direction is documented as the class diagram draw
 // the bookshop's views ('api', 'pic-*'), and both stopped with exit 1. Each --views on a page.html line goes through
 // umlimator.py's own pick() on the page that block's render line writes.
 test('audit 49: every --views in the CLI guide names views of the page its render line writes', async () => {
-  const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
+  const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync, writeFileSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
   const root = new URL('..', import.meta.url).pathname, guide = readFileSync(new URL('../docs/use/cli.md', import.meta.url), 'utf8');
   const cmds = [...guide.matchAll(/```bash\n([\s\S]*?)```/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/\s+#.*$/, '').trim()).filter(l => l.startsWith('python3 umlimator.py'));
   const src = /^python3 umlimator\.py render (\S+) --out page\.html/.exec(cmds.find(l => / --out page\.html\b/.test(l)) || '');
@@ -425,7 +425,10 @@ test('audit 49: every --views in the CLI guide names views of the page its rende
   assert.ok(specs.length >= 2, `the guide's --views lines: ${specs}`);
   const dir = mkdtempSync(join(tmpdir(), 'um-cli-')), page = join(dir, 'page.html');
   try {
-    const r = spawnSync('python3', ['umlimator.py', 'render', src[1], '--out', page, '--no-check'], { cwd: root, encoding: 'utf8' });
+    // a copy of the model in this test's own folder: render writes its temporary copies beside the model it reads, and in
+    // examples/ they would show up in what the suites running beside this one list there
+    const model = join(dir, src[1].split('/').pop()); writeFileSync(model, readFileSync(join(root, src[1])));
+    const r = spawnSync('python3', ['umlimator.py', 'render', model, '--out', page, '--no-check'], { cwd: root, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     for (const spec of specs) {
       const p = spawnSync('python3', ['-c', 'import sys; sys.path.insert(0, "."); import umlimator; print(umlimator.pick(sys.argv[1], sys.argv[2]))', page, spec], { cwd: root, encoding: 'utf8' });

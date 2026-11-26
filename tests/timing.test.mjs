@@ -745,7 +745,7 @@ test('audit 45: a state, the unit or a change\'s state that is not text is said 
   assert.deepEqual(said(EX()), []);
 });
 
-test('audit 50: F2 on a change or a message parses in linear time, a run of spaces too, and a text over 4096 characters is refused', () => {
+test('audit 50: F2 on a change or a message parses in linear time, a run of spaces too, and a text over 4096 characters is refused (timed)', () => {
   const sp = ' '.repeat(64000);
   for (const s of ['paid' + sp + 'x', 'paid' + sp + '@ 1' + sp + 'x', 'paid @ 1' + sp + '-> 2' + sp + 'x']) {
     const t = performance.now(), r = tmParse(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); assert.deepEqual(r.times, []); }
@@ -757,7 +757,7 @@ test('audit 50: F2 on a change or a message parses in linear time, a run of spac
   assert.deepEqual(tmRename(m, V(m), 'c-wait', '{<= 800 ms}' + ' '.repeat(5000)), [{ op: 'set', id: 'c-wait', path: 'label', value: '{<= 800 ms}' }], 'a constraint\'s label is not capped');
 });
 
-test('audit 53: F2 and the palette\'s add on a lifeline find its lone colon in linear time, a run of spaces too', () => {
+test('audit 53: F2 and the palette\'s add on a lifeline find its lone colon in linear time, a run of spaces too (timed)', () => {
   const sp = ' '.repeat(64000), m = EX(), timed = (f, s) => { const t = performance.now(), r = f(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); return r; };
   timed(s => tmRename(m, V(m), 'worker', s), 'worker' + sp + 'x');
   timed(s => tmAdd(m, V(m), ENTRY('uml.Lifeline'), s, null), 'bank' + sp + 'x');

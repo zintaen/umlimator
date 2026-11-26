@@ -126,7 +126,7 @@ test('audit 22: describe() says a label\'s line break as a space, one sentence p
     ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, (k === 'label' || k === 'title') && typeof v === 'string' ? v.replace(' ', br) : broken(v, br)])) : x;
   let views = 0;
   // every example, and the integration fixture (its views of every type, which the examples held until it left them)
-  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`), './fixtures/integration.json']) {
+  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `../examples/${f}`), './fixtures/integration.json']) {
     const m = read(f); if (!Array.isArray(m.views)) continue;
     for (const v of m.views) { const was = say(m, v.id); views++;
       for (const br of ['\n', '\r\n', ' ', ' \n ']) assert.equal(say(broken(m, br), v.id), was, `${f} ${v.id} ${JSON.stringify(br)}`); }
