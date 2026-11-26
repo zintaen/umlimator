@@ -95,3 +95,51 @@ test('stable: a typed view keeps the cells of the elements an edit left alone', 
   assert.ok(moved(b, f, ['a']).length >= 6, 'laid out afresh, the ranks move');
   assert.deepEqual(moved(b, s, ['a']), [], 'against the base, the twelve elements the edit left alone keep their cells');
 });
+
+// the guard of section 8.2 scores a layout as the edit corpus does (section 4.1), the cards it moves counted
+test('stable: the guard scores a layout with section 4\'s score and weights (src/layout/score.js)', async () => {
+  const { mapContext } = await import('../src/map/context.js'), { viewMetrics, scoreView } = await import('../src/layout/score.js');
+  const { STABLE_WEIGHTS } = await import('../src/layout/tune.js'), { readFileSync } = await import('node:fs');
+  const file = p => JSON.parse(readFileSync(new URL('../' + p, import.meta.url), 'utf8')), W = file('bench/score-weights.json');
+  assert.deepEqual({ ...STABLE_WEIGHTS }, W, 'tune.js\'s guard weights are bench/score-weights.json\'s');
+  for (const [p, vid] of [['bench/models/b10.json', 'overview'], ['bench/models/f12.json', 'onboard'], ['bench/models/f12.json', 'signup-boxed'], ['bench/models/i59.json', 'trips'], ['bench/models/u21.json', 'shop']]) {
+    const model = file(p), cx = mapContext(model, {}); cx.planOf(vid); const g = cx.buildGeo(vid), view = model.views.find(v => v.id === vid);
+    for (const share of [0, 0.5]) assert.ok(Math.abs(cx.guardScore(vid, g, share) - scoreView(viewMetrics(g, { model, view }), W, share)) < 0.01, `${p} ${vid} ${share}`);
+  }
+});
+
+// a pair of the edit corpus: the model before, after and the cards the edit touched
+const pairOf = async id => { const { readFileSync } = await import('node:fs'), file = p => JSON.parse(readFileSync(new URL('../' + p, import.meta.url), 'utf8'));
+  const p = file('bench/edits/edits.json').pairs.find(x => x.id === id), before = file(p.model);
+  return { before, after: apply(before, p.commands), view: p.view, touched: p.touched }; };
+
+test('stable: a fresh layout that moves unchanged cards pays for them in the guard, so a stable one a little longer is kept', async () => {
+  // u21's shop with a line added: the stable layout's lines are longer and turn more (scoreGeo 87 worse, past one label), and
+  // the fresh one moves five of the eight cards the edit left alone; section 4's score counts both, and keeps the stable one
+  const { before, after, view, touched } = await pairOf('u21/shop/5-add-line'), b = cells(layout(before, view));
+  assert.ok(moved(b, cells(layout(after, view)), touched).length >= 4, 'laid out afresh, the cards move');
+  assert.deepEqual(moved(b, cells(layout(after, view, { stableFrom: before })), touched), [], 'against the base, they keep their cells');
+  assert.deepEqual(check(after, view, { stableFrom: before }).filter(i => / share a line$| which it does not hold$/.test(i.message)), [], 'with no hard issue');
+});
+
+const hardIn = (model, view, base) => check(model, view, { stableFrom: base }).filter(i => / share a line$| which it does not hold$| overlap$/.test(i.message));
+
+test('stable: the ends of an added line may take their slots in the fresh layout, the other cards their old cells', async () => {
+  // f12's pipeline with a line added: with both ends at their old cells the new line crosses four (guarded out); with them at
+  // their fresh slots and the rest soft-pinned it does not, where the fresh layout moves two cards the edit left alone
+  const { before, after, view, touched } = await pairOf('f12/pipeline/5-add-line'), b = cells(layout(before, view));
+  assert.ok(moved(b, cells(layout(after, view)), touched).length >= 2, 'laid out afresh, cards move');
+  assert.deepEqual(moved(b, cells(layout(after, view, { stableFrom: before })), touched), [], 'against the base, none does');
+  assert.deepEqual(hardIn(after, view, before), []);
+});
+
+test('stable: a card added past a snake\'s last card goes a column past it, as the fresh layout moved the rest', async () => {
+  // f12's boxed onboarding flow, a card added after Go live, the end of the row that runs back: the fresh layout moves every
+  // card one column right to make room; the stable one keeps them and puts the new card one column before Go live
+  const { before, after, view, touched } = await pairOf('f12/onboard-boxed/1-add-card'), b = cells(layout(before, view));
+  assert.equal(moved(b, cells(layout(after, view)), touched).length, Object.keys(b).length - 1, 'laid out afresh, every untouched card moves');
+  const s = cells(layout(after, view, { stableFrom: before }));
+  assert.deepEqual(moved(b, s, touched), [], 'against the base, none does');
+  assert.deepEqual(s['zz-onboard-boxed-card'], [b['n-live'][0] - 1, b['n-live'][1]], 'the new card is a column past Go live, on its row');
+  assert.deepEqual(hardIn(after, view, before), []);
+});

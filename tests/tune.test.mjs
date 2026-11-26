@@ -22,6 +22,7 @@ const PINNED = {
   LABEL_PASSES: { map: [0, 1, 2], typed: [0], mapLate: [4, 3], late: [0, 4, 3, 5, 1, 2] },
   BRANCH_BALANCE: 2,
   STABLE_SLACK: 1,
+  STABLE_WEIGHTS: { hard: 1000, cross: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 },
   SNAKE_AT: 10,
   SNAKE_SLACK: 2,
 };
@@ -32,7 +33,7 @@ test('tune.js exports exactly the named constants, with today\'s values', () => 
 });
 
 test('tune.js\'s lists and weights are frozen, so no caller changes them for the next layout', () => {
-  for (const name of ['ROW_SWEEPS', 'FLOW_WAYS', 'SCORE_WEIGHTS', 'LABEL_PASSES']) assert.ok(Object.isFrozen(T[name]), name);
+  for (const name of ['ROW_SWEEPS', 'FLOW_WAYS', 'SCORE_WEIGHTS', 'STABLE_WEIGHTS', 'LABEL_PASSES']) assert.ok(Object.isFrozen(T[name]), name);
   T.FLOW_WAYS.forEach((o, k) => assert.ok(Object.isFrozen(o), 'FLOW_WAYS ' + k));
   Object.entries(T.LABEL_PASSES).forEach(([k, v]) => assert.ok(Object.isFrozen(v), 'LABEL_PASSES.' + k));
 });
@@ -55,6 +56,8 @@ const READS = {
     FAN_IN: /\) >= FAN_IN\); \};/,
     SCORE_WEIGHTS: /const W = SCORE_WEIGHTS;/,
     BRANCH_BALANCE: /held\(rank\[i\], s\) - held\(rank\[i\], -s\) >= BRANCH_BALANCE\)/,
+    STABLE_SLACK: /\+ STABLE_SLACK \* STABLE_WEIGHTS\.labels;/,
+    STABLE_WEIGHTS: /const W = STABLE_WEIGHTS,/,
   },
 };
 

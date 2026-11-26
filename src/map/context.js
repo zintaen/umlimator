@@ -6,7 +6,7 @@ import { r2, shapeOf } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { boxClash, leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { layoutGraph, mainFlow, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
-import { BRANCH_BALANCE, FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS, SNAKE_AT, SNAKE_SLACK, STABLE_SLACK } from '../layout/tune.js';
+import { BRANCH_BALANCE, FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS, SNAKE_AT, SNAKE_SLACK, STABLE_SLACK, STABLE_WEIGHTS } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { kindOf } from './kinds.js';
@@ -254,7 +254,7 @@ function mapContext(model, opts = {}) {
   // one that is not two numbers is no pin (validate warns of both)
   function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && !(typeof p[0] === 'number' && typeof p[1] === 'number') ? null : Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
     return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)]).filter(e => e[1])) : L; }
-  function fillLayout(vid, L, typed = false, auto = null) { // auto: the auto-layout slots, when the caller has them
+  function fillLayout(vid, L, typed = false, auto = null, exact = false) { // auto: the auto-layout slots, when the caller has them; exact: a free slot is kept as given
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null);
@@ -268,7 +268,7 @@ function mapContext(model, opts = {}) {
       const fit = boxes.length || fwd.length ? boxFit(boxes, ids, out, fwd) : null;
       // the auto-layout slot is kept when it is clean and its lines run ahead; a clean slot whose lines run back gives way only to
       // one whose lines run back less (audit 43: a card with its pin dropped went under the card that feeds it, a slot free beside)
-      ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (taken(c, r)) r++; // auto rows may be half rows: a row apart
+      ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; if (exact && auto[i] && !taken(c, r)) { out[i] = [c, r]; return; } while (taken(c, r)) r++; // auto rows may be half rows: a row apart
         const k = fit && fit.clean(i, c, r) ? fit.cost(i)(c, r) : null;
         out[i] = fit && k !== 0 ? fit.near(i, taken, c, r, k) || [c, r] : [c, r]; });
       return out; };
@@ -914,7 +914,8 @@ function mapContext(model, opts = {}) {
      none of its flow lines added, removed or turned round) is a soft pin at the cell the base's layout gave it, and fillLayout
      places the other cards round the soft pins as it places unpinned cards. A real pin wins: its card takes it, and the card
      a soft pin would hold on its cell is placed afresh. The stable layout is drawn unless it has more hard issues than the
-     fresh one, or scoreGeo scores it worse by more than STABLE_SLACK labels not drawn; then the fresh one is. Soft pins live
+     fresh one, or section 4's score (guardScore, the cards each moves counted) scores it worse by more than STABLE_SLACK
+     labels; then the fresh one is. Soft pins live
      in this context only, never in the model. A hub view keeps its lanes, columns and order (keepHub), as after an update */
   let baseCx; const baseOf = () => { if (baseCx === undefined) { baseCx = null;
     if (opts.base && typeof opts.base === 'object' && !Array.isArray(opts.base)) try { baseCx = held(() => mapContext(opts.base, { measure: M, kinds: opts.kinds }))[0]; } catch { baseCx = null; } } return baseCx; };
@@ -939,15 +940,57 @@ function mapContext(model, opts = {}) {
     // a changed card that was on the view starts from its cell there, a new one from its fresh slot
     const from = O(); arrOf(v.nodeIds).forEach(id => { if (N[id] && was.has(id) && !S[id] && Array.isArray(cells[id])) from[id] = cells[id]; }); startAt[vid] = from;
     return (softCache[vid] = Object.keys(S).length ? S : null); }
-  // the cells with the soft pins: the view's real pins over them, the other cards placed round both
-  const startAt = O(), stablePos = (vid, S, typed) => stableAt[vid] ||= fillLayout(vid, { ...S, ...(V[vid].layout && typeof V[vid].layout === 'object' ? V[vid].layout : {}) }, typed,
-    () => ({ ...(layoutCache[vid] ||= autoPos(vid)), ...startAt[vid] }));
+  // the cells with the soft pins: the view's real pins over them, the other cards placed round both, three ways: a changed
+  // card from its cell in the base; from its slot in the fresh layout (pos: an added line whose ends stay put can run back, or a
+  // new card start on a cell the soft pins hold); and from that slot moved as most unchanged cards moved between the fresh layout
+  // and the base, kept there when it is free (a card added after the last of a snake's row that runs back moves every column of
+  // the fresh one by one: the new card goes a column past it instead, where boxFit, which reads every line left to right, would
+  // not put it). The ways that differ from each other and from the fresh cells
+  const startAt = O(), stablePos = (vid, S, typed, pos) => stableAt[vid] ||= (() => { const L = { ...S, ...(V[vid].layout && typeof V[vid].layout === 'object' ? V[vid].layout : {}) };
+    const n = O(); Object.keys(S).forEach(i => { if (Array.isArray(pos[i])) { const k = (S[i][0] - pos[i][0]) + ',' + (S[i][1] - pos[i][1]); n[k] = (n[k] || 0) + 1; } });
+    const [dc, dr] = (Object.keys(n).sort((a, b) => n[b] - n[a])[0] || '0,0').split(',').map(Number), shifted = O(); Object.keys(pos).forEach(i => { if (Array.isArray(pos[i])) shifted[i] = [pos[i][0] + dc, pos[i][1] + dr]; });
+    const ways = [() => ({ ...pos, ...startAt[vid] }), () => pos, () => shifted].map((f, k) => fillLayout(vid, L, typed, f, k === 2)), out = [];
+    ways.forEach(p => { if (!sameCells(vid, p, pos) && !out.some(q => sameCells(vid, p, q))) out.push(p); }); return out; })();
   const sameCells = (vid, a, b) => (V[vid].nodeIds || []).every(i => { const p = a[i], q = b[i]; return Array.isArray(p) ? Array.isArray(q) && p[0] === q[0] && p[1] === q[1] : !Array.isArray(q); });
   // hard issues as the quality score counts them (src/layout/score.js, which no host loads): lines through cards or on another
   // line, cards or boxes over each other, a box over what it does not hold
   const hardOf = g => { const A = routeAudit(g, ''), n = re => A.filter(m => re.test(m)).length;
     return n(/ share a line$/) + n(/ which it does not hold$/) + n(/^: families .* overlap$/) + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length; };
-  const keepStable = (g0, g1) => { try { return hardOf(g1) <= hardOf(g0) && scoreGeo(g1) <= scoreGeo(g0) + STABLE_SLACK * SCORE_WEIGHTS.dropped; } catch { return false; } };
+  /* the quality score of section 4.1 for the stability guard (src/layout/score.js holds the bench's copy, which no host
+     loads; tests/stable-layout.test.mjs holds the two to one number): hard issues, crossings, labels, flow lines read backwards,
+     the main flow off its row, length, corners and area, with STABLE_WEIGHTS (bench/score-weights.json's values), plus the
+     moved weight times the share of the view's unchanged cards the layout takes off their cells */
+  const FLOWISH = new Set(['map', 'flowchart', 'uml.activity', 'dfd', 'bpmn', 'aws', 'gcp', 'azure']);
+  function guardScore(vid, g, share = 0) {
+    const W = STABLE_WEIGHTS, v = V[vid], d = v.diagram || 'map', A = routeAudit(g, ''), n = re => A.filter(m => re.test(m)).length;
+    const hard = n(/ share a line$/) + n(/ which it does not hold$/) + n(/^: families .* overlap$/) + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length;
+    const labels = n(/^: label .* lies on edge /) + n(/^: label .* sits on the border of family /) + n(/^: name tag .* lies on edge /) + leaveIssues(g, '').length - (g.notDrawn || []).length;
+    const lines = [...arrOf(v.edges).filter(x => x && typeof x === 'object'), ...arrOf(D.edges)];
+    const lineOf = e => { const ids = [...new Set((e.all || [e]).map(x => x._id).filter(Boolean))]; for (const id of ids) { const m = lines.find(x => x.id === id); if (m) return m; } return lines.find(x => x.from === e.from && x.to === e.to) || null; };
+    const role = e => { const m = lineOf(e); if (m && ['main', 'branch', 'dep'].includes(m.flow)) return m.flow; if (['main', 'branch', 'dep'].includes(e.flow)) return e.flow; if (e.dep) return 'dep';
+      const k = e.wk || (m && m.kind); return d === 'map' && (k === 'state' || k === 'guard') ? 'dep' : 'branch'; };
+    const turns = P => { let c = 0; for (let i = 1; i + 1 < P.length; i++) { const a = P[i - 1], b = P[i], q = P[i + 1]; if ((b[0] - a[0]) * (q[1] - b[1]) - (b[1] - a[1]) * (q[0] - b[0]) !== 0) c++; } return c; };
+    const byNode = g.byId || Object.fromEntries(g.nodes.map(x => [x.id, x])), down = !!g.down, at = x => down ? x.x + x.w / 2 : x.y + x.h / 2, along = x => down ? x.y + x.h / 2 : x.x + x.w / 2;
+    // the main flow: the lines the layout drew as it (mainLine), else those marked flow "main"; its cards along them
+    const drawnMain = g.edges.some(e => e.mainLine), mainL = g.edges.filter(e => !e.back && (drawnMain ? e.mainLine : role(e) === 'main'));
+    let cards = null; if (mainL.length) { const next = new Map(), into = new Set(); mainL.forEach(e => { if (!next.has(e.from)) next.set(e.from, e.to); into.add(e.to); });
+      const first = mainL.map(e => e.from).find(id => !into.has(id)) ?? mainL[0].from, seen = new Set([first]); cards = [first];
+      for (let id = next.get(first); id != null && !seen.has(id); id = next.get(id)) { cards.push(id); seen.add(id); }
+      mainL.forEach(e => [e.from, e.to].forEach(id => { if (!seen.has(id)) { seen.add(id); cards.push(id); } })); }
+    let straight = 0; if (cards) { const rows = new Map(); cards.map(id => byNode[id]).filter(Boolean).forEach(x => { const r = x.run ?? 0; rows.has(r) || rows.set(r, new Set()); rows.get(r).add(Math.round(at(x))); });
+      straight = [...rows.values()].reduce((a, r) => a + 2 * Math.max(0, r.size - 1), 0) + mainL.filter(e => e.dir !== 'down').reduce((a, e) => a + turns(e.pts), 0); }
+    let reverse = 0; if (FLOWISH.has(d) || d.startsWith('c4.')) { const k = down ? 1 : 0, against = (e, p, q) => e.dir === 'left' ? q[k] - p[k] > 8 : e.dir === 'down' ? p[1 - k] - q[1 - k] > 8 : p[k] - q[k] > 8;
+      reverse = g.edges.filter(e => !e.back && role(e) !== 'dep' && e.pts.some((q, i) => i && against(e, e.pts[i - 1], q))).length;
+      if (cards) for (let i = 1; i < cards.length; i++) { const a = byNode[cards[i - 1]], b = byNode[cards[i]]; if (!a || !b) continue; const ra = a.run ?? 0, rb = b.run ?? 0;
+        if (ra !== rb ? at(b) <= at(a) : ra % 2 ? along(b) >= along(a) : along(b) <= along(a)) reverse++; } }
+    const length = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0), points = g.edges.reduce((a, e) => a + e.pts.length, 0);
+    return W.hard * hard + W.cross * n(/ cross$/) + W.labels * labels + W.reverse * reverse + W.straight * straight + W.moved * share + W.length * length + W.points * points + W.area * g.bounds.w * g.bounds.h; }
+  // the share of the soft-pinned cards (the view's unchanged ones) that cells pos takes off their cells in the base
+  const offShare = (S, pos) => { const ids = Object.keys(S); return ids.length ? ids.filter(i => !Array.isArray(pos[i]) || pos[i][0] !== S[i][0] || pos[i][1] !== S[i][1]).length / ids.length : 0; };
+  // the stable layout g1 (cells p1) is kept over the fresh one g0 (cells p0) unless it has more hard issues, or its score with
+  // the cards each moves counted scores worse by more than STABLE_SLACK labels: a fresh layout that moves unchanged cards pays
+  // for them as the edit corpus's score does (section 8.2)
+  const keepStable = (vid, S, g0, p0, g1, p1) => { try { return hardOf(g1) <= hardOf(g0) && guardScore(vid, g1, offShare(S, p1)) <= guardScore(vid, g0, offShare(S, p0)) + STABLE_SLACK * STABLE_WEIGHTS.labels; } catch { return false; } };
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
@@ -968,8 +1011,9 @@ function mapContext(model, opts = {}) {
         const said = h => { const is = routeAudit(h, ''); return [g.nested || g2.nested ? is.filter(s => !/ cross$/.test(s)).length : 0, is.length]; }, a = said(g2), b = said(g);
         if (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) { g = g2; Object.assign(memo, { key: m2.key, g: m2.g, dg: m2.dg }); } }
       // against a base (opts.base): the cards that did not change at their cells there, kept when it draws no worse
-      const S = !override && L.pins !== false && L.rank !== false ? softOf(vid) : null, p1 = S && stablePos(vid, S, true);
-      if (p1 && !sameCells(vid, p1, pos)) { const m1 = {}, [g1, w1] = held(() => run(p1, m1)); if (keepStable(g, g1)) { g = g1; Object.keys(memo).forEach(x => { delete memo[x]; }); Object.assign(memo, m1); w1.forEach(warn); } }
+      const S = !override && L.pins !== false && L.rank !== false ? softOf(vid) : null;
+      if (S) { let b = null; stablePos(vid, S, true, pos).forEach(p1 => { const m1 = {}, [g1, w1] = held(() => run(p1, m1)), s = guardScore(vid, g1, offShare(S, p1)); if (!b || s < b.s) b = { p1, m1, g1, w1, s }; });
+        if (b && keepStable(vid, S, g, pos, b.g1, b.p1)) { g = b.g1; Object.keys(memo).forEach(x => { delete memo[x]; }); Object.assign(memo, b.m1); b.w1.forEach(warn); } }
       // an arranged view of a type that reads the flow (section 12 step 10): its dependency lines (dep, which check() lets run
       // either way, as a map's) and its main flow's (mainLine, which the score reads), by the model line each stands for
       if (FL) (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
@@ -987,13 +1031,14 @@ function mapContext(model, opts = {}) {
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
     const pos = override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
     const ready = drawn[vid]; delete drawn[vid];
-    const S = !override && !quick ? softOf(vid) : null, p1 = S && stablePos(vid, S, false), mine = p1 && !sameCells(vid, p1, pos) ? p1 : null, key = repair ? 1 : 0;
-    // a stable layout chosen before in this context is laid out alone; else the fresh one, and the stable one beside it
-    if (mine && picked[vid] && picked[vid][key] === true) return geoAt(mine);
+    const S = !override && !quick ? softOf(vid) : null, mine = S ? stablePos(vid, S, false, pos) : [], key = repair ? 1 : 0, was = picked[vid] && picked[vid][key];
+    // a stable layout chosen before in this context is laid out alone; else the fresh one, and the best stable one beside it
+    if (mine.length && was) return geoAt(was);
     const g0 = ready && !override && ready.pos === pos && repair === (v.repair !== false) && !quick ? ready.g : geoAt(pos);
-    if (!mine || (picked[vid] && picked[vid][key] === false)) return g0;
-    const g1 = geoAt(mine), keep = keepStable(g0, g1); (picked[vid] ||= [])[key] = keep;
-    return keep ? g1 : g0;
+    if (!mine.length || was === false) return g0;
+    let b = null; mine.forEach(p1 => { const g1 = geoAt(p1), s = guardScore(vid, g1, offShare(S, p1)); if (!b || s < b.s) b = { p1, g1, s }; });
+    const keep = keepStable(vid, S, g0, pos, b.g1, b.p1); (picked[vid] ||= [])[key] = keep ? b.p1 : false;
+    return keep ? b.g1 : g0;
     function geoAt(pos) {
     const mainSteps = v.mainSteps || v.render === 'process';
     const stepIds = v.stepIds || ids;
@@ -1305,7 +1350,7 @@ function mapContext(model, opts = {}) {
     const n = (v.nodeIds || []).length;
     return key(n > FLOW_CAP || n < FLOW_MIN ? [flowPos(vid, FLOW_WAYS[0])] : FLOW_WAYS.map(o => flowPos(vid, o))); }
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), cellsOf: withM(cellsOf), homeOf, flowKeys, softOf: withM(softOf), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), cellsOf: withM(cellsOf), homeOf, flowKeys, softOf: withM(softOf), guardScore, buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
 }
 
 export { mapContext, boxHolds, elementCount };
