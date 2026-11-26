@@ -10,6 +10,7 @@ import * as L from '../tools/evolve/tune-loop.mjs';
 import { readLease } from '../tools/evolve/lease.mjs';
 
 const TUNE = readFileSync(new URL('../src/layout/tune.js', import.meta.url), 'utf8');
+const PINS = readFileSync(new URL('../bench/tune-pins.json', import.meta.url), 'utf8');
 const tmp = () => mkdtempSync(join(tmpdir(), 'tune-loop-test-'));
 
 test('tune-loop: every constant of tune.js the loop may change has a range its value is inside, and the others are fixed', async () => {
@@ -73,8 +74,9 @@ test('tune-loop: two weeks with nothing kept stop the loop, and a change kept la
 });
 
 // a fake repository: tune.js and lib/, with a fake build, scorer, git and gh
-function fakeRepo({ fixed = corpus(98, 100), edits = corpus(10, 10), heldout = corpus(50, 50) } = {}) {
+function fakeRepo({ fixed = corpus(98, 100), edits = corpus(10, 10), heldout = corpus(50, 50), failRun = [] } = {}) {
   const root = tmp(); mkdirSync(join(root, 'src/layout'), { recursive: true }); mkdirSync(join(root, 'lib'));
+  mkdirSync(join(root, 'bench')); writeFileSync(join(root, L.PINS), PINS);
   writeFileSync(join(root, L.TUNE), TUNE); writeFileSync(join(root, 'lib/umlimator-all.js'), '// base\n'); writeFileSync(join(root, 'lib/umlimator.js'), '// base\n');
   const calls = [], seeds = [];
   const exec = (cmd, args, o = {}) => {
@@ -84,7 +86,8 @@ function fakeRepo({ fixed = corpus(98, 100), edits = corpus(10, 10), heldout = c
       const c = args[args.indexOf('--corpus') + 1]; seeds.push([c, (o.env || {}).LAYOUT_HELDOUT_SEED]);
       writeFileSync(args[args.indexOf('--out') + 1], JSON.stringify({ fixed, edits, heldout }[c])); return { status: 0, stdout: '', stderr: '' };
     }
-    if (cmd === 'gh') return { status: 0, stdout: 'https://example.invalid/pull/1\n', stderr: '' };
+    if (cmd === 'gh' && args[0] === 'workflow' && failRun.includes(args[2])) return { status: 1, stdout: '', stderr: `could not create workflow dispatch event for ${args[2]}` };
+    if (cmd === 'gh') return { status: 0, stdout: args[0] === 'pr' ? 'https://example.invalid/pull/1\n' : '', stderr: '' };
     return { status: 0, stdout: '', stderr: '' };
   };
   return { root, calls, seeds, exec };
@@ -138,17 +141,43 @@ test('tune-loop: publish opens one pull request against audit-loop and never mer
   const r = await L.publish({ record: rec, candidate: cand }, { exec: f.exec, root: f.root });
   assert.equal(r.branch, 'layout-tune/2026-W48');
   const gh = f.calls.filter(c => c[0] === 'gh');
-  assert.equal(gh.length, 1);
+  assert.equal(gh.length, 3);
   assert.deepEqual(gh[0].slice(0, 7), ['gh', 'pr', 'create', '--base', 'audit-loop', '--head', 'layout-tune/2026-W48']);
+  // then CI on the branch: a pull request opened with the workflow's token starts none, a workflow_dispatch does
+  assert.deepEqual(gh.slice(1), [['gh', 'workflow', 'run', 'check.yml', '--ref', 'layout-tune/2026-W48'], ['gh', 'workflow', 'run', 'layout-score.yml', '--ref', 'layout-tune/2026-W48', '-f', 'heldout=false']]);
+  assert.deepEqual(r.notStarted, []);
   assert.ok(!f.calls.some(c => c.includes('merge')), 'no merge');
-  assert.ok(f.calls.some(c => c[0] === 'git' && c[1] === 'add' && c.includes('src/layout/tune.js') && c.includes('bench/results/tune-2026-11-29.json')));
+  assert.ok(f.calls.some(c => c[0] === 'git' && c[1] === 'add' && c.includes('src/layout/tune.js') && c.includes('bench/tune-pins.json') && c.includes('bench/results/tune-2026-11-29.json')));
   assert.ok(existsSync(join(f.root, 'bench/results/tune-2026-11-29.json')));
+  // the pin moved with the value, one line of the pins file, and the pins are tune.js's values again
+  const rec0 = JSON.parse(readFileSync(rec, 'utf8')), pinsNow = readFileSync(join(f.root, L.PINS), 'utf8');
+  assert.equal(JSON.parse(pinsNow).values[rec0.proposal.path], rec0.proposal.to);
+  assert.equal(pinsNow.split('\n').filter((l, i) => l !== PINS.split('\n')[i]).length, 1);
+  assert.equal(L.pinsMismatch(JSON.parse(pinsNow), L.flatten(await L.valuesOf(readFileSync(join(f.root, L.TUNE), 'utf8')))), null);
+  writeFileSync(join(f.root, L.PINS), PINS);
   // a record that kept nothing, or a candidate that is not the record's, is not published
   const bad = join(dir, 'bad.js'); writeFileSync(bad, L.setValue(TUNE, 'BARY_SWEEPS', 40));
   writeFileSync(join(f.root, L.TUNE), TUNE);
   await assert.rejects(L.publish({ record: rec, candidate: bad }, { exec: f.exec, root: f.root }), /refused/);
   writeFileSync(rec, JSON.stringify({ ...JSON.parse(readFileSync(rec, 'utf8')), status: 'nothing-kept' }));
   await assert.rejects(L.publish({ record: rec, candidate: cand }, { exec: f.exec, root: f.root }), /nothing to publish/);
+});
+
+test('tune-loop: publish refuses when the pins do not match tune.js, and reports a CI workflow it could not start', async () => {
+  const f = fakeRepo({ failRun: ['check.yml'] }), dir = tmp(), rec = join(dir, 'rec.json'), cand = join(dir, 'cand.js');
+  await L.run({ owner: 'a', record: rec, candidateOut: cand }, { ...go, exec: f.exec, env: env(dir), root: f.root, now: NOW });
+  // a hand edit of tune.js without its pin: the pins no longer match, as tests/tune.test.mjs would say
+  const edited = L.setValue(TUNE, 'FAN_TRIES', 16), pins = JSON.parse(PINS);
+  assert.match(L.pinsMismatch(pins, L.flatten(await L.valuesOf(edited))), /FAN_TRIES/);
+  assert.equal(L.pinsMismatch(pins, L.flatten(await L.valuesOf(TUNE))), null);
+  writeFileSync(join(f.root, L.PINS), L.pinsText({ ...pins, values: { ...pins.values, FAN_TRIES: 16 } }));
+  await assert.rejects(L.publish({ record: rec, candidate: cand }, { exec: f.exec, root: f.root }), /does not match/);
+  writeFileSync(join(f.root, L.PINS), PINS);
+  f.calls.length = 0;
+  const out = [], code = await L.main(['publish', '--record', rec, '--candidate', cand], { exec: f.exec, root: f.root, print: s => out.push(s) });
+  assert.equal(code, 1, 'the pull request is open, but a workflow did not start');
+  assert.match(out.join('\n'), /not started on layout-tune\/2026-W48, run it by hand: check\.yml/);
+  assert.ok(f.calls.some(c => c[0] === 'gh' && c[1] === 'workflow' && c[3] === 'layout-score.yml'), 'the next workflow is still started');
 });
 
 test('tune-loop: the scheduled workflow runs at the recorded slot, passes the seed to one step only, and never merges', () => {
@@ -161,6 +190,16 @@ test('tune-loop: the scheduled workflow runs at the recorded slot, passes the se
   const s = readFileSync(new URL('../.github/workflows/layout-score.yml', import.meta.url), 'utf8');
   assert.ok(!/pull_request_target/.test(s));
   assert.match(s, /^permissions:\n  contents: read$/m);
+  // CI on the loop's pull request: the publish job alone may start workflows, and holds no secret
+  const publish = y.slice(y.indexOf('\n  publish:'));
+  assert.equal((y.match(/actions: write/g) || []).length, 1);
+  assert.match(publish, /^      actions: write /m);
+  assert.ok(!/secrets\./.test(publish), 'no secret in the publish job');
+  const c = readFileSync(new URL('../.github/workflows/check.yml', import.meta.url), 'utf8');
+  assert.match(c.slice(0, c.indexOf('\njobs:')), /^  workflow_dispatch:/m, 'check.yml can be started on a branch');
+  assert.ok(!/pull_request_target/.test(c));
+  assert.match(s, /^  workflow_dispatch:\n    inputs:\n      heldout:/m, 'layout-score.yml can be started without the held-out run');
+  assert.match(s, /HAS_SEED: \$\{\{ \(github\.event_name == 'push' \|\| inputs\.heldout == true\) && secrets\.LAYOUT_HELDOUT_SEED != '' \}\}/, 'never on a pull request');
 });
 
 test('tune-loop: the weekly digest lists the week\'s record with --tune, and says when the loop has stopped', async () => {
