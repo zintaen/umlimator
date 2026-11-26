@@ -3,7 +3,7 @@
  "corpus": "fixed",
  "total": {
   "views": 253,
-  "score": 607290.79
+  "score": 606866.81
  },
  "views": {
   "b10/overview": {
@@ -146,25 +146,25 @@
    "hard": 0,
    "cross": 0,
    "labels": 1,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
-   "score": 911.74
+   "score": 826.70
   },
   "f12/signup-boxed": {
    "hard": 0,
    "cross": 1,
-   "labels": 2,
-   "straight": 10,
+   "labels": 1,
+   "straight": 6,
    "reverse": 4,
-   "score": 1542.83
+   "score": 1343.03
   },
   "f12/ticket-boxed": {
    "hard": 0,
    "cross": 0,
    "labels": 1,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
-   "score": 689.78
+   "score": 548.85
   },
   "f12/pipeline-boxed": {
    "hard": 0,
@@ -172,7 +172,7 @@
    "labels": 3,
    "straight": 0,
    "reverse": 0,
-   "score": 1067.52
+   "score": 1069.31
   },
   "i59/context": {
    "hard": 0,
