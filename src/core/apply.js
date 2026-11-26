@@ -246,10 +246,11 @@ function run(m, c, gone) {
       // the lines that go with it, worked out whole before the view's list is filtered, whatever order it lists them in (audit 37):
       // the model lines to it, which the view draws no more, the view's own lines to it, and lines to those lines (audit 36).
       // What names them in this view (a story step's select or highlight) goes too, as the element's own
-      // A view's own line also goes with what a type's refs cascade it on (a reply with its call), as a delete takes it (audit 66)
+      // A line the view lists, its own or a model line by id, also goes with what a type's refs cascade it on (a reply with its call),
+      // as a delete takes it (audit 66, 67)
       { const to = new Map(), put = (k, id) => { if (typeof k === 'string') (to.get(k) || to.set(k, []).get(k)).push(id); };
         [...arr(m.edges), ...arr(v.edges)].forEach(l => { if (isObj(l) && typeof l.id === 'string') [l.from, l.to].forEach(k => put(k, l.id)); });
-        arr(v.edges).forEach(l => { if (isObj(l) && typeof l.id === 'string') Object.entries(propRefs(l.type)).forEach(([p, how]) => { if (/\bcascade\b/.test(how)) [].concat(dig(l, p)).forEach(k => put(k, l.id)); }); });
+        arr(v.edges).map(y => (typeof y === 'string' ? (at.get(y) || {}).x : y)).forEach(l => { if (isObj(l) && typeof l.id === 'string') Object.entries(propRefs(l.type)).forEach(([p, how]) => { if (/\bcascade\b/.test(how)) [].concat(dig(l, p)).forEach(k => put(k, l.id)); }); });
         for (const q = [...ids]; q.length;) arr(to.get(q.pop())).forEach(k => { if (!ids.has(k)) { ids.add(k); q.push(k); } }); }
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to) || (typeof l.id === 'string' && ids.has(l.id)));
       // a line the view holds goes for good: a later delete of it in this transaction finds it gone, as after a delete (audit 32)

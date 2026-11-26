@@ -416,7 +416,9 @@ function csConnect(model, view, from, to, at, line) {
   const ends = Object.fromEntries([['from', a], ['to', b]].filter(([, x]) => x.part).map(([k, x]) => [k, { part: x.part }]));
   // a connector whose ends lie in two structures (a part and a role), or on the subject itself: connector-scope's error at once (audit 19)
   const e = { id: csFresh(model, 'connector'), type: 'uml.Connector', from: a.id, to: b.id, ...(a.part || b.part ? { props: { ends } } : {}) };
-  if (line.type === 'uml.Connector' && csProblems({ ...model, edges: [...CS_ARR(model.edges), e] }, view).some(p => p.rule === 'connector-scope' && p.ids[0] === e.id))
+  // a view that lists its lines lists the new one too, or connector-scope never judges it (audit 67)
+  const v2 = Array.isArray(view.edges) ? { ...view, edges: [...view.edges, e.id] } : view;
+  if (line.type === 'uml.Connector' && csProblems({ ...model, edges: [...CS_ARR(model.edges), e] }, v2).some(p => p.rule === 'connector-scope' && p.ids[0] === e.id))
     return { error: 'A connector\'s ends lie in one structure: the subject\'s ports and parts, or one collaboration\'s roles' };
   if (!a.part && !b.part) return null;
   if (line.type !== 'uml.Connector') return { error: `A ${String(line.label || 'line').toLowerCase()} joins the part, not a port on it` };

@@ -1060,3 +1060,16 @@ test('audit 64: a connector from a collaboration use to a collaboration is refus
     assert.deepEqual(diagramOf(v).validate(m1, m1.views.find(x => x.id === 'inside')).filter(p => p.ids.includes('zz9')).map(p => [p.level, p.rule, p.message]),
       [['error', 'connector-scope', `connector-scope: zz9 joins ${n1} and ${n2}, which lie in no structure of this view: its ends are the subject's ports and parts, or one collaboration's roles`]]); }
 });
+
+test('connect refuses a connector across two structures in a view that lists its lines, as in one that does not (audit 67)', () => {
+  const m = JSON.parse(readFileSync(new URL('./composite-stress.json', import.meta.url), 'utf8')), line = T.lines.find(l => l.type === 'uml.Connector');
+  const v = m.views.find(x => x.id === 'edge-cases'), bare = { ...v }; delete bare.edges;
+  assert.ok(Array.isArray(v.edges));
+  for (const [a, b] of [['ec-use1', 'ec-use2'], ['ec-use2', 'ec-use1']]) {
+    const listed = T.edits.connect(m, v, a, b, null, line), all = T.edits.connect(m, bare, a, b, null, line);
+    assert.match(String(listed?.error), /lie in one structure/, `${a} -> ${b}: ${JSON.stringify(listed)}`);
+    assert.deepEqual(listed, all);
+  }
+  // the view's list is left as it was
+  assert.ok(!v.edges.some(id => /^connector/.test(id)));
+});
