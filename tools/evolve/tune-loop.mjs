@@ -20,10 +20,13 @@
 // candidate tune.js to --candidate-out when kept. Exit 0: a change is kept; 1: nothing kept, stopped, or refused (the
 // lease or the kill switch); 2: a usage error.
 //
-// publish (a separate step, with no seed): checks the candidate again, writes it and rebuilds lib/, commits tune.js,
-// lib/ and bench/results/tune-<date>.json on a new branch layout-tune/<week>, pushes it and opens a pull request against
-// audit-loop with `gh`. tests/tune.test.mjs pins every value, so the pull request's CI fails on that pin until the
-// maintainer moves it with the approval (section 9.4): the loop never edits a test.
+// publish (a separate step, with no seed): checks the candidate again, writes it and rebuilds lib/, moves the value's pin
+// in bench/tune-pins.json, commits tune.js, the pins, lib/ and bench/results/tune-<date>.json on a new branch
+// layout-tune/<week>, pushes it, opens a pull request against audit-loop with `gh`, and starts the check and layout-score
+// workflows on the branch (`gh workflow run --ref`), since a pull request opened with the workflow's token starts none.
+// tests/tune.test.mjs reads the pins of the values the loop may change from bench/tune-pins.json and holds tune.js to
+// them, so the pin moves in the same commit as the value and the maintainer reviews both (section 9.4): the loop never
+// edits a test.
 import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, readdirSync, copyFileSync, rmSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve, dirname } from 'node:path';
@@ -35,7 +38,10 @@ import { killSwitch } from './killswitch.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const TUNE = 'src/layout/tune.js';
+export const PINS = 'bench/tune-pins.json';
 export const BASE_BRANCH = 'audit-loop';
+// the workflows publish starts on the pull request's branch: name, and the inputs it passes
+export const CI = Object.freeze([['check.yml', []], ['layout-score.yml', ['-f', 'heldout=false']]]);
 
 // what the loop may change, and how far (section 9.1, 9.4: each value has a range; a candidate out of it is refused). A
 // constant not listed (FLOW_MIN, FLOW_WAYS, LABEL_PASSES, SCORE_WEIGHTS.issue and areaPer) is fixed: a candidate that
@@ -118,6 +124,22 @@ export function setValue(text, path, v) {
   const all = text.match(new RegExp(re.source, 'g')) || [];
   if (all.length !== 1) throw new Error(`${path}: found ${all.length} places in tune.js, not one`);
   return text.replace(re, (...m) => put(m));
+}
+
+// ---------- the pins (bench/tune-pins.json) ----------
+
+// the pins file's text: one value a line, so moving a pin changes one line
+export function pinsText(pins) {
+  const keys = Object.keys(RANGES).filter(k => k in pins.values);
+  return '{\n "note": ' + JSON.stringify(pins.note) + ',\n "values": {\n' + keys.map(k => `  ${JSON.stringify(k)}: ${JSON.stringify(pins.values[k]).replace(/,/g, ', ')}`).join(',\n') + '\n }\n}\n';
+}
+
+// null when the pins are exactly tune.js's values of the paths the loop may change, else the reason
+export function pinsMismatch(pins, flat) {
+  const want = Object.keys(RANGES).filter(k => k in flat), have = Object.keys(pins.values || {});
+  if (!same([...have].sort(), [...want].sort())) return `the pins name ${have.length} values, not the ${want.length} the loop may change`;
+  const off = want.filter(k => !same(pins.values[k], flat[k]));
+  return off.length ? `the pins of ${off.join(', ')} are not tune.js's values` : null;
 }
 
 // ---------- the week's proposal ----------
@@ -275,7 +297,8 @@ export function prBody(rec) {
     row('fixed', rec.fixed), row('edits', rec.edits), row('held-out (totals only)', rec.heldout), '',
     rec.edits && rec.edits.targets ? `Edit corpus, section 8.4: untouched cards kept their cells in ${rec.edits.targets.still} of ${rec.edits.targets.pairs} pairs; ${rec.edits.targets.hardAboveFresh} pairs with more hard issues than fresh.` : '', '',
     `Decision: ${rec.decision.join('; ')}.`, '',
-    `This changes only src/layout/tune.js (${p.path}), lib/ rebuilt from it, and bench/results/tune-${rec.date}.json. tests/tune.test.mjs pins ${p.path.split('.')[0]}, so that test fails here until the maintainer moves the pin to ${JSON.stringify(p.to)} with the approval (section 9.4); the loop never edits a test. If the node tests' bench/expected.json check fails, this change moves pictures, and the maintainer decides whether to update bench/expected.json with the reason.`, '',
+    `This changes only src/layout/tune.js (${p.path}), its pin in bench/tune-pins.json (${JSON.stringify(p.from)} to ${JSON.stringify(p.to)}), lib/ rebuilt from it, and bench/results/tune-${rec.date}.json. tests/tune.test.mjs holds tune.js to the pins, so approving this pull request approves the pin's move (section 9.4); the loop never edits a test. If a test that draws a picture fails (the node tests' bench/expected.json check, or one that pins a layout), this change moves pictures, and the maintainer decides whether to update it with the reason.`, '',
+    'The check and layout-score workflows were started on this branch by hand (workflow_dispatch), since a pull request opened with the workflow\'s token starts none; their checks show on the head commit. The held-out corpus is not run again here: the totals above are the loop\'s.', '',
     'Opened by tools/evolve/tune-loop.mjs. The loop never merges: the maintainer approves or closes.',
   ].join('\n');
 }
@@ -287,18 +310,25 @@ export async function publish(o, deps = {}) {
   const baseText = readFileSync(join(root, TUNE), 'utf8'), c = await checkCandidate(baseText, text);
   if (!c.ok) throw new Error(`the candidate is refused: ${c.reason}`);
   if (c.path !== rec.proposal.path || !same(c.to, rec.proposal.to)) throw new Error('the candidate is not the record\'s proposal');
+  const pins = JSON.parse(readFileSync(join(root, PINS), 'utf8')), off = pinsMismatch(pins, flatten(await valuesOf(baseText)));
+  if (off) throw new Error(`${PINS} does not match ${TUNE} before the change: ${off}`);
+  const newPins = pinsText({ ...pins, values: { ...pins.values, [c.path]: c.to } });
   const branch = `layout-tune/${rec.week}`, base = o.base || BASE_BRANCH, recFile = `bench/results/tune-${rec.date}.json`;
   const title = `Layout loop ${rec.week}: ${rec.status === 'reverted' ? 'revert ' : ''}${rec.proposal.path} ${JSON.stringify(rec.proposal.from)} to ${JSON.stringify(rec.proposal.to)}`;
   const steps = [
     ['git', ['switch', '-c', branch]],
     ['node', ['tools/build.mjs']],
-    ['git', ['add', TUNE, 'lib', recFile]],
+    ['git', ['add', TUNE, PINS, 'lib', recFile]],
     ['git', ['-c', `user.name=${o.name || 'github-actions[bot]'}`, '-c', `user.email=${o.email || '41898282+github-actions[bot]@users.noreply.github.com'}`, 'commit', '-m', title]],
     ['git', ['push', 'origin', branch]],
     ['gh', ['pr', 'create', '--base', base, '--head', branch, '--title', title, '--body', prBody(rec)]],
   ];
-  if (dry) return { branch, title, steps };
+  // a pull request opened with the workflow's token starts no workflow, but a workflow_dispatch does: each CI workflow is
+  // started on the branch, and its checks land on the branch's head commit, which is the pull request's
+  const ci = CI.map(([wf, inputs]) => ['gh', ['workflow', 'run', wf, '--ref', branch, ...inputs]]);
+  if (dry) return { branch, title, steps, ci };
   writeFileSync(join(root, TUNE), text);
+  writeFileSync(join(root, PINS), newPins);
   mkdirSync(join(root, 'bench/results'), { recursive: true });
   writeFileSync(join(root, recFile), JSON.stringify(rec, null, 1) + '\n');
   const out = [];
@@ -307,7 +337,13 @@ export async function publish(o, deps = {}) {
     if (r.status !== 0) throw new Error(`${cmd} ${args[0]} failed: ${r.stderr.slice(-400)}`);
     out.push(r.stdout.trim());
   }
-  return { branch, title, url: out.at(-1) };
+  // the pull request is open by now: a workflow that does not start is reported, and the maintainer starts it by hand
+  const notStarted = [];
+  for (const [cmd, args] of ci) {
+    const r = exec(cmd, args, { cwd: root });
+    if (r.status !== 0) notStarted.push(`${args[2]}: ${r.stderr.trim().slice(-200)}`);
+  }
+  return { branch, title, url: out.at(-1), notStarted };
 }
 
 // ---------- the command line ----------
@@ -337,8 +373,10 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     if (cmd === 'publish') {
       if (!str('record') || !str('candidate')) throw new Error('publish needs --record and --candidate');
       const r = await publish({ record: str('record'), candidate: str('candidate'), base: str('base'), dryRun: flags['dry-run'] === true }, deps);
-      print(r.steps ? JSON.stringify(r, null, 1) : `opened ${r.url || r.branch}`);
-      return 0;
+      if (r.steps) { print(JSON.stringify(r, null, 1)); return 0; }
+      print(`opened ${r.url || r.branch}`);
+      for (const n of r.notStarted) print(`::warning::not started on ${r.branch}, run it by hand: ${n}`);
+      return r.notStarted.length ? 1 : 0;
     }
     throw new Error(`usage: tune-loop.mjs propose|check|run|publish (see the file's header)${cmd ? ` (not ${cmd})` : ''}`);
   } catch (e) {
