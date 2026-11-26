@@ -583,6 +583,21 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render · a label holding <!-- and <script is data: the page's data block holds no '<' and reads back the same (audit 8)",
            blk and "<" not in blk.group(1) and json.loads(blk.group(1))["nodes"][0]["what"] == "Renders <!-- old <script> tags"
            and json.loads(u.script_json("<!--<script")) == "<!--<script" and "<" not in u.script_json("<!--<script"))
+        # audit 66: the stable diff page's #umlimator-base block (with_base) escaped only '</', so '<!--' then '<script' in the
+        # model before swallowed the rest of the page and nothing was drawn: it is escaped as the page's own data block is
+        lb = {"title": "t", "nodes": [{"id": "a", "label": "A <!--<script>", "what": "x <!-- y <SCRIPT z </script> w"}, {"id": "b", "label": "B"}],
+              "edges": [{"from": "a", "to": "b", "label": "<!--"}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+        la = json.loads(json.dumps(lb)); la["nodes"][0]["label"] = "A"; la["nodes"].append({"id": "c", "label": "C"}); la["views"][0]["nodeIds"].append("c")
+        (t / "lt-before.json").write_text(json.dumps(lb)); (t / "lt-after.json").write_text(json.dumps(la))
+        rl = plain("diff", str(t / "lt-before.json"), str(t / "lt-after.json"), "--out", str(t / "lt-diff.html"))
+        pl = (t / "lt-diff.html").read_text(encoding="utf-8") if (t / "lt-diff.html").is_file() else ""
+        tl = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', pl, re.S)
+        bl = json.loads(tl.group(1)) if tl else {}
+        ok("diff · '<!--' then '<script' in the model before is data: the #umlimator-base block holds no '<', reads back the same, and the page's data block follows it (audit 66)",
+           rl.returncode == 0 and tl and "<" not in tl.group(1) and bl.get("nodes", [{}])[0].get("label") == "A <!--<script>"
+           and bl["nodes"][0].get("what") == "x <!-- y <SCRIPT z </script> w" and pl.count('<script id="visual-data"') == 1
+           and pl.find('<script id="visual-data"') > tl.end() and u.DATA.search(pl) and "<" not in u.DATA.search(pl).group(1),
+           (rl.stderr[-300:], tl.group(1)[:200] if tl else "no #umlimator-base"))
         # audit 8: diff and drift name the user's file, not the hidden copy rendered beside it
         (t / "badid.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": ["b"]}], "views": [{"id": "main", "nodeIds": ["a"]}]}))
         b = plain("diff", str(t / "vicon.json"), str(t / "badid.json"), "--out", str(t / "badid.html"))
