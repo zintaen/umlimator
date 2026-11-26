@@ -246,3 +246,12 @@ test('a typed flowchart: the main flow straight down one column, the decision\'s
   assert.ok(at('f-reject').row < at('f-ok').row && at('f-save').row > at('f-ok').row, 'the "no" branch on one side, the store on the other');
   assert.equal(viewMetrics(g, { model: f12, view: f12.views.find(v => v.id === 'request-flow') }).cross, 0);
 });
+
+test('a typed BPMN view (its type ranks its own cells, cpPlace): the main flow from the start event marked, its items held on one row of the ranking, and no more crossings than without arrange', () => {
+  const ex = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8')), on = structuredClone(ex), V = 'order-to-shipment';
+  on.views.find(v => v.id === V).arrange = 'flow';
+  const g = layout(on, V), g0 = layout(ex, V), cross = (m, h) => viewMetrics(h, { model: m, view: m.views.find(v => v.id === V) }).cross;
+  assert.ok(g.edges.filter(e => e.mainLine).length >= 5 && g.edges.some(e => e.dep), 'a main flow and dependency lines');
+  assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
+  assert.ok(cross(on, g) <= cross(ex, g0), `crossings ${cross(on, g)} against ${cross(ex, g0)}`);
+});

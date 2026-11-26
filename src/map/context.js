@@ -481,7 +481,8 @@ function mapContext(model, opts = {}) {
   const flowing = (vid, dep) => viewEdges(V[vid] || {}).some(e => e.from !== e.to && !dep(e)); // a view with no flow line ranks as before (section 7.4)
   const depOf = vid => { const v = V[vid] || {}, T = flowT(vid); if (v.arrange !== 'flow' || ownLayout(vid) && !T) return () => false;
     const dep = depRule(v, T); return flowing(vid, dep) ? dep : () => false; };
-  // a typed view's main and dependency lines, by model line id (buildGeo's memo.flow)
+  // a typed view's main and dependency lines, by model line id, and its main cards, which layoutPass centres on their row
+  // where that draws no worse (layoutTyped) (buildGeo's memo.flow)
   const flowMarks = vid => { const v = V[vid] || {}, dep = depOf(vid), MT = typedMain(vid); return { main: MT ? MT.ids : new Set(), cards: new Set(MT ? MT.cards : []), dep: new Set(viewEdges(v).filter(e => e.id != null && dep(e)).map(e => e.id)) }; };
   /* A typed view's main flow (section 6.1): mainFlow's over its lines, a line its type calls main read as flow "main" (BPMN's
      path from the start event, section 6.1), so a type that names none takes the longest path; a line into a first card or out
