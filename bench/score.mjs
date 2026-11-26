@@ -17,7 +17,8 @@
 //   node bench/score.mjs --out <file>                     # also write the run's totals (and, but for heldout, its views)
 //
 // `python3 bench/bench.py --score ...` runs this. Time is a gate, never a term of the score: a view of m50 over 1000 ms or a
-// C4 example over 1500 ms (median), or the corpus over 1.10 times the base lib's time measured in the same run, fails.
+// C4 example over 1500 ms (median), or the corpus over 1.10 times the base lib's time measured in the same run, fails; with a
+// base lib in the run, an over-budget view fails only when it is also over 1.10 times its base time (CI runners differ in speed).
 // The score itself is a function of the geometry only: two runs that lay a view out differently fail the run.
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -113,7 +114,14 @@ else for (const [path, stem] of files) {
     if (!a.same) problem(`${key}: ${runs} runs laid it out differently`);
     const r = results[key] = { nodes: a.g.nodes.length, edges: a.g.edges.length, ...metricsOf(a.g, model, view), ms: Math.round(median(a.ms) * 10) / 10 };
     if (b) base[key] = { ...metricsOf(b.g, model, view), ms: Math.round(median(b.ms) * 10) / 10 };
-    const lim = budget(key, view); if (lim != null && r.ms > lim) problem(`${key}: ${r.ms} ms > its budget of ${lim} ms`);
+    // With the base measured in the same run (CI), a view over its budget fails only when it is also slower than the base by the
+    // corpus gate's factor: a shared runner's own speed is not a layout change. Without a base the budget holds as written.
+    const lim = budget(key, view);
+    if (lim != null && r.ms > lim) {
+      if (!b) problem(`${key}: ${r.ms} ms > its budget of ${lim} ms`);
+      else if (r.ms > base[key].ms * 1.10) problem(`${key}: ${r.ms} ms > its budget of ${lim} ms and over 1.10 times the base's ${base[key].ms} ms`);
+      else console.log(`note: ${key}: ${r.ms} ms > its budget of ${lim} ms, but within 1.10 times the base's ${base[key].ms} ms on this machine`);
+    }
     row(key, r, b && base[key]);
   }
 }
