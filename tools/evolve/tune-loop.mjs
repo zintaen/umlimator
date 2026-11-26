@@ -349,7 +349,7 @@ export async function publish(o, deps = {}) {
 // ---------- the command line ----------
 
 export async function main(argv = process.argv.slice(2), deps = {}) {
-  const { flags, rest } = parseArgs(argv), cmd = rest[0], print = deps.print || (s => process.stdout.write(s + '\n'));
+  const { flags, rest } = parseArgs(argv, ['restart', 'dry-run']), cmd = rest[0], print = deps.print || (s => process.stdout.write(s + '\n'));
   const str = k => (typeof flags[k] === 'string' ? flags[k] : undefined);
   const hist = argv.flatMap((a, i) => (a === '--history' && argv[i + 1] ? [argv[i + 1]] : []));
   try {

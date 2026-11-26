@@ -1,8 +1,9 @@
 // Small helpers shared by the tools in tools/evolve/: command-line flags, durations and a seeded random number generator.
 // No dependency.
 
-// --name value, --name=value and --flag (true); everything else is positional
-export function parseArgs(argv) {
+// --name value, --name=value and --flag (true); everything else is positional. A flag named in booleans never takes the
+// next argument as its value, so `--json <folder>` leaves the folder positional (audit 67)
+export function parseArgs(argv, booleans = []) {
   const flags = {}, rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -10,7 +11,7 @@ export function parseArgs(argv) {
     const eq = a.indexOf('=');
     if (eq > 0) { flags[a.slice(2, eq)] = a.slice(eq + 1); continue; }
     const name = a.slice(2), next = argv[i + 1];
-    if (next !== undefined && !next.startsWith('--')) { flags[name] = next; i++; } else flags[name] = true;
+    if (next !== undefined && !next.startsWith('--') && !booleans.includes(name)) { flags[name] = next; i++; } else flags[name] = true;
   }
   return { flags, rest };
 }

@@ -199,6 +199,62 @@ test('protect: a protected test whose test (or describe around it) is bound to a
   }
 });
 
+test('protect: a protected test whose assert is swapped, rebound or patched to assert nothing is reported, and so is a changed import (audit 67)', (t) => {
+  const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const ASSERT = "import assert from 'node:assert/strict';", head = line => s => s.replace(ASSERT, line);
+  const both = why => [`doubles: no longer asserts (${why})`, `quadruples: no longer asserts (${why})`];
+  const off = [
+    [head("import assert from './noop.mjs';"), 'assert is imported from ./noop.mjs, not node:assert'],
+    [head("import { assert } from './helpers.mjs';"), 'assert is imported from ./helpers.mjs, not node:assert'],
+    [head("import { ok as assert } from 'node:assert';"), "assert is node:assert's ok"],
+    [head("globalThis.assert = () => {};"), 'assert is not imported from node:assert'],
+    [head(`${ASSERT}\nassert.equal = () => {};`), 'assert is changed in the file (line 3)'],
+    [head(`${ASSERT}\nassert['deepEqual'] = assert.ok;`), 'assert is changed in the file (line 3)'],
+    [head(`${ASSERT}\nObject.assign(assert, { equal() {} });`), 'assert is changed in the file (line 3)'],
+    [head(`${ASSERT}\nimport { mock } from 'node:test';\nmock.method(assert, 'equal', () => {});`), 'assert is changed in the file (line 4)'],
+    [head(`${ASSERT}\ndelete assert.strict.equal;`), 'assert is changed in the file (line 3)'],
+  ];
+  const old = JSON.parse(readFileSync(join(dir, 'tests/protected.json'), 'utf8'));
+  for (const e of Object.values(old.tests['tests/x.test.mjs'])) delete e.imports; // an entry recorded before audit 67
+  for (const [change, why] of off) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.notEqual(readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8'), before, 'the case edits the file');
+    assert.deepEqual(problems(dir), both(why), why);
+    assert.deepEqual(check(dir, old).map(p => `${p.title}: ${p.problem}`), both(why), `${why}, with no imports recorded`);
+    assert.throws(() => update(dir), /"doubles" does not assert/);
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+  const fine = [
+    head("import { strict as assert } from 'node:assert';"),
+    head("import * as assert from 'node:assert/strict';"),
+    s => s.replace(ASSERT, `${ASSERT}\nconst eq = assert.equal, same = assert.deepEqual === assert.strict.deepEqual;`),
+  ];
+  for (const change of fine) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.deepEqual(check(dir, old), [], 'no assert problem');
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+  // an entry records where the names it uses are imported from, and the modules imported only to run them
+  const lib = repo(`import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { double } from './math.mjs';\n\ntest('doubles', () => { assert.equal(double(2), 4); });\n`, ['doubles']);
+  t.after(() => rmSync(lib, { recursive: true, force: true }));
+  assert.deepEqual(readList(lib).tests['tests/x.test.mjs'].doubles.imports, ['assert: node:assert/strict default', 'double: ./math.mjs double']);
+  const swaps = [
+    [s => s.replace("from './math.mjs'", "from './noop.mjs'"), 'was double: ./math.mjs double; now double: ./noop.mjs double'],
+    [s => s.replace("import { double } from './math.mjs';", "import { half as double } from './math.mjs';"), 'was double: ./math.mjs double; now double: ./math.mjs half'],
+    [s => s.replace(ASSERT, "import assert from 'node:assert';"), 'was assert: node:assert/strict default; now assert: node:assert default'],
+    [s => s.replace(ASSERT, `${ASSERT}\nimport './patch.mjs';`), 'now ./patch.mjs'],
+  ];
+  for (const [change, why] of swaps) {
+    const before = readFileSync(join(lib, 'tests/x.test.mjs'), 'utf8');
+    edit(lib, change);
+    assert.deepEqual(check(lib).map(p => `${p.title}: ${p.problem}`), [`doubles: changed (its imports: ${why})`]);
+    writeFileSync(join(lib, 'tests/x.test.mjs'), before);
+  }
+  assert.deepEqual(check(lib), []);
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));

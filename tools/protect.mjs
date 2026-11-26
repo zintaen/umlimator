@@ -5,7 +5,9 @@
 // (deleted or renamed), its hash changed (an assertion weakened, dropped or edited, or a helper changed), or it no longer
 // runs: node --test runs it only as a statement at the top level or in the callback of a describe, suite, test or it, so
 // one wrapped in a skipped describe, an if, a function or an expression is reported, and so is one whose test (or the describe
-// around it) is bound to anything but node:test's own (import { skip as test } from 'node:test').
+// around it) is bound to anything but node:test's own (import { skip as test } from 'node:test'). A protected test whose
+// assert is not node:assert's own (imported from another module, or patched in the file, assert.equal = ...) asserts nothing
+// and is reported; an entry also records where each name it uses is imported from, and a changed import is a change.
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
 //   node tools/protect.mjs --list                   print the entries
@@ -56,7 +58,7 @@ export function scan(src) {
   // its default export) or, around it, describe (suite); `import { skip as test } from 'node:test'`, a name imported from
   // another module, or one declared in the file (const test = skip) makes every call of it no test that runs (audit 66).
   // A name the file never binds is a ReferenceError, which fails the run on its own
-  const imports = new Map(), declared = new Set();
+  const imports = new Map(), declared = new Set(), sideEffects = [];
   for (let k = 0; k < sig.length; k++) {
     const t = sig[k];
     if (t.type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text)) continue;
@@ -78,6 +80,7 @@ export function scan(src) {
       const from = sig[q]?.type === 'str' ? sig[q] : sig[q + 1];
       const module = literal(from) ?? '';
       for (const [local, imported] of named) if (local) imports.set(local, { module, imported });
+      if (!named.length && sig[k + 1]?.type === 'str') sideEffects.push(module); // import './setup.mjs': run for what it does
       continue;
     }
     if (!DECL.has(t.text)) continue;
@@ -94,6 +97,28 @@ export function scan(src) {
     }
     return declared.has(name) ? `${name} is declared in the file, not node:test's ${name}` : null;
   };
+  // how the file binds assert: a protected test's assertions assert only through node:assert's own (its default export,
+  // strict or the namespace), or through a top-level declaration, which the hash covers as a helper. One imported from
+  // another module, used with no binding in the file (a global another module set), or patched in the file
+  // (assert.equal = ..., delete assert.ok, Object.assign(assert, ...)) lets every assertion pass (audit 67)
+  const ASSERTS = ['node:assert', 'node:assert/strict', 'assert', 'assert/strict'], PATCH = ['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf', 'set', 'deleteProperty', 'method', 'getter', 'setter'];
+  let assertWhy = null;
+  const a = imports.get('assert');
+  if (a && !(ASSERTS.includes(a.module) && ['default', 'strict', '*'].includes(a.imported))) {
+    assertWhy = !ASSERTS.includes(a.module) ? `assert is imported from ${a.module || 'elsewhere'}, not node:assert` : `assert is node:assert's ${a.imported}`;
+  } else if (!a && !sig.some((x, k) => x.text === 'assert' && depthAt[k] === 0 && DECL.has(sig[k - 1]?.text))) assertWhy = 'assert is not imported from node:assert';
+  for (let k = 0; k < sig.length && !assertWhy; k++) {
+    if (sig[k].text !== 'assert' || sig[k].type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text)) continue;
+    let m = k + 1;
+    for (;;) {
+      if (['.', '?.'].includes(sig[m]?.text) && sig[m + 1]?.type === 'id') m += 2;
+      else if (sig[m]?.text === '[') m = close(m) + 1;
+      else break;
+    }
+    const c = parent[k];
+    if ((m > k + 1 && /^(=|[-+*/%&|^]=|&&=|\|\|=|\?\?=)$/.test(sig[m]?.text ?? '')) || (m > k + 1 && sig[k - 1]?.text === 'delete')
+      || (c === k - 1 && sig[c].text === '(' && PATCH.includes(sig[c - 1]?.text))) assertWhy = `assert is changed in the file (line ${src.slice(0, sig[k].start).split('\n').length})`;
+  }
   // why the call whose name is at j would not run as a test, or null when it runs: node --test runs a test written as a
   // statement at the top level or in the callback of a describe, suite, test or it that is not skipped
   const off = j => {
@@ -177,10 +202,14 @@ export function scan(src) {
     for (const n of names) if (!decls.has(n)) decls.set(n, decl);
     j = end;
   }
-  return { tests, decls };
+  return { tests, decls, imports, sideEffects, assertWhy };
 }
 
-// what an entry records of one test: the hash of its body and its helpers, its assert count and its helpers' names
+const RUNNERS = ['test', 'it', 'describe', 'suite']; // checked by scan() as how the test runs, not recorded as imports
+
+// what an entry records of one test: the hash of its body and its helpers, its assert count, its helpers' names, and where
+// each name it and its helpers import comes from, with the modules the file imports only to run them (audit 67: an
+// import swapped for a module that does nothing changes neither the body nor a helper)
 export function record(src, title, scanned = scan(src)) {
   const t = scanned.tests.get(title);
   if (!t) return null;
@@ -192,7 +221,9 @@ export function record(src, title, scanned = scan(src)) {
   }
   const names = [...helpers].sort(), texts = [...new Set(names.map(n => scanned.decls.get(n).text))];
   const sha256 = createHash('sha256').update([t.body, ...texts].join('\n')).digest('hex').slice(0, 16);
-  return { sha256, asserts: t.asserts, helpers: names };
+  const used = new Set([...t.refs, ...names.flatMap(n => [...scanned.decls.get(n).refs])]);
+  const imports = [...used].filter(n => scanned.imports.has(n) && !RUNNERS.includes(n)).sort().map(n => `${n}: ${scanned.imports.get(n).module} ${scanned.imports.get(n).imported}`);
+  return { sha256, asserts: t.asserts, helpers: names, imports: [...imports, ...[...new Set(scanned.sideEffects)].sort()] };
 }
 
 export const readList = root => JSON.parse(readFileSync(join(root, LIST), 'utf8'));
@@ -208,17 +239,24 @@ export function check(root, list = readList(root)) {
       const now = record(src, title, scanned);
       if (!now) problems.push({ file, title, problem: 'gone: deleted or renamed', was });
       else if (scanned.tests.get(title).off) problems.push({ file, title, problem: `no longer runs (${scanned.tests.get(title).off})`, was, now });
+      else if (asserting(scanned, title)) problems.push({ file, title, problem: `no longer asserts (${asserting(scanned, title)})`, was, now });
       else if (now.sha256 !== was.sha256) {
         const why = [now.asserts !== was.asserts ? `asserts ${was.asserts} -> ${now.asserts}` : 'its body or a helper changed'];
         const lost = was.helpers.filter(h => !now.helpers.includes(h)), added = now.helpers.filter(h => !was.helpers.includes(h));
         if (lost.length) why.push(`no longer uses ${lost.join(', ')}`);
         if (added.length) why.push(`now uses ${added.join(', ')}`);
         problems.push({ file, title, problem: `changed (${why.join('; ')})`, was, now });
+      } else if (was.imports) { // an entry recorded before audit 67 has no imports to compare
+        const lost = was.imports.filter(i => !now.imports.includes(i)), added = now.imports.filter(i => !was.imports.includes(i));
+        if (lost.length || added.length) problems.push({ file, title, problem: `changed (its imports: ${[...lost.map(i => `was ${i}`), ...added.map(i => `now ${i}`)].join('; ')})`, was, now });
       }
     }
   }
   return problems;
 }
+
+// why a test that calls assert would pass whatever it asserts, or null
+const asserting = (scanned, title) => scanned.tests.get(title).refs.has('assert') ? scanned.assertWhy : null;
 
 export const say = p => `${p.file}: "${p.title}": ${p.problem}`;
 
@@ -233,6 +271,7 @@ export function update(root, file, titles = []) {
       const now = record(src, title, scanned);
       if (!now) throw new Error(`${f}: no test titled "${title}" (renamed? --remove it and --add the new title)`);
       if (scanned.tests.get(title).off) throw new Error(`${f}: "${title}" does not run (${scanned.tests.get(title).off})`);
+      if (asserting(scanned, title)) throw new Error(`${f}: "${title}" does not assert (${asserting(scanned, title)})`);
       entries[title] = now; done.push(`${f}: "${title}"`);
     }
   }
@@ -247,6 +286,7 @@ export function add(root, file, titles) {
     const now = record(src, title, scanned);
     if (!now) throw new Error(`${file}: no test titled "${title}" (only tests with a literal title can be protected)`);
     if (scanned.tests.get(title).off) throw new Error(`${file}: "${title}" does not run (${scanned.tests.get(title).off})`);
+    if (asserting(scanned, title)) throw new Error(`${file}: "${title}" does not assert (${asserting(scanned, title)})`);
     entries[title] = now;
   }
   writeList(root, list);

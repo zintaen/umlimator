@@ -218,6 +218,10 @@ test('ledger: the command line exits 1 on stop, 0 on continue, 2 on a usage erro
   const g = node('ledger.mjs', [go, '--json']);
   assert.equal(g.status, 0);
   assert.equal(JSON.parse(g.stdout).verdict, 'continue');
+  // a bare --json before the folder is a flag, not the folder's name (audit 67)
+  const before = node('ledger.mjs', ['--json', go]);
+  assert.equal(before.status, 0, before.stderr);
+  assert.deepEqual(JSON.parse(before.stdout), JSON.parse(g.stdout));
   assert.equal(node('ledger.mjs', []).status, 2);
   assert.equal(node('ledger.mjs', [join(go, 'missing')]).status, 2);
 });
@@ -314,6 +318,10 @@ test('args: durations, flags and the seeded generator', () => {
   assert.equal(duration(undefined, 5), 5);
   assert.throws(() => duration('soon'), /not a duration/);
   assert.deepEqual(parseArgs(['a', '--x', '1', '--y=2', '--z']), { flags: { x: '1', y: '2', z: true }, rest: ['a'] });
+  // a boolean flag never takes the next argument as its value (audit 67); a flag that is not one still does
+  assert.deepEqual(parseArgs(['--json', 'dir', '--x', '1'], ['json']), { flags: { json: true, x: '1' }, rest: ['dir'] });
+  assert.deepEqual(parseArgs(['--dry-run', 'propose', '--json=yes'], ['dry-run', 'json']), { flags: { 'dry-run': true, json: 'yes' }, rest: ['propose'] });
+  assert.deepEqual(parseArgs(['--x', 'dir'], ['json']), { flags: { x: 'dir' }, rest: [] });
   const a = seeded('s'), b = seeded('s');
   assert.deepEqual([a(), a(), a()], [b(), b(), b()]);
 });
