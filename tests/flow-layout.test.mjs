@@ -237,3 +237,12 @@ test('typed C4 and DFD views: the main flow on one row, people first, stores und
   for (const v of ['orders-dfd', 'checkout-c4']) { const g = layout(off, v); assert.ok(g.edges.every(e => !e.dep && !e.mainLine), `${v} without arrange: no line marked`); }
   assert.notDeepEqual(cells(layout(off, 'orders-dfd')), cells(d), 'the arranged DFD lays out otherwise than without arrange');
 });
+
+test('a typed flowchart: the main flow straight down one column, the decision\'s "no" branch above it, the store in the band under it', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url), 'utf8')), g = layout(f12, 'request-flow'), at = id => g.byId[id];
+  const main = ['f-start', 'f-read', 'f-ok', 'f-do', 'f-end'];
+  assert.deepEqual(new Set(main.map(i => at(i).row)).size, 1, 'one row (laid out down: one column)');
+  assert.ok(g.edges.filter(e => e.mainLine).length === 4 && g.edges.filter(e => e.mainLine).every(e => e.pts.length === 2), 'every main line one straight segment');
+  assert.ok(at('f-reject').row < at('f-ok').row && at('f-save').row > at('f-ok').row, 'the "no" branch on one side, the store on the other');
+  assert.equal(viewMetrics(g, { model: f12, view: f12.views.find(v => v.id === 'request-flow') }).cross, 0);
+});
