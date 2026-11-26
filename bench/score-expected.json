@@ -1,9 +1,9 @@
 {
- "commit": "de852896",
+ "commit": "635fe9e4",
  "corpus": "fixed",
  "total": {
   "views": 253,
-  "score": 606603.21
+  "score": 605765.96
  },
  "views": {
   "b10/overview": {
@@ -114,25 +114,25 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
-   "score": 392.06
+   "score": 245.41
   },
   "f12/orders-dfd": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
-   "score": 470.61
+   "score": 323.04
   },
   "f12/request-flow": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 14,
+   "straight": 0,
    "reverse": 0,
-   "score": 813.93
+   "score": 270.9
   },
   "f12/shop-gcp": {
    "hard": 0,
