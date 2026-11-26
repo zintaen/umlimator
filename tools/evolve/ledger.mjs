@@ -93,7 +93,7 @@ export function report(r) {
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const { flags, rest } = parseArgs(argv);
+  const { flags, rest } = parseArgs(argv, ['json']);
   let r;
   try {
     if (!rest.length) throw new Error('usage: ledger.mjs <audits folder or auditN.json files...> [--window 20] [--json]');
