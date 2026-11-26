@@ -638,3 +638,17 @@ test('layout.keepsRow: Alt + an arrow across the lanes on a node with no node of
   }
   assert.ok(refused > 10, refused);
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the activity's zoneOf and
+// flowRole, read only in an arranged view
+test('zoneOf: the initial node first, a final node last, an object node only one action reads or writes under; flowRole: a comment link is a dependency', () => {
+  const nd = (id, t) => ({ id, type: 'uml.' + t, label: id }), fl = (id, from, to, t = 'ControlFlow') => ({ id, type: 'uml.' + t, from, to });
+  const m = { schemaVersion: 2, nodes: [nd('i', 'InitialNode'), nd('a', 'Action'), nd('b', 'Action'), nd('o', 'ObjectNode'), nd('log', 'DataStoreNode'), nd('f', 'ActivityFinalNode'), nd('ff', 'FlowFinalNode')],
+    edges: [fl('c1', 'i', 'a'), fl('c2', 'a', 'o', 'ObjectFlow'), fl('c3', 'o', 'b', 'ObjectFlow'), fl('c4', 'b', 'f'), fl('c5', 'b', 'log', 'ObjectFlow'), fl('c6', 'a', 'ff')],
+    views: [{ id: 'v', diagram: 'uml.activity', arrange: 'flow', nodeIds: ['i', 'a', 'b', 'o', 'log', 'f', 'ff'] }] };
+  const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['i', 'a', 'o', 'log', 'f', 'ff'].map(id => T.zoneOf(n(id), m, V0)), ['first', null, null, 'under', 'last', 'last'], 'o is read and written by two actions: in the flow');
+  assert.deepEqual([fl('x', 'a', 'b'), fl('y', 'a', 'o', 'ObjectFlow'), { id: 'z', type: 'uml.CommentLink', from: 'a', to: 'b' }].map(e => T.flowRole(e, m, V0)), ['branch', 'branch', 'dep']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(at('log').row > at('b').row && at('i').col < at('a').col, 'the store under the flow, the initial node first');
+});

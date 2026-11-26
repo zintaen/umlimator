@@ -18,12 +18,14 @@ function modelEdge(e, model, view) {
   return all.find(x => x.from === e.from && x.to === e.to) || null;
 }
 
-// a line's part in the flow (section 5.1): its `flow` field, else on a map its kind (`state` and `guard` are dependencies),
-// else a flow line; a typed type's flowRole comes with section 12 step 9
+// a line's part in the flow (section 5.1): its `flow` field, else a line the layout drew as a dependency (`dep`: an arranged
+// typed view's, by its type's flowRole, section 12 step 10), else on a map its kind (`state` and `guard` are dependencies),
+// else a flow line
 function roleOf(e, model, view) {
   const m = modelEdge(e, model, view);
   if (m && ['main', 'branch', 'dep'].includes(m.flow)) return m.flow;
   if (e.flow && ['main', 'branch', 'dep'].includes(e.flow)) return e.flow;
+  if (e.dep) return 'dep';
   const map = !view || !view.diagram || view.diagram === 'map', k = e.wk || (m && m.kind);
   return map && (k === 'state' || k === 'guard') ? 'dep' : 'branch';
 }

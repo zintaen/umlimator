@@ -41,7 +41,12 @@ function repaint(g, was, dg) {
    calls; while the geometry key is the same, the geometry it holds is repainted and returned, and nothing is laid out or
    routed. memo.runs counts the layouts. dg.reroute false: lines that had to cross are not routed again in a new order (the
    rip-up and reroute pass, layered.js), for a type whose edits must be quick (risks.md P1); a map never sets it. */
-function layoutTyped(dg, memo) {
+function layoutTyped(dg0, memo) {
+  // an arranged view's lines by their part in the flow (memo.flow, set by the host, src/map/context.js: layout-flow.md section
+  // 12 step 10): a main line takes the middle port of its sides, a dependency line is routed after the flow lines, as a map's
+  // and a main card is centred on its row, so main lines between cards of other heights run straight (layoutPass)
+  const F = memo && memo.flow, dg = F ? { ...dg0, nodes: (dg0.nodes || []).map(n => (F.cards && F.cards.has(n.id) ? { ...n, mainCard: true } : n)),
+    edges: (dg0.edges || []).map(e => { const k = e._id ?? e.id, m = F.main.has(k), d = F.dep.has(k); return m || d ? { ...e, ...(m && { mainLine: true }), ...(d && { dep: true }) } : e; }) } : dg0;
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
   const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'
@@ -77,6 +82,9 @@ function layoutTyped(dg, memo) {
   let [g, tried] = best(t);
   if (g.edges.some(e => e[FOLLOWED])) { const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
     const a = told(g); if (a[0] || a[1]) { const [h, ht] = best({ ...t, [PORTS_PLAIN]: true }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } } }
+  // main cards centred on their row (an arranged view's, memo.flow) are laid out top-aligned too, and that kept when check()
+  // has less to say of it: a centred event can push a line into a crossing (tests/bpmn-stress.json's edge cases)
+  if (F && (t.nodes || []).some(n => n.mainCard)) { const [h, ht] = best({ ...t, nodes: t.nodes.map(n => (n.mainCard ? { ...n, mainCard: false } : n)) }); if (less(said(h), said(g))) { g = h; tried = ht; } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;
 }

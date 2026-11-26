@@ -362,7 +362,14 @@ function c4Owners(model, x) {
 }
 
 /* ---- the type, under its four static view names ---- */
-let c4People = new Set();
+// the model's people, once a model (rankFlip reads them for each line); a view laid out by flow puts them first by its zones
+const C4_PEOPLE = new WeakMap(), c4People = model => { if (!C4_OBJ(model)) return new Set(); if (!C4_PEOPLE.has(model)) C4_PEOPLE.set(model, new Set(C4_ARR(model.nodes).filter(n => C4_OBJ(n) && n.type === 'c4.Person').map(n => n.id))); return C4_PEOPLE.get(model); };
+const c4Arranged = view => C4_OBJ(view) && view.arrange === 'flow' && view.zones !== false;
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10): a relationship is a flow line,
+   a comment link a dependency; people first, an external software system last, a container drawn as a cylinder (a database)
+   in the band under the flow */
+const c4FlowRole = e => (C4_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch');
+const c4ZoneOf = x => !C4_OBJ(x) ? null : x.type === 'c4.Person' ? 'first' : x.type === 'c4.SoftwareSystem' && c4Ext(x) ? 'last' : x.type === 'c4.Container' && c4Shape(x) === 'cylinder' ? 'under' : null;
 const C4_ELEMENT_PROPS = [{ key: 'description', label: 'Description', kind: 'text' }, { key: 'technology', label: 'Technology', kind: 'text' },
   { key: 'external', label: 'External', kind: 'bool' }, { key: 'shape', label: 'Shape', kind: 'enum', options: C4_SHAPES }];
 // connect: a comment link from the comment, refused with no comment at either end (commentConnect, src/uml/class.js, audit 46);
@@ -375,11 +382,12 @@ const C4_DEF = {
   props: { 'c4.Person': C4_ELEMENT_PROPS.filter(f => f.key !== 'technology'), 'c4.SoftwareSystem': C4_ELEMENT_PROPS.filter(f => f.key !== 'technology'),
     'c4.Container': C4_ELEMENT_PROPS, 'c4.Component': C4_ELEMENT_PROPS, 'c4.Relationship': [{ key: 'technology', label: 'Technology', kind: 'text' }], 'uml.CommentLink': [] },
   layout: c4Geo,
-  boxes: (model, view) => { c4People = new Set(C4_ARR(model && model.nodes).filter(n => C4_OBJ(n) && n.type === 'c4.Person').map(n => n.id)); return c4Pic(model, view).boxes; },
-  // a line into a person is ranked as if it came from them, so people come first (C4 draws them at the top or left). The host
-  // asks boxes() before it ranks a view, which leaves the model's people here. ponytail: module state read by rankFlip,
-  // which sees the line alone; a rankFlip(e, model) would lift it
-  rankFlip: e => c4People.has(e.to) && !c4People.has(e.from),
+  boxes: (model, view) => c4Pic(model, view).boxes,
+  // a line into a person is ranked as if it came from them, so people come first (C4 draws them at the top or left); in a view
+  // laid out by flow its zones do that (c4ZoneOf), and no line turns round
+  rankFlip: (e, model, view) => !c4Arranged(view) && c4People(model).has(e.to) && !c4People(model).has(e.from),
+  flowRole: c4FlowRole,
+  zoneOf: c4ZoneOf,
   owners: c4Owners,
   // the model lines the view draws (validate()'s stories read it, audit 38): its own, and those an implied line stands for; not
   // one to a boundary it opens, which no line ends on
@@ -397,4 +405,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4FlowRole, c4ZoneOf, c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
