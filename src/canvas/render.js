@@ -56,7 +56,8 @@ export function render(container, model, options = {}) {
   const O = o => Object.assign(Object.create(null), o); // by-id maps with no prototype: a card or view named toString or __proto__ is a key like any other (M3, audit 8)
   const expanded = O(); // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
   const asked = O(); // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
-  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded }); // kinds: the standalone page guesses line kinds from label words, for its legend
+  // stableFrom: the model before an edit, whose cells the cards it left alone keep in the first picture (layout-flow.md section 8)
+  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
   const root = host.attachShadow({ mode: 'open', delegatesFocus: true }); // host.focus() lands in the map (on the selected card)
   root.adoptedStyleSheets = [sheet()];
   // the standalone page's pieces a host asks for (#99), in a frame around the canvas: the views list left of the map (after

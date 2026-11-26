@@ -67,6 +67,7 @@ interface RenderOptions {
   measure?: false | ((text: string, px: number) => number);
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   stableLayout?: boolean;
+  stableFrom?: MapModel;
   ease?: boolean;
   nav?: boolean;
   legend?: boolean;
@@ -88,6 +89,7 @@ interface RenderOptions {
 | `measure` | the host's font (`--um-sans`), measured on a canvas | How text widths are measured. `false` uses a font-independent estimate, the same one `layout()` uses in Node. |
 | `editable` | `false` | Edit gestures that emit [`change`](./events-and-state.md#change) events: all of them, or only those set `true`. On a typed view they emit [`edit`](./events-and-state.md#edit) instead. See [`docs/editing.md`](https://github.com/zintaen/umlimator/blob/main/docs/editing.md). |
 | `stableLayout` | `true` | Cards keep their places across `update()`, in this handle only (never written to the model). |
+| `stableFrom` | none | The model before an edit. The first picture keeps each card the edit left alone (on the view in both models, in the same box, with none of its flow lines added, removed or turned round) at the cell it had there, and places the other cards round them. A card's own pin wins. A view whose stable layout has more hard issues than a fresh one (a line through a card or on another line, cards or boxes over each other), or scores worse by more than one label left out, is drawn fresh. Never written to the model; ignored with `stableLayout: false`. |
 | `ease` | `true` | `update()` eases into the next model: moved cards glide, new ones fade in, removed ones fade out. Never under reduced motion. |
 | `nav` | `false` | The views list (Miller columns) left of the map, opened by its ☰ button or O. Picking a view emits `viewchange`. |
 | `legend` | `false` | The kinds of cards and lines the view draws, in a box over the map that folds away. |
@@ -370,7 +372,7 @@ speed: number;
 ## mountPage
 
 ```ts
-function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
+function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
 ```
 
 The whole standalone viewer that `umlimator.py render` writes: top bar, breadcrumbs, views list, details panel, search,
@@ -382,6 +384,7 @@ listeners it added to the document and the window.
 |---|---|
 | `params` | The page's mode, as the CLI passes it: `theme`, `reader`, and the CLI's own `check`, `still`, `shot` and `pdf`. Default: none. The link's `view`, `node`, `story`, `step` and `lens` are read from `location.hash`. |
 | `instant` | Draw with no animation, as the CLI's checks and stills do. |
+| `stableFrom` | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions). A page the CLI writes with `diff --stable`, or the MCP page after an edit, holds it in a `#umlimator-base` script. |
 
 ```js
 import { mountPage } from 'umlimator';
@@ -393,7 +396,7 @@ Use `render()` with `nav`, `details`, `legend` and `hints` when the host wants t
 ## layout
 
 ```ts
-function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
+function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): Geometry & { unfolded?: string[] };
 ```
 
 A view's geometry, with no DOM: where each card is, the route of each line, and where each label goes. Deterministic:
@@ -404,6 +407,7 @@ the same model gives the same geometry, and Node and a browser give the same res
 | `repair` | the view's own `repair` | Port repair, on a map view: moves line ends to cut crossings. A typed view's type decides, and its lines are never port-repaired, so the option does nothing there. |
 | `measure` | a font-independent estimate | Text widths in px for a text at a font size. |
 | `expand` | none | Cards of the view to unfold in place, as [`expand()`](#expand) draws them. The result's `unfolded` lists those that did. |
+| `stableFrom` | none | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions): the cards the edit left alone keep their cells, unless the stable layout draws worse than a fresh one. |
 
 ```js
 import { layout } from 'umlimator';
@@ -429,7 +433,7 @@ Card boxes, drawn lines (one may stand for several model edges, listed in `ids`)
 ## check
 
 ```ts
-function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
+function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
 ```
 
 The layout check on `layout()`'s geometry, with no browser: overlapping cards, crossing or shared lines, detours,
