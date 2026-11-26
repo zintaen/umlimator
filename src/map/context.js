@@ -422,7 +422,8 @@ function mapContext(model, opts = {}) {
           if (!ys.length) return; const r = Math.min(...ys.map(runCard)), cs = ys.map(y => ci[itemIn(y, g)]).sort((a, b) => a - b); if (r < S.runs - 1) midDep[x] = { c: cs[MEDIAN(cs.length)], p: r + 1 }; }); }
       const cols = [], pos = O(); let c0 = 0, h = 0;
       items.forEach(x => depOnly.has(x) && !midDep[x] || (cols[midDep[x] ? midDep[x].c : ci[x]] ||= []).push(x));
-      const main = cols.map(l => (l || []).filter(x => !sink(x)).sort((a, b) => first(a) - first(b)));
+      // Array.from, not map: a rank no item holds (a store's, which sits in the band under) leaves a hole in cols, which map keeps
+      const main = Array.from(cols, l => (l || []).filter(x => !sink(x)).sort((a, b) => first(a) - first(b)));
       const inside = (x, id) => ids.includes(x) ? 0 : (size[x].pos[id] || [0, null])[1]; // the row of a box's card that a line meets
       const dagged = new Set(dag.map(([a, b]) => a + '\u0000' + b)), lines = fwd.map(e => { const a = itemIn(e.from, g), b = itemIn(e.to, g);
         return a !== undefined && b !== undefined && a !== b ? { e, link: [a, b, inside(a, e.from), inside(b, e.to)] } : null; }).filter(Boolean);
