@@ -53,6 +53,8 @@ python3 umlimator.py diff --base origin/main --out diff/ --stable     # the same
 
 `diff --base` is what the Action runs, against the merge commit's first parent. With `--stable` (the Action's `stable: true`) each page is drawn against the model before: the cards the change left alone keep the places they had there, and a removed card comes back where it was, so the picture moves only where the change does. A view whose stable picture would draw worse than a fresh one (a new crossing, a line through a card) is drawn fresh. Without it the pages are drawn as before. In code, `diff(before, after, { stable: true })` returns the model before as `stableFrom`, which `render()`, `layout()` and `check()` take as an option of the same name.
 
+With `--story`, each page has a story of each view that shows a change, in its Stories menu: a step per card and line the change adds, changes or removes, along the view's main flow, captioned Added, Changed or Removed ([`storyFromDiff()`](../api/apply-and-commands.md#storyfromdiff)). The JSON the command prints names them under `stories`. Without it the pages are as before.
+
 ## Rules in CI
 
 `umlimator.py check` reports each rule the model breaks and exits 1, so a step that runs it fails the build when a
