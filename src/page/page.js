@@ -433,7 +433,7 @@ export function mountPage(container, model, options = {}) {
   const p0 = new URLSearchParams(location.hash.slice(1));
   const v0 = V[p0.get('view')] ? p0.get('view') : rootId;
   const handle = render($('m-canvas'), model, {
-    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined,
+    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined, stableFrom: options.stableFrom || undefined,
     on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step }; app.classList.toggle('story', !!told); pc.story(e);
       const sv = told && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
     _page: {
