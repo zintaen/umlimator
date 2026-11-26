@@ -96,6 +96,24 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop 135f6117 (baseline, no lane merged); `.github/workflows/check.yml`, `python-version: "3.12"`; handoff log, 24 Nov 2026, fix round 65 combine.
 - Proposed change: Add to A10.0 that the rules file names the interpreter and runtime versions the gate uses, taken from the CI configuration, and the gate command runs those versions (or records a mismatch as a gate failure of the environment, not of a lane). A check that fails on the base commit only because of the local version goes to the inbox as one finding, as F4 proposes for date-bound checks.
 
+### F9. Lanes ran only their own tests, and a repository-wide guard test cost two whole lanes at combine
+
+- Date: 2026-11-27
+- Round: fix round 66 (combine)
+- Rule: A3.3, A3.4, A8.6
+- What happened: Two of five lanes (fix66-layout, five findings, and fix66-stories, five findings) each added a test that reads a model from `examples/`. `tests/showcase.test.mjs`, a guard over every test file, fails on any such read outside its allowed list. Each lane ran only the suites it touched, so neither saw the failure; the combine gate did, and A8.6 sent both lanes back, crash fixes included, for a one-line change each (pin the model under `tests/fixtures/`). The same round also met F7 again: the first lane fast-forwarded the integration branch and its revert had to be a plain revert.
+- Evidence: lane commits 57ea1465 and 17109555; audit-loop reverts 1c4c27d9 and aeb9a846; handoff log, 27 Nov 2026, fix round 66 combine.
+- Proposed change: Add to A3.3 that a lane runs the project's fast whole-repository checks (the rules file names them: guard tests that scan the tree, such as test-placement and protected-test checks) on its branch before it pushes, and records the result in its lane note. Add to A3.4 that combine runs those checks on each lane branch before merging it, and returns a lane that fails one as not merged with that check, before any lane is merged, so no bisect or revert is needed for it.
+
+### F10. Two lanes edited the same existing line of an append-only file, and "keep both sides" duplicated it
+
+- Date: 2026-11-27
+- Round: fix round 66 (combine)
+- Rule: A3.4 (conflicts in append-only files)
+- What happened: fix66-stories and fix66-types each reworded the same existing bullet in the unreleased list of `docs/module-api.md`. The conflict was in an append-only file, so the combine kept both sides, which left the bullet twice in two wordings; when fix66-stories was later reverted, the revert conflicted on that same hunk and had to be resolved by dropping that lane's lines.
+- Evidence: audit-loop merge 15541b84 (fix66-types) and revert aeb9a846; handoff log, 27 Nov 2026, fix round 66 combine.
+- Proposed change: In A3.4, "keep both sides" applies only to hunks where each side adds lines and neither changes or removes a line both sides share. A conflict where both sides edit the same existing line of an append-only file is treated as a code conflict: the later lane is returned as not merged, reason `conflict`, and the conflict-retry lane of the next round merges it.
+
 ## Closed
 
 None.
