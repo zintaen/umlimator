@@ -1037,7 +1037,7 @@ class Page(http.server.BaseHTTPRequestHandler):
         if not 0 < size <= 1 << 20:
             return self.send_error(413)
         try:
-            msg = json.loads(self.rfile.read(size))
+            msg = parse(self.rfile.read(size))
         except (ValueError, RecursionError):  # too deep for Python's parser is no message either (audit 20)
             return self.send_error(400)
         if not (isinstance(msg, dict) and isinstance(msg.get("page"), str) and 0 < len(msg["page"]) <= 64):
@@ -1148,12 +1148,28 @@ def result(method, p):
     raise RpcError(-32601, f"Method not found: {method}")
 
 
+DEEPEST = 1000  # the deepest nesting a message may have: Python 3.12 and 3.13 raise RecursionError far deeper, 3.14 never does
+TOKENS = re.compile(r'"(?:[^"\\]+|\\.)*"?|[\[\]{}]')  # a string (to its end, if it has none: linear), or a bracket
+STEP = {"[": 1, "{": 1, "]": -1, "}": -1}  # a bracket's step in depth; a string's is 0
+
+
+def parse(data):
+    """A message (bytes or str) as JSON, the same on every Python (audit 67): ValueError for text that is not JSON, for one
+    nested deeper than DEEPEST, and for NaN, Infinity and a number out of range (1e400), which Python's json reads but no
+    reply could carry back: json.dumps writes them as bare NaN and Infinity, and Node's JSON.parse refuses them."""
+    text = data.decode(json.detect_encoding(data), "surrogatepass") if isinstance(data, (bytes, bytearray)) else data
+    if text.count("[") + text.count("{") > DEEPEST:  # only then can it nest that deep
+        if max(itertools.accumulate(map(STEP.get, TOKENS.findall(text), itertools.repeat(0)))) > DEEPEST:
+            raise ValueError(f"it nests deeper than {DEEPEST}")
+    return json.loads(text, parse_float=cli._finite, parse_int=cli._whole, parse_constant=cli._no_constant)
+
+
 def answer(line):
     """The reply to one line: a message's, a batch's (a list of replies: JSON-RPC 2.0, and MCP 2025-03-26, which this
     server speaks, has batches), or None for notifications and responses."""
     try:
-        msg = json.loads(line)
-    except (ValueError, RecursionError):  # a line nested too deep for Python's parser ended the server (audit 20)
+        msg = parse(line)
+    except (ValueError, RecursionError):  # a line nested too deep ended the server (audit 20); NaN went back bare (audit 67)
         return failure(None, -32700, "Parse error")
     if isinstance(msg, list):
         return [r for r in map(reply, msg) if r is not None] or None if msg else failure(None, -32600, "Invalid Request")
