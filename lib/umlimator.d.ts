@@ -660,8 +660,9 @@ export interface Handle {
    *  (← → PageUp PageDown, Esc) step through and stop it. The reader taking the map (a press, a key, a view or a selection
    *  the story didn't make) pauses it, and a pause holds the step's tour too, until resume(). A step folds back the cards
    *  unfolded on its view first, and its highlight is its own 'story' layer, which dims alone while the step shows.
-   *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. */
-  play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
+   *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. A Story
+   *  object (storyFromFlow()'s) plays as given: it is not added to the model, and the page's link does not name it. */
+  play(id: string | Story | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
   destroy(): void;
 }
 
@@ -674,6 +675,9 @@ export interface StoryStep {
   view: string; caption?: string; select?: string | Ref; highlight?: (string | Lit)[]; tour?: string[];
   camera?: 'fit' | { x: number; y: number; zoom?: number } | { card: string; zoom?: number }; duration?: number;
 }
+/** A story storyFromFlow() tells from a view's main flow: a Story, and each branch off the main flow as a chapter, a Story of
+ *  its own offered at the main story's step `at` (0-based), where the branch leaves the main flow. */
+export interface FlowStory extends Story { chapters: (Story & { at: number })[] }
 /** A story being told. step: the one shown (0-based). next() past the last step ends it (done: true); stop() closes it
  *  (done: false). state (0.14.0): entering a step (its view, camera, selection and highlight on their way), playing or paused
  *  on it, then ended or stopped. */
@@ -786,6 +790,13 @@ export function paths(model: MapModel, viewId: string, from: string, to: string)
 export function reach(model: MapModel, viewId: string, from: string, options?: { backward?: boolean; depth?: number }): (Ref & { distance: number })[];
 /** A view in plain sentences: cards and kinds, boxes, what each card's lines do, cards with no line. Deterministic. */
 export function describe(model: MapModel, viewId: string): string;
+/** A story told from a view's main flow (layout-flow note, section 10): one step per main card, each selecting it, lighting
+ *  it and the main line into it, riding that line (a tour of the two cards, which the view draws a line between) and saying
+ *  what the line does ("2. Charges: Cart charges Payments; reads Orders"), a dependency line's card named in the caption of
+ *  the step it joins. Branches are chapters, offered at the step they leave from (chapters: false leaves them out). A
+ *  sequence view tells its messages in order, a BPMN view its path from the start event. The model is not changed and the
+ *  story is not added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
+export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean }): FlowStory;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its

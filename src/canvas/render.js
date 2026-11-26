@@ -1205,6 +1205,7 @@ export function render(container, model, options = {}) {
   stage.addEventListener('wheel', e => { if (!ctrlWheel || e.ctrlKey || e.metaKey || stage.classList.contains('full')) readerMoved(); }, { capture: true, passive: true }); // a wheel that zooms (wheel: 'ctrl' leaves the rest to the page)
   function restory() { // update(): the story shown takes the model's steps, at the step it is on, or stops when the model has it no more
     const st = story; if (!st) return;
+    if (st.own) { if (st.steps.some(x => !ctx.V[x.view])) stopStory(); else storyBar(st); return; } // a story played as given keeps its steps while their views last
     const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
     if (!steps.length) return stopStory();
     const was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
@@ -1237,10 +1238,11 @@ export function render(container, model, options = {}) {
   }
   function play(id, o = {}) {
     if (id == null) { stopStory(); return null; } // play(null): the story shown stops
-    const s = ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
-    if (dead || !geo || !steps.length) return null; // a story the model lacks: the one shown plays on
+    // a Story object plays as given (storyFromFlow()'s, an assistant's): not added to the model, and not in the page's link
+    const own = typeof id === 'object' && !Array.isArray(id), s = own ? id : ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
+    if (dead || !geo || !steps.length || own && typeof s.id !== 'string') return null; // a story the model lacks: the one shown plays on
     stopStory();
-    let end; const st = { s, steps, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
+    let end; const st = { s, steps, own, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
     st.end = end;
     st.ctl = { get story() { return st.s.id; }, get step() { return st.at; }, get steps() { return st.steps.length; }, get playing() { return st.auto && story === st; },
       get state() { return story !== st ? (st.told ? 'ended' : 'stopped') : st.phase === 'entering' ? 'entering' : st.auto ? 'playing' : 'paused'; },
@@ -1270,6 +1272,7 @@ export function render(container, model, options = {}) {
 
   // model: the host's, as given to render() or update(), which the page exports; ctx's D is the map's working copy (audit 29)
   const inner = { ctx: () => ctx, model: () => current, geo: () => geo, geoOf: vid => pic(vid).g, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
+    storyNow: () => story ? story.s : null, storyOwn: () => !!(story && story.own), // the story shown, as played: the model's, or one played as given
     select, boxHere, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
     highlight, overlay, focus: focusMap, editable: !!E }; // a story's pointer is the pieces' own, from the story event (0.14.0)
 
