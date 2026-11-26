@@ -804,7 +804,7 @@ export function describe(model: MapModel, viewId: string): string;
  *  it and the main line into it, riding that line (a tour of the two cards, which the view draws a line between) and saying
  *  what the line does ("2. Charges: Cart charges Payments; reads Orders"), a dependency line's card named in the caption of
  *  the step it joins. Branches are chapters, offered at the step they leave from (chapters: false leaves them out). A
- *  sequence view tells its messages in order, a BPMN view its path from the start event, a communication view its numbered
+ *  sequence view tells its messages in order, a BPMN view its main path from the start event whose path is longest (a collaboration's main process), a communication view its numbered
  *  messages in time order ("1.1. place(order): storefront calls api."). audience: kept on the story and its chapters; for
  *  "business" the captions leave out the stores a step reads or writes. The model is not changed and the story is not
  *  added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
