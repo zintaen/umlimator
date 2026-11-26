@@ -431,13 +431,15 @@ function tieMeet([p, q], [u, v], near) {
   const [s, t] = pv ? [[p, q], [u, v]] : [[u, v], [p, q]], x = s[0][0], y = t[0][1];
   return x >= lo(t[0], t[1], 0) - 0.5 && x <= hi(t[0], t[1], 0) + 0.5 && y >= lo(s[0], s[1], 1) - 0.5 && y <= hi(s[0], s[1], 1) + 0.5 ? 'cross' : null;
 }
-// what path P from box c meets that it should not, counted: a hard rect entered, a line crossed or run along, a box's border run
-// along, box c entered, its own line met before its end or along it
+// what path P from box c meets that it should not, weighed as tieRoute weighs it (audit 66: a card entered counted the same as
+// a line crossed kept a tie through a card when the way round crossed one line): a line crossed or run along 1 each; a hard
+// rect entered, a box's border run along, box c entered, its own line met before its end or along it 1000 each, more than
+// any number of lines crossed
 function tieClash(W, P, c) {
   const segs = P.slice(1).map((q, i) => [P[i], q]), last = segs.length - 1; let n = 0;
-  segs.forEach((s, i) => { n += W.hard.filter(r => tieIn(s, r)).length + W.lines.filter(u => tieMeet(s, u, 4)).length + W.walls.filter(u => tieMeet(s, u, 8) === 'run').length;
-    if (tieIn(s, { x: c.x + 1, y: c.y + 1, w: c.w - 2, h: c.h - 2 })) n++;
-    n += W.own.filter(u => { const k = tieMeet(s, u, 4); return k && (i < last || k === 'run'); }).length; });
+  segs.forEach((s, i) => { n += W.lines.filter(u => tieMeet(s, u, 4)).length + 1000 * (W.hard.filter(r => tieIn(s, r)).length + W.walls.filter(u => tieMeet(s, u, 8) === 'run').length);
+    if (tieIn(s, { x: c.x + 1, y: c.y + 1, w: c.w - 2, h: c.h - 2 })) n += 1000;
+    n += 1000 * W.own.filter(u => { const k = tieMeet(s, u, 4); return k && (i < last || k === 'run'); }).length; });
   return n;
 }
 // the way round (audit 65: a second association class on one class ran through a card, across lines and over a label; one in a
