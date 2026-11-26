@@ -546,6 +546,11 @@ export interface RenderOptions {
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   /** Cards keep their places across update() (in this handle only, never in the model). Default true. */
   stableLayout?: boolean;
+  /** The model before an edit: the first picture keeps each card the edit left alone (on the view in both models, in the
+   *  same box, none of its flow lines added, removed or turned round) at the cell it had there, and places the others round
+   *  them. A real pin wins. A view whose stable layout has more hard issues than a fresh one, or scores worse by more than
+   *  one label, is drawn fresh. Never written to the model; ignored with `stableLayout: false`. */
+  stableFrom?: MapModel;
   /** update() eases into the next model: moved cards glide, new ones fade in, removed ones fade out (#67). Default true;
    *  never under prefers-reduced-motion. false draws the next model at once. */
   ease?: boolean;
@@ -708,7 +713,8 @@ export function history(model: MapModel, limit?: number): History;
 /** expand: cards of the view unfolded in place (#71), as handle.expand() draws them; the geometry's `unfolded` lists those
  *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). A
  *  numbered inner view's numbers are its lines' and cards' `step`, and its lanes are boxes with `lane: true` (#82). */
-export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
+/** stableFrom: the model before an edit, as render()'s option: the cards the edit left alone keep their cells. */
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
  *  a view a card opens that the host has not loaded yet, a line from a card or box to itself, which is not drawn). The JSON Schema is umlimator/schema.json. */
@@ -750,7 +756,7 @@ export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
 /** Picks cards by id, kind (as the map draws it: "db" picks databases), box (at any depth) or owner, each a value or a
  *  list; every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind
  *  and no owner. */
@@ -801,8 +807,10 @@ export function sequenceFromTrace(model: MapModel, spans: Span[], options?: { vi
  *  by its ends, as a Ref names it). `summary`: what changed in words, in model order ("adds Payments queue between
  *  Trip service and Payment provider"); `views`: those that show a change. The marks are the model's own fields, so a
  *  page or still the CLI makes shows them. Neither input is changed. */
-export interface DiffResult { model: MapModel; summary: string[]; views: string[] }
-export function diff(before: MapModel | null, after: MapModel | null): DiffResult;
+/** With `{ stable: true }`, `stableFrom` is the model before, for render(), layout() or check() to draw `model` with, so
+ *  the cards the change left alone keep their cells; without it the result is as before. */
+export interface DiffResult { model: MapModel; summary: string[]; views: string[]; stableFrom?: MapModel }
+export function diff(before: MapModel | null, after: MapModel | null, options?: { stable?: boolean }): DiffResult;
 /** A call between two services as traffic showed it: { from, to, count }, or a Jaeger or Tempo dependency. */
 export type Observed = { from: string; to: string; count?: number } | { parent: string; child: string; callCount?: number };
 /** The map against the traffic seen (#68). A line that ran but is not drawn comes in (`drift: 'undrawn'`: rose, dashed,
@@ -815,4 +823,4 @@ export type Observed = { from: string; to: string; count?: number } | { parent: 
 export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
 export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
-export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
+export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
