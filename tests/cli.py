@@ -385,6 +385,15 @@ with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "notes.txt")], capture_output=True, text=True, cwd=g)
         ok("diff --base · --out naming a file is said in one line, not a traceback (audit 14)", r.returncode == 1 and "is a file" in r.stderr and "Traceback" not in r.stderr
            and (t / "notes.txt").read_text() == "hi", r.stderr[-300:])
+        # audit 67: a --base starting with '-' went to git diff as its own option: --base=--output=FILE emptied FILE
+        (t / "victim.txt").write_text("precious")
+        for base in (f"--output={t / 'victim.txt'}", f"-o{t / 'victim.txt'}", "--no-index", "-R"):
+            r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", f"--base={base}", "--out", str(t / "pr67")], capture_output=True, text=True, cwd=g)
+            ok(f"diff --base · a value starting with '-' ({base[:9]}) is refused in one line, never read by git as an option, and writes nothing (audit 67)",
+               r.returncode == 1 and "is not a git ref" in r.stderr and "Traceback" not in r.stderr and (t / "victim.txt").read_text() == "precious"
+               and not (t / "pr67").exists(), (r.returncode, r.stderr[-300:]))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "no-such-ref", "--out", str(t / "pr67")], capture_output=True, text=True, cwd=g)
+        ok("diff --base · a ref git does not know is said in one line (audit 67)", r.returncode == 1 and "git knows no ref 'no-such-ref'" in r.stderr and "Traceback" not in r.stderr, r.stderr[-300:])
 
     if part("stills file names"):
         # a view id is the model's, not a path: ../x is a still inside --out

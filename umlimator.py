@@ -1004,6 +1004,15 @@ def model_of(text, where=None):
 def diff_since(a):
     no_git("diff --base")
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
+    # --base is a ref, never an option: a value starting with '-' (--output=FILE) went to git diff as its own option and
+    # wrote a file (audit 67). It is refused, and the ref is resolved once, after --end-of-options, to the object id each
+    # git call below reads, so no call is given the text itself
+    if a.base.startswith("-"):
+        sys.exit(f"diff --base: {a.base!r} is not a git ref (a ref never starts with '-')")
+    rev = git("rev-parse", "--verify", "--quiet", "--end-of-options", a.base)
+    if rev.returncode or not rev.stdout.strip():
+        sys.exit(f"diff --base: git knows no ref {a.base!r} here" + (f" ({rev.stderr.strip()})" if rev.stderr.strip() else ""))
+    base = rev.stdout.strip()
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
     top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
@@ -1021,13 +1030,13 @@ def diff_since(a):
             env = env if added.returncode == 0 else None
         # renames found (audit 24): a model only moved or renamed is its old version against its new, not one map removed
         # and one added; an R row is its status, the old path and the new
-        changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]), env=env)
+        changed = git("diff", "--name-status", "-z", "-M", base, "--", *(a.models or ["*.json"]), env=env)
         if changed.returncode and env:
-            env, changed = None, git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
+            env, changed = None, git("diff", "--name-status", "-z", "-M", base, "--", *(a.models or ["*.json"]))
         # git pairs a rename only when both paths are in the pathspec: a model moved into --models' folder from outside it
         # read as one added (audit 30). The renames of a diff of every path pair those, each kept when its new path is one
         # the pathspec takes in (a model moved out of the folder stays one removed from it)
-        every = git("diff", "--name-status", "-z", "-M", a.base, env=env) if a.models and changed.returncode == 0 else None
+        every = git("diff", "--name-status", "-z", "-M", base, env=env) if a.models and changed.returncode == 0 else None
     if changed.returncode:
         sys.exit(changed.stderr.strip())
 
@@ -1092,7 +1101,7 @@ def diff_since(a):
         was = moved.get(name, name)
         # bytes: a file need not be UTF-8. cat-file, as git show reads a rev:path it cannot find as a pathspec, so a new
         # model named a*.json was its version at --base, empty, and no JSON (audit 25)
-        old = subprocess.run(["git", "cat-file", "blob", f"{a.base}:{was}"], capture_output=True)
+        old = subprocess.run(["git", "cat-file", "blob", f"{base}:{was}"], capture_output=True)
         # the file's name in the summary: a code span of its own, and the one it moved from
         span = lambda x: "`" + flat(x.replace("`", "'"), code=True) + "`"
         fname = span(name) + (f" (moved from {span(was)})" if was != name else "")

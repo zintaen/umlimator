@@ -272,7 +272,7 @@ export function update({ client, pinnedFile = PINNED, upstream = UPSTREAM, repo 
 // ---------- command line ----------
 
 export function main(argv, { client = ghClient(), out = console.log, now } = {}) {
-  const { flags, rest } = parseArgs(argv);
+  const { flags, rest } = parseArgs(argv, ['dry-run']);
   const mode = rest[0];
   if (!['check', 'propose', 'update'].includes(mode) || rest.length > 1) {
     out('usage: strategy-sync.mjs check|propose|update [--pinned file] [--feedback file] [--upstream owner/repo] [--repo owner/repo] [--base branch] [--project name] [--review file] [--dry-run]');
