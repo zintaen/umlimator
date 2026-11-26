@@ -241,6 +241,13 @@ with tempfile.TemporaryDirectory() as tmp:
         page = (t / "diff.html").read_text(encoding="utf-8") if (t / "diff.html").is_file() else ""
         ok("diff · the page draws the marks", all(s in page for s in ['"change": "added"', '"change": "removed"', '"style": "added"', '"style": "removed"', ": what changed"]))
         ok("diff · leaves no copy of the model next to it", not [p.name for p in t.iterdir() if p.name.startswith(".")], [p.name for p in t.iterdir()])
+        # --stable (layout-flow.md section 8): the page holds the model before, which it draws the model after against; without
+        # it the page holds none, as before
+        r2 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-stable.html"), "--stable") or {}
+        page2 = (t / "diff-stable.html").read_text(encoding="utf-8") if (t / "diff-stable.html").is_file() else ""
+        base = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page2, re.S)
+        ok("diff --stable · the same summary, and the page holds the model before for the layout to keep its cards' places",
+           r2.get("summary") == SAID and base is not None and json.loads(base.group(1)) == fixture and 'id="umlimator-base"' not in page, r2)
 
         (t / "seen.json").write_text(json.dumps({"data": [{"parent": "ops-console", "child": "trips-db", "callCount": 1500}, {"parent": "rider-app", "child": "trips", "callCount": 9}]}))
         (t / "match.json").write_text(json.dumps({"trips-db": "tripsdb"}))
