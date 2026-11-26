@@ -905,14 +905,15 @@ def render_model(m, near, out, base=None):
 
 def with_base(page, base):
     """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
-    script (each "</" in it escaped, so no text in the model ends the script). The base goes through own_media as every page
+    script (every '<' in it escaped by script_json, as the page's own data block is, so no text in the model, such as '<!--'
+    then '<script', ends the script or opens a state its </script> no longer closes: audit 8, audit 66). The base goes through own_media as every page
     model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
     the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
     base = json.loads(json.dumps(base))
     with contextlib.redirect_stderr(io.StringIO()):
         own_media(base, page.parent, "base")
     text = page.read_text(encoding="utf-8")
-    tag = '<script id="umlimator-base" type="application/json">' + json.dumps(base).replace("</", "<\\/") + "</script>\n"
+    tag = '<script id="umlimator-base" type="application/json">' + script_json(base) + "</script>\n"
     at = text.find('<script id="visual-data"')
     page.write_text(text[:at] + tag + text[at:] if at >= 0 else text, encoding="utf-8")
 
