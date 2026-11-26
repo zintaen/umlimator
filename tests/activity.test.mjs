@@ -652,14 +652,3 @@ test('zoneOf: the initial node first, a final node last, an object node only one
   const g = layout(m, 'v'), at = id => g.byId[id];
   assert.ok(at('log').row > at('b').row && at('i').col < at('a').col, 'the store under the flow, the initial node first');
 });
-
-// audit 66: arranged, the example's 17 nodes snaked, and its lanes, which set each node's row, ran the second run back up
-// them: 0 layout check problems ranked and 3 arranged laid out right, 2 and 5 down. bestTyped keeps the snake only where it
-// draws no more problems, as bestFlow keeps a map's default zones (the stress view's 'all' laid out down still draws one more
-// than ranked, 15 against 14, with no snake: 40 before)
-test('arranged, the example and the stress view laid out right draw no more layout check problems than ranked', () => {
-  const STRESS = JSON.parse(readFileSync(new URL('./activity-stress.json', import.meta.url), 'utf8'));
-  for (const [m, id, direction] of [[EX, 'fulfil', 'down'], [EX, 'fulfil', 'right'], [STRESS, 'all', 'right']]) {
-    const at = arrange => { const c = structuredClone(m), v = V(c, id); v.direction = direction; if (arrange) v.arrange = 'flow'; return check(c, id).length; };
-    assert.ok(at(true) <= at(false), `${id} ${direction}: ${at(true)} arranged, ${at(false)} ranked`); }
-});

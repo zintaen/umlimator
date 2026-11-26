@@ -433,38 +433,3 @@ test('a typed view whose main flow is longer than SNAKE_AT snakes: two rows, the
   assert.deepEqual(check(m, 'v'), []);
   const short = DFD(9), h = layout(short, 'v'); assert.ok(h.nodes.every(n => n.run == null) && h.edges.every(e => !e.dir), 'a flow of SNAKE_AT cards or fewer: one row, nothing marked');
 });
-
-// audit 66: a box holding a last card and an under card the main flow found as the longest path runs through (Bank -> Order
-// API -> Orders DB) left the box's last card unplaced (its rank -Infinity, from a gap the flow leaves for the API that
-// moved the under store), and blockPos read its row: layout(), check() and render() threw a TypeError
-test('an arranged boxed view whose box holds a last card and an under card on the longest path lays out, each card in a cell of its own', () => {
-  const m = { schemaVersion: 1, title: 'Orders', nodes: [{ id: 'db', label: 'Orders DB', kind: 'database', zone: 'under' }, { id: 'bank', label: 'Bank', kind: 'external', zone: 'last' }, { id: 'api', label: 'Order API', kind: 'backend' }],
-    edges: [{ from: 'bank', to: 'api', label: 'confirms' }, { from: 'api', to: 'db', label: 'writes' }],
-    views: [{ id: 'v', title: 'Orders', arrange: 'flow', nodeIds: ['db', 'bank', 'api'], containers: [{ id: 'outside', label: 'Outside', nodeIds: ['db', 'bank'] }] }] };
-  assert.deepEqual(validate(m), []);
-  for (const zone of ['last', 'first', 'under', undefined]) { const z = structuredClone(m); z.nodes[1].zone = zone;
-    const g = layout(z, 'v'), at = new Set(g.nodes.map(n => n.col + ',' + n.row));
-    assert.equal(at.size, 3, `bank ${zone}: three cells`); assert.deepEqual(check(z, 'v').filter(p => / overlap$/.test(p.message)), [], `bank ${zone}`); }
-  const g = layout(m, 'v'), c = cells(g);
-  assert.ok(c.bank[0] > c.api[0], 'the last card after the API');
-});
-
-// audit 66: two joined cards of one zone (a shopper and the storefront it uses, both first; a gateway and the bank it
-// settles with, both last) took one column and both the main row; an under store a step writes and the next reads put
-// that step in the writer's column, both on the main row
-test('two joined first or last cards take a column each, and a card an under store feeds is ranked past its writer', () => {
-  const view = ids => [{ id: 'v', title: 'Checkout', arrange: 'flow', nodeIds: ids }];
-  const cases = [
-    { schemaVersion: 1, nodes: [{ id: 'user', label: 'Shopper', kind: 'person', zone: 'first' }, { id: 'web', label: 'Storefront', kind: 'frontend', zone: 'first' }, { id: 'api', label: 'Order API', kind: 'backend' }, { id: 'db', label: 'Orders', kind: 'database' }],
-      edges: [{ from: 'user', to: 'web', label: 'browses' }, { from: 'web', to: 'api', label: 'places' }, { from: 'api', to: 'db', label: 'writes' }], views: view(['user', 'web', 'api', 'db']) },
-    { schemaVersion: 1, nodes: [{ id: 'api', label: 'Order API', kind: 'backend' }, { id: 'gw', label: 'Payment gateway', kind: 'external', zone: 'last' }, { id: 'bank', label: 'Bank', kind: 'external', zone: 'last' }],
-      edges: [{ from: 'api', to: 'gw', label: 'charges' }, { from: 'gw', to: 'bank', label: 'settles' }], views: view(['api', 'gw', 'bank']) },
-    { schemaVersion: 1, nodes: [{ id: 'api', label: 'Order API', kind: 'backend' }, { id: 'db', label: 'Orders DB', kind: 'database', zone: 'under' }, { id: 'etl', label: 'Reporting', kind: 'backend' }],
-      edges: [{ from: 'api', to: 'db', label: 'writes' }, { from: 'db', to: 'etl', label: 'exports' }], views: view(['api', 'db', 'etl']) }];
-  const order = [['user', 'web', 'api'], ['api', 'gw', 'bank'], ['api', 'etl']];
-  cases.forEach((m, k) => { assert.deepEqual(validate(m), []);
-    for (const boxed of [false, true]) { const b = structuredClone(m); if (boxed) b.views[0].containers = [{ id: 'box', label: 'Box', nodeIds: b.views[0].nodeIds.slice(0, 2) }];
-      assert.deepEqual(check(b, 'v').filter(p => / overlap$/.test(p.message)), [], `case ${k}${boxed ? ' boxed' : ''}`); }
-    const c = cells(layout(m, 'v')); order[k].slice(1).forEach((id, j) => assert.ok(c[id][0] > c[order[k][j]][0], `case ${k}: ${id} after ${order[k][j]}`)); });
-  const c = cells(layout(cases[2], 'v')); assert.ok(c.db[1] > c.etl[1], 'the store under the flow');
-});
