@@ -458,7 +458,7 @@ test('audit 56: a reply after a break does not answer a call inside it, nor one 
   }
 });
 
-test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged', () => {
+test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged (timed)', () => {
   const make = n => 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(n) + 'B-->>A: r\n'.repeat(n);
   const time = text => { const t = performance.now(), r = read(text); return [performance.now() - t, r]; };
   const [q] = time(make(1500)), [ms, { model }] = time(make(6000)); // linear by growth, not a wall clock: quadratic was 1.5 s and 16x a quarter

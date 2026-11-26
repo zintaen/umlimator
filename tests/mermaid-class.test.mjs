@@ -799,7 +799,7 @@ test('an element of no type (or "") in a class view is written as a class, with 
 // audit 44: a generalization cycle (A <|-- B with B <|-- A, or A <|-- A) was read into a model validate() rejects, with an
 // empty report: the line that closes it, in source order, is skipped and said; a diamond is no cycle; a hostile chain of
 // sixty thousand lines closed at its end is settled in one pass, never thrown, and what is read validates
-test('a generalization cycle is skipped at the line that closes it, never an invalid model (audit 44)', () => {
+test('a generalization cycle is skipped at the line that closes it, never an invalid model (audit 44) (timed)', () => {
   const errors = m => validate(m).filter(v => v.level === 'error').map(v => v.message);
   const r = read('classDiagram\n  Shape <|-- Circle\n  Circle <|-- Shape\n  Node <|-- Node\n  class Node');
   assert.deepEqual(r.report, [{ line: 3, status: 'skipped', message: 'Circle <|-- Shape: Shape would be its own ancestor, a generalization cycle UML refuses' },
@@ -883,7 +883,7 @@ test('a property default that reads back otherwise (en~US as en<US) is not writt
   }
 });
 
-test('a raw character XML cannot hold (not an entity code) is read as U+FFFD and said, in every Mermaid reader (audit 48)', () => {
+test('a raw character XML cannot hold (not an entity code) is read as U+FFFD and said, in every Mermaid reader (audit 48) (timed)', () => {
   const bad = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
   const said = (line, c) => ({ line, status: 'approximated', message: `the character U+${c}, which SVG or XML cannot hold, is read as U+FFFD` });
   const cases = [

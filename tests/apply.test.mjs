@@ -395,7 +395,7 @@ test('audit 24: apply() refuses a model element, or another view\'s own one, und
   assert.deepEqual(L.validate(saved).filter(p => /lives in view/.test(p.message)).map(p => [p.level, p.path]), [['warning', 'nodes[0].parent'], ['warning', 'views[1].nodes[0].parent']]);
   // every example: a node of its own added to a typed view, then a model node the view draws put under it
   let n24 = 0;
-  for (const f of ['../tests/fixtures/integration.json', ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f)]) {
+  for (const f of ['../tests/fixtures/integration.json', ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => '../examples/' + f)]) {
     const x = read(f); if (x.schemaVersion !== 2) continue;
     assert.deepEqual(L.validate(x).filter(p => /lives in view/.test(p.message)), [], `${f} as shipped`);
     for (const v of x.views) { if (!v || v.diagram == null || v.diagram === 'map') continue;

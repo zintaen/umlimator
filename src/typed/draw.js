@@ -78,7 +78,10 @@ SHAPE.classifier = CLASSIFIER;
 const ENDS = { none: null, arrow: [10, 4, 'M0 0L10 4L0 8Z', 'line'], open: [10, 5, 'M0 0L10 5L0 10', 'none'], triangle: [13, 7, 'M0 0L13 7L0 14Z', 'hollow'],
   diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'], socket: [3, 11, 'M11 0A11 11 0 0 0 11 22', 'none'],
   'filled-triangle': [13, 7, 'M0 0L13 7L0 14Z', 'line'], // an extension's, at the metaclass (notes/stage-6.md §4.1)
-  circle: [8, 4, 'M0 4A4 4 0 1 0 8 4A4 4 0 1 0 0 4Z', 'hollow'] }; // a message flow's start, its far side the line's end (notes/milestone-4b.md §10)
+  circle: [8, 4, 'M0 4A4 4 0 1 0 8 4A4 4 0 1 0 0 4Z', 'hollow'], // a message flow's start, its far side the line's end (notes/milestone-4b.md §10)
+  // a BPMN default flow's slash across the line near its source: of length 0, so the line is not cut back, the slash 6 to 14 px
+  // along it (negative x: back along the line from its end)
+  slash: [0, 6, 'M-14 1L-8 11', 'none'] };
 const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 
 // a typed line's end labels (1.5): each end's role and multiplicity (e.end.labels: { from: { role, mult }, to: { role, mult } }),
@@ -118,7 +121,7 @@ TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
   edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
   const ends = [...new Set(edges.flatMap(e => e.end ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
   const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
-    return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
+    return `<marker id="${id}-${km}" markerWidth="${L || 16}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
   // a typed line's end labels keep clear of the other lines, every line's label (its own too: audit 38), every node drawn
   // and each box's header room (audit 38, as portsDrawn's port names) and the end labels placed before them (1.9, L5)
   const segs = drawn.map(p => (p || []).slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 3, y: Math.min(p[k][1], q[1]) - 3, w: Math.abs(q[0] - p[k][0]) + 6, h: Math.abs(q[1] - p[k][1]) + 6 }))), placed = [];

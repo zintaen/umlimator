@@ -48,6 +48,8 @@ python3 bench/bench.py --score --corpus edits --expect bench/score-expected-edit
 npm --prefix docs run build && node --test tests/site.test.mjs            # the site builds with no dead links
 ```
 
+A timed test asserts a wall or CPU time: a budget, or that twice the input takes at most a small multiple of the time. Run beside the rest of the suite, a loaded machine pushes it over and it fails there only, so its title ends with `(timed)` and it runs in a step of its own, one file at a time: `npm test` runs the suite without them and then the timed tests at `--test-concurrency=1`, and CI does the same (its `node` jobs skip them, its `timed` jobs run only them, each alone on its runner). Do not run `node --test tests/*.test.mjs` as a gate: it runs the timed tests beside everything else. `tests/timed-titles.test.mjs` fails when a test reads a clock (`performance.now()`, `process.hrtime`, `process.cpuUsage()` or `Date.now()`, in its body or a helper it calls) and its title lacks `(timed)`, or the other way round; a test that reads a clock but asserts no time is listed there with why. A test writes its scratch files to a folder of its own under the system's temporary folder, never into `examples/` or another folder of the repository that other tests list.
+
 The BPMN XML tests need the optional `bpmn-moddle` library in a scratch folder, never as a dependency of the module:
 
 ```bash

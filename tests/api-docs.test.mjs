@@ -135,7 +135,7 @@ test('every field Geometry declares required on an edge or a node is on every li
   const md = read(join(root, 'docs/api/render.md')), mg = md.slice(md.indexOf('interface Geometry'), md.indexOf('\n}', md.indexOf('interface Geometry')));
   assert.equal(mg.replace(/^export /, ''), g.replace(/^export /, ''), 'render.md quotes Geometry as the .d.ts has it');
   const missing = new Set(), warn = console.warn; console.warn = () => {};
-  try { for (const f of readdirSync(join(root, 'examples')).filter(f => f.endsWith('.json')).sort().concat(['../tests/class-minimal.json'])) { const m = JSON.parse(read(join(root, 'examples', f)));
+  try { for (const f of readdirSync(join(root, 'examples')).filter(f => f.endsWith('.json') && !f.startsWith('.')).sort().concat(['../tests/class-minimal.json'])) { const m = JSON.parse(read(join(root, 'examples', f)));
     for (const v of (m.views || []).filter(v => v && v.id)) { const out = layout(m, v.id);
       for (const k of ['edges', 'nodes']) out[k].forEach(x => need[k].forEach(n => { if (x[n] === undefined) missing.add(`${v.diagram || 'map'} ${k}.${n}`); })); } } } finally { console.warn = warn; }
   assert.deepEqual([...missing], []);

@@ -142,7 +142,7 @@ function served() {
   assert.match(site, /cp -r examples\/traces _site\/examples\//);
   assert.match(site, /for m in examples\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/\$n\.html"[\s\S]*stills "_site\/examples\/\$n\.html" --out "_site\/examples\/stills\/\$n"[\s\S]*pdf "_site\/examples\/\$n\.html" --out "_site\/examples\/\$n\.pdf"/);
   assert.match(site, /cp examples\/types\/\*\.json _site\/examples\/types\/\n\s*for m in examples\/types\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/types\/\$n\.html"[\s\S]*stills "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/stills\/\$n"[\s\S]*pdf "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/\$n\.pdf"/);
-  const files = new Set(readdirSync(new URL('examples/', root)).filter(f => /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
+  const files = new Set(readdirSync(new URL('examples/', root)).filter(f => !f.startsWith('.') && /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
   readdirSync(new URL('examples/traces/', root)).forEach(f => files.add(`traces/${f}`));
   const views = {};
   // the retired models too: the site renders them, and the host pages load them
@@ -199,7 +199,7 @@ test('every link, picture and frame on the written pages names a docs page, a fi
 
 test('the host pages fetch only models and traces the site serves', () => {
   const { files } = served(), bad = [];
-  for (const f of readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.html') && f !== 'umlimator-atlas.html')) {
+  for (const f of readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.html') && !f.startsWith('.') && f !== 'umlimator-atlas.html')) {
     const s = read(`examples/${f}`);
     for (const [, p] of s.matchAll(/(?:fetch\(|src=|<option value=)['"]([\w./-]+\.(?:json|png))['"]/g)) if (!files.has(p)) bad.push(`${f}: ${p}`);
   }
@@ -273,8 +273,8 @@ test('the examples\' README links only files that exist, and \'Not shown\' names
   assert.ok(links.length > 20, links.length);
   assert.deepEqual(links.filter(l => !existsSync(new URL(l, new URL('examples/', root)))), []);
   const notShown = readme.split('\n').find(l => l.startsWith('Not shown')); assert.ok(notShown);
-  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => `examples/${f}`),
-    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => `examples/types/${f}`)];
+  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `examples/${f}`),
+    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `examples/types/${f}`)];
   const sets = (m, key, value) => { let hit = false; JSON.parse(read(m), (k, v) => { if (k === key && (value === undefined || JSON.stringify(v) === value)) hit = true; return v; }); return hit; };
   const said = [...notShown.matchAll(/`(\w+)(?:: ([^`]+))?`/g)].map(([, k, v]) => [k, v]).filter(([k]) => k !== 'nodes' && k !== 'lanes');
   assert.ok(said.length > 8, said.length);
