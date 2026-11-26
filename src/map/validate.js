@@ -257,7 +257,22 @@ export function validate(model) {
     if (!s || typeof s.id !== 'string' || !s.id) return err(at + '.id', 'a story needs an id');
     if (sids.has(s.id)) err(at + '.id', `story id "${s.id}" is used twice`); sids.add(s.id);
     if (!arr(s.steps).length) err(at + '.steps', 'a story needs steps');
-    arr(s.steps).forEach((st, j) => {
+    // audience: who the story is told to (the page's Stories menu groups by it), a name
+    if (s.audience != null && !(typeof s.audience === 'string' && s.audience.trim())) warn(at + '.audience', `audience ${jsonText(s.audience)} is not a name: the story is listed with those that name none`);
+    checkSteps(s.steps, at);
+    // chapters: stories of their own, each offered while the story shows its step `at` (0-based)
+    if (s.chapters != null && !Array.isArray(s.chapters)) err(at + '.chapters', 'chapters is a list of stories, each with an id, steps and at');
+    const cids = new Set();
+    arr(s.chapters).forEach((c, k) => { const ca = `${at}.chapters[${k}]`;
+      if (c && typeof c === 'object') titled(c, ca);
+      if (!c || typeof c.id !== 'string' || !c.id) return err(ca + '.id', 'a chapter needs an id');
+      if (cids.has(c.id)) err(ca + '.id', `chapter id "${c.id}" is used twice in story "${s.id}"`); cids.add(c.id);
+      if (!arr(c.steps).length) err(ca + '.steps', 'a chapter needs steps');
+      if (!(Number.isInteger(c.at) && c.at >= 0 && c.at < arr(s.steps).length)) warn(ca + '.at', `at ${jsonText(c.at)} is not one of the story's steps (0 to ${arr(s.steps).length - 1}): the chapter is offered at none`);
+      checkSteps(c.steps, ca); });
+  });
+  function checkSteps(steps, at) {
+    arr(steps).forEach((st, j) => {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
@@ -298,7 +313,7 @@ export function validate(model) {
       else if (c != null && c !== 'fit' && !(c && Number.isFinite(c.x) && Number.isFinite(c.y))) warn(p + '.camera', `the camera is "fit", { x, y, zoom } or { card, zoom }${fit}`);
       if (st.duration != null && !(st.duration > 0)) warn(p + '.duration', `duration ${jsonText(st.duration)} is not a number of ms: 4000`);
     });
-  });
+  }
   if (typed) {
     const said = new Set(out.map(p => p.path)); // a duplicate id both checks find is said once
     out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));

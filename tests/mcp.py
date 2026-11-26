@@ -113,6 +113,38 @@ ok("story_from_flow takes an id, a title and chapters: false; on a typed view it
    titled_sf["id"] == "dfd" and titled_sf["title"] == "Orders" and titled_sf["chapters"] == [] and len(titled_sf["steps"]) == 4, titled_sf)
 ok("story_from_flow on no view, or on a view with no main flow, is the tool's error, said",
    errs_sf[0].startswith("no view 'nope'") and "has no main flow" in errs_sf[1], errs_sf)
+# play_story plays a story given as it is (story_from_flow's), not only the model's by id (product item 4): it is folded into
+# what the pages are shown and never written; one whose steps name what the model's views lack, or that is no story, or a
+# call with both id and story or neither, is the tool's error; a later version that drops its view drops it from `want`
+keep_ps = (mcp.MODEL, mcp.page, dict(mcp.want))
+with tempfile.TemporaryDirectory() as dps:
+    mcp.MODEL = Path(dps) / "f12.json"
+    mcp.MODEL.write_bytes((ROOT / "bench" / "models" / "f12.json").read_bytes())
+    mcp.page = lambda: ("v", None)
+    before_ps = mcp.MODEL.read_bytes()
+    given_ps = mcp.call("story_from_flow", {"view": "order", "audience": "business"})
+    said_ps = mcp.call("play_story", {"story": given_ps})
+    asked_ps = mcp.want["story"] and mcp.want["story"]["story"]
+    named_ps = json.loads(mcp.page_state())["asked"]["story"]
+    errs_ps = []
+    for a in ({"story": {"id": "x", "steps": [{"view": "nope"}]}}, {"story": {"id": "x", "steps": [{"view": "order", "select": "ghost"}]}},
+              {"story": {"steps": []}}, {"story": given_ps, "id": "x"}, {}):
+        try:
+            errs_ps.append(mcp.call("play_story", a))
+        except mcp.Fail as e:
+            errs_ps.append(str(e))
+    unchanged_ps = mcp.MODEL.read_bytes() == before_ps
+    f12_ps = json.loads(before_ps); f12_ps["views"] = [v for v in f12_ps["views"] if v["id"] != "order"]
+    with mcp.lock:
+        mcp.refit(f12_ps)
+    dropped_ps = mcp.want["story"]
+mcp.MODEL, mcp.page = keep_ps[0], keep_ps[1]; mcp.want.clear(); mcp.want.update(keep_ps[2])
+ok("play_story takes a story as it is (story_from_flow's, with an audience): folded into what pages are shown, named as given, never written",
+   given_ps.get("audience") == "business" and "reads Orders" not in json.dumps(given_ps["steps"]) and asked_ps == given_ps
+   and named_ps == {"id": "flow-order", "given": True, "steps": 6} and unchanged_ps and said_ps.startswith("No page"), (said_ps, named_ps, unchanged_ps))
+ok("…a story naming a view or card the model lacks, no story, or id and story both or neither, is the tool's error; a version without its view drops it",
+   errs_ps[0].startswith("story: story.steps[0].view:") and errs_ps[1].startswith("story: story.steps[0].select:") and errs_ps[2].startswith("story is a story")
+   and all(x.startswith("play_story: give id") for x in errs_ps[3:]) and dropped_ps is None, errs_ps)
 # audit 51: a tour with no view took the first view that shows its cards (containers, where shopper and bookshop share no
 # line) and refused it, though the context view draws the route shopper -> bookshop -> payments: it rides the first that does
 keep51 = (mcp.MODEL, mcp.page, dict(mcp.want))
