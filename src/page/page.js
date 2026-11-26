@@ -451,7 +451,7 @@ export function mountPage(container, model, options = {}) {
       onNavigate: (vid, prev, mode) => { togglePill(false);
         if (stack.includes(vid)) stack = stack.slice(0, stack.indexOf(vid) + 1); else if (mode === 'in' && prev) stack = [...stack, vid]; else stack = chain(vid); },
       onMount: inner => { X = inner; ({ D, views, nodes, N, V, rootId, subjectOf, viewsWith, kidsOf, chain, viewEdges, planCache } = X.ctx()); nodeIn0 = X.ctx().nodeIn;
-        cam = X.cam(); geo = X.geo(); svg = X.svg(); cur = X.view(); if (paused) X.pause(true); offerFlow(); // the view it opens on: no viewchange says it
+        cam = X.cam(); geo = X.geo(); svg = X.svg(); cur = X.view(); if (paused) X.pause(true);
         if (!stack.length || !stack.includes(cur)) stack = chain(cur);
         renderChrome(); },
       onBackground: () => togglePill(false),
