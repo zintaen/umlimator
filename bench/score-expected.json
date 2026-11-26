@@ -3,7 +3,7 @@
  "corpus": "fixed",
  "total": {
   "views": 253,
-  "score": 607629.43
+  "score": 607290.79
  },
  "views": {
   "b10/overview": {
@@ -89,10 +89,10 @@
   "f12/signup": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 567.69
+   "score": 487.83
   },
   "f12/ticket": {
    "hard": 0,
@@ -144,11 +144,11 @@
   },
   "f12/order-boxed": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 1,
-   "straight": 6,
+   "straight": 4,
    "reverse": 0,
-   "score": 1101.58
+   "score": 911.74
   },
   "f12/signup-boxed": {
    "hard": 0,
@@ -164,7 +164,7 @@
    "labels": 1,
    "straight": 4,
    "reverse": 0,
-   "score": 758.72
+   "score": 689.78
   },
   "f12/pipeline-boxed": {
    "hard": 0,
