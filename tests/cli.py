@@ -2602,8 +2602,11 @@ if part("bench score"):
         r = go("--expect", str(lower))
     ok("bench --score · exits 1 against an expect file whose score is lower, and says which view",
        r.returncode == 1 and "b10/overview: score" in r.stdout and "FAILED" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-800:]))
-    r = go("--corpus", "edits")
-    ok("bench --score · a corpus not built yet is refused in one line",
-       r.returncode == 2 and "only fixed for now" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr[-400:]))
+    r = go("--corpus", "nope")
+    ok("bench --score · a corpus that is not fixed, edits or heldout is refused in one line",
+       r.returncode == 2 and "--corpus is fixed, edits or heldout" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr[-400:]))
+    r = go("--corpus", "edits", "--expect", str(ROOT / "bench" / "score-expected-edits.json"))
+    ok("bench --score --corpus edits · the view's five edit pairs, laid out against the model before, pass bench/score-expected-edits.json and report section 8.4",
+       r.returncode == 0 and "total: 5 pairs" in r.stdout and "section 8.4: untouched cards kept their cells in" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)
