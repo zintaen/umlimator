@@ -360,10 +360,10 @@ function mapContext(model, opts = {}) {
   // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
   function blockPos(vid, T) {
     const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => typeof i === 'string' && N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
-    const isDep = T ? () => false : depOf(vid), byBox = byId(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to) && !isDep(e)); // not a line to an id that is neither (M3.3)
+    const isDep = depOf(vid), byBox = byId(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to) && !isDep(e)); // not a line to an id that is neither (M3.3)
     const dep0 = depCards(lp.edges.filter(e => known(e.from) && known(e.to)), isDep, ids), lined0 = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
     // zones (section 7.3) apply inside each box: under cards under their box's flow, first and last cards a column of the box
-    let Z = T ? O() : zonesOf(vid, ids.filter(i => lined0.has(i))); const isEdge = x => Z[x] === 'first' || Z[x] === 'last';
+    let Z = zonesOf(vid, ids.filter(i => lined0.has(i))); const isEdge = x => Z[x] === 'first' || Z[x] === 'last';
     if (!ids.some(i => lined0.has(i) && !Z[i] && !dep0.includes(i))) Z = O();
     const depOnly = new Set([...dep0.filter(i => !isEdge(i)), ...ids.filter(i => Z[i] === 'under')]); // placed under their box's flow (section 5.2)
     const home = byId(ids.map(i => [i, (boxes.filter(b => b.id !== i && (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
@@ -472,12 +472,29 @@ function mapContext(model, opts = {}) {
   /* Layout by business flow, dependency lines (docs/diagrams/notes/layout-flow.md section 5): in a map view with arrange "flow"
      a line's part is its flow field, else its kind as drawn (state and guard are dependencies, the rest flow lines). A
      dependency line ranks, orders and rows nothing, so a store every step writes to no longer pulls itself past the last step;
-     the router takes it after the flow lines. Typed views get their type's flowRole with section 12 step 10: none yet */
+     the router takes it after the flow lines. A typed view (section 12 step 10) takes its type's flowRole(line, model, view)
+     where the line has no flow field, and a type with none reads no field: its arranged views draw as before */
   const FLOW_ROLES = ['main', 'branch', 'dep'], MEDIAN = n => n >> 1;
-  const depRule = v => e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : ['state', 'guard'].includes(wireKind(e, opts.kinds || v.kindsFromLabels));
+  const flowT = vid => { const T = ownLayout(vid); return T && typeof T.flowRole === 'function' ? T : null; }; // a typed type that reads the flow
+  const roleIn = (T, e, v) => { let r = null; try { r = T.flowRole(e, D, v); } catch { r = null; } return FLOW_ROLES.includes(r) ? r : 'branch'; };
+  const depRule = (v, T) => e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : T ? roleIn(T, e, v) === 'dep' : ['state', 'guard'].includes(wireKind(e, opts.kinds || v.kindsFromLabels));
   const flowing = (vid, dep) => viewEdges(V[vid] || {}).some(e => e.from !== e.to && !dep(e)); // a view with no flow line ranks as before (section 7.4)
-  const depOf = vid => { const v = V[vid] || {}; if (v.arrange !== 'flow' || ownLayout(vid)) return () => false;
-    const dep = depRule(v); return flowing(vid, dep) ? dep : () => false; };
+  const depOf = vid => { const v = V[vid] || {}, T = flowT(vid); if (v.arrange !== 'flow' || ownLayout(vid) && !T) return () => false;
+    const dep = depRule(v, T); return flowing(vid, dep) ? dep : () => false; };
+  // a typed view's main and dependency lines, by model line id (buildGeo's memo.flow)
+  const flowMarks = vid => { const v = V[vid] || {}, dep = depOf(vid), MT = typedMain(vid); return { main: MT ? MT.ids : new Set(), dep: new Set(viewEdges(v).filter(e => e.id != null && dep(e)).map(e => e.id)) }; };
+  /* A typed view's main flow (section 6.1): mainFlow's over its lines, a line its type calls main read as flow "main" (BPMN's
+     path from the start event, section 6.1), so a type that names none takes the longest path; a line into a first card or out
+     of a last one (its own zone, else its type's) is no candidate unless it says main, so a person called back by the system
+     does not end the flow (C4's rankFlip did this before zones). null as mainOf's */
+  const typedMain = vid => { const v = V[vid] || {}, T = flowT(vid); if (v.arrange !== 'flow' || !T) return null;
+    const dep = depRule(v, T); if (!flowing(vid, dep)) return null;
+    const lp = loopsOf(v), lines = lp.edges.map(e => !FLOW_ROLES.includes(e.flow) && roleIn(T, e, v) === 'main' ? { ...e, flow: 'main' } : e);
+    const zr = O(), zone = i => { if (!(i in zr)) { const n = nodeIn(i, vid); let z = ZONES.includes(n.zone) ? n.zone : null;
+      if (!z && v.zones !== false && typeof T.zoneOf === 'function') try { z = T.zoneOf(n, D, v); } catch { z = null; } zr[i] = z; } return zr[i]; };
+    const back = new Set(lp.back); lines.forEach((e, k) => { if (e.flow !== 'main' && (zone(e.to) === 'first' && zone(e.from) !== 'first' || zone(e.from) === 'last' && zone(e.to) !== 'last')) back.add(k); });
+    const M = mainFlow(lines, { back, dep, cards: v.nodeIds });
+    return M && { ...M, keys: new Set(M.lines.map(k => lp.edges[k].from + '>' + lp.edges[k].to)), ids: new Set(M.lines.map(k => lp.edges[k].id).filter(x => x != null)) }; };
   /* The main flow (section 6): in an arranged map view, mainFlow's (layered.js) over the view's lines as loopsOf reads them,
      dependency lines left out; null in any other view, or one with no flow line. Its cards hold one row (flowPos), its lines
      take the middle port of the sides they leave and come into (prepEdges' mainLine, layoutPass's port spread) */
@@ -508,11 +525,15 @@ function mapContext(model, opts = {}) {
      shape or kind) first, and a public card no line comes into; an external card last; a database, file or board card under.
      "flow" or none: ranked. id -> "first", "last" or "under"; bare: the card's own zones only */
   const ZONES = ['first', 'flow', 'last', 'under'], HOLD = '\u0003', UNDER = ['database', 'file', 'm-board'];
-  const zonesOf = (vid, cards, bare = false) => { const v = V[vid] || {}, z = O(); if (v.arrange !== 'flow' || ownLayout(vid)) return z;
-    const dep = depRule(v); if (!flowing(vid, dep)) return z;
-    const lp = loopsOf(v), M = mainFlow(lp.edges, { back: lp.back, dep, cards: v.nodeIds, run: v.render === 'sequence' }), onMain = new Set(M ? M.cards : []);
+  const zonesOf = (vid, cards, bare = false) => { const v = V[vid] || {}, z = O(), T = ownLayout(vid), ZT = T && typeof T.zoneOf === 'function' ? T : null;
+    if (v.arrange !== 'flow' || T && !flowT(vid) && !ZT) return z; // a typed type with neither flowRole nor zoneOf reads no zone
+    const dep = depRule(v, flowT(vid)); if (!flowing(vid, dep)) return z;
+    const lp = loopsOf(v), M = T ? typedMain(vid) : mainFlow(lp.edges, { back: lp.back, dep, cards: v.nodeIds, run: v.render === 'sequence' }), onMain = new Set(M ? M.cards : []);
     cards.forEach(i => { const n = nodeIn(i, vid); if (ZONES.includes(n.zone)) { if (n.zone !== 'flow') z[i] = n.zone; return; }
       if (v.zones === false || bare) return; const k = kindOf(n.kind, true), main = onMain.has(i);
+      // a typed type's default (section 7.2): its zoneOf(node, model, view), held to the main flow as the map's
+      if (T) { let d = null; if (ZT) try { d = ZT.zoneOf(n, D, v); } catch { d = null; }
+        if (d === 'first' && (!main || M.cards[0] === i) || d === 'last' && (!main || M.cards.at(-1) === i) || d === 'under' && !main) z[i] = d; return; }
       if (shapeOf({ ...n, k }) === 'person' || k === 'm-public' && !lp.edges.some(e => e.to === i && e.from !== i)) { if (!main || M.cards[0] === i) z[i] = 'first'; }
       else if (k === 'external') { if (!main || M.cards.at(-1) === i) z[i] = 'last'; } else if (UNDER.includes(k) && !main) z[i] = 'under'; });
     return z; };
@@ -544,16 +565,17 @@ function mapContext(model, opts = {}) {
       const end = to => edges.filter(e => flow(e) && e.from !== e.to && (to ? e.from === i : e.to === i)).map(e => pos[to ? e.to : e.from]).filter(Boolean).map(p => p[0]);
       const a = Math.max(...end(false)) + 1, b = Math.min(...end(true)) - 1; if (a <= b && Number.isFinite(a + b)) c = Math.min(b, Math.max(a, c));
       pos[i] = [c, top + (at[c] = (at[c] ?? -1) + 1)]; left.splice(k--, 1); } };
-  const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
+  const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e, D, V[vid]) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
+  const flips = (vid, flip) => !!flip && viewEdges(V[vid] || {}).some(e => flip(e, D, V[vid])); // a type's rankFlip turns a line of the view round
   function flowPos(vid, o = {}) {
-    const v = flipView(vid, o.flip), dep = depOf(vid), M = !o.flip && mainOf(vid), onMain = new Set(M ? M.cards : []);
+    const v = flipView(vid, o.flip), dep = depOf(vid), M = !flips(vid, o.flip) && (ownLayout(vid) ? typedMain(vid) : mainOf(vid)), onMain = new Set(M ? M.cards : []);
     const lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && !dep(e));
     // cards with no line go in rows of their own under the view (#46), as wide as its columns; they stacked with the sources
     const all = (v.nodeIds || []).filter(i => N[i]), lined = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
     const loose = lined.size ? all.filter(i => !lined.has(i)) : [], dep0 = depCards(lp.edges, dep, all.filter(i => lined.has(i)));
     // zones (section 7): under cards join the band under the flow, first and last cards take a column of their own and no rank
     // from their lines; a view whose cards all have a zone ranks as without them (section 7.4)
-    let Z = M ? zonesOf(vid, all.filter(i => lined.has(i)), o.bare) : O(); const isEdge = i => Z[i] === 'first' || Z[i] === 'last';
+    let Z = M || ownLayout(vid) ? zonesOf(vid, all.filter(i => lined.has(i)), o.bare) : O(); const isEdge = i => Z[i] === 'first' || Z[i] === 'last';
     if (!all.some(i => lined.has(i) && !Z[i] && !dep0.includes(i))) Z = O();
     const depOnly = [...dep0.filter(i => !isEdge(i)), ...all.filter(i => Z[i] === 'under' && !dep0.includes(i))], ids = all.filter(i => !loose.includes(i) && !depOnly.includes(i));
     const edge = ids.filter(isEdge), flowIds = ids.filter(i => !isEdge(i)), ranked = fwd.filter(e => flowIds.includes(e.from) && flowIds.includes(e.to));
@@ -751,13 +773,15 @@ function mapContext(model, opts = {}) {
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
-      const run = (pos, memo) => (L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo }));
+      // an arranged view of a type that reads the flow: its main and dependency lines, by model line id, for layoutTyped (memo.flow)
+      const FL = flowT(vid) && v.arrange === 'flow' ? flowMarks(vid) : null; if (FL) memo.flow = FL; else delete memo.flow;
+      const run = (pos, memo) => { if (FL) memo.flow = FL; return L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo }); };
       let g; // a pinned view's warnings held back: pinsClear may drop the layout that gave them, and only the one kept says its own (audit 59)
       if (!override && v.layout && L.pins !== false) { let said; [g, said] = held(() => run(pos, memo)); [g, said] = pinsClear(vid, v, L, g, memo, said, run); said.forEach(warn); } else g = run(pos, memo);
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
       // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
       // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
-      if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true }, g2 = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 });
+      if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true, ...(FL && { flow: FL }) }, g2 = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 });
         // a line on another or along a border counts before crossings (audit 38: the try without the swap, one shared line for
         // four crossings, was kept)
         const said = h => { const is = routeAudit(h, ''); return [g.nested || g2.nested ? is.filter(s => !/ cross$/.test(s)).length : 0, is.length]; }, a = said(g2), b = said(g);
@@ -765,6 +789,9 @@ function mapContext(model, opts = {}) {
       // against a base (opts.base): the cards that did not change at their cells there, kept when it draws no worse
       const S = !override && L.pins !== false && L.rank !== false ? softOf(vid) : null, p1 = S && stablePos(vid, S, true);
       if (p1 && !sameCells(vid, p1, pos)) { const m1 = {}, [g1, w1] = held(() => run(p1, m1)); if (keepStable(g, g1)) { g = g1; Object.keys(memo).forEach(x => { delete memo[x]; }); Object.assign(memo, m1); w1.forEach(warn); } }
+      // an arranged view of a type that reads the flow (section 12 step 10): its dependency lines (dep, which check() lets run
+      // either way, as a map's) and its main flow's (mainLine, which the score reads), by the model line each stands for
+      if (FL) (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
       // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
