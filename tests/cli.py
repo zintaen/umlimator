@@ -249,6 +249,15 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("diff --stable · the same summary, and the page holds the model before for the layout to keep its cards' places",
            r2.get("summary") == SAID and base is not None and json.loads(base.group(1)) == fixture and 'id="umlimator-base"' not in page, r2)
 
+        # --story (product item 4): a story of each changed view, on the page's model (diff()'s, which draws the removed too), in
+        # its Stories menu; the JSON names them. Without it the page has none of its own, as before
+        r3 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-story.html"), "--story") or {}
+        page3 = (t / "diff-story.html").read_text(encoding="utf-8") if (t / "diff-story.html").is_file() else ""
+        told3 = re.findall(r'"id": "diff-system"', page3)
+        ok("diff --story · the same summary, a story of each changed view on the page (its Stories menu), named in the JSON; none without it",
+           r3.get("summary") == SAID and r3.get("stories") == ["diff-system"] and told3 and '"caption": "1. ' in page3
+           and "Removed: " in page3 and "diff-system" not in page and "stories" not in r, (r3, len(told3)))
+
         (t / "seen.json").write_text(json.dumps({"data": [{"parent": "ops-console", "child": "trips-db", "callCount": 1500}, {"parent": "rider-app", "child": "trips", "callCount": 9}]}))
         (t / "match.json").write_text(json.dumps({"trips-db": "tripsdb"}))
         r = cli("drift", str(t / "before.json"), str(t / "seen.json"), "--match", str(t / "match.json"), "--out", str(t / "drift.html")) or {}
@@ -1577,7 +1586,7 @@ if part("mcp"):
     found = rpc("server/discover", NEW).get("result", {})
     ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
     listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
-    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "story_from_flow", "show_view", "highlight", "tour", "play_story", "clear", "page_state",
+    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "story_from_flow", "story_from_diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state",
                                   "add_card", "connect", "rename", "move_to_box", "remove", "set_field", "pin", "preview", "apply", "undo", "redo"], listed)
     ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
        "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
