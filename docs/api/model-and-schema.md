@@ -94,7 +94,7 @@ interface MapNode {
 | `opensView`, `opensCount` | The view the card opens on drill-down, which may not be loaded yet, and the number on its ⤢ badge until it is. |
 | `owner` | Who owns the card (a team). Selectors pick by it, and a lens with `color: 'owner'` rings cards in their owner's tone. |
 | `shape` | The card's own [`Shape`](#shape), over the one its kind draws. |
-| `zone` | Where the card sits in a view with `arrange: 'flow'`: a [`FlowZone`](#flowzone). A view's `nodeOverrides` may set it for that view. Map views read it; typed views do not yet. |
+| `zone` | Where the card sits in a view with `arrange: 'flow'`: a [`FlowZone`](#flowzone). A view's `nodeOverrides` may set it for that view. Map views read it, and typed views whose type reads the flow ([typed diagrams](./typed-diagrams.md)). |
 
 In schema version 2 a node may also be a typed [`Element`](./typed-diagrams.md#element).
 
@@ -154,7 +154,7 @@ interface MapEdge {
 | `drift` | What [`drift()`](./apply-and-commands.md#drift) found: `undrawn` or `idle`. |
 | `latency`, `cost` | Budgets, in ms and in any unit, that [`critical()`](./apply-and-commands.md#critical) sums along a path. Not drawn. |
 | `edited` | Draws a marker at the middle of the line. |
-| `flow` | The line's part in a view with `arrange: 'flow'`: a [`FlowRole`](#flowrole). Without it, the line's kind decides. A typed line takes it too. Read on a map view so far: a `dep` line ranks nothing, and a `state` or `guard` line counts as `dep` unless its `flow` says otherwise; `main` lines hold the main flow's one row, across the view's boxes too. |
+| `flow` | The line's part in a view with `arrange: 'flow'`: a [`FlowRole`](#flowrole). Without it, the line's kind decides. A typed line takes it too, read where its type reads the flow ([typed diagrams](./typed-diagrams.md)), which then gives the default. Read on a map view: a `dep` line ranks nothing, and a `state` or `guard` line counts as `dep` unless its `flow` says otherwise; `main` lines hold the main flow's one row, across the view's boxes too. |
 
 Other fields the map reads: `fromSide` and `toSide` (the card sides the line uses).
 
@@ -174,7 +174,7 @@ or writes a file, board or config: a thinner line, a muted label, no flow) and `
 type FlowRole = 'main' | 'branch' | 'dep';
 ```
 
-A line's part in a view laid out by business flow ([design note](../diagrams/notes/layout-flow.md)): on the main flow, a flow line off it, or a dependency line that ranks nothing. Map views read it so far; typed views do not yet. The main flow is the longest path among the `main` lines; with none, the stepped lines in step order (2 < 2a < 2b < 3, a step's first suffix on it), each starting where the one before ends, the longest such chain kept; else a numbered view's run order; else the longest path of flow lines. In a view with `arrange: 'flow'`, `validate()` warns when the `main` lines are not one path (a card with two main lines out or in, or a main line that closes a loop), and, with no `main` line, where the steps break into chains.
+A line's part in a view laid out by business flow ([design note](../diagrams/notes/layout-flow.md)): on the main flow, a flow line off it, or a dependency line that ranks nothing. Map views read it, and typed views whose type reads the flow. The main flow is the longest path among the `main` lines; with none, the stepped lines in step order (2 < 2a < 2b < 3, a step's first suffix on it), each starting where the one before ends, the longest such chain kept; else a numbered view's run order; else the longest path of flow lines. In a view with `arrange: 'flow'`, `validate()` warns when the `main` lines are not one path (a card with two main lines out or in, or a main line that closes a loop), and, with no `main` line, where the steps break into chains.
 
 ## FlowZone
 
@@ -182,7 +182,7 @@ A line's part in a view laid out by business flow ([design note](../diagrams/not
 type FlowZone = 'first' | 'flow' | 'last' | 'under';
 ```
 
-Where a card sits in a view laid out by business flow: a column before the flow, in it, a column after it, or a band of rows under it. Map views read it; typed views do not yet. A `first` or `last` card takes no rank from its lines: it sits on the main row when it has a line into the first main card (or from the last), else to the side of the branch it joins, else above, and a flow line that runs back into it is drawn as a line back (`check()` does not call it right to left). An `under` card sits below every flow row, in the column of the middle card it is joined to, between the cards its flow lines come from and go to when there is room. Without one, a map card off the main flow takes the map's default: a person (by shape or kind) and a `public` card no line comes into go `first`, an `external` card `last`, a `database`, `file` or `board` card `under`; the main flow's first card may go `first` and its last card `last`. A view with no boxes keeps the defaults only when they draw no more problems (what `check()` says, crossings, labels not drawn) than without them; `zones: false` on the view turns them off. A card's own zone always holds, a pin beats it, with boxes it applies inside the card's box, and a view whose cards all have a zone ranks as without them.
+Where a card sits in a view laid out by business flow: a column before the flow, in it, a column after it, or a band of rows under it. Map views read it, and typed views whose type reads the flow (each type's defaults in the design note's section 7.2). A `first` or `last` card takes no rank from its lines: it sits on the main row when it has a line into the first main card (or from the last), else to the side of the branch it joins, else above, and a flow line that runs back into it is drawn as a line back (`check()` does not call it right to left). An `under` card sits below every flow row, in the column of the middle card it is joined to, between the cards its flow lines come from and go to when there is room. Without one, a map card off the main flow takes the map's default: a person (by shape or kind) and a `public` card no line comes into go `first`, an `external` card `last`, a `database`, `file` or `board` card `under`; the main flow's first card may go `first` and its last card `last`. A view with no boxes keeps the defaults only when they draw no more problems (what `check()` says, crossings, labels not drawn) than without them; `zones: false` on the view turns them off. A card's own zone always holds, a pin beats it, with boxes it applies inside the card's box, and a view whose cards all have a zone ranks as without them.
 
 ## MapView
 

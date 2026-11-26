@@ -1139,3 +1139,24 @@ test('layout.keepsRow and keepsRank: Alt + an arrow that the lane pass settles b
   }
   assert.ok(refused > 20 && pinned > 20, `${refused} ${pinned}`);
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md sections 6.1 and 7.2): BPMN's flowRole and
+// zoneOf, read only in an arranged view. The model has no default-flow field, so a gateway's main flow is its first
+test('flowRole: the main flow runs from the start event along each gateway\'s first flow to an end event; a data association is a dependency. zoneOf: start first, end last, data under', () => {
+  const n = (id, type, more = {}) => ({ id, type: 'bpmn.' + type, label: id, ...more }), sf = (id, from, to) => ({ id, type: 'bpmn.SequenceFlow', from, to });
+  const m = { schemaVersion: 2, nodes: [n('s', 'StartEvent', { props: { definition: 'none' } }), n('g', 'ExclusiveGateway'),
+    n('a', 'Task'), n('b', 'Task'), n('b2', 'Task'), n('e1', 'EndEvent', { props: { definition: 'none' } }), n('e2', 'EndEvent', { props: { definition: 'none' } }), n('d', 'DataObject')],
+  edges: [sf('f1', 's', 'g'), sf('f2', 'g', 'a'), sf('f3', 'a', 'e1'), sf('f4', 'g', 'b'), sf('f5', 'b', 'b2'), sf('f6', 'b2', 'e2'), { id: 'da', type: 'bpmn.DataAssociation', from: 'a', to: 'd' }],
+  views: [{ id: 'v', diagram: 'bpmn', arrange: 'flow', nodeIds: ['s', 'g', 'a', 'b', 'b2', 'e1', 'e2', 'd'] }] };
+  const v = m.views[0], el = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(m.edges.map(e => T.flowRole(e, m, v)), ['main', 'main', 'main', 'branch', 'branch', 'branch', 'dep'], 'the gateway\'s first flow, though the other branch is longer');
+  assert.deepEqual(['s', 'g', 'a', 'e1', 'd'].map(id => T.zoneOf(el(id), m, v)), ['first', null, null, 'last', 'under']);
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.equal(new Set(['s', 'g', 'a', 'e1'].map(id => at(id).row)).size, 1, 'the main flow on one row');
+  assert.ok(at('e1').col > at('b2').col && at('e2').col === at('e1').col, 'the end events after the flow');
+  assert.deepEqual(g.edges.filter(e => e.mainLine).map(e => e.id), ['f1', 'f2', 'f3']);
+  assert.ok(g.edges.find(e => e.id === 'da').dep);
+  assert.ok(g.edges.filter(e => e.mainLine).every(e => e.pts.length === 2), 'each main line one straight segment: in no pool, a column the main flow passes keeps its row free');
+  delete v.arrange; const g0 = layout(m, 'v'); assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
+});
