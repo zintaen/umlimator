@@ -413,7 +413,7 @@
       "last",
       "under"
      ],
-     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes into first, an external card last, a database, file or board card under). Map views read it, typed views not yet; a pin beats it. validate() checks it and diff() reports a change of it."
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes into first, an external card last, a database, file or board card under). Map views read it, and typed views whose type gives zoneOf or flowRole; a pin beats it. validate() checks it and diff() reports a change of it."
     },
     "credits": {
      "type": "array",
