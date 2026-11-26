@@ -1,0 +1,1684 @@
+{
+ "commit": "06f448cd",
+ "corpus": "edits",
+ "total": {
+  "views": 186,
+  "score": 283221.88
+ },
+ "views": {
+  "edits/b10/overview/1-add-card": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0,
+   "score": 1386.16
+  },
+  "edits/b10/overview/2-remove-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0.25,
+   "score": 1230.72
+  },
+  "edits/b10/overview/3-rename": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1233.15
+  },
+  "edits/b10/overview/4-add-line": {
+   "hard": 0,
+   "cross": 4,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0.875,
+   "score": 1895.71
+  },
+  "edits/b10/overview/5-add-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1282.04
+  },
+  "edits/b10/norepair/1-add-card": {
+   "hard": 0,
+   "cross": 6,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0,
+   "score": 1955.03
+  },
+  "edits/b10/norepair/2-remove-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1213.62
+  },
+  "edits/b10/norepair/3-rename": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1375.97
+  },
+  "edits/b10/norepair/4-add-line": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1491.78
+  },
+  "edits/b10/norepair/5-add-line": {
+   "hard": 0,
+   "cross": 5,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0.375,
+   "score": 1904.69
+  },
+  "edits/b26/overview/1-add-card": {
+   "hard": 2,
+   "cross": 72,
+   "labels": 1,
+   "straight": null,
+   "reverse": 9,
+   "moved": 0,
+   "score": 14797.39
+  },
+  "edits/b26/overview/2-remove-line": {
+   "hard": 3,
+   "cross": 63,
+   "labels": 2,
+   "straight": null,
+   "reverse": 8,
+   "moved": 0.083,
+   "score": 14816
+  },
+  "edits/b26/overview/3-rename": {
+   "hard": 2,
+   "cross": 68,
+   "labels": 1,
+   "straight": null,
+   "reverse": 9,
+   "moved": 0,
+   "score": 14318.17
+  },
+  "edits/b26/overview/4-add-line": {
+   "hard": 2,
+   "cross": 73,
+   "labels": 1,
+   "straight": null,
+   "reverse": 9,
+   "moved": 0,
+   "score": 14874.36
+  },
+  "edits/b26/overview/5-move-into-box": {
+   "hard": 1,
+   "cross": 79,
+   "labels": 2,
+   "straight": null,
+   "reverse": 9,
+   "moved": 0.92,
+   "score": 14729.52
+  },
+  "edits/b26/n01/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 356.83
+  },
+  "edits/b26/n01/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 255.3
+  },
+  "edits/b26/n01/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 324.96
+  },
+  "edits/b26/n01/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 387.14
+  },
+  "edits/b26/n01/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 376.56
+  },
+  "edits/b69/front/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.071,
+   "score": 399.82
+  },
+  "edits/b69/front/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 280.36
+  },
+  "edits/b69/front/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 360.9
+  },
+  "edits/b69/front/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.769,
+   "score": 630.39
+  },
+  "edits/b69/front/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.692,
+   "score": 566.6
+  },
+  "edits/b69/back/1-add-card": {
+   "hard": 0,
+   "cross": 8,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0,
+   "score": 2795.7
+  },
+  "edits/b69/back/2-remove-line": {
+   "hard": 0,
+   "cross": 8,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0,
+   "score": 2697.9
+  },
+  "edits/b69/back/3-rename": {
+   "hard": 0,
+   "cross": 7,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "moved": 0,
+   "score": 2862.92
+  },
+  "edits/b69/back/4-add-line": {
+   "hard": 0,
+   "cross": 11,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0.706,
+   "score": 3325.8
+  },
+  "edits/b69/back/5-add-line": {
+   "hard": 0,
+   "cross": 10,
+   "labels": 0,
+   "straight": null,
+   "reverse": 5,
+   "moved": 0.824,
+   "score": 3421.87
+  },
+  "edits/d24/boxed/1-add-card": {
+   "hard": 0,
+   "cross": 27,
+   "labels": 0,
+   "straight": null,
+   "reverse": 8,
+   "moved": 0,
+   "score": 5916.76
+  },
+  "edits/d24/boxed/2-remove-line": {
+   "hard": 0,
+   "cross": 8,
+   "labels": 0,
+   "straight": null,
+   "reverse": 8,
+   "moved": 0,
+   "score": 3649.14
+  },
+  "edits/d24/boxed/3-rename": {
+   "hard": 0,
+   "cross": 7,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "moved": 0,
+   "score": 3401.7
+  },
+  "edits/d24/boxed/4-add-line": {
+   "hard": 0,
+   "cross": 8,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "moved": 0,
+   "score": 3532.61
+  },
+  "edits/d24/boxed/5-add-line": {
+   "hard": 0,
+   "cross": 16,
+   "labels": 0,
+   "straight": null,
+   "reverse": 9,
+   "moved": 0,
+   "score": 4831.03
+  },
+  "edits/d24/plain/1-add-card": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 5,
+   "moved": 0,
+   "score": 2356.58
+  },
+  "edits/d24/plain/2-remove-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0,
+   "score": 1892
+  },
+  "edits/d24/plain/3-rename": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "moved": 0,
+   "score": 2136.48
+  },
+  "edits/d24/plain/4-add-line": {
+   "hard": 0,
+   "cross": 5,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0,
+   "score": 2476.14
+  },
+  "edits/d24/plain/5-add-line": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0,
+   "score": 2179.9
+  },
+  "edits/f12/order/1-add-card": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 913.66
+  },
+  "edits/f12/order/2-remove-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 890.22
+  },
+  "edits/f12/order/3-rename": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 824.13
+  },
+  "edits/f12/order/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1005.26
+  },
+  "edits/f12/order/5-add-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1173.61
+  },
+  "edits/f12/signup/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0.375,
+   "score": 999.48
+  },
+  "edits/f12/signup/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 435.18
+  },
+  "edits/f12/signup/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 498.3
+  },
+  "edits/f12/signup/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0.571,
+   "score": 922.86
+  },
+  "edits/f12/signup/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 636.08
+  },
+  "edits/f12/ticket/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 578.56
+  },
+  "edits/f12/ticket/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 459.62
+  },
+  "edits/f12/ticket/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 495.02
+  },
+  "edits/f12/ticket/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.333,
+   "score": 644.04
+  },
+  "edits/f12/ticket/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 674.53
+  },
+  "edits/f12/pipeline/1-add-card": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0.222,
+   "score": 1279.32
+  },
+  "edits/f12/pipeline/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 2,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 859.31
+  },
+  "edits/f12/pipeline/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 4,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1043.17
+  },
+  "edits/f12/pipeline/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 7,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.125,
+   "score": 1412.16
+  },
+  "edits/f12/pipeline/5-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 7,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.125,
+   "score": 1412.16
+  },
+  "edits/f12/order-boxed/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 873.85
+  },
+  "edits/f12/order-boxed/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 794.16
+  },
+  "edits/f12/order-boxed/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 843.85
+  },
+  "edits/f12/order-boxed/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 919.38
+  },
+  "edits/f12/order-boxed/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 2,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 806.43
+  },
+  "edits/f12/signup-boxed/1-add-card": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": 9,
+   "reverse": 5,
+   "moved": 0,
+   "score": 1657.35
+  },
+  "edits/f12/signup-boxed/2-remove-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 5,
+   "reverse": 2,
+   "moved": 0,
+   "score": 1087.87
+  },
+  "edits/f12/signup-boxed/3-rename": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 6,
+   "reverse": 3,
+   "moved": 0,
+   "score": 1335.68
+  },
+  "edits/f12/signup-boxed/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 5,
+   "reverse": 3,
+   "moved": 0,
+   "score": 1323.88
+  },
+  "edits/f12/signup-boxed/5-move-into-box": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 6,
+   "reverse": 3,
+   "moved": 0.25,
+   "score": 1198.5
+  },
+  "edits/f12/ticket-boxed/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 667.78
+  },
+  "edits/f12/ticket-boxed/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 461.92
+  },
+  "edits/f12/ticket-boxed/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 548.92
+  },
+  "edits/f12/ticket-boxed/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 633.01
+  },
+  "edits/f12/ticket-boxed/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 545.64
+  },
+  "edits/f12/pipeline-boxed/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 3,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1169.61
+  },
+  "edits/f12/pipeline-boxed/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 2,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 945.29
+  },
+  "edits/f12/pipeline-boxed/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 2,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1012
+  },
+  "edits/f12/pipeline-boxed/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 2,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1128.5
+  },
+  "edits/f12/pipeline-boxed/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 4,
+   "straight": 2,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1219.61
+  },
+  "edits/i59/context/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 357.69
+  },
+  "edits/i59/context/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 247.71
+  },
+  "edits/i59/context/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 327.19
+  },
+  "edits/i59/context/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 1,
+   "score": 669.66
+  },
+  "edits/i59/context/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 1,
+   "score": 580.3
+  },
+  "edits/i59/system/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 929.4
+  },
+  "edits/i59/system/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 728.12
+  },
+  "edits/i59/system/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 799.65
+  },
+  "edits/i59/system/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1082.9
+  },
+  "edits/i59/system/5-move-into-box": {
+   "hard": 3,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 3795.69
+  },
+  "edits/i59/trips/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 627.07
+  },
+  "edits/i59/trips/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 526.29
+  },
+  "edits/i59/trips/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 564.21
+  },
+  "edits/i59/trips/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 875.59
+  },
+  "edits/i59/trips/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 808
+  },
+  "edits/i59/fleet/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 682.98
+  },
+  "edits/i59/fleet/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 588.07
+  },
+  "edits/i59/fleet/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 622.11
+  },
+  "edits/i59/fleet/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 730.17
+  },
+  "edits/i59/fleet/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 710.06
+  },
+  "edits/i59/ride-end/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 515.77
+  },
+  "edits/i59/ride-end/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 490.82
+  },
+  "edits/i59/ride-end/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 683.51
+  },
+  "edits/i59/ride-end/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 616.99
+  },
+  "edits/i59/overview/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.083,
+   "score": 908.84
+  },
+  "edits/i59/overview/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 710.9
+  },
+  "edits/i59/overview/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 782.43
+  },
+  "edits/i59/overview/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 905.4
+  },
+  "edits/i59/overview/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.636,
+   "score": 851.46
+  },
+  "edits/i59/api/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 314.21
+  },
+  "edits/i59/api/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 171.91
+  },
+  "edits/i59/api/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 243.28
+  },
+  "edits/i59/api/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 311.83
+  },
+  "edits/i59/api/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 239.3
+  },
+  "edits/i59/checkout/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 401.7
+  },
+  "edits/i59/checkout/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 277.51
+  },
+  "edits/i59/checkout/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 474.35
+  },
+  "edits/i59/checkout/4-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 294.5
+  },
+  "edits/i59/dock-feed/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 722.97
+  },
+  "edits/i59/dock-feed/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 1,
+   "score": 933.22
+  },
+  "edits/i59/dock-feed/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 628.14
+  },
+  "edits/i59/dock-feed/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 926.88
+  },
+  "edits/i59/dock-feed/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 642.33
+  },
+  "edits/i59/demand/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 334.23
+  },
+  "edits/i59/demand/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 301.52
+  },
+  "edits/i59/demand/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 395.19
+  },
+  "edits/i59/demand/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 303.74
+  },
+  "edits/i59/help/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 651.86
+  },
+  "edits/i59/help/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 584.51
+  },
+  "edits/i59/help/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 768.6
+  },
+  "edits/i59/help/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 754.96
+  },
+  "edits/r15/boxed/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1492.96
+  },
+  "edits/r15/boxed/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1387.97
+  },
+  "edits/r15/boxed/3-add-line": {
+   "hard": 0,
+   "cross": 4,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 2065.39
+  },
+  "edits/r15/boxed/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1474.9
+  },
+  "edits/r15/plain/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1103.21
+  },
+  "edits/r15/plain/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1080.11
+  },
+  "edits/r15/plain/3-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0.308,
+   "score": 1304.38
+  },
+  "edits/r15/plain/4-add-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0.385,
+   "score": 1485.06
+  },
+  "edits/r19/boxed/1-add-card": {
+   "hard": 3,
+   "cross": 9,
+   "labels": 0,
+   "straight": null,
+   "reverse": 5,
+   "moved": 0.056,
+   "score": 7557.7
+  },
+  "edits/r19/boxed/2-rename": {
+   "hard": 1,
+   "cross": 5,
+   "labels": 0,
+   "straight": null,
+   "reverse": 7,
+   "moved": 0,
+   "score": 5176.95
+  },
+  "edits/r19/boxed/3-add-line": {
+   "hard": 0,
+   "cross": 16,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "moved": 0.059,
+   "score": 5397.13
+  },
+  "edits/r19/boxed/4-add-line": {
+   "hard": 0,
+   "cross": 22,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "moved": 0.059,
+   "score": 5907.96
+  },
+  "edits/r19/plain/1-add-card": {
+   "hard": 0,
+   "cross": 9,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "moved": 0.389,
+   "score": 3800.38
+  },
+  "edits/r19/plain/2-rename": {
+   "hard": 0,
+   "cross": 9,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "moved": 0.389,
+   "score": 3748.46
+  },
+  "edits/r19/plain/3-add-line": {
+   "hard": 1,
+   "cross": 13,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "moved": 0.294,
+   "score": 5381.05
+  },
+  "edits/r19/plain/4-add-line": {
+   "hard": 0,
+   "cross": 15,
+   "labels": 0,
+   "straight": null,
+   "reverse": 5,
+   "moved": 0,
+   "score": 4679.1
+  },
+  "edits/s16/site/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 290.17
+  },
+  "edits/s16/site/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 228.03
+  },
+  "edits/s16/site/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 259.61
+  },
+  "edits/s16/site/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.4,
+   "score": 421.27
+  },
+  "edits/s16/site/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 413.92
+  },
+  "edits/s16/job/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.5,
+   "score": 949.67
+  },
+  "edits/s16/job/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 775.78
+  },
+  "edits/s16/job/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 767.14
+  },
+  "edits/s16/job/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 813.34
+  },
+  "edits/s16/pay/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 435.6
+  },
+  "edits/s16/pay/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 359.45
+  },
+  "edits/s16/pay/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 356.88
+  },
+  "edits/s16/pay/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 440.32
+  },
+  "edits/u21/shop/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0.778,
+   "score": 1021.38
+  },
+  "edits/u21/shop/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 623.74
+  },
+  "edits/u21/shop/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0,
+   "score": 733.02
+  },
+  "edits/u21/shop/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "moved": 0.625,
+   "score": 922.64
+  },
+  "edits/u21/shop/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "moved": 0.5,
+   "score": 1023.01
+  },
+  "edits/u21/teams/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 404.49
+  },
+  "edits/u21/teams/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 328.64
+  },
+  "edits/u21/teams/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 360.06
+  },
+  "edits/u21/teams/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 482.42
+  },
+  "edits/u21/teams/5-move-into-box": {
+   "hard": 2,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 2363.58
+  },
+  "edits/u21/orders/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 1,
+   "score": 737.7
+  },
+  "edits/u21/orders/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 452.87
+  },
+  "edits/u21/orders/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.5,
+   "score": 646.29
+  },
+  "edits/u21/orders/4-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.429,
+   "score": 613.98
+  },
+  "edits/u21/checkout/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 278.94
+  },
+  "edits/u21/checkout/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 155.92
+  },
+  "edits/u21/checkout/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 158.2
+  },
+  "edits/u21/checkout/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 157.04
+  },
+  "edits/u21/warehouse/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 439.84
+  },
+  "edits/u21/warehouse/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 374.36
+  },
+  "edits/u21/warehouse/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0.5,
+   "score": 509.28
+  },
+  "edits/u21/warehouse/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "moved": 1,
+   "score": 746.71
+  },
+  "edits/u21/catalog/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 148.89
+  },
+  "edits/u21/catalog/2-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 110.35
+  },
+  "edits/u21/catalog/3-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 114.66
+  },
+  "edits/u21/catalog/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "moved": 0,
+   "score": 114.66
+  }
+ }
+}
