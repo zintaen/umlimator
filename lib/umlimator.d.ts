@@ -414,7 +414,7 @@ export interface MapEdge {
   toSide?: 'top' | 'bottom' | 'left' | 'right';
   /** The line's part in a view with `arrange: 'flow'` (layout by business flow): without it, from the line's kind. A typed
    *  line takes it too. Read on map views so far: a 'dep' line (or a state or guard line with no flow) ranks nothing, and is
-   *  routed after the flow lines; 'main' lines are the main flow, which holds one straight row in a view with no boxes (with
+   *  routed after the flow lines; 'main' lines are the main flow, which holds one straight row, across a view's boxes too (with
    *  none marked, the stepped lines chained in step order, else the longest path of flow lines). validate() warns on any
    *  other value, and in an arranged view on main-flow lines that are not one path (a card with two main lines out or in, a
    *  main line that closes a loop) and on steps that break into chains; diff() reports a change of it. */
@@ -438,8 +438,8 @@ export interface MapView {
   kindsFromLabels?: boolean;
   /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
    *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
-   *  dependencies sits under the flow, and with no boxes the main flow holds one straight row with each branch on one side
-   *  of it, and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf. validate() warns on any other value and on a sequence, timing or mindmap
+   *  dependencies sits under the flow, and the main flow holds one straight row with each branch on one side of it,
+   *  across the view's boxes too, and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf. validate() warns on any other value and on a sequence, timing or mindmap
    *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
