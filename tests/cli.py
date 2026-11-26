@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -2124,6 +2124,24 @@ if part("audit 33"):
         ok("render, diff, drift, timelapse and the MCP page · a model's files, hunks, areas, fileNotes and stats reach no page (audit 33)",
            all(r.returncode == 0 for r in rs.values()) and all(p and "SECRET" not in p and "hunter2" not in p for p in pages.values()),
            ({k: r.stderr[-300:] for k, r in rs.items() if r.returncode}, [k for k, p in pages.items() if not p or "SECRET" in p]))
+        # the stable diff page (the default since step 14) embeds the model before whole in <script id="umlimator-base">
+        # (with_base), and that copy skipped own_media: its ENGINE_ONLY keys and any address a browser would fetch (an
+        # author's avatar, an intake logo, the model's icons table, an example's images) reached the page. The base script
+        # itself is read here, so a page that drops it or moves its keys elsewhere is no pass
+        far = "https://far.example.invalid/"
+        hostile = {**good, "nodes": [{"id": "a", "label": "A", "examples": [{"title": "x", "thumb": far + "thumb.png", "full": far + "full.png"}]}],
+                   "edges": [], "authors": {"octo": {"name": "Octo", "avatar": far + "avatar.png"}}, "icons": {"far": {"src": far + "icon.svg"}},
+                   "views": [{"id": "v", "nodeIds": ["a"], "intake": [{"label": "in", "logo": far + "logo.svg"}]}], **eng}
+        (g / "before-far.json").write_text(json.dumps(hostile))
+        rb = run("diff", "before-far.json", "m.json", "--out", "base.html", cwd=g)
+        page = (g / "base.html").read_text(encoding="utf-8") if (g / "base.html").is_file() else ""
+        tag = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page, re.S)
+        base = json.loads(tag.group(1).replace("<\\/", "</")) if tag else None
+        ok("diff's stable page: the base model in #umlimator-base has no files, hunks, areas, fileNotes or stats, and no avatar, logo, icons table or example image address; nor has the page",
+           rb.returncode == 0 and isinstance(base, dict) and not any(k in base for k in ("files", "hunks", "areas", "fileNotes", "stats"))
+           and "icons" not in base and "avatar" not in base.get("authors", {}).get("octo", {}) and far not in tag.group(1)
+           and "SECRET" not in page and "hunter2" not in page and far not in page,
+           (rb.stderr[-300:], sorted(base) if isinstance(base, dict) else "no #umlimator-base script", [m.start() for m in re.finditer(re.escape(far), page)][:5]))
 if part("audit 34"):
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)

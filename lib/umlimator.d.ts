@@ -357,10 +357,12 @@ export type BpmnLineType = 'bpmn.SequenceFlow' | 'bpmn.MessageFlow' | 'bpmn.Asso
 /** A BPMN element's props. `definition` by kind: a start event `none`, `message` or `timer`; an end event `none`, `message`
  *  or `terminate`; an intermediate catch event `message` or `timer`; an intermediate throw event `none` or `message`; a
  *  boundary event `message` or `timer`. `attachedTo` and `categoryValueRef` are declared references (deleting the activity
- *  deletes its boundary events; a deleted group is dropped). */
+ *  deletes its boundary events; a deleted group is dropped). `default` (unreleased): on an exclusive gateway or an activity,
+ *  the id of its default flow, one of its sequence flows out with no condition, the one taken when no other condition holds;
+ *  drawn with a slash near its source and followed by the main flow and storyFromFlow; a deleted flow is dropped. */
 export interface BpmnElementProps { documentation?: string; processRef?: string; taskType?: 'none' | 'user' | 'service';
   definition?: 'none' | 'message' | 'timer' | 'terminate'; attachedTo?: string; cancelActivity?: boolean; calledElement?: string;
-  dataStoreRef?: string; categoryValueRef?: string[]; [key: string]: unknown }
+  dataStoreRef?: string; categoryValueRef?: string[]; default?: string; [key: string]: unknown }
 /** A BPMN line's props: an association's direction (its open arrowheads). A flow's `label` is its name. */
 export interface BpmnLineProps { documentation?: string; direction?: 'none' | 'one' | 'both'; [key: string]: unknown }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),

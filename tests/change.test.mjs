@@ -442,7 +442,7 @@ test('audit 22: validate() says a problem after a list entry it leaves out at th
 
 // audit 24: past the cap the band spans only the steps of a kind both lists hold; with every step given a new kind (a trace
 // re-imported with new line ids) it walked 20,000 x 40,001 cells for nothing, 5 to 33 times slower than before audit 23
-test('audit 24: diff()\'s order check past the cap leaves out the steps no pairing can use, and pairs as the table does', async () => {
+test('audit 24: diff()\'s order check past the cap leaves out the steps no pairing can use, and pairs as the table does (timed)', async () => {
   const { sameOrder } = await import('../src/map/diff.js');
   const n = 30000, all = Array.from({ length: n }, (_, i) => ['x' + i, 'r']), none = Array.from({ length: n }, (_, i) => ['y' + i, 'r']);
   const half = all.map((s, i) => (i % 2 ? ['y' + i, 'r'] : s));
@@ -692,7 +692,7 @@ test('audit 42: diff() keys a typed card\'s icon by its view\'s pack, not by the
   assert.ok(Array.isArray(all.diff(h, h2).views)); assert.ok(all.diff(h, h2).views.includes(h.views[0].id));
 });
 
-test('audit 42: diff() says and lists a typed view whose picture changes with its nodeIds order: a sequence\'s lifelines, a timing view\'s lanes, an activity\'s partitions', async () => {
+test('audit 42: diff() says and lists a typed view whose picture changes with its nodeIds order: a sequence\'s lifelines, a timing view\'s lanes, an activity\'s partitions (timed)', async () => {
   const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), read = f => JSON.parse(readFileSync(modelUrl(f)));
   const pic = (m, v) => svgOf(all.layout(m, v), { icons: m.icons }).replace(/\bg\d+-/g, 'g-');
   const moves = (m, v, id, index) => { const a = apply(m, [{ op: 'move', id, view: v.id, index }]), d = all.diff(m, a);
@@ -1019,7 +1019,7 @@ test('audit 45: no tag of any example\'s views holds an attribute twice; a servi
   const all = await fromSrc(), { readdirSync } = await import('node:fs');
   const twice = t => (t.match(/<[a-zA-Z][\w:-]*\b[^>]*>/g) || []).filter(tag => { const at = [...tag.replace(/"[^"]*"/g, '""').matchAll(/\s([a-zA-Z_:][\w:.-]*)=/g)].map(y => y[1]); return new Set(at).size !== at.length; });
   let views = 0;
-  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)), 'integration']) { // and the fixture's views of every type
+  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => f.slice(0, -5)), 'integration']) { // and the fixture's views of every type
     const m = JSON.parse(readFileSync(modelUrl(f)));
     for (const v of m.views || []) { assert.deepEqual(twice(svgOf(all.layout(m, v.id))), [], `${f} ${v.id}`); views++; } }
   assert.ok(views > 40, `${views} views drawn`);

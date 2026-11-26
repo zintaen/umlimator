@@ -698,7 +698,7 @@ pool's band, no line end off its outline or boundary circle (1 px).
 | `bpmn-stress.json`, view `all` | 60 flow nodes, three pools, six lanes, ten boundary events, ten message flows, two expanded sub-processes (P1) |
 | `tests/import/descriptive.bpmn` | A file with every Table 2.1 row and the extras (S1, decision 21), with DI; the report pinned |
 | `tests/import/hostile/*.bpmn` | Over 1 MiB; entity expansion; 10,000 levels of nesting; many references (just under 1 MiB of sequence flows, every one with `sourceRef` and `targetRef` on one pair of tasks); a reference to nothing; no DI; an unknown namespace. Each read or refused in under 1 s, never thrown; the nesting file's stack overflow, if moddle has one, is a report item |
-| `tests/import/weakened.bpmn` | An exclusive gateway with conditional flows and a default, a send and a receive task: read as plain flows and tasks, each reported `weakened`, `gateway-flows` and `flow-start` silent |
+| `tests/import/weakened.bpmn` | An exclusive gateway with conditional flows and a default, a send and a receive task: read as plain flows and tasks, each reported `weakened`, `gateway-flows` and `flow-start` silent (after 0.45.0 the default is read as the gateway's `props.default`, not weakened) |
 
 The example moves to `examples/bookshop-order-to-shipment.json` and joins the gallery and CI. Its 14 ids that are other
 types in the atlas and `take-payment` (a view there) are renamed with a `bp-` start (`bp-shopper`, `bp-order`,
@@ -884,7 +884,7 @@ diagram (Table 2.1 and the extras S1 and decision 21 name), boundary events, poo
 | Conversations, choreographies, event sub-processes, transactions, ad hoc sub-processes, compensation | Outside Process Modeling's sub-classes or Table 2.2 |
 | Messages as elements (the envelope on a message flow), data inputs and outputs, the collection marker | Table 2.2 and beyond |
 | Positions, sizes, colours and label bounds from a file's DI | D1; R5 |
-| Conditions and defaults on sequence flows, send and receive task kinds | Read as plain flows and tasks, kept under `ext.bpmn`, reported `weakened` (§12.2); not written back |
+| Conditions and defaults on sequence flows, send and receive task kinds | Read as plain flows and tasks, kept under `ext.bpmn`, reported `weakened` (§12.2); not written back. After 0.45.0 a default is read as the gateway's or activity's `props.default` and written back |
 | Execution semantics (clause 13), the Common Executable sub-class | 2.2.5's note: not expected of a modeling tool |
 | A Mermaid reader | Mermaid has no BPMN |
 | Resizing a pool or lane by hand; a lane's order other than `members` order | As stage 4's lanes |

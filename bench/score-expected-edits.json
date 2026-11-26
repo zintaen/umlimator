@@ -1,9 +1,9 @@
 {
- "commit": "70476e57",
+ "commit": "5e5204c8",
  "corpus": "edits",
  "total": {
   "views": 236,
-  "score": 320383.89
+  "score": 314709.33
  },
  "views": {
   "edits/a8/dsl-context/1-add-card": {
@@ -13,7 +13,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 678.95
+   "score": 632.96
   },
   "edits/a8/dsl-context/2-remove-line": {
    "hard": 0,
@@ -39,8 +39,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.25,
-   "score": 764.42
+   "moved": 0,
+   "score": 743.66
   },
   "edits/a8/dsl-context/5-move-into-box": {
    "hard": 0,
@@ -53,21 +53,21 @@
   },
   "edits/a8/dsl-containers/1-add-card": {
    "hard": 0,
-   "cross": 1,
+   "cross": 3,
    "labels": 0,
-   "straight": 2,
+   "straight": 0,
    "reverse": 0,
-   "moved": 0.111,
-   "score": 1388.49
+   "moved": 0,
+   "score": 1425.08
   },
   "edits/a8/dsl-containers/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": 2,
    "reverse": 0,
-   "moved": 0.5,
-   "score": 1028.73
+   "moved": 0,
+   "score": 1030.97
   },
   "edits/a8/dsl-containers/3-rename": {
    "hard": 0,
@@ -80,30 +80,30 @@
   },
   "edits/a8/dsl-containers/4-add-line": {
    "hard": 0,
-   "cross": 1,
-   "labels": 0,
+   "cross": 0,
+   "labels": 1,
    "straight": 2,
    "reverse": 1,
-   "moved": 0.125,
-   "score": 1454.82
+   "moved": 0,
+   "score": 1402.42
   },
   "edits/a8/dsl-containers/5-move-into-box": {
    "hard": 0,
-   "cross": 0,
-   "labels": 1,
+   "cross": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 1,
-   "moved": 0.111,
-   "score": 1204.41
+   "moved": 0,
+   "score": 1046.85
   },
   "edits/a8/dsl-api-components/1-add-card": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.875,
-   "score": 1133.11
+   "moved": 0,
+   "score": 1099.82
   },
   "edits/a8/dsl-api-components/2-remove-line": {
    "hard": 0,
@@ -143,12 +143,12 @@
   },
   "edits/a8/puml-components/1-add-card": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
    "straight": 0,
-   "reverse": 1,
-   "moved": 0.2,
-   "score": 881.24
+   "reverse": 0,
+   "moved": 0,
+   "score": 904.5
   },
   "edits/a8/puml-components/2-remove-line": {
    "hard": 0,
@@ -183,8 +183,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.1,
-   "score": 702.51
+   "moved": 0,
+   "score": 584.39
   },
   "edits/a8/checkout-flowchart/1-add-card": {
    "hard": 0,
@@ -244,10 +244,10 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": 0,
    "reverse": 0,
-   "moved": 0,
-   "score": 356.28
+   "moved": 0.25,
+   "score": 253.06
   },
   "edits/a8/meals-context/3-rename": {
    "hard": 0,
@@ -309,8 +309,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.5,
-   "score": 512.3
+   "moved": 0,
+   "score": 475.57
   },
   "edits/a8/compose-services/5-move-into-box": {
    "hard": 0,
@@ -377,12 +377,12 @@
   },
   "edits/b10/overview/2-remove-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 2,
    "labels": 0,
    "straight": null,
    "reverse": 1,
-   "moved": 0.75,
-   "score": 1264.52
+   "moved": 0,
+   "score": 1136.67
   },
   "edits/b10/overview/3-rename": {
    "hard": 0,
@@ -449,12 +449,12 @@
   },
   "edits/b10/norepair/5-add-line": {
    "hard": 0,
-   "cross": 6,
+   "cross": 8,
    "labels": 0,
    "straight": null,
-   "reverse": 2,
-   "moved": 0.625,
-   "score": 1942.77
+   "reverse": 1,
+   "moved": 0,
+   "score": 1914.54
   },
   "edits/b26/overview/1-add-card": {
    "hard": 2,
@@ -494,12 +494,12 @@
   },
   "edits/b26/overview/5-move-into-box": {
    "hard": 2,
-   "cross": 86,
+   "cross": 83,
    "labels": 1,
    "straight": null,
-   "reverse": 9,
+   "reverse": 10,
    "moved": 0,
-   "score": 16300.44
+   "score": 16165.05
   },
   "edits/b26/n01/1-add-card": {
    "hard": 0,
@@ -558,11 +558,11 @@
   "edits/b69/front/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 382.78
+   "score": 323.11
   },
   "edits/b69/front/3-rename": {
    "hard": 0,
@@ -579,8 +579,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.231,
-   "score": 434.54
+   "moved": 0,
+   "score": 449.59
   },
   "edits/b69/front/5-add-line": {
    "hard": 0,
@@ -629,12 +629,12 @@
   },
   "edits/b69/back/5-add-line": {
    "hard": 0,
-   "cross": 9,
+   "cross": 10,
    "labels": 0,
    "straight": null,
-   "reverse": 4,
-   "moved": 0.765,
-   "score": 3066.83
+   "reverse": 2,
+   "moved": 0,
+   "score": 2873.89
   },
   "edits/d24/boxed/1-add-card": {
    "hard": 1,
@@ -953,57 +953,57 @@
   },
   "edits/f12/signup-boxed/1-add-card": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
-   "straight": 8,
-   "reverse": 3,
-   "moved": 0.125,
-   "score": 1353.07
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0,
+   "score": 989.68
   },
   "edits/f12/signup-boxed/2-remove-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 0,
-   "straight": 6,
-   "reverse": 3,
-   "moved": 0.143,
-   "score": 1096
+   "straight": 8,
+   "reverse": 0,
+   "moved": 0,
+   "score": 860.04
   },
   "edits/f12/signup-boxed/3-rename": {
    "hard": 0,
    "cross": 1,
-   "labels": 1,
-   "straight": 6,
-   "reverse": 3,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
    "moved": 0,
-   "score": 1371.9
+   "score": 895.7
   },
   "edits/f12/signup-boxed/4-add-line": {
-   "hard": 0,
-   "cross": 1,
-   "labels": 1,
-   "straight": 8,
-   "reverse": 4,
-   "moved": 0.429,
-   "score": 1604.83
-  },
-  "edits/f12/signup-boxed/5-move-into-box": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": 8,
    "reverse": 2,
-   "moved": 0.875,
-   "score": 1174.16
+   "moved": 0,
+   "score": 1215.36
+  },
+  "edits/f12/signup-boxed/5-move-into-box": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0,
+   "score": 881.87
   },
   "edits/f12/ticket-boxed/1-add-card": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
    "straight": 0,
-   "reverse": 1,
-   "moved": 0.143,
-   "score": 790.93
+   "reverse": 0,
+   "moved": 0,
+   "score": 806.06
   },
   "edits/f12/ticket-boxed/2-remove-line": {
    "hard": 0,
@@ -1036,10 +1036,10 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 6,
-   "reverse": 2,
-   "moved": 0,
-   "score": 923.76
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0.571,
+   "score": 849.5
   },
   "edits/f12/pipeline-boxed/1-add-card": {
    "hard": 0,
@@ -1047,8 +1047,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.111,
-   "score": 937.08
+   "moved": 0,
+   "score": 919.91
   },
   "edits/f12/pipeline-boxed/2-remove-line": {
    "hard": 0,
@@ -1115,12 +1115,12 @@
   },
   "edits/f12/onboard/4-add-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 2,
    "labels": 0,
    "straight": 0,
-   "reverse": 2,
-   "moved": 1,
-   "score": 1800.61
+   "reverse": 1,
+   "moved": 0,
+   "score": 1360.64
   },
   "edits/f12/onboard/5-add-line": {
    "hard": 0,
@@ -1128,8 +1128,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.471,
-   "score": 1357.58
+   "moved": 0,
+   "score": 1301.39
   },
   "edits/f12/onboard-boxed/1-add-card": {
    "hard": 0,
@@ -1137,17 +1137,17 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 1,
-   "score": 1316.42
+   "moved": 0,
+   "score": 1116.42
   },
   "edits/f12/onboard-boxed/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": 0,
-   "reverse": 0,
-   "moved": 0.765,
-   "score": 1408.85
+   "reverse": 8,
+   "moved": 0,
+   "score": 1448.04
   },
   "edits/f12/onboard-boxed/3-rename": {
    "hard": 0,
@@ -1169,21 +1169,21 @@
   },
   "edits/f12/onboard-boxed/5-move-into-box": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.5,
-   "score": 1229.86
+   "moved": 0,
+   "score": 1188.55
   },
   "edits/i59/context/1-add-card": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.2,
-   "score": 449.69
+   "reverse": 1,
+   "moved": 0,
+   "score": 497.62
   },
   "edits/i59/context/2-remove-line": {
    "hard": 0,
@@ -1217,9 +1217,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
+   "reverse": 0,
    "moved": 0,
-   "score": 512.73
+   "score": 486.83
   },
   "edits/i59/system/1-add-card": {
    "hard": 0,
@@ -1298,18 +1298,18 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.3,
-   "score": 756.63
+   "reverse": 1,
+   "moved": 0,
+   "score": 698.1
   },
   "edits/i59/trips/5-add-line": {
    "hard": 0,
-   "cross": 2,
+   "cross": 1,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.4,
-   "score": 1047.49
+   "reverse": 1,
+   "moved": 0,
+   "score": 804.44
   },
   "edits/i59/fleet/1-add-card": {
    "hard": 0,
@@ -1327,7 +1327,7 @@
    "straight": null,
    "reverse": 1,
    "moved": 0,
-   "score": 588.07
+   "score": 586.69
   },
   "edits/i59/fleet/3-rename": {
    "hard": 0,
@@ -1407,8 +1407,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.545,
-   "score": 758.51
+   "moved": 0,
+   "score": 696.34
   },
   "edits/i59/overview/3-rename": {
    "hard": 0,
@@ -1433,9 +1433,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 1,
-   "score": 1064.35
+   "reverse": 2,
+   "moved": 0,
+   "score": 912.22
   },
   "edits/i59/api/1-add-card": {
    "hard": 0,
@@ -1548,11 +1548,11 @@
   "edits/i59/dock-feed/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.143,
-   "score": 812.46
+   "moved": 0,
+   "score": 776.87
   },
   "edits/i59/dock-feed/5-move-into-box": {
    "hard": 0,
@@ -1694,18 +1694,18 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 2,
+   "reverse": 1,
    "moved": 0,
-   "score": 1214.92
+   "score": 1172.5
   },
   "edits/r15/plain/4-add-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 0.154,
-   "score": 1305.36
+   "reverse": 2,
+   "moved": 0,
+   "score": 1180.35
   },
   "edits/r19/boxed/1-add-card": {
    "hard": 3,
@@ -1762,22 +1762,22 @@
    "score": 3766.59
   },
   "edits/r19/plain/3-add-line": {
-   "hard": 1,
-   "cross": 18,
-   "labels": 1,
+   "hard": 0,
+   "cross": 22,
+   "labels": 0,
    "straight": null,
-   "reverse": 4,
-   "moved": 0.118,
-   "score": 5810.09
+   "reverse": 5,
+   "moved": 0,
+   "score": 5186.44
   },
   "edits/r19/plain/4-add-line": {
    "hard": 0,
-   "cross": 21,
-   "labels": 1,
+   "cross": 18,
+   "labels": 0,
    "straight": null,
    "reverse": 3,
-   "moved": 0.706,
-   "score": 5279.76
+   "moved": 0,
+   "score": 4740.68
   },
   "edits/s16/site/1-add-card": {
    "hard": 0,
@@ -1812,8 +1812,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.6,
-   "score": 448.07
+   "moved": 0,
+   "score": 332.74
   },
   "edits/s16/site/5-add-line": {
    "hard": 0,
@@ -1903,16 +1903,16 @@
    "straight": null,
    "reverse": 1,
    "moved": 0,
-   "score": 821.99
+   "score": 795.86
   },
   "edits/u21/shop/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 2,
    "straight": null,
    "reverse": 1,
-   "moved": 0.75,
-   "score": 754.61
+   "moved": 0,
+   "score": 727.26
   },
   "edits/u21/shop/3-rename": {
    "hard": 0,
@@ -1937,9 +1937,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 0.625,
-   "score": 951.41
+   "reverse": 2,
+   "moved": 0,
+   "score": 953.79
   },
   "edits/u21/teams/1-add-card": {
    "hard": 0,
@@ -2043,11 +2043,11 @@
   "edits/u21/checkout/3-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.333,
-   "score": 365.26
+   "moved": 0,
+   "score": 285.01
   },
   "edits/u21/checkout/4-add-line": {
    "hard": 0,
