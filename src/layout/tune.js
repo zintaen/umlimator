@@ -23,9 +23,9 @@ const SCORE_WEIGHTS = Object.freeze({ issue: 1000, cross: 150, dropped: 40, leng
 // placeLabel (layered.js): the order fits() passes are tried in (0 strict to 5 relaxed); late: a label the first tries left
 // out, placed after the others (and lateOn's test of where it would go)
 const LABEL_PASSES = Object.freeze({ map: Object.freeze([0, 1, 2]), typed: Object.freeze([0]), mapLate: Object.freeze([4, 3]), late: Object.freeze([0, 4, 3, 5, 1, 2]) });
-// placeholders, read by no code yet: the branch side balance of section 6.2 (a column with this many more cards on one side
-// of the main row sends the next branch to the other) and the stability guard of section 8.2 (a stable layout is kept unless
-// its score is worse than a fresh one's by more than this many label units)
+// the branch side balance of section 6.2 (context.js sidesOf: a column with this many more cards on one side of the main row
+// sends the next branch to the other); and a placeholder read by no code yet, the stability guard of section 8.2 (a stable
+// layout is kept unless its score is worse than a fresh one's by more than this many label units)
 const BRANCH_BALANCE = 2, STABLE_SLACK = 1;
 
 export { BARY_SWEEPS, ROW_SWEEPS, FLOW_MIN, FLOW_CAP, FLOW_WAYS, FAN_IN, FAN_TRIES, CROSS_CAP, OUTSIDE_TRIES, SCORE_WEIGHTS, LABEL_PASSES, BRANCH_BALANCE, STABLE_SLACK };

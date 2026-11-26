@@ -33,9 +33,10 @@ const corners = P => { let c = 0; for (let i = 1; i + 1 < P.length; i++) { const
   if ((b[0] - a[0]) * (d[1] - b[1]) - (b[1] - a[1]) * (d[0] - b[0]) !== 0) c++; } return c; };
 
 // the main flow's lines, and its cards in order along them (a path from the card no main line comes into); a view with no
-// main line has none. Until section 12 step 6 gives the layout its own main flow, the main lines are those marked `flow: "main"`
+// main line has none. The main lines are those the layout drew as the main flow (mainLine: an arranged map view, section 6,
+// whose main flow layered.js's mainFlow finds from flow "main", steps or the longest path), else those marked `flow: "main"`
 function mainFlowOf(g, model, view) {
-  const lines = g.edges.filter(e => !e.back && roleOf(e, model, view) === 'main');
+  const drawn = g.edges.some(e => e.mainLine), lines = g.edges.filter(e => !e.back && (drawn ? e.mainLine : roleOf(e, model, view) === 'main'));
   if (!lines.length) return null;
   const next = new Map(), into = new Set(); lines.forEach(e => { if (!next.has(e.from)) next.set(e.from, e.to); into.add(e.to); });
   const first = lines.map(e => e.from).find(id => !into.has(id)) ?? lines[0].from, cards = [first], seen = new Set(cards);
