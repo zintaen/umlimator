@@ -1,9 +1,9 @@
 {
- "commit": "4066b80a",
+ "commit": "5e5204c8",
  "corpus": "fixed",
  "total": {
   "views": 263,
-  "score": 611789.23
+  "score": 611334.49
  },
  "views": {
   "a8/dsl-context": {
@@ -217,10 +217,10 @@
   "f12/signup-boxed": {
    "hard": 0,
    "cross": 1,
-   "labels": 1,
-   "straight": 6,
-   "reverse": 4,
-   "score": 1343.03
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "score": 888.29
   },
   "f12/ticket-boxed": {
    "hard": 0,

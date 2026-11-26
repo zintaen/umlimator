@@ -1,5 +1,5 @@
 {
- "commit": "4066b80a",
+ "commit": "5e5204c8",
  "results": {
   "a8/checkout-flowchart": {
    "hashes": [
@@ -123,7 +123,7 @@
   },
   "f12/signup-boxed": {
    "hashes": [
-    "8d5ff883"
+    "ef669"
    ]
   },
   "f12/ticket": {

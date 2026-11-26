@@ -18,7 +18,7 @@ const { tablesOf } = await import('../src/page/print.js');
 const { elName } = await import('../src/core/model.js');
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
-const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f), './fixtures/integration.json',
+const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => '../examples/' + f), './fixtures/integration.json',
   ...readdirSync(new URL('./', import.meta.url)).filter(f => f.endsWith('-minimal.json')).map(f => './' + f)];
 // every element's label, its members' and its lines' set to `val` (undefined: removed)
 const relabel = (m, val) => { const go = x => { if (x && typeof x === 'object' && x.id != null) { if (val === undefined) delete x.label; else x.label = val; } };
@@ -103,7 +103,7 @@ test('audit 43: a typed view\'s panel text field that is not text is said at its
 
 test('audit 43: every example\'s panel text fields and stereotypes, each set to what is not text in turn, are said at their paths', () => {
   const O = { z: 3 }, obj = x => x && typeof x === 'object' && !Array.isArray(x);
-  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`), './fixtures/integration.json']) {
+  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `../examples/${f}`), './fixtures/integration.json']) {
     const base = read(f); if (base.schemaVersion !== 2) continue;
     const spots = new Map(); // one spot a kind and key: the sweep's time
     const walk = (x, at) => { if (!obj(x)) return; if (obj(x.props)) Object.entries(x.props).forEach(([k, v]) => {

@@ -18,7 +18,7 @@ test('every type, tools/types.json\'s families\' 28, has its model and its entry
   assert.equal(new Set(TYPES).size, 28, 'each type in one family, once');
   assert.ok(!TYPES.includes('map') && !S.types.map, 'the map is no type: its example is an atlas\'s first layer');
   assert.deepEqual(Object.keys(S.types).sort(), [...TYPES].sort(), 'tools/types.json names each type once');
-  assert.deepEqual(readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).sort(), TYPES.map(t => `${t}.json`).sort());
+  assert.deepEqual(readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).sort(), TYPES.map(t => `${t}.json`).sort());
 });
 
 test('each model matches its entry: a name, a text, a title, an intro, a "shows" checklist with no empty item, the main view first and the root, the alternatives views of it', () => {

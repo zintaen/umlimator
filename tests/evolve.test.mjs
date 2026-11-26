@@ -387,7 +387,7 @@ test('fuzz: JSON shrinks by keys and items to the part that fails', async () => 
   assert.equal(JSON.parse(readFileSync(r.findings[0].info, 'utf8')).message, 'bad key');
 });
 
-test('fuzz: the whole run, shrinking included, keeps to its budget', async () => {
+test('fuzz: the whole run, shrinking included, keeps to its budget (timed)', async () => {
   const { d, f } = targetsModule();
   const t0 = Date.now();
   await fuzz({ module: f, names: ['loop', 'boom'], budgetMs: 2000, hangMs: 150, shrinkMs: 60000, seed: 's', out: join(d, 'found'), scanTests: false });

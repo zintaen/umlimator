@@ -12,7 +12,7 @@ import { targets } from '../docs/diagrams/examples/check.mjs';
 
 const read = url => JSON.parse(readFileSync(url));
 const files = () => { const ex = new URL('../examples/', import.meta.url), seen = new Map();
-  readdirSync(ex).filter(f => f.endsWith('.json')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
+  readdirSync(ex).filter(f => f.endsWith('.json') && !f.startsWith('.')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
   targets().forEach(([f, url]) => { if (!seen.has(url.href)) seen.set(url.href, f); });
   return [...seen].map(([href, name]) => [name, read(new URL(href))]); };
 const fill = (k, f) => { TYPED[k] = f; return () => { delete TYPED[k]; }; };
