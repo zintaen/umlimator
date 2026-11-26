@@ -207,22 +207,23 @@ test('tests/import/descriptive.bpmn: every row of Table 2.1 and the extras, read
   assert.deepEqual((await read(xml, BpmnModdle())).model, model); // the same file, the same ids (R3)
 });
 
-test('tests/import/weakened.bpmn: conditions, a default, send and receive tasks and a timer\'s time read as plain, each reported weakened and kept', needs, async () => {
+test('tests/import/weakened.bpmn: conditions, send and receive tasks and a timer\'s time read as plain, each reported weakened and kept; the default read as props.default', needs, async () => {
   const { model, report } = await read(file('import/weakened.bpmn'), BpmnModdle());
   const w = (line, message) => ({ line, status: 'weakened', message: `${message}: kept under ext.bpmn, read as plain` });
-  assert.deepEqual(report, [{ line: 'approve', status: 'skipped', message: 'process approve, in no pool: its elements are read in no pool, its id not kept' }, w('wait-form', 'a receive task'), w('days', 'a gateway\'s default flow'), w('ask-manager', 'a send task'),
+  assert.deepEqual(report, [{ line: 'approve', status: 'skipped', message: 'process approve, in no pool: its elements are read in no pool, its id not kept' }, w('wait-form', 'a receive task'), w('ask-manager', 'a send task'),
     w('an-hour', 'a timer\'s timeDuration'), w('f-short', 'a condition'),
     { line: '', status: 'skipped', message: 'no diagram interchange: every element is in one view, process' }]);
   const node = id => model.nodes.find(n => n.id === id), edge = id => model.edges.find(e => e.id === id);
   assert.deepEqual([node('wait-form').props, node('wait-form').ext, node('ask-manager').ext], [{ taskType: 'none' }, { bpmn: { task: 'receive' } }, { bpmn: { task: 'send' } }]);
-  assert.deepEqual([node('days').ext, edge('f-short').ext, edge('f-long').ext, node('an-hour').ext], [{ bpmn: { default: 'f-long' } }, { bpmn: { condition: '${days <= 3}' } }, undefined, { bpmn: { timer: { timeDuration: 'PT1H' } } }]);
+  assert.deepEqual([node('days').ext, node('days').props, edge('f-short').ext, edge('f-long').ext, node('an-hour').ext], [undefined, { default: 'f-long' }, { bpmn: { condition: '${days <= 3}' } }, undefined, { bpmn: { timer: { timeDuration: 'PT1H' } } }]);
   // what gateway-flows and flow-start (4b.3) read: the gateway keeps both flows out, each task its flow in
   assert.deepEqual(model.edges.filter(e => e.from === 'days').map(e => [e.type, e.to, e.label]), [['bpmn.SequenceFlow', 'approve-short', 'up to 3'], ['bpmn.SequenceFlow', 'ask-manager', 'more']]);
   assert.ok(['wait-form', 'approve-short', 'ask-manager'].every(t => model.edges.some(e => e.to === t && e.type === 'bpmn.SequenceFlow')));
   // written plain, and the writer says what it leaves
   const back = await write(model, 'process', null, BpmnModdle());
-  assert.doesNotMatch(back.xml, /conditionExpression|default=|sendTask|receiveTask|timeDuration/);
-  assert.deepEqual(back.report.map(x => `${x.line}: ${x.message}`), ['wait-form: what it keeps under ext.bpmn: not written', 'days: what it keeps under ext.bpmn: not written',
+  assert.doesNotMatch(back.xml, /conditionExpression|sendTask|receiveTask|timeDuration/);
+  assert.match(back.xml, /<bpmn:exclusiveGateway id="days" name="How many days\?" default="f-long" \/>/); // the default written back
+  assert.deepEqual(back.report.map(x => `${x.line}: ${x.message}`), ['wait-form: what it keeps under ext.bpmn: not written',
     'ask-manager: what it keeps under ext.bpmn: not written', 'an-hour: what it keeps under ext.bpmn: not written', 'f-short: what it keeps under ext.bpmn: not written']);
 });
 
@@ -859,4 +860,32 @@ test('audit 65: an attribute named toString on an element kept under ext.bpmn is
     { $type: 'bpmn:InclusiveGateway', id: 'g', $attrs: { valueOf: 'y', constructor: 'z' } }]);
   assert.deepEqual(report.filter(x => /toString/.test(x.message) && /not kept/.test(x.message)).map(x => [x.line, x.message]), [
     ['t', 'the attribute toString, a name no model key holds: not kept'], ['g', 'the attribute toString, a name no model key holds: not kept']]);
+});
+
+// a default flow (an exclusive gateway's or an activity's `default`) is props.default, the flow's id, and written back as
+// `default`; one that is no sequence flow out of it read is kept under ext.bpmn and said, so the model read passes validate()
+test('a gateway\'s and an activity\'s default flow read as props.default and written back (round trip); one not out of it said', needs, async () => {
+  const doc = body => `<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p">${body}</process></definitions>`;
+  const flows = '<startEvent id="s"/><task id="t" default="t-e"/><exclusiveGateway id="g" default="g-b"/><task id="b"/><endEvent id="e"/>'
+    + '<sequenceFlow id="s-t" sourceRef="s" targetRef="t"/><sequenceFlow id="t-g" sourceRef="t" targetRef="g"/><sequenceFlow id="t-e" sourceRef="t" targetRef="e"/>'
+    + '<sequenceFlow id="g-b" name="else" sourceRef="g" targetRef="b"/><sequenceFlow id="g-e" name="done" sourceRef="g" targetRef="e"/><sequenceFlow id="b-e" sourceRef="b" targetRef="e"/>';
+  const { model, report } = await read(doc(flows), BpmnModdle()), node = id => model.nodes.find(n => n.id === id);
+  assert.deepEqual([node('t').props, node('g').props, node('g').ext], [{ taskType: 'none', default: 't-e' }, { default: 'g-b' }, undefined]);
+  assert.deepEqual(report.filter(x => !/no pool|interchange/.test(x.message)), []);
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  const [w, back] = await roundTrip({ ...model, root: model.views[0].id });
+  assert.deepEqual(w.report, []);
+  assert.match(w.xml, /<bpmn:task id="t" default="t-e" \/>/);
+  assert.match(w.xml, /<bpmn:exclusiveGateway id="g" default="g-b" \/>/);
+  assert.deepEqual([back.model.nodes.find(n => n.id === 't').props, back.model.nodes.find(n => n.id === 'g').props], [{ taskType: 'none', default: 't-e' }, { default: 'g-b' }]);
+  // a default that is another node's flow: kept under ext.bpmn and said; the model read passes validate()
+  const odd = await read(doc(flows.replace('default="g-b"', 'default="s-t"')), BpmnModdle()), g = odd.model.nodes.find(n => n.id === 'g');
+  assert.deepEqual([g.props, g.ext], [undefined, { bpmn: { default: 's-t' } }]);
+  assert.deepEqual(odd.report.filter(x => x.line === 'g').map(x => x.message), ['a default flow, s-t, that is no sequence flow out of it read: kept under ext.bpmn, read as plain']);
+  assert.deepEqual(validate(odd.model).filter(p => p.rule === 'default-flow'), []);
+  // the writer says a props.default that is no sequence flow out of its node, and writes no default
+  const bad = structuredClone(model); bad.nodes.find(n => n.id === 'g').props.default = 's-t';
+  const wb = await write(bad, model.views[0].id, null, BpmnModdle());
+  assert.deepEqual(wb.report.map(x => `${x.line}: ${x.message}`), ['g: props.default s-t, which is no sequence flow out of it: not written']);
+  assert.doesNotMatch(wb.xml, /exclusiveGateway id="g" default/);
 });
