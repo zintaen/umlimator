@@ -11,7 +11,7 @@ import { RANGES, flatten, outOfRange, pinsText } from '../tools/evolve/tune-loop
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const PINS = JSON.parse(read('bench/tune-pins.json'));
 
-const NAMES = ['BARY_SWEEPS', 'ROW_SWEEPS', 'FLOW_MIN', 'FLOW_CAP', 'FLOW_WAYS', 'FAN_IN', 'FAN_TRIES', 'CROSS_CAP', 'OUTSIDE_TRIES', 'SCORE_WEIGHTS', 'LABEL_PASSES', 'BRANCH_BALANCE', 'STABLE_SLACK', 'SNAKE_AT', 'SNAKE_SLACK'];
+const NAMES = ['BARY_SWEEPS', 'ROW_SWEEPS', 'FLOW_MIN', 'FLOW_CAP', 'FLOW_WAYS', 'FAN_IN', 'FAN_TRIES', 'CROSS_CAP', 'OUTSIDE_TRIES', 'SCORE_WEIGHTS', 'LABEL_PASSES', 'BRANCH_BALANCE', 'STABLE_SLACK', 'STABLE_WEIGHTS', 'SNAKE_AT', 'SNAKE_SLACK'];
 const WEIGHTS = ['issue', 'cross', 'dropped', 'lengthPer', 'corner', 'areaPer'];
 // the values the loop may not change
 const FIXED = {
@@ -20,6 +20,8 @@ const FIXED = {
   LABEL_PASSES: { map: [0, 1, 2], typed: [0], mapLate: [4, 3], late: [0, 4, 3, 5, 1, 2] },
   'SCORE_WEIGHTS.issue': 1000,
   'SCORE_WEIGHTS.areaPer': 4e5,
+  // the stability guard's weights are section 4.1's (bench/score-weights.json), which the loop may not change
+  ...Object.fromEntries(Object.entries({ hard: 1000, cross: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 }).map(([k, v]) => ['STABLE_WEIGHTS.' + k, v])),
 };
 
 test('tune.js exports exactly the named constants, with the pinned values', () => {
@@ -38,7 +40,7 @@ test('bench/tune-pins.json pins exactly the values the loop may change, each ins
 });
 
 test('tune.js\'s lists and weights are frozen, so no caller changes them for the next layout', () => {
-  for (const name of ['ROW_SWEEPS', 'FLOW_WAYS', 'SCORE_WEIGHTS', 'LABEL_PASSES']) assert.ok(Object.isFrozen(T[name]), name);
+  for (const name of ['ROW_SWEEPS', 'FLOW_WAYS', 'SCORE_WEIGHTS', 'STABLE_WEIGHTS', 'LABEL_PASSES']) assert.ok(Object.isFrozen(T[name]), name);
   T.FLOW_WAYS.forEach((o, k) => assert.ok(Object.isFrozen(o), 'FLOW_WAYS ' + k));
   Object.entries(T.LABEL_PASSES).forEach(([k, v]) => assert.ok(Object.isFrozen(v), 'LABEL_PASSES.' + k));
 });
@@ -61,6 +63,8 @@ const READS = {
     FAN_IN: /\) >= FAN_IN\); \};/,
     SCORE_WEIGHTS: /const W = SCORE_WEIGHTS;/,
     BRANCH_BALANCE: /held\(rank\[i\], s\) - held\(rank\[i\], -s\) >= BRANCH_BALANCE\)/,
+    STABLE_SLACK: /\+ STABLE_SLACK \* STABLE_WEIGHTS\.labels;/,
+    STABLE_WEIGHTS: /const W = STABLE_WEIGHTS,/,
   },
 };
 
