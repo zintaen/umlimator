@@ -338,3 +338,38 @@ test('f12\'s onboarding views snake: two rows, straight 0 and reverse 0, with an
     assert.deepEqual([s.hard, s.straight, s.reverse], [0, 0, 0], id); assert.equal(new Set(g.nodes.filter(n => n.run != null).map(n => n.y)).size, 2, id);
     assert.deepEqual(check(f12, id), [], id); }
 });
+
+// section 12 step 10: the typed types that read the flow (flowRole, zoneOf). An arranged C4 or DFD view of f12 holds its main
+// flow on one row, its stores under it and its dependency lines out of the ranks; the same view without arrange draws as before
+test('typed C4 and DFD views: the main flow on one row, people first, stores under, and nothing new without arrange', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url), 'utf8')), off = structuredClone(f12);
+  off.views.forEach(v => { delete v.arrange; });
+  const d = layout(f12, 'orders-dfd'), row = id => d.byId[id].row;
+  assert.deepEqual(['d-cust', 'd-take', 'd-bill', 'd-ship'].map(row), [1, 1, 1, 1], 'the main flow on one row');
+  assert.ok(['d-orders', 'd-stock'].every(s => row(s) > 1), 'the stores under it');
+  assert.deepEqual(d.edges.filter(e => e.mainLine).map(e => e.id), ['d-f1', 'd-f2', 'd-f3']);
+  assert.deepEqual(d.edges.filter(e => e.dep).map(e => e.id), ['d-f5', 'd-f6', 'd-f7']);
+  assert.ok(d.edges.filter(e => e.mainLine && e.id !== 'd-f1').every(e => e.pts.length === 2), 'a main line between two processes is one straight segment');
+  const c = layout(f12, 'checkout-c4'), x = id => c.byId[id].col;
+  assert.ok(['c-web', 'c-api', 'c-worker', 'c-psp'].every(i => x('c-shopper') < x(i)) && x('c-psp') > x('c-worker'), 'the shopper first, the provider after the flow');
+  for (const v of ['orders-dfd', 'checkout-c4']) { const g = layout(off, v); assert.ok(g.edges.every(e => !e.dep && !e.mainLine), `${v} without arrange: no line marked`); }
+  assert.notDeepEqual(cells(layout(off, 'orders-dfd')), cells(d), 'the arranged DFD lays out otherwise than without arrange');
+});
+
+test('a typed flowchart: the main flow straight down one column, the decision\'s "no" branch above it, the store in the band under it', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url), 'utf8')), g = layout(f12, 'request-flow'), at = id => g.byId[id];
+  const main = ['f-start', 'f-read', 'f-ok', 'f-do', 'f-end'];
+  assert.deepEqual(new Set(main.map(i => at(i).row)).size, 1, 'one row (laid out down: one column)');
+  assert.ok(g.edges.filter(e => e.mainLine).length === 4 && g.edges.filter(e => e.mainLine).every(e => e.pts.length === 2), 'every main line one straight segment');
+  assert.ok(at('f-reject').row < at('f-ok').row && at('f-save').row > at('f-ok').row, 'the "no" branch on one side, the store on the other');
+  assert.equal(viewMetrics(g, { model: f12, view: f12.views.find(v => v.id === 'request-flow') }).cross, 0);
+});
+
+test('a typed BPMN view (its type ranks its own cells, cpPlace): the main flow from the start event marked, its items held on one row of the ranking, and no more crossings than without arrange', () => {
+  const ex = JSON.parse(readFileSync(new URL('./fixtures/bookshop-order-to-shipment.json', import.meta.url), 'utf8')), on = structuredClone(ex), V = 'order-to-shipment';
+  on.views.find(v => v.id === V).arrange = 'flow';
+  const g = layout(on, V), g0 = layout(ex, V), cross = (m, h) => viewMetrics(h, { model: m, view: m.views.find(v => v.id === V) }).cross;
+  assert.ok(g.edges.filter(e => e.mainLine).length >= 5 && g.edges.some(e => e.dep), 'a main flow and dependency lines');
+  assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
+  assert.ok(cross(on, g) <= cross(ex, g0), `crossings ${cross(on, g)} against ${cross(ex, g0)}`);
+});

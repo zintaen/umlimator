@@ -396,6 +396,22 @@ s.chapters[0].at;          // 3: a branch leaves at Payments, the fourth step
 map.play(s);
 ```
 
+## storyFromDiff
+
+```ts
+function storyFromDiff(before: MapModel, after: MapModel, viewId: string, options?: { id?: string; title?: string; audience?: string; on?: 'after' | 'diff' }): Story;
+```
+
+A story of what changed on a view from `before` to `after`, such as a pull request's base and head: a step per card and line that [`diff()`](#diff) marks added, changed or removed and the view draws. The steps follow the view's main flow as it was and is (a card by its place on it, a card off it after the main card its lines reach first, a line just before the later of its two cards, so a removed line keeps its place), else the view's order. Each caption says what happened: `"1. Added: Cart asks Fraud check."`, `"2. Changed: Shipping svc, renamed from Shipping."` (with the other fields that changed in brackets), `"3. Removed: Payments ships Shipping."`. An added or changed card or line is selected and lit, and an added or changed line is ridden by a tour of its two cards.
+
+`on: 'after'` (the default) tells the story on the model after, which `validate()` accepts there: a removed card or line is selected by no step, and the cards it was joined to are lit (`"Removed: Ledger, which was joined to Refunds."`). `on: 'diff'` tells it on `diff(before, after).model`, which draws the removed cards and lines too, and selects them; `umlimator.py diff --story` puts that story on the diff's page. `id` defaults to `diff-<viewId>`, `title` to the view's title and "what changed"; `audience` is kept on the story. Throws when the view shows no change, or (on `'after'`) is not in the model after.
+
+```js
+const s = storyFromDiff(base, head, 'order');
+s.steps.map(x => x.caption);   // ["1. Added: Cart asks Fraud check.", "2. Added: Fraud check.", ...]
+map.play(s);                    // on the map of the model after
+```
+
 ## whatIf
 
 ```ts

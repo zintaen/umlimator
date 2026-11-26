@@ -331,6 +331,8 @@ test('audit 20: every exported function reads a hostile model (an object with a 
       critical: () => U.critical(m, v, { from: a }), whatIf: () => U.whatIf(m, v, { remove: [a] }),
       // a view with no main flow is said by a throw that names it, as the docs give it; any other throw fails
       storyFromFlow: () => { try { return U.storyFromFlow(m, v); } catch (e) { if (/has no main flow|has no messages to tell/.test(e.message)) return null; throw e; } },
+      // a view that shows no change is said by a throw that names it, as the docs give it; any other throw fails
+      storyFromDiff: () => { try { return [U.storyFromDiff(plain, m, v), U.storyFromDiff(m, plain, v, { on: 'diff' })]; } catch (e) { if (/shows no change/.test(e.message)) return null; throw e; } },
     };
     for (const [k, fn] of Object.entries(runs)) try { call(k, fn); } catch (e) { thrown.push(`${f} ${bad} ${k}: ${e.message}`); }
   }

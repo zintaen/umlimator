@@ -1,9 +1,9 @@
 {
- "commit": "cb86b03b",
+ "commit": "a61c3422",
  "corpus": "fixed",
  "total": {
   "views": 255,
-  "score": 608950.35
+  "score": 607425.94
  },
  "views": {
   "b10/overview": {
@@ -114,25 +114,25 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 10,
+   "straight": 0,
    "reverse": 0,
-   "score": 726.91
+   "score": 245.41
   },
   "f12/orders-dfd": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 12,
+   "straight": 0,
    "reverse": 0,
-   "score": 823.34
+   "score": 323.04
   },
   "f12/request-flow": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 14,
+   "straight": 0,
    "reverse": 0,
-   "score": 813.93
+   "score": 270.9
   },
   "f12/shop-gcp": {
    "hard": 0,
@@ -140,7 +140,7 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 91.02
+   "score": 91.44
   },
   "f12/order-boxed": {
    "hard": 0,
@@ -148,7 +148,7 @@
    "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 826.70
+   "score": 826.7
   },
   "f12/signup-boxed": {
    "hard": 0,

@@ -86,6 +86,8 @@ function withOwnNodes(def) {
     // layout.keepsRank and keepsRow(model, view, id, geo, by): the view's own nodes too, as the layout sees them (src/canvas/edit.js asks them)
     ['keepsRank', 'keepsRow'].forEach(k => { if (typeof L[k] === 'function') out.layout[k] = ownWrap(k, L[k], f => (model, view, id, geo, by) => { const v = R_OBJ(view) ? view : viewOf(model, view); return v ? f(M(model, v), v, id, geo, by) : null; }); }); }
   else if (R_OBJ(L) && typeof L.run === 'function') out.layout = { ...L, run: ownWrap('run', L.run, f => (model, view, o) => f(M(model, view), view, o)) };
+  // flowRole(line, model, view) and zoneOf(node, model, view): the view's own nodes too (layout-flow.md section 3)
+  ['flowRole', 'zoneOf'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap(k, def[k], f => (x, model, view) => f(x, R_OBJ(view) && R_OBJ(model) ? M(model, view) : model, view)); });
   ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
   if (typeof def.word === 'function') out.word = ownWrap('word', def.word, f => (model, id, view) => f(view ? M(model, view) : all(model).model, id));
@@ -135,7 +137,11 @@ function withOwnNodes(def) {
    whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field.
    Audit 40's: touches(model, view) -> ids, the elements and lines outside the view's own whose change changes its picture (a
    required stereotype's extension, an identifying relationship that makes a shown entity dependent): diff() lists the view
-   when one of them, in the model before or after, is marked; with drawn (the model lines the view draws, an implied line's too). */
+   when one of them, in the model before or after, is marked; with drawn (the model lines the view draws, an implied line's too).
+   Layout by business flow's (docs/diagrams/notes/layout-flow.md sections 3 and 7.2, section 12 step 10), read only in a view
+   with arrange "flow": flowRole(line, model, view) -> 'main', 'branch', 'dep' or null (a flow line), a line's part where it
+   has no flow field; zoneOf(node, model, view) -> 'first', 'last', 'under' or null, a node's zone where it has no zone
+   field and the view does not say zones: false. rankFlip(line, model, view): the model and view are passed too. */
 
 /* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
    first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26

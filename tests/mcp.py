@@ -145,6 +145,29 @@ ok("play_story takes a story as it is (story_from_flow's, with an audience): fol
 ok("…a story naming a view or card the model lacks, no story, or id and story both or neither, is the tool's error; a version without its view drops it",
    errs_ps[0].startswith("story: story.steps[0].view:") and errs_ps[1].startswith("story: story.steps[0].select:") and errs_ps[2].startswith("story is a story")
    and all(x.startswith("play_story: give id") for x in errs_ps[3:]) and dropped_ps is None, errs_ps)
+# story_from_diff (product item 4): a story of what changed on a view from another model file to this one, returned and never
+# written, which play_story plays on the page of the model as it is now; a view that shows no change is the tool's error
+keep_sd = (mcp.MODEL, mcp.page, dict(mcp.want))
+with tempfile.TemporaryDirectory() as dsd:
+    base_sd = json.loads((ROOT / "bench" / "models" / "f12.json").read_text(encoding="utf-8"))
+    head_sd = json.loads(json.dumps(base_sd)); head_sd["nodes"].append({"id": "o-fraud", "label": "Fraud check"})
+    next(v for v in head_sd["views"] if v["id"] == "order")["nodeIds"].append("o-fraud")
+    head_sd["edges"].append({"id": "o-fr", "from": "o-cart", "to": "o-fraud", "label": "asks"})
+    (Path(dsd) / "base.json").write_text(json.dumps(base_sd), encoding="utf-8")
+    mcp.MODEL = Path(dsd) / "head.json"; mcp.MODEL.write_text(json.dumps(head_sd), encoding="utf-8")
+    mcp.page = lambda: ("v", None)
+    before_sd = mcp.MODEL.read_bytes()
+    told_sd = mcp.call("story_from_diff", {"other_model_path": "base.json", "view": "order"})
+    played_sd = mcp.call("play_story", {"story": told_sd})
+    try:
+        none_sd = mcp.call("story_from_diff", {"other_model_path": "head.json", "view": "order"})
+    except mcp.Fail as e:
+        none_sd = str(e)
+    unchanged_sd = mcp.MODEL.read_bytes() == before_sd
+mcp.MODEL, mcp.page = keep_sd[0], keep_sd[1]; mcp.want.clear(); mcp.want.update(keep_sd[2])
+ok("story_from_diff returns a story of the view's change, not written, which play_story plays; a view that shows no change is said",
+   "story_from_diff" in mcp.TOOL and told_sd["id"] == "diff-order" and [x["caption"] for x in told_sd["steps"]] == ["1. Added: Cart asks Fraud check.", "2. Added: Fraud check."]
+   and played_sd.startswith("No page") and "shows no change" in none_sd and unchanged_sd, (told_sd, played_sd, none_sd))
 # audit 51: a tour with no view took the first view that shows its cards (containers, where shopper and bookshop share no
 # line) and refused it, though the context view draws the route shopper -> bookshop -> payments: it rides the first that does
 keep51 = (mcp.MODEL, mcp.page, dict(mcp.want))

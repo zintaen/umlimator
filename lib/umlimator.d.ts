@@ -51,7 +51,7 @@ export interface MapNode {
   /** Where the card sits in a view with `arrange: 'flow'` (layout by business flow, docs/diagrams/notes/layout-flow.md):
    *  without it, the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes
    *  into first, an external card last, a database, file or board card under). A view's `nodeOverrides` may set it for that
-   *  view. Map views read it, typed views not yet; a pin beats it. validate() warns on any other value, and diff() reports a
+   *  view. Map views read it, and typed views whose type gives zoneOf or flowRole; a pin beats it. validate() warns on any other value, and diff() reports a
    *  change of it. */
   zone?: FlowZone;
   /** In schema version 2 (0.17.0) a node may also be a typed Element: type, parent, props, members. */
@@ -440,7 +440,7 @@ export interface MapView {
    *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
    *  dependencies sits under the flow, and the main flow holds one straight row with each branch on one side of it,
    *  across the view's boxes too (more than 10 main cards wrap onto a second row that runs back under the first: the
-   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; typed views do not read it yet. validate() warns on any other value and on a sequence, timing or mindmap
+   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf (but for the snake, map views only for now). validate() warns on any other value and on a sequence, timing or mindmap
    *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
@@ -807,6 +807,13 @@ export function describe(model: MapModel, viewId: string): string;
  *  "business" the captions leave out the stores a step reads or writes. The model is not changed and the story is not
  *  added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
 export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean; audience?: string }): FlowStory;
+/** A story of what changed on a view from `before` to `after` (a pull request's base and head, say): a step per card and
+ *  line diff() marks added, changed or removed that the view draws, along its main flow (a removed line keeps its place),
+ *  else in the view's order, each captioned "Added", "Changed" (with the fields, and a rename's old name) or "Removed".
+ *  on 'after' (the default): the story plays on the model after, so a removed card or line is selected by no step and the
+ *  cards it was joined to are lit; on 'diff': on diff(before, after).model, which draws the removed ones, and selects them.
+ *  Throws when the view shows no change. Pure: nothing is saved. */
+export function storyFromDiff(before: MapModel, after: MapModel, viewId: string, options?: { id?: string; title?: string; audience?: string; on?: 'after' | 'diff' }): Story;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
