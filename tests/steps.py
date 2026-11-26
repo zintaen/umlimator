@@ -8,7 +8,7 @@ runs it (bash --noprofile --norc -eo pipefail), with gh, git ls-remote and npm a
 
 Standard library only, and nothing is fetched. Needs git 2.31 or later, and Node (the npm step reads package.json with it).
 """
-import json, os, shutil, subprocess, sys, tempfile, threading
+import json, os, re, shutil, subprocess, sys, tempfile, threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -383,6 +383,36 @@ s = fresh()
 (s / "head").write_text(A)
 r = comment(s, A, changed="0")
 ok("action · no map changed and nothing said before: nothing is posted", r[0] == 0 and bodies(s) == [], r)
+
+# ---------- the diff Action's diff step (action.yml): stable by default (layout-flow.md section 12 step 14) ----------
+_, DIFF = step("action.yml", "diff")
+act = tmp / "action"
+act.mkdir()
+(act / "umlimator.py").write_text("import json, os, sys\nopen(os.environ['ARGS'], 'w').write(json.dumps(sys.argv[1:]))\nprint('[]')\n")
+repo = tmp / "pr"
+repo.mkdir()
+for k in (1, 2):  # a merge commit's checkout: HEAD^1 is there, so nothing is fetched
+    subprocess.run([real_git, "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *(["init", "-q"] if k == 1 else []),
+                    *([] if k == 1 else ["commit", "-q", "--allow-empty", "-m", "c2"])], check=True, capture_output=True)
+    if k == 1:
+        subprocess.run([real_git, "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "c1"],
+                       check=True, capture_output=True)
+
+
+def diff_step(stable):
+    d = Path(tempfile.mkdtemp(dir=tmp))
+    env = {"STATE": str(fresh()), "MODELS": "*.json", "STABLE": stable, "OUT": str(d / "out"), "GITHUB_ACTION_PATH": str(act), "GITHUB_OUTPUT": str(d / "gho"),
+           "GITHUB_SHA": "f" * 40, "ARGS": str(d / "args.json")}
+    r = bash(DIFF, env, repo)
+    return r, json.loads((d / "args.json").read_text()) if (d / "args.json").is_file() else None
+
+
+r_on, a_on = diff_step("true")
+r_off, a_off = diff_step("false")
+ok("action · stable is on by default: the input's default is \"true\", and the diff step passes --stable; \"false\" passes --no-stable",
+   re.search(r'^  stable:\n(?:    .*\n)*?    default: "true"$', (ROOT / "action.yml").read_text(encoding="utf-8"), re.M) is not None
+   and r_on[0] == 0 and a_on and "--stable" in a_on and "--no-stable" not in a_on
+   and r_off[0] == 0 and a_off and "--no-stable" in a_off and "--stable" not in a_off, (r_on, a_on, r_off, a_off))
 
 # ---------- map-repo's cli.py: its first use fetches one release into a cache ----------
 src = tmp / "src"

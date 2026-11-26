@@ -386,7 +386,7 @@ listeners it added to the document and the window.
 |---|---|
 | `params` | The page's mode, as the CLI passes it: `theme`, `reader`, and the CLI's own `check`, `still`, `shot` and `pdf`. Default: none. The link's `view`, `node`, `story`, `step` and `lens` are read from `location.hash`. |
 | `instant` | Draw with no animation, as the CLI's checks and stills do. |
-| `stableFrom` | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions). A page the CLI writes with `diff --stable`, or the MCP page after an edit, holds it in a `#umlimator-base` script. |
+| `stableFrom` | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions). A page the CLI writes with `diff` (unless `--no-stable`), or the MCP page after an edit, holds it in a `#umlimator-base` script. |
 
 ```js
 import { mountPage } from 'umlimator';

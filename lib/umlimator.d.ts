@@ -837,8 +837,8 @@ export function sequenceFromTrace(model: MapModel, spans: Span[], options?: { vi
  *  by its ends, as a Ref names it). `summary`: what changed in words, in model order ("adds Payments queue between
  *  Trip service and Payment provider"); `views`: those that show a change. The marks are the model's own fields, so a
  *  page or still the CLI makes shows them. Neither input is changed. */
-/** With `{ stable: true }`, `stableFrom` is the model before, for render(), layout() or check() to draw `model` with, so
- *  the cards the change left alone keep their cells; without it the result is as before. */
+/** `stableFrom` is the model before, for render(), layout() or check() to draw `model` with, so the cards the change left
+ *  alone keep their cells. It is there by default; with `{ stable: false }` the result has none, and each view is drawn fresh. */
 export interface DiffResult { model: MapModel; summary: string[]; views: string[]; stableFrom?: MapModel }
 export function diff(before: MapModel | null, after: MapModel | null, options?: { stable?: boolean }): DiffResult;
 /** A call between two services as traffic showed it: { from, to, count }, or a Jaeger or Tempo dependency. */

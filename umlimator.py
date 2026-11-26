@@ -7,13 +7,13 @@
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
   umlimator.py check PAGE.html [--views a,pic-*] [--expand] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only;
                                                        # it exits 1 on a rule the model breaks (rules)
-  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR] [--stable]   # what changed, marked on one map, and in words
-  umlimator.py diff --base REF --out DIR [--models 'docs/*.json'] [--stable]   # every model changed since a git ref (a pull request)
+  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR] [--no-stable]   # what changed, marked on one map, and in words
+  umlimator.py diff --base REF --out DIR [--models 'docs/*.json'] [--no-stable]   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T] [--diagram uml.sequence]   # a trace (OTLP JSON) kept as a numbered view, or as a UML sequence diagram
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 30]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
-  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes|structurizr-json|dbml|bpmn] [--typed] [--moddle DIR]   # a diagram you have, as a model
+  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes|structurizr-json|dbml|bpmn] [--typed] [--moddle DIR] [--arrange]   # a diagram you have, as a model
   umlimator.py export MODEL.json --out FILE.bpmn [--view ID] [--format bpmn] [--moddle DIR]   # a model's BPMN, as BPMN XML
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark] [--paper a4|letter]   # one PDF: a cover with the contents,
                                                        # each view with its legend and tables of its cards, lines and boxes, the rules
@@ -905,7 +905,12 @@ def render_model(m, near, out, base=None):
 
 def with_base(page, base):
     """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
-    script (each "</" in it escaped, so no text in the model ends the script)."""
+    script (each "</" in it escaped, so no text in the model ends the script). The base goes through own_media as every page
+    model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
+    the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
+    base = json.loads(json.dumps(base))
+    with contextlib.redirect_stderr(io.StringIO()):
+        own_media(base, page.parent, "base")
     text = page.read_text(encoding="utf-8")
     tag = '<script id="umlimator-base" type="application/json">' + json.dumps(base).replace("</", "<\\/") + "</script>\n"
     at = text.find('<script id="visual-data"')
@@ -950,13 +955,14 @@ def cmd_diff(a):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True, stable=False, story=False):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
     leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
-    stable: the page draws the model after against the model before, so the cards the change left alone keep their cells.
+    stable (the default, layout-flow.md section 12 step 14): the page draws the model after against the model before, so the
+    cards the change left alone keep their cells; False draws it fresh.
     story: each view that shows a change gets a story of it (storyFromDiff, told on the diff's model), in the page's Stories
     menu, and the answer names them."""
-    d = js("diff", before, after, {"stable": True}) if stable else js("diff", before, after)
+    d = js("diff", before, after, {"stable": bool(stable)})
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
@@ -1826,6 +1832,25 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+# The views import --arrange lays out by business flow (arrange "flow", docs/diagrams/notes/layout-flow.md section 12 step 14):
+# a map view, and a view of a type that reads the flow (its registry entry gives flowRole or zoneOf; tests/flow-defaults.test.mjs
+# holds this list to the registry). Any other type takes no arrange, as it would change nothing (validate() warns of it on a
+# type that does not rank). Opt-in: on the import fixtures the arranged layout scores worse than the ranked one today
+# (.evolve/decisions.md D13), so a default import lays out as before
+FLOW_TYPES = ("map", "c4.context", "c4.container", "c4.component", "c4.dynamic", "c4.landscape", "flowchart", "dfd", "uml.activity",
+              "uml.use-case", "bpmn", "aws", "azure", "gcp")
+
+
+def arranged(m):
+    """Each view of m that FLOW_TYPES names, and that says nothing of arrange, set to arrange "flow"; the views it set."""
+    done = []
+    for v in m.get("views") or []:
+        if isinstance(v, dict) and "arrange" not in v and (v.get("diagram") if v.get("diagram") is not None else "map") in FLOW_TYPES:
+            v["arrange"] = "flow"
+            done.append(v.get("id"))
+    return done
+
+
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
     compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram,
@@ -1922,13 +1947,14 @@ def cmd_import(a):
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
         sys.exit(f"import: {a.file} has nothing to import as {fmt}")
+    flowed = arranged(m) if a.arrange else []
     out = json.dumps(m, indent=2, ensure_ascii=False) + "\n"
     if (fixed := re.sub("[\ud800-\udfff]", "\ufffd", out)) != out:  # a lone surrogate (an entity or escape gave it) has no UTF-8
         print(f"{a.file}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: written as U+FFFD", file=sys.stderr)
     write(a.out, fixed)
     inline = sum(isinstance(e, dict) for v in m["views"] for e in v.get("edges") or [])  # a sequence view's messages
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
-                      "views": [v["id"] for v in m["views"]], "unread": len(unread),
+                      "views": [v["id"] for v in m["views"]], "arranged": flowed, "unread": len(unread),
                       "notImported": [{"where": w, "message": msg} for w, msg in unread]}, indent=1))
 
 
@@ -1997,7 +2023,8 @@ def main():
     d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
     d.add_argument("--stills", help="a folder for stills of the views that show a change"); d.add_argument("--base", help="a git ref: diff the working tree's models against it")
     d.add_argument("--models", nargs="*", help="with --base, git pathspecs of the model files (default: every .json that is a map model)")
-    d.add_argument("--stable", action="store_true", help="draw the model after against the model before: the cards the change left alone keep their places")
+    d.add_argument("--stable", action=argparse.BooleanOptionalAction, default=True,
+                   help="draw the model after against the model before, so the cards the change left alone keep their places (the default); --no-stable draws it fresh")
     d.add_argument("--story", action="store_true", help="a story of each changed view (what was added, changed or removed, along its main flow) in the page's Stories menu")
     d.set_defaults(f=cmd_diff)
     dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
@@ -2015,6 +2042,7 @@ def main():
     im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml", "bpmn"], help="default: read from the content, then the extension")
     im.add_argument("--typed", action="store_true", help="a Mermaid flowchart as a typed flowchart view (needs Node), not a map")
     im.add_argument("--moddle", help="BPMN: the folder bpmn-moddle is installed in (default: UMLIMATOR_BPMN_MODDLE, else the working folder)")
+    im.add_argument("--arrange", action="store_true", help='lay the model\'s map views, and its typed views of a type that reads the flow, out by business flow (arrange "flow"); without it each lays out by rank')
     im.set_defaults(f=cmd_import)
     ex = sub.add_parser("export", help="a model's BPMN as BPMN XML, through bpmn-moddle"); ex.add_argument("model")
     ex.add_argument("--out", required=True, help="the file, .bpmn"); ex.add_argument("--view", help="the bpmn view whose layout it carries (default: the first)")

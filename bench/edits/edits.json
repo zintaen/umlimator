@@ -21,7 +21,7 @@
      "op": "add",
      "element": {
       "id": "zz-overview-card-line",
-      "from": "n06",
+      "from": "n01",
       "to": "zz-overview-card",
       "label": "adds"
      }
@@ -29,7 +29,7 @@
    ],
    "touched": [
     "zz-overview-card",
-    "n06"
+    "n01"
    ]
   },
   {
@@ -40,12 +40,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e012"
+     "id": "e003"
     }
    ],
    "touched": [
     "n02",
-    "n03"
+    "n06"
    ]
   },
   {
@@ -56,13 +56,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "n09",
+     "id": "n04",
      "path": "label",
-     "value": "Inventory 9 (renamed)"
+     "value": "Auth 4 (renamed)"
     }
    ],
    "touched": [
-    "n09"
+    "n04"
    ]
   },
   {
@@ -76,14 +76,14 @@
      "element": {
       "id": "zz-overview-line1",
       "from": "n00",
-      "to": "n09",
+      "to": "n01",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "n00",
-    "n09"
+    "n01"
    ]
   },
   {
@@ -97,14 +97,14 @@
      "element": {
       "id": "zz-overview-line2",
       "from": "n01",
-      "to": "n03",
+      "to": "n08",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "n01",
-    "n03"
+    "n08"
    ]
   },
   {
@@ -126,7 +126,7 @@
      "op": "add",
      "element": {
       "id": "zz-norepair-card-line",
-      "from": "n01",
+      "from": "n05",
       "to": "zz-norepair-card",
       "label": "adds"
      }
@@ -134,7 +134,7 @@
    ],
    "touched": [
     "zz-norepair-card",
-    "n01"
+    "n05"
    ]
   },
   {
@@ -145,11 +145,11 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e007"
+     "id": "e013"
     }
    ],
    "touched": [
-    "n03",
+    "n06",
     "n08"
    ]
   },
@@ -180,15 +180,15 @@
      "op": "add",
      "element": {
       "id": "zz-norepair-line1",
-      "from": "n08",
-      "to": "n09",
+      "from": "n00",
+      "to": "n01",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "n08",
-    "n09"
+    "n00",
+    "n01"
    ]
   },
   {
@@ -201,15 +201,15 @@
      "op": "add",
      "element": {
       "id": "zz-norepair-line2",
-      "from": "n01",
-      "to": "n08",
+      "from": "n00",
+      "to": "n07",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "n01",
-    "n08"
+    "n00",
+    "n07"
    ]
   },
   {
@@ -231,7 +231,7 @@
      "op": "add",
      "element": {
       "id": "zz-overview-card-line",
-      "from": "n25",
+      "from": "n10",
       "to": "zz-overview-card",
       "label": "adds"
      }
@@ -239,7 +239,7 @@
    ],
    "touched": [
     "zz-overview-card",
-    "n25"
+    "n10"
    ]
   },
   {
@@ -250,12 +250,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e025"
+     "id": "e039"
     }
    ],
    "touched": [
-    "n19",
-    "n22"
+    "n17",
+    "n24"
    ]
   },
   {
@@ -266,13 +266,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "n20",
+     "id": "n06",
      "path": "label",
-     "value": "Orders 20 (renamed)"
+     "value": "Notify 6 (renamed)"
     }
    ],
    "touched": [
-    "n20"
+    "n06"
    ]
   },
   {
@@ -286,14 +286,14 @@
      "element": {
       "id": "zz-overview-line1",
       "from": "n07",
-      "to": "n15",
+      "to": "n21",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "n07",
-    "n15"
+    "n21"
    ]
   },
   {
@@ -318,8 +318,7 @@
         "n08",
         "n09",
         "n10",
-        "n11",
-        "n12"
+        "n11"
        ]
       },
       {
@@ -331,7 +330,8 @@
         "n18",
         "n19",
         "n20",
-        "n21"
+        "n21",
+        "n12"
        ]
       }
      ]
@@ -360,7 +360,7 @@
      "op": "add",
      "element": {
       "id": "zz-n01-card-line",
-      "from": "n07",
+      "from": "n05",
       "to": "zz-n01-card",
       "label": "adds"
      }
@@ -368,7 +368,7 @@
    ],
    "touched": [
     "zz-n01-card",
-    "n07"
+    "n05"
    ]
   },
   {
@@ -379,12 +379,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e008"
+     "id": "e006"
     }
    ],
    "touched": [
     "n01",
-    "n13"
+    "n09"
    ]
   },
   {
@@ -395,13 +395,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "n07",
+     "id": "n13",
      "path": "label",
-     "value": "Reports 7 (renamed)"
+     "value": "Export 13 (renamed)"
     }
    ],
    "touched": [
-    "n07"
+    "n13"
    ]
   },
   {
@@ -465,7 +465,7 @@
      "op": "add",
      "element": {
       "id": "zz-front-card-line",
-      "from": "n06",
+      "from": "n01",
       "to": "zz-front-card",
       "label": "adds"
      }
@@ -473,7 +473,7 @@
    ],
    "touched": [
     "zz-front-card",
-    "n06"
+    "n01"
    ]
   },
   {
@@ -484,12 +484,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e056"
+     "id": "e030"
     }
    ],
    "touched": [
-    "n03",
-    "n11"
+    "n01",
+    "n12"
    ]
   },
   {
@@ -500,13 +500,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "n07",
+     "id": "n06",
      "path": "label",
-     "value": "Reports 7 (renamed)"
+     "value": "Notify 6 (renamed)"
     }
    ],
    "touched": [
-    "n07"
+    "n06"
    ]
   },
   {
@@ -519,15 +519,15 @@
      "op": "add",
      "element": {
       "id": "zz-front-line1",
-      "from": "n09",
-      "to": "n13",
+      "from": "n08",
+      "to": "n12",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "n09",
-    "n13"
+    "n08",
+    "n12"
    ]
   },
   {
@@ -540,15 +540,15 @@
      "op": "add",
      "element": {
       "id": "zz-front-line2",
-      "from": "n01",
-      "to": "n04",
+      "from": "n11",
+      "to": "n14",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "n01",
-    "n04"
+    "n11",
+    "n14"
    ]
   },
   {
@@ -570,7 +570,7 @@
      "op": "add",
      "element": {
       "id": "zz-back-card-line",
-      "from": "n64",
+      "from": "n63",
       "to": "zz-back-card",
       "label": "adds"
      }
@@ -578,7 +578,7 @@
    ],
    "touched": [
     "zz-back-card",
-    "n64"
+    "n63"
    ]
   },
   {
@@ -589,12 +589,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e009"
+     "id": "e041"
     }
    ],
    "touched": [
-    "n61",
-    "n64"
+    "n52",
+    "n65"
    ]
   },
   {
@@ -624,15 +624,15 @@
      "op": "add",
      "element": {
       "id": "zz-back-line1",
-      "from": "n57",
-      "to": "n65",
+      "from": "n56",
+      "to": "n61",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "n57",
-    "n65"
+    "n56",
+    "n61"
    ]
   },
   {
@@ -646,14 +646,14 @@
      "element": {
       "id": "zz-back-line2",
       "from": "n54",
-      "to": "n66",
+      "to": "n58",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "n54",
-    "n66"
+    "n58"
    ]
   },
   {
@@ -675,7 +675,7 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-card-line",
-      "from": "m04",
+      "from": "shell",
       "to": "zz-boxed-card",
       "label": "adds"
      }
@@ -683,7 +683,7 @@
    ],
    "touched": [
     "zz-boxed-card",
-    "m04"
+    "shell"
    ]
   },
   {
@@ -694,12 +694,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "api-m05"
+     "id": "api-m12"
     }
    ],
    "touched": [
     "api",
-    "m05"
+    "m12"
    ]
   },
   {
@@ -710,13 +710,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "x1",
+     "id": "api",
      "path": "label",
-     "value": "System 1 (renamed)"
+     "value": "API (renamed)"
     }
    ],
    "touched": [
-    "x1"
+    "api"
    ]
   },
   {
@@ -729,15 +729,15 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line1",
-      "from": "m04",
-      "to": "m05",
+      "from": "m01",
+      "to": "m08",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "m04",
-    "m05"
+    "m01",
+    "m08"
    ]
   },
   {
@@ -750,15 +750,15 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line2",
-      "from": "x0",
-      "to": "x3",
+      "from": "m11",
+      "to": "m12",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "x0",
-    "x3"
+    "m11",
+    "m12"
    ]
   },
   {
@@ -780,7 +780,7 @@
      "op": "add",
      "element": {
       "id": "zz-plain-card-line",
-      "from": "m03",
+      "from": "m00",
       "to": "zz-plain-card",
       "label": "adds"
      }
@@ -788,7 +788,7 @@
    ],
    "touched": [
     "zz-plain-card",
-    "m03"
+    "m00"
    ]
   },
   {
@@ -799,12 +799,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "api-m15"
+     "id": "api-m06"
     }
    ],
    "touched": [
     "api",
-    "m15"
+    "m06"
    ]
   },
   {
@@ -815,13 +815,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "m13",
+     "id": "m08",
      "path": "label",
-     "value": "Export (renamed)"
+     "value": "Gateway (renamed)"
     }
    ],
    "touched": [
-    "m13"
+    "m08"
    ]
   },
   {
@@ -834,15 +834,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line1",
-      "from": "m02",
-      "to": "m09",
+      "from": "m09",
+      "to": "m14",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "m02",
-    "m09"
+    "m09",
+    "m14"
    ]
   },
   {
@@ -855,15 +855,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line2",
-      "from": "m09",
-      "to": "m15",
+      "from": "m07",
+      "to": "m13",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "m09",
-    "m15"
+    "m07",
+    "m13"
    ]
   },
   {
@@ -885,7 +885,7 @@
      "op": "add",
      "element": {
       "id": "zz-order-card-line",
-      "from": "o-refund",
+      "from": "o-ship",
       "to": "zz-order-card",
       "label": "adds"
      }
@@ -893,7 +893,7 @@
    ],
    "touched": [
     "zz-order-card",
-    "o-refund"
+    "o-ship"
    ]
   },
   {
@@ -904,12 +904,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "o-m2"
+     "id": "o-b3"
     }
    ],
    "touched": [
-    "o-cart",
-    "o-pay"
+    "o-refund",
+    "o-mail"
    ]
   },
   {
@@ -920,13 +920,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "o-ship",
+     "id": "o-ledger",
      "path": "label",
-     "value": "Shipping (renamed)"
+     "value": "Ledger (renamed)"
     }
    ],
    "touched": [
-    "o-ship"
+    "o-ledger"
    ]
   },
   {
@@ -939,15 +939,15 @@
      "op": "add",
      "element": {
       "id": "zz-order-line1",
-      "from": "o-web",
-      "to": "o-refund",
+      "from": "o-api",
+      "to": "o-pay",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "o-web",
-    "o-refund"
+    "o-api",
+    "o-pay"
    ]
   },
   {
@@ -960,15 +960,15 @@
      "op": "add",
      "element": {
       "id": "zz-order-line2",
-      "from": "o-web",
-      "to": "o-ship",
+      "from": "o-ship",
+      "to": "o-ledger",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "o-web",
-    "o-ship"
+    "o-ship",
+    "o-ledger"
    ]
   },
   {
@@ -990,7 +990,7 @@
      "op": "add",
      "element": {
       "id": "zz-signup-card-line",
-      "from": "s-check",
+      "from": "s-active",
       "to": "zz-signup-card",
       "label": "adds"
      }
@@ -998,7 +998,7 @@
    ],
    "touched": [
     "zz-signup-card",
-    "s-check"
+    "s-active"
    ]
   },
   {
@@ -1009,12 +1009,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s-m3"
+     "id": "s-b1"
     }
    ],
    "touched": [
     "s-check",
-    "s-active"
+    "s-review"
    ]
   },
   {
@@ -1025,13 +1025,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "s-review",
+     "id": "s-welcome",
      "path": "label",
-     "value": "Manual review (renamed)"
+     "value": "Welcome mail (renamed)"
     }
    ],
    "touched": [
-    "s-review"
+    "s-welcome"
    ]
   },
   {
@@ -1045,14 +1045,14 @@
      "element": {
       "id": "zz-signup-line1",
       "from": "s-check",
-      "to": "s-staff",
+      "to": "s-welcome",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "s-check",
-    "s-staff"
+    "s-welcome"
    ]
   },
   {
@@ -1065,15 +1065,15 @@
      "op": "add",
      "element": {
       "id": "zz-signup-line2",
-      "from": "s-user",
-      "to": "s-users",
+      "from": "s-staff",
+      "to": "s-active",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "s-user",
-    "s-users"
+    "s-staff",
+    "s-active"
    ]
   },
   {
@@ -1095,7 +1095,7 @@
      "op": "add",
      "element": {
       "id": "zz-ticket-card-line",
-      "from": "t-tickets",
+      "from": "t-fix",
       "to": "zz-ticket-card",
       "label": "adds"
      }
@@ -1103,7 +1103,7 @@
    ],
    "touched": [
     "zz-ticket-card",
-    "t-tickets"
+    "t-fix"
    ]
   },
   {
@@ -1114,12 +1114,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "t-m0"
+     "id": "t-m1"
     }
    ],
    "touched": [
-    "t-cust",
-    "t-desk"
+    "t-desk",
+    "t-triage"
    ]
   },
   {
@@ -1130,13 +1130,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "t-triage",
+     "id": "t-cust",
      "path": "label",
-     "value": "Triage (renamed)"
+     "value": "Customer (renamed)"
     }
    ],
    "touched": [
-    "t-triage"
+    "t-cust"
    ]
   },
   {
@@ -1149,15 +1149,15 @@
      "op": "add",
      "element": {
       "id": "zz-ticket-line1",
-      "from": "t-verify",
-      "to": "t-kb",
+      "from": "t-cust",
+      "to": "t-triage",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "t-verify",
-    "t-kb"
+    "t-cust",
+    "t-triage"
    ]
   },
   {
@@ -1170,15 +1170,15 @@
      "op": "add",
      "element": {
       "id": "zz-ticket-line2",
-      "from": "t-fix",
-      "to": "t-tickets",
+      "from": "t-cust",
+      "to": "t-kb",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "t-fix",
-    "t-tickets"
+    "t-cust",
+    "t-kb"
    ]
   },
   {
@@ -1200,7 +1200,7 @@
      "op": "add",
      "element": {
       "id": "zz-pipeline-card-line",
-      "from": "p-stage",
+      "from": "p-enrich",
       "to": "zz-pipeline-card",
       "label": "adds"
      }
@@ -1208,7 +1208,7 @@
    ],
    "touched": [
     "zz-pipeline-card",
-    "p-stage"
+    "p-enrich"
    ]
   },
   {
@@ -1219,12 +1219,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "p-d5"
+     "id": "p-m2"
     }
    ],
    "touched": [
-    "p-report",
-    "p-wh"
+    "p-clean",
+    "p-enrich"
    ]
   },
   {
@@ -1235,13 +1235,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "p-ingest",
+     "id": "p-src",
      "path": "label",
-     "value": "Ingest (renamed)"
+     "value": "Event source (renamed)"
     }
    ],
    "touched": [
-    "p-ingest"
+    "p-src"
    ]
   },
   {
@@ -1254,15 +1254,15 @@
      "op": "add",
      "element": {
       "id": "zz-pipeline-line1",
-      "from": "p-report",
-      "to": "p-stage",
+      "from": "p-src",
+      "to": "p-load",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "p-report",
-    "p-stage"
+    "p-src",
+    "p-load"
    ]
   },
   {
@@ -1275,14 +1275,14 @@
      "op": "add",
      "element": {
       "id": "zz-pipeline-line2",
-      "from": "p-report",
+      "from": "p-ingest",
       "to": "p-stage",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "p-report",
+    "p-ingest",
     "p-stage"
    ]
   },
@@ -1305,7 +1305,7 @@
      "op": "add",
      "element": {
       "id": "zz-order-boxed-card-line",
-      "from": "o-mail",
+      "from": "o-pay",
       "to": "zz-order-boxed-card",
       "label": "adds"
      }
@@ -1313,7 +1313,7 @@
    ],
    "touched": [
     "zz-order-boxed-card",
-    "o-mail"
+    "o-pay"
    ]
   },
   {
@@ -1324,12 +1324,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "o-m0"
+     "id": "o-b2"
     }
    ],
    "touched": [
-    "o-web",
-    "o-api"
+    "o-pay",
+    "o-refund"
    ]
   },
   {
@@ -1340,13 +1340,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "o-ship",
+     "id": "o-web",
      "path": "label",
-     "value": "Shipping (renamed)"
+     "value": "Storefront (renamed)"
     }
    ],
    "touched": [
-    "o-ship"
+    "o-web"
    ]
   },
   {
@@ -1360,14 +1360,14 @@
      "element": {
       "id": "zz-order-boxed-line1",
       "from": "o-web",
-      "to": "o-db",
+      "to": "o-mail",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "o-web",
-    "o-db"
+    "o-mail"
    ]
   },
   {
@@ -1396,7 +1396,8 @@
        "nodeIds": [
         "o-pay",
         "o-refund",
-        "o-ledger"
+        "o-ledger",
+        "o-db"
        ]
       },
       {
@@ -1404,8 +1405,7 @@
        "label": "Fulfilment",
        "nodeIds": [
         "o-ship",
-        "o-mail",
-        "o-db"
+        "o-mail"
        ]
       }
      ]
@@ -1434,7 +1434,7 @@
      "op": "add",
      "element": {
       "id": "zz-signup-boxed-card-line",
-      "from": "s-users",
+      "from": "s-active",
       "to": "zz-signup-boxed-card",
       "label": "adds"
      }
@@ -1442,7 +1442,7 @@
    ],
    "touched": [
     "zz-signup-boxed-card",
-    "s-users"
+    "s-active"
    ]
   },
   {
@@ -1453,12 +1453,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s-b3"
+     "id": "s-b2"
     }
    ],
    "touched": [
-    "s-review",
-    "s-active"
+    "s-staff",
+    "s-review"
    ]
   },
   {
@@ -1469,13 +1469,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "s-welcome",
+     "id": "s-active",
      "path": "label",
-     "value": "Welcome mail (renamed)"
+     "value": "Activate (renamed)"
     }
    ],
    "touched": [
-    "s-welcome"
+    "s-active"
    ]
   },
   {
@@ -1488,15 +1488,15 @@
      "op": "add",
      "element": {
       "id": "zz-signup-boxed-line1",
-      "from": "s-check",
-      "to": "s-users",
+      "from": "s-form",
+      "to": "s-staff",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "s-check",
-    "s-users"
+    "s-form",
+    "s-staff"
    ]
   },
   {
@@ -1517,7 +1517,8 @@
         "s-form",
         "s-acct",
         "s-active",
-        "s-welcome"
+        "s-welcome",
+        "s-user"
        ]
       },
       {
@@ -1525,15 +1526,14 @@
        "label": "Risk",
        "nodeIds": [
         "s-check",
-        "s-review",
-        "s-staff"
+        "s-review"
        ]
       }
      ]
     }
    ],
    "touched": [
-    "s-staff"
+    "s-user"
    ]
   },
   {
@@ -1555,7 +1555,7 @@
      "op": "add",
      "element": {
       "id": "zz-ticket-boxed-card-line",
-      "from": "t-tickets",
+      "from": "t-verify",
       "to": "zz-ticket-boxed-card",
       "label": "adds"
      }
@@ -1563,7 +1563,7 @@
    ],
    "touched": [
     "zz-ticket-boxed-card",
-    "t-tickets"
+    "t-verify"
    ]
   },
   {
@@ -1574,12 +1574,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "t-b1"
+     "id": "t-b2"
     }
    ],
    "touched": [
-    "t-triage",
-    "t-kb"
+    "t-kb",
+    "t-close"
    ]
   },
   {
@@ -1590,13 +1590,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "t-cust",
+     "id": "t-close",
      "path": "label",
-     "value": "Customer (renamed)"
+     "value": "Close (renamed)"
     }
    ],
    "touched": [
-    "t-cust"
+    "t-close"
    ]
   },
   {
@@ -1610,14 +1610,14 @@
      "element": {
       "id": "zz-ticket-boxed-line1",
       "from": "t-cust",
-      "to": "t-tickets",
+      "to": "t-close",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "t-cust",
-    "t-tickets"
+    "t-close"
    ]
   },
   {
@@ -1637,8 +1637,7 @@
        "nodeIds": [
         "t-desk",
         "t-triage",
-        "t-kb",
-        "t-cust"
+        "t-kb"
        ]
       },
       {
@@ -1646,7 +1645,8 @@
        "label": "Engineering",
        "nodeIds": [
         "t-fix",
-        "t-verify"
+        "t-verify",
+        "t-cust"
        ]
       }
      ]
@@ -1675,7 +1675,7 @@
      "op": "add",
      "element": {
       "id": "zz-pipeline-boxed-card-line",
-      "from": "p-src",
+      "from": "p-raw",
       "to": "zz-pipeline-boxed-card",
       "label": "adds"
      }
@@ -1683,7 +1683,7 @@
    ],
    "touched": [
     "zz-pipeline-boxed-card",
-    "p-src"
+    "p-raw"
    ]
   },
   {
@@ -1694,12 +1694,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "p-d4"
+     "id": "p-m4"
     }
    ],
    "touched": [
     "p-load",
-    "p-wh"
+    "p-report"
    ]
   },
   {
@@ -1729,15 +1729,15 @@
      "op": "add",
      "element": {
       "id": "zz-pipeline-boxed-line1",
-      "from": "p-clean",
-      "to": "p-report",
+      "from": "p-stage",
+      "to": "p-log",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "p-clean",
-    "p-report"
+    "p-stage",
+    "p-log"
    ]
   },
   {
@@ -1786,6 +1786,256 @@
    ]
   },
   {
+   "id": "f12/onboard/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "onboard"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-card-line",
+      "from": "n-kyc",
+      "to": "zz-onboard-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-onboard-card",
+    "n-kyc"
+   ]
+  },
+  {
+   "id": "f12/onboard/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "n-m12"
+    }
+   ],
+   "touched": [
+    "n-project",
+    "n-hooks"
+   ]
+  },
+  {
+   "id": "f12/onboard/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n-live",
+     "path": "label",
+     "value": "Go live (renamed)"
+    }
+   ],
+   "touched": [
+    "n-live"
+   ]
+  },
+  {
+   "id": "f12/onboard/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-line1",
+      "from": "n-project",
+      "to": "n-declined",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-project",
+    "n-declined"
+   ]
+  },
+  {
+   "id": "f12/onboard/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-line2",
+      "from": "n-visit",
+      "to": "n-team",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-visit",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "onboard-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-card-line",
+      "from": "n-live",
+      "to": "zz-onboard-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-onboard-boxed-card",
+    "n-live"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "n-m7"
+    }
+   ],
+   "touched": [
+    "n-receipt",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n-plan",
+     "path": "label",
+     "value": "Choose plan (renamed)"
+    }
+   ],
+   "touched": [
+    "n-plan"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-line1",
+      "from": "n-verify",
+      "to": "n-team",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-verify",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "onboard-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "nb-signup",
+       "label": "Sign-up",
+       "nodeIds": [
+        "n-visit",
+        "n-form",
+        "n-verify",
+        "n-profile"
+       ]
+      },
+      {
+       "id": "nb-billing",
+       "label": "Billing",
+       "nodeIds": [
+        "n-plan",
+        "n-pay",
+        "n-kyc",
+        "n-receipt",
+        "n-declined"
+       ]
+      },
+      {
+       "id": "nb-setup",
+       "label": "Setup",
+       "nodeIds": [
+        "n-team",
+        "n-import",
+        "n-setup",
+        "n-tour",
+        "n-mapping"
+       ]
+      },
+      {
+       "id": "nb-launch",
+       "label": "Launch",
+       "nodeIds": [
+        "n-project",
+        "n-hooks",
+        "n-health",
+        "n-live",
+        "n-accounts"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "n-accounts"
+   ]
+  },
+  {
    "id": "i59/context/1-add-card",
    "model": "bench/models/i59.json",
    "view": "context",
@@ -1804,7 +2054,7 @@
      "op": "add",
      "element": {
       "id": "zz-context-card-line",
-      "from": "city",
+      "from": "riders",
       "to": "zz-context-card",
       "label": "adds"
      }
@@ -1812,7 +2062,7 @@
    ],
    "touched": [
     "zz-context-card",
-    "city"
+    "riders"
    ]
   },
   {
@@ -1823,11 +2073,11 @@
    "commands": [
     {
      "op": "delete",
-     "id": "c2"
+     "id": "c1"
     }
    ],
    "touched": [
-    "ops",
+    "riders",
     "mopedshare"
    ]
   },
@@ -1839,13 +2089,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "mopedshare",
+     "id": "city",
      "path": "label",
-     "value": "Moped share (renamed)"
+     "value": "City data portal (renamed)"
     }
    ],
    "touched": [
-    "mopedshare"
+    "city"
    ]
   },
   {
@@ -1858,15 +2108,15 @@
      "op": "add",
      "element": {
       "id": "zz-context-line1",
-      "from": "riders",
-      "to": "city",
+      "from": "payments",
+      "to": "maps",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "riders",
-    "city"
+    "payments",
+    "maps"
    ]
   },
   {
@@ -1879,15 +2129,15 @@
      "op": "add",
      "element": {
       "id": "zz-context-line2",
-      "from": "riders",
-      "to": "ops",
+      "from": "ops",
+      "to": "payments",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "riders",
-    "ops"
+    "ops",
+    "payments"
    ]
   },
   {
@@ -1909,7 +2159,7 @@
      "op": "add",
      "element": {
       "id": "zz-system-card-line",
-      "from": "trips",
+      "from": "ops",
       "to": "zz-system-card",
       "label": "adds"
      }
@@ -1917,7 +2167,7 @@
    ],
    "touched": [
     "zz-system-card",
-    "trips"
+    "ops"
    ]
   },
   {
@@ -1928,12 +2178,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s11"
+     "id": "s1"
     }
    ],
    "touched": [
-    "telemetry",
-    "fleet"
+    "riders",
+    "rider-app"
    ]
   },
   {
@@ -1944,13 +2194,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "monitoring",
+     "id": "ops-console",
      "path": "label",
-     "value": "Monitoring (renamed)"
+     "value": "Ops console (renamed)"
     }
    ],
    "touched": [
-    "monitoring"
+    "ops-console"
    ]
   },
   {
@@ -1963,15 +2213,15 @@
      "op": "add",
      "element": {
       "id": "zz-system-line1",
-      "from": "ops",
-      "to": "flags",
+      "from": "tripsdb",
+      "to": "ops",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "ops",
-    "flags"
+    "tripsdb",
+    "ops"
    ]
   },
   {
@@ -1990,7 +2240,8 @@
        "label": "Apps",
        "nodeIds": [
         "rider-app",
-        "ops-console"
+        "ops-console",
+        "payments"
        ],
        "badges": [
         "iOS · Android · web"
@@ -2019,8 +2270,7 @@
         "telemetry",
         "fleet",
         "charging",
-        "warehouse",
-        "riders"
+        "warehouse"
        ],
        "badges": [
         {
@@ -2033,7 +2283,7 @@
     }
    ],
    "touched": [
-    "riders"
+    "payments"
    ]
   },
   {
@@ -2055,7 +2305,7 @@
      "op": "add",
      "element": {
       "id": "zz-trips-card-line",
-      "from": "payments",
+      "from": "lifecycle",
       "to": "zz-trips-card",
       "label": "adds"
      },
@@ -2064,7 +2314,7 @@
    ],
    "touched": [
     "zz-trips-card",
-    "payments"
+    "lifecycle"
    ]
   },
   {
@@ -2091,13 +2341,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "pricing",
+     "id": "trip-repo",
      "path": "label",
-     "value": "Pricing (renamed)"
+     "value": "Trip repository (renamed)"
     }
    ],
    "touched": [
-    "pricing"
+    "trip-repo"
    ]
   },
   {
@@ -2110,7 +2360,7 @@
      "op": "add",
      "element": {
       "id": "zz-trips-line1",
-      "from": "rider-app",
+      "from": "payments",
       "to": "trip-repo",
       "label": "adds"
      },
@@ -2118,7 +2368,7 @@
     }
    ],
    "touched": [
-    "rider-app",
+    "payments",
     "trip-repo"
    ]
   },
@@ -2132,16 +2382,16 @@
      "op": "add",
      "element": {
       "id": "zz-trips-line2",
-      "from": "unlock",
-      "to": "telemetry",
+      "from": "stations",
+      "to": "trip-repo",
       "label": "adds"
      },
      "view": "trips"
     }
    ],
    "touched": [
-    "unlock",
-    "telemetry"
+    "stations",
+    "trip-repo"
    ]
   },
   {
@@ -2163,7 +2413,7 @@
      "op": "add",
      "element": {
       "id": "zz-fleet-card-line",
-      "from": "forecast",
+      "from": "warehouse",
       "to": "zz-fleet-card",
       "label": "adds"
      },
@@ -2172,7 +2422,7 @@
    ],
    "touched": [
     "zz-fleet-card",
-    "forecast"
+    "warehouse"
    ]
   },
   {
@@ -2199,13 +2449,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "warehouse",
+     "id": "planner",
      "path": "label",
-     "value": "Warehouse (renamed)"
+     "value": "Rebalance planner (renamed)"
     }
    ],
    "touched": [
-    "warehouse"
+    "planner"
    ]
   },
   {
@@ -2218,16 +2468,16 @@
      "op": "add",
      "element": {
       "id": "zz-fleet-line1",
-      "from": "forecast",
-      "to": "fleet-api",
+      "from": "battery-service",
+      "to": "warehouse",
       "label": "adds"
      },
      "view": "fleet"
     }
    ],
    "touched": [
-    "forecast",
-    "fleet-api"
+    "battery-service",
+    "warehouse"
    ]
   },
   {
@@ -2240,16 +2490,16 @@
      "op": "add",
      "element": {
       "id": "zz-fleet-line2",
-      "from": "forecast",
-      "to": "ops-console",
+      "from": "telemetry",
+      "to": "fleet-api",
       "label": "adds"
      },
      "view": "fleet"
     }
    ],
    "touched": [
-    "forecast",
-    "ops-console"
+    "telemetry",
+    "fleet-api"
    ]
   },
   {
@@ -2271,7 +2521,7 @@
      "op": "add",
      "element": {
       "id": "zz-ride-end-card-line",
-      "from": "payments",
+      "from": "trip-api",
       "to": "zz-ride-end-card",
       "label": "adds"
      },
@@ -2280,7 +2530,7 @@
    ],
    "touched": [
     "zz-ride-end-card",
-    "payments"
+    "trip-api"
    ]
   },
   {
@@ -2291,13 +2541,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "fare",
+     "id": "lifecycle",
      "path": "label",
-     "value": "Fare calculator (renamed)"
+     "value": "Trip lifecycle (renamed)"
     }
    ],
    "touched": [
-    "fare"
+    "lifecycle"
    ]
   },
   {
@@ -2310,16 +2560,16 @@
      "op": "add",
      "element": {
       "id": "zz-ride-end-line1",
-      "from": "rider-app",
-      "to": "fare",
+      "from": "fare",
+      "to": "pricing",
       "label": "adds"
      },
      "view": "ride-end"
     }
    ],
    "touched": [
-    "rider-app",
-    "fare"
+    "fare",
+    "pricing"
    ]
   },
   {
@@ -2333,7 +2583,7 @@
      "element": {
       "id": "zz-ride-end-line2",
       "from": "rider-app",
-      "to": "lifecycle",
+      "to": "trip-events",
       "label": "adds"
      },
      "view": "ride-end"
@@ -2341,7 +2591,7 @@
    ],
    "touched": [
     "rider-app",
-    "lifecycle"
+    "trip-events"
    ]
   },
   {
@@ -2382,12 +2632,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e10"
+     "id": "e3"
     }
    ],
    "touched": [
-    "github",
-    "hosts"
+    "edge",
+    "api"
    ]
   },
   {
@@ -2398,13 +2648,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "shop-payments",
+     "id": "hosts",
      "path": "label",
-     "value": "Payment provider (renamed)"
+     "value": "Hosts (renamed)"
     }
    ],
    "touched": [
-    "shop-payments"
+    "hosts"
    ]
   },
   {
@@ -2417,15 +2667,15 @@
      "op": "add",
      "element": {
       "id": "zz-overview-line1",
-      "from": "edge",
-      "to": "shop-accounts",
+      "from": "storefront",
+      "to": "shop-payments",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "edge",
-    "shop-accounts"
+    "storefront",
+    "shop-payments"
    ]
   },
   {
@@ -2438,15 +2688,15 @@
      "op": "add",
      "element": {
       "id": "zz-overview-line2",
-      "from": "storefront",
-      "to": "worker",
+      "from": "hosts",
+      "to": "grafana",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "storefront",
-    "worker"
+    "hosts",
+    "grafana"
    ]
   },
   {
@@ -2468,7 +2718,7 @@
      "op": "add",
      "element": {
       "id": "zz-api-card-line",
-      "from": "queue",
+      "from": "shop-payments",
       "to": "zz-api-card",
       "label": "adds"
      },
@@ -2477,7 +2727,7 @@
    ],
    "touched": [
     "zz-api-card",
-    "queue"
+    "shop-payments"
    ]
   },
   {
@@ -2488,12 +2738,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "e6"
+     "id": "e9"
     }
    ],
    "touched": [
-    "api",
-    "shop-payments"
+    "worker",
+    "mail"
    ]
   },
   {
@@ -2504,13 +2754,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "shop-payments",
+     "id": "shoppers",
      "path": "label",
-     "value": "Payment provider (renamed)"
+     "value": "Shoppers (renamed)"
     }
    ],
    "touched": [
-    "shop-payments"
+    "shoppers"
    ]
   },
   {
@@ -2523,16 +2773,16 @@
      "op": "add",
      "element": {
       "id": "zz-api-line1",
-      "from": "shop-payments",
-      "to": "worker",
+      "from": "shoppers",
+      "to": "api",
       "label": "adds"
      },
      "view": "api"
     }
    ],
    "touched": [
-    "shop-payments",
-    "worker"
+    "shoppers",
+    "api"
    ]
   },
   {
@@ -2545,16 +2795,16 @@
      "op": "add",
      "element": {
       "id": "zz-api-line2",
-      "from": "queue",
-      "to": "worker",
+      "from": "shoppers",
+      "to": "queue",
       "label": "adds"
      },
      "view": "api"
     }
    ],
    "touched": [
-    "queue",
-    "worker"
+    "shoppers",
+    "queue"
    ]
   },
   {
@@ -2576,7 +2826,7 @@
      "op": "add",
      "element": {
       "id": "zz-checkout-card-line",
-      "from": "storefront",
+      "from": "mail",
       "to": "zz-checkout-card",
       "label": "adds"
      },
@@ -2585,7 +2835,7 @@
    ],
    "touched": [
     "zz-checkout-card",
-    "storefront"
+    "mail"
    ]
   },
   {
@@ -2596,13 +2846,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "storefront",
+     "id": "shoppers",
      "path": "label",
-     "value": "Storefront (renamed)"
+     "value": "Shoppers (renamed)"
     }
    ],
    "touched": [
-    "storefront"
+    "shoppers"
    ]
   },
   {
@@ -2615,16 +2865,16 @@
      "op": "add",
      "element": {
       "id": "zz-checkout-line1",
-      "from": "storefront",
-      "to": "mail",
+      "from": "shoppers",
+      "to": "storefront",
       "label": "adds"
      },
      "view": "checkout"
     }
    ],
    "touched": [
-    "storefront",
-    "mail"
+    "shoppers",
+    "storefront"
    ]
   },
   {
@@ -2654,14 +2904,14 @@
        "nodeIds": [
         "queue",
         "worker",
-        "shop-payments"
+        "shoppers"
        ]
       }
      ]
     }
    ],
    "touched": [
-    "shop-payments"
+    "shoppers"
    ]
   },
   {
@@ -2683,7 +2933,7 @@
      "op": "add",
      "element": {
       "id": "zz-dock-feed-card-line",
-      "from": "dock-quarantine",
+      "from": "telemetry-store",
       "to": "zz-dock-feed-card",
       "label": "adds"
      },
@@ -2692,7 +2942,7 @@
    ],
    "touched": [
     "zz-dock-feed-card",
-    "dock-quarantine"
+    "telemetry-store"
    ]
   },
   {
@@ -2703,12 +2953,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "df1"
+     "id": "df7"
     }
    ],
    "touched": [
-    "stations",
-    "dock-gateway"
+    "jump-check",
+    "telemetry-store"
    ]
   },
   {
@@ -2719,13 +2969,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "dock-settings",
+     "id": "dock-gateway",
      "path": "label",
-     "value": "Dock settings (renamed)"
+     "value": "Dock gateway (renamed)"
     }
    ],
    "touched": [
-    "dock-settings"
+    "dock-gateway"
    ]
   },
   {
@@ -2739,7 +2989,7 @@
      "element": {
       "id": "zz-dock-feed-line1",
       "from": "dock-gateway",
-      "to": "dock-quarantine",
+      "to": "jump-check",
       "label": "adds"
      },
      "view": "dock-feed"
@@ -2747,7 +2997,7 @@
    ],
    "touched": [
     "dock-gateway",
-    "dock-quarantine"
+    "jump-check"
    ]
   },
   {
@@ -2766,7 +3016,7 @@
        "label": "Check service",
        "nodeIds": [
         "dock-quarantine",
-        "telemetry"
+        "stations"
        ],
        "badges": [
         {
@@ -2791,7 +3041,7 @@
     }
    ],
    "touched": [
-    "telemetry"
+    "stations"
    ]
   },
   {
@@ -2833,13 +3083,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "model-registry",
+     "id": "weather-feed",
      "path": "label",
-     "value": "Model registry (renamed)"
+     "value": "Weather feed (renamed)"
     }
    ],
    "touched": [
-    "model-registry"
+    "weather-feed"
    ]
   },
   {
@@ -2853,7 +3103,7 @@
      "element": {
       "id": "zz-demand-line1",
       "from": "weather-feed",
-      "to": "planner",
+      "to": "ops-console",
       "label": "adds"
      },
      "view": "demand"
@@ -2861,7 +3111,7 @@
    ],
    "touched": [
     "weather-feed",
-    "planner"
+    "ops-console"
    ]
   },
   {
@@ -2875,7 +3125,7 @@
      "element": {
       "id": "zz-demand-line2",
       "from": "forecast",
-      "to": "warehouse",
+      "to": "weather-feed",
       "label": "adds"
      },
      "view": "demand"
@@ -2883,7 +3133,7 @@
    ],
    "touched": [
     "forecast",
-    "warehouse"
+    "weather-feed"
    ]
   },
   {
@@ -2905,7 +3155,7 @@
      "op": "add",
      "element": {
       "id": "zz-help-card-line",
-      "from": "help-thread",
+      "from": "help-review",
       "to": "zz-help-card",
       "label": "adds"
      },
@@ -2914,7 +3164,7 @@
    ],
    "touched": [
     "zz-help-card",
-    "help-thread"
+    "help-review"
    ]
   },
   {
@@ -2944,16 +3194,16 @@
      "op": "add",
      "element": {
       "id": "zz-help-line1",
-      "from": "help-review",
-      "to": "help-thread",
+      "from": "help-llm",
+      "to": "help-redact",
       "label": "adds"
      },
      "view": "help"
     }
    ],
    "touched": [
-    "help-review",
-    "help-thread"
+    "help-llm",
+    "help-redact"
    ]
   },
   {
@@ -2966,16 +3216,16 @@
      "op": "add",
      "element": {
       "id": "zz-help-line2",
-      "from": "rider-app",
-      "to": "help-llm",
+      "from": "help-review",
+      "to": "help-thread",
       "label": "adds"
      },
      "view": "help"
     }
    ],
    "touched": [
-    "rider-app",
-    "help-llm"
+    "help-review",
+    "help-thread"
    ]
   },
   {
@@ -2997,7 +3247,7 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-card-line",
-      "from": "packages/server/mailer",
+      "from": "packages/ui/tokens",
       "to": "zz-boxed-card",
       "label": "adds"
      }
@@ -3005,7 +3255,7 @@
    ],
    "touched": [
     "zz-boxed-card",
-    "packages/server/mailer"
+    "packages/ui/tokens"
    ]
   },
   {
@@ -3016,13 +3266,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "packages/server/db",
+     "id": "tools/release",
      "path": "label",
-     "value": "db (renamed)"
+     "value": "release (renamed)"
     }
    ],
    "touched": [
-    "packages/server/db"
+    "tools/release"
    ]
   },
   {
@@ -3035,15 +3285,15 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line1",
-      "from": "packages/ui/kit",
-      "to": "packages/server/mailer",
+      "from": "apps/admin",
+      "to": "services/api",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "packages/ui/kit",
-    "packages/server/mailer"
+    "apps/admin",
+    "services/api"
    ]
   },
   {
@@ -3056,15 +3306,15 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line2",
-      "from": "apps/web",
-      "to": "apps/admin",
+      "from": "apps/mobile",
+      "to": "packages/server/auth",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "apps/web",
-    "apps/admin"
+    "apps/mobile",
+    "packages/server/auth"
    ]
   },
   {
@@ -3086,7 +3336,7 @@
      "op": "add",
      "element": {
       "id": "zz-plain-card-line",
-      "from": "packages/shared/schemas",
+      "from": "packages/server/mailer",
       "to": "zz-plain-card",
       "label": "adds"
      }
@@ -3094,7 +3344,7 @@
    ],
    "touched": [
     "zz-plain-card",
-    "packages/shared/schemas"
+    "packages/server/mailer"
    ]
   },
   {
@@ -3105,13 +3355,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "apps/admin",
+     "id": "tools/release",
      "path": "label",
-     "value": "admin (renamed)"
+     "value": "release (renamed)"
     }
    ],
    "touched": [
-    "apps/admin"
+    "tools/release"
    ]
   },
   {
@@ -3124,15 +3374,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line1",
-      "from": "apps/mobile",
-      "to": "services/worker",
+      "from": "packages/server/db",
+      "to": "tools/release",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "apps/mobile",
-    "services/worker"
+    "packages/server/db",
+    "tools/release"
    ]
   },
   {
@@ -3145,15 +3395,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line2",
-      "from": "packages/ui/tokens",
-      "to": "packages/server/mailer",
+      "from": "packages/ui/kit",
+      "to": "packages/shared/api-client",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "packages/ui/tokens",
-    "packages/server/mailer"
+    "packages/ui/kit",
+    "packages/shared/api-client"
    ]
   },
   {
@@ -3175,7 +3425,7 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-card-line",
-      "from": "packages/server/mailer",
+      "from": "packages/shared/logger",
       "to": "zz-boxed-card",
       "label": "adds"
      }
@@ -3183,7 +3433,7 @@
    ],
    "touched": [
     "zz-boxed-card",
-    "packages/server/mailer"
+    "packages/shared/logger"
    ]
   },
   {
@@ -3194,13 +3444,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "packages/server/mailer",
+     "id": "packages/shared/schemas",
      "path": "label",
-     "value": "mailer (renamed)"
+     "value": "schemas (renamed)"
     }
    ],
    "touched": [
-    "packages/server/mailer"
+    "packages/shared/schemas"
    ]
   },
   {
@@ -3213,14 +3463,14 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line1",
-      "from": "packages/ui/charts",
+      "from": "services/api",
       "to": "packages/server/mailer",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "packages/ui/charts",
+    "services/api",
     "packages/server/mailer"
    ]
   },
@@ -3234,15 +3484,15 @@
      "op": "add",
      "element": {
       "id": "zz-boxed-line2",
-      "from": "packages/ui/kit",
-      "to": "packages/server/mailer",
+      "from": "packages/ui/charts",
+      "to": "packages/server/db",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "packages/ui/kit",
-    "packages/server/mailer"
+    "packages/ui/charts",
+    "packages/server/db"
    ]
   },
   {
@@ -3264,7 +3514,7 @@
      "op": "add",
      "element": {
       "id": "zz-plain-card-line",
-      "from": "tools/release",
+      "from": "packages/ui/tokens",
       "to": "zz-plain-card",
       "label": "adds"
      }
@@ -3272,7 +3522,7 @@
    ],
    "touched": [
     "zz-plain-card",
-    "tools/release"
+    "packages/ui/tokens"
    ]
   },
   {
@@ -3283,13 +3533,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "apps/admin",
+     "id": "packages/shared/i18n",
      "path": "label",
-     "value": "admin (renamed)"
+     "value": "i18n (renamed)"
     }
    ],
    "touched": [
-    "apps/admin"
+    "packages/shared/i18n"
    ]
   },
   {
@@ -3302,15 +3552,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line1",
-      "from": "apps/web",
-      "to": "packages/shared/logger",
+      "from": "packages/shared/api-client",
+      "to": "packages/server/queue",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "apps/web",
-    "packages/shared/logger"
+    "packages/shared/api-client",
+    "packages/server/queue"
    ]
   },
   {
@@ -3323,15 +3573,15 @@
      "op": "add",
      "element": {
       "id": "zz-plain-line2",
-      "from": "services/search",
-      "to": "packages/ui/charts",
+      "from": "packages/server/db",
+      "to": "packages/server/queue",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "services/search",
-    "packages/ui/charts"
+    "packages/server/db",
+    "packages/server/queue"
    ]
   },
   {
@@ -3353,7 +3603,7 @@
      "op": "add",
      "element": {
       "id": "zz-site-card-line",
-      "from": "bank",
+      "from": "web",
       "to": "zz-site-card",
       "label": "adds"
      }
@@ -3361,7 +3611,7 @@
    ],
    "touched": [
     "zz-site-card",
-    "bank"
+    "web"
    ]
   },
   {
@@ -3372,12 +3622,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s1"
+     "id": "s2"
     }
    ],
    "touched": [
-    "user",
-    "web"
+    "web",
+    "job"
    ]
   },
   {
@@ -3388,13 +3638,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "user",
+     "id": "bank",
      "path": "label",
-     "value": "Customer (renamed)"
+     "value": "Card bank (renamed)"
     }
    ],
    "touched": [
-    "user"
+    "bank"
    ]
   },
   {
@@ -3407,15 +3657,15 @@
      "op": "add",
      "element": {
       "id": "zz-site-line1",
-      "from": "web",
-      "to": "pay",
+      "from": "store",
+      "to": "courier",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "web",
-    "pay"
+    "store",
+    "courier"
    ]
   },
   {
@@ -3428,15 +3678,15 @@
      "op": "add",
      "element": {
       "id": "zz-site-line2",
-      "from": "user",
-      "to": "bank",
+      "from": "web",
+      "to": "store",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "user",
-    "bank"
+    "web",
+    "store"
    ]
   },
   {
@@ -3478,13 +3728,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "printer",
+     "id": "crop",
      "path": "label",
-     "value": "Printer (renamed)"
+     "value": "Crop (renamed)"
     }
    ],
    "touched": [
-    "printer"
+    "crop"
    ]
   },
   {
@@ -3498,7 +3748,7 @@
      "element": {
       "id": "zz-job-line1",
       "from": "crop",
-      "to": "store",
+      "to": "pay",
       "label": "adds"
      },
      "view": "job"
@@ -3506,7 +3756,7 @@
    ],
    "touched": [
     "crop",
-    "store"
+    "pay"
    ]
   },
   {
@@ -3519,16 +3769,16 @@
      "op": "add",
      "element": {
       "id": "zz-job-line2",
-      "from": "colour",
-      "to": "pack",
+      "from": "printer",
+      "to": "qa",
       "label": "adds"
      },
      "view": "job"
     }
    ],
    "touched": [
-    "colour",
-    "pack"
+    "printer",
+    "qa"
    ]
   },
   {
@@ -3550,7 +3800,7 @@
      "op": "add",
      "element": {
       "id": "zz-pay-card-line",
-      "from": "p-charge",
+      "from": "p-check",
       "to": "zz-pay-card",
       "label": "adds"
      },
@@ -3559,7 +3809,7 @@
    ],
    "touched": [
     "zz-pay-card",
-    "p-charge"
+    "p-check"
    ]
   },
   {
@@ -3570,13 +3820,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "p-ledger",
+     "id": "p-charge",
      "path": "label",
-     "value": "Ledger (renamed)"
+     "value": "Charge (renamed)"
     }
    ],
    "touched": [
-    "p-ledger"
+    "p-charge"
    ]
   },
   {
@@ -3590,7 +3840,7 @@
      "element": {
       "id": "zz-pay-line1",
       "from": "p-charge",
-      "to": "p-ledger",
+      "to": "bank",
       "label": "adds"
      },
      "view": "pay"
@@ -3598,7 +3848,7 @@
    ],
    "touched": [
     "p-charge",
-    "p-ledger"
+    "bank"
    ]
   },
   {
@@ -3612,7 +3862,7 @@
      "element": {
       "id": "zz-pay-line2",
       "from": "p-retry",
-      "to": "bank",
+      "to": "p-ledger",
       "label": "adds"
      },
      "view": "pay"
@@ -3620,7 +3870,7 @@
    ],
    "touched": [
     "p-retry",
-    "bank"
+    "p-ledger"
    ]
   },
   {
@@ -3642,7 +3892,7 @@
      "op": "add",
      "element": {
       "id": "zz-shop-card-line",
-      "from": "reports",
+      "from": "orders",
       "to": "zz-shop-card",
       "label": "adds"
      }
@@ -3650,7 +3900,7 @@
    ],
    "touched": [
     "zz-shop-card",
-    "reports"
+    "orders"
    ]
   },
   {
@@ -3661,12 +3911,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s3"
+     "id": "s6"
     }
    ],
    "touched": [
-    "orders",
-    "payments"
+    "warehouse",
+    "stock"
    ]
   },
   {
@@ -3677,13 +3927,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "catalog",
+     "id": "payments",
      "path": "label",
-     "value": "Catalog (renamed)"
+     "value": "Card payments (renamed)"
     }
    ],
    "touched": [
-    "catalog"
+    "payments"
    ]
   },
   {
@@ -3696,15 +3946,15 @@
      "op": "add",
      "element": {
       "id": "zz-shop-line1",
-      "from": "stock",
-      "to": "catalog",
+      "from": "buyers",
+      "to": "orders",
       "label": "adds"
      }
     }
    ],
    "touched": [
-    "stock",
-    "catalog"
+    "buyers",
+    "orders"
    ]
   },
   {
@@ -3718,14 +3968,14 @@
      "element": {
       "id": "zz-shop-line2",
       "from": "web",
-      "to": "ops",
+      "to": "warehouse",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "web",
-    "ops"
+    "warehouse"
    ]
   },
   {
@@ -3747,7 +3997,7 @@
      "op": "add",
      "element": {
       "id": "zz-teams-card-line",
-      "from": "stock",
+      "from": "payments",
       "to": "zz-teams-card",
       "label": "adds"
      }
@@ -3755,7 +4005,7 @@
    ],
    "touched": [
     "zz-teams-card",
-    "stock"
+    "payments"
    ]
   },
   {
@@ -3766,12 +4016,12 @@
    "commands": [
     {
      "op": "delete",
-     "id": "s2"
+     "id": "s7"
     }
    ],
    "touched": [
-    "web",
-    "orders"
+    "ops",
+    "warehouse"
    ]
   },
   {
@@ -3782,13 +4032,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "web",
+     "id": "ops",
      "path": "label",
-     "value": "Web shop (renamed)"
+     "value": "Ops console (renamed)"
     }
    ],
    "touched": [
-    "web"
+    "ops"
    ]
   },
   {
@@ -3802,14 +4052,14 @@
      "element": {
       "id": "zz-teams-line1",
       "from": "web",
-      "to": "warehouse",
+      "to": "stock",
       "label": "adds"
      }
     }
    ],
    "touched": [
     "web",
-    "warehouse"
+    "stock"
    ]
   },
   {
@@ -3837,14 +4087,14 @@
        "nodeIds": [
         "ops",
         "warehouse",
-        "payments"
+        "stock"
        ]
       }
      ]
     }
    ],
    "touched": [
-    "payments"
+    "stock"
    ]
   },
   {
@@ -3866,7 +4116,7 @@
      "op": "add",
      "element": {
       "id": "zz-orders-card-line",
-      "from": "o-cart",
+      "from": "stock",
       "to": "zz-orders-card",
       "label": "adds"
      },
@@ -3875,7 +4125,7 @@
    ],
    "touched": [
     "zz-orders-card",
-    "o-cart"
+    "stock"
    ]
   },
   {
@@ -3886,13 +4136,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "warehouse",
+     "id": "o-cart",
      "path": "label",
-     "value": "Warehouse service (renamed)"
+     "value": "Carts (renamed)"
     }
    ],
    "touched": [
-    "warehouse"
+    "o-cart"
    ]
   },
   {
@@ -3905,16 +4155,16 @@
      "op": "add",
      "element": {
       "id": "zz-orders-line1",
-      "from": "web",
-      "to": "payments",
+      "from": "o-api",
+      "to": "stock",
       "label": "adds"
      },
      "view": "orders"
     }
    ],
    "touched": [
-    "web",
-    "payments"
+    "o-api",
+    "stock"
    ]
   },
   {
@@ -3934,14 +4184,14 @@
        "nodeIds": [
         "o-cart",
         "o-checkout",
-        "o-repo"
+        "o-api"
        ]
       }
      ]
     }
    ],
    "touched": [
-    "o-repo"
+    "o-api"
    ]
   },
   {
@@ -3963,7 +4213,7 @@
      "op": "add",
      "element": {
       "id": "zz-checkout-card-line",
-      "from": "o-api",
+      "from": "o-repo",
       "to": "zz-checkout-card",
       "label": "adds"
      },
@@ -3972,7 +4222,7 @@
    ],
    "touched": [
     "zz-checkout-card",
-    "o-api"
+    "o-repo"
    ]
   },
   {
@@ -3983,13 +4233,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "o-api",
+     "id": "payments",
      "path": "label",
-     "value": "Order API (renamed)"
+     "value": "Card payments (renamed)"
     }
    ],
    "touched": [
-    "o-api"
+    "payments"
    ]
   },
   {
@@ -4002,7 +4252,7 @@
      "op": "add",
      "element": {
       "id": "zz-checkout-line1",
-      "from": "c-fraud",
+      "from": "c-tax",
       "to": "payments",
       "label": "adds"
      },
@@ -4010,7 +4260,7 @@
     }
    ],
    "touched": [
-    "c-fraud",
+    "c-tax",
     "payments"
    ]
   },
@@ -4024,16 +4274,16 @@
      "op": "add",
      "element": {
       "id": "zz-checkout-line2",
-      "from": "c-tax",
-      "to": "c-fraud",
+      "from": "payments",
+      "to": "o-repo",
       "label": "adds"
      },
      "view": "checkout"
     }
    ],
    "touched": [
-    "c-tax",
-    "c-fraud"
+    "payments",
+    "o-repo"
    ]
   },
   {
@@ -4055,7 +4305,7 @@
      "op": "add",
      "element": {
       "id": "zz-warehouse-card-line",
-      "from": "orders",
+      "from": "stock",
       "to": "zz-warehouse-card",
       "label": "adds"
      },
@@ -4064,7 +4314,7 @@
    ],
    "touched": [
     "zz-warehouse-card",
-    "orders"
+    "stock"
    ]
   },
   {
@@ -4075,13 +4325,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "ops",
+     "id": "w-pick",
      "path": "label",
-     "value": "Ops console (renamed)"
+     "value": "Picking (renamed)"
     }
    ],
    "touched": [
-    "ops"
+    "w-pick"
    ]
   },
   {
@@ -4095,7 +4345,7 @@
      "element": {
       "id": "zz-warehouse-line1",
       "from": "ops",
-      "to": "stock",
+      "to": "w-api",
       "label": "adds"
      },
      "view": "warehouse"
@@ -4103,7 +4353,7 @@
    ],
    "touched": [
     "ops",
-    "stock"
+    "w-api"
    ]
   },
   {
@@ -4116,16 +4366,16 @@
      "op": "add",
      "element": {
       "id": "zz-warehouse-line2",
-      "from": "ops",
-      "to": "orders",
+      "from": "orders",
+      "to": "w-alerts",
       "label": "adds"
      },
      "view": "warehouse"
     }
    ],
    "touched": [
-    "ops",
-    "orders"
+    "orders",
+    "w-alerts"
    ]
   },
   {
@@ -4167,13 +4417,13 @@
    "commands": [
     {
      "op": "set",
-     "id": "web",
+     "id": "k-import",
      "path": "label",
-     "value": "Web shop (renamed)"
+     "value": "Feed import (renamed)"
     }
    ],
    "touched": [
-    "web"
+    "k-import"
    ]
   },
   {
@@ -4186,16 +4436,16 @@
      "op": "add",
      "element": {
       "id": "zz-catalog-line1",
-      "from": "k-index",
-      "to": "web",
+      "from": "k-import",
+      "to": "k-index",
       "label": "adds"
      },
      "view": "catalog"
     }
    ],
    "touched": [
-    "k-index",
-    "web"
+    "k-import",
+    "k-index"
    ]
   },
   {
@@ -4208,7 +4458,7 @@
      "op": "add",
      "element": {
       "id": "zz-catalog-line2",
-      "from": "k-index",
+      "from": "k-import",
       "to": "web",
       "label": "adds"
      },
@@ -4216,7 +4466,7 @@
     }
    ],
    "touched": [
-    "k-index",
+    "k-import",
     "web"
    ]
   }
