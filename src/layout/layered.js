@@ -23,6 +23,10 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 const OWN_ROUTE = Symbol('own route');
 // a snake (layout-flow note, section 14): a map view whose lines say their reading way (dir)
 const snaked = dg => (dg.edges || []).some(e => e.dir);
+// an arranged map view (layout-flow note, sections 6 and 7): one with a main flow, whose stores sit in a band under it; a label
+// on a store's line there that leaves too little of its line widens its row gap, as a snake's does (the imported maps of
+// .evolve/decisions.md D13: "Reads and writes", 12 px of a line into a store straight under its card)
+const banded = dg => snaked(dg) || (dg.edges || []).some(e => e.mainLine);
 // a typed view laid out as before audit 38 (layoutTyped's try when the new one leaves check() something to say): a symbol, so
 // no field of a model's view can set it
 const PLAIN = Symbol('plain');
@@ -72,7 +76,8 @@ function stackAt(c, h, fixed, pin, at) {
 /* A view's main flow (layout-flow note, section 6.1), from its lines as the layout reads them: lines, [{ from, to, flow, step,
    change }]; o.back, the indexes of the lines that close a loop (loopsOf's); o.dep(line), true for a dependency line; o.cards,
    the view's cards in order (ties go to the first mentioned); o.run, a numbered view (render "sequence"), whose lines are its
-   steps in order. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
+   steps in order; o.pairs, a view that draws a line and its pair the other way as one two-way line (a map without keepPairs);
+   o.avoid, the indexes of lines the longest path keeps off where it can. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
    chain of stepped lines in step order (2 < 2a < 2b < 3), each starting where the one before ends, the first of a step's
    suffixes on it and the others branches; else, in a numbered view, the longest such chain in run order; else the longest
    path of flow lines from a card no flow line comes into. Returns null when the view has no flow line, else { cards, lines,
@@ -112,7 +117,13 @@ function mainFlow(lines, o = {}) {
     const c = chainOf(ks); return done(c.ks, 'step', c.breaks);
   }
   if (o.run) { const ks = flowK.filter(k => !(typeof list[k].change === 'string' && list[k].change.toLowerCase() === 'removed')), c = chainOf(ks); return done(c.ks, 'run', c.breaks); }
-  return done(pathOf(flowK), 'path');
+  // o.pairs: a line whose pair the other way is a line too is drawn as one line with a head at each end (prepEdges), which
+  // reads no way, so the longest path does not run along it
+  // o.avoid: the indexes of lines the path takes only when it has no other (a line into a person at the start, out of an
+  // external card at the end, to or from a store under the flow: section 7.1's zones)
+  const two = o.pairs ? new Set(list.filter(e => e && e.from !== e.to).map(e => e.from + '>' + e.to)) : null, avoid = o.avoid || new Set();
+  const free = flowK.filter(k => !avoid.has(k) && !(two && two.has(list[k].to + '>' + list[k].from))), path = free.length ? pathOf(free) : [];
+  return done(path.length ? path : pathOf(flowK), 'path');
 }
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
@@ -290,7 +301,7 @@ function layoutGraph(dg, map) {
   let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew;
   if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
-  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (snaked(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
+  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (banded(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
     delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
   if (grew) g.grew = true; // and a side grown over a box's title
@@ -1072,7 +1083,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const depLast = list => list.some(e => e.dep) ? [...list.filter(e => !e.dep), ...list.filter(e => e.dep)] : list;
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
   const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
-  order = depLast([...order.filter(hot), ...order.filter(e => !hot(e))]);
+  // an arranged view's main lines (mainLine, section 6.2) go before every other, so each takes the straight track between
+  // its two ports on the main row; the lines routed before them took it, and a main line jogged round an empty cell
+  const mainFirst = list => list.some(e => e.mainLine) ? [...list.filter(e => e.mainLine), ...list.filter(e => !e.mainLine)] : list;
+  order = depLast(mainFirst([...order.filter(hot), ...order.filter(e => !hot(e))]));
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
@@ -1376,7 +1390,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // more doubled the time of a generated view of 50 (requirement-stress, past CI's 1 s); a larger one keeps the looser spot
   // a snake's (layout-flow note, section 14) label that leaves too little of its line, on the turn line or a store's line
   // between two runs' rows, widens the gap it is in too
-  const leaves = e => map && e.lbl && snaked(dg) && leaveIssues({ map: true, edges: [e] }, '').some(m => / leaves its line /.test(m));
+  const leaves = e => map && e.lbl && banded(dg) && leaveIssues({ map: true, edges: [e] }, '').some(m => / leaves its line /.test(m));
   const tight = !last && !dg.quick && !dg.abs ? free.filter(e => (e.label || e.step != null) && (lost(e) && (map || dg.labelGaps || nodes.length <= 30) || (map || dg.labelGaps) && (e.lbl.short || families.some(f => onBorder(e.lbl, f))) || leaves(e))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
