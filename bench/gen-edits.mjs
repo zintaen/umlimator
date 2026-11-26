@@ -67,12 +67,14 @@ function editsOf(m, v, rnd, stem) {
 }
 
 export function build() {
-  const rnd = seeded(SEED), pairs = [];
+  const pairs = [];
   for (const f of readdirSync(resolve(ROOT, 'bench/models')).filter(f => f.endsWith('.json')).sort()) {
     const stem = f.slice(0, -5), m = JSON.parse(readFileSync(resolve(ROOT, 'bench/models', f), 'utf8'));
     for (const v of m.views || []) {
       if (!mapView(m, v) || (v.nodeIds || []).length > CAP) continue;
-      for (const p of editsOf(m, v, rnd, stem)) {
+      // each view draws from its own sequence, seeded by the corpus seed and the view's key, so adding or removing a bench
+      // model or view leaves every other view's edits as they were
+      for (const p of editsOf(m, v, seeded(`${SEED}/${stem}/${v.id}`), stem)) {
         const after = apply(m, p.commands); // throws on a command that cannot run: the corpus is never written broken
         const bad = validate(after).filter(x => x.level === 'error');
         if (bad.length) throw new Error(`${p.id}: the edited model does not validate: ${bad[0].message}`);
