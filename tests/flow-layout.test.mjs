@@ -122,3 +122,42 @@ test('validate() warns where an arranged view\'s steps break into chains, and sa
   const said = validate(m).map(p => `${p.level} ${p.path} ${p.message}`);
   assert.deepEqual(said, ['warning edges[1] step 2 starts at "Web", not at "Api" where step 1 ends: the steps break into chains here, and the longest chain (4 lines, from "Web") is the main flow']);
 });
+
+// Step 7 (section 6.2, "With boxes"): in an arranged view with boxes, blockPos anchors each box that holds main cards by its
+// first main card's row, so the main flow keeps one row across the boxes
+const BOXES = [{ id: 'front', label: 'Front', nodeIds: ['web', 'api', 'cart'] }, { id: 'money', label: 'Money', nodeIds: ['pay', 'refund'] },
+  { id: 'out', label: 'Fulfilment', nodeIds: ['ship', 'mail'] }];
+const midY = n => n.y + n.h / 2;
+
+test('with boxes, the main flow holds one row across them: every main line two points, the refund branch off it', () => {
+  const m = ORDER('main', { containers: BOXES }), g = layout(m, 'v'), at = Object.fromEntries(g.nodes.map(n => [n.id, n])), y = midY(at.web);
+  MAIN.forEach(id => assert.equal(midY(at[id]), y, id));
+  for (let i = 1; i < MAIN.length; i++) assert.equal(line(g, MAIN[i - 1], MAIN[i]).pts.length, 2, `${MAIN[i - 1]} -> ${MAIN[i]} is one straight segment`);
+  assert.ok(midY(at.refund) > y && midY(at.credit) > y, 'the branch below the main row, though Refund has a column of its own in Money');
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.equal(s.straight, 0); assert.equal(s.reverse, 0); assert.equal(s.hard, 0);
+  assert.ok(g.edges.filter(e => e.mainLine).length === MAIN.length - 1, 'the main lines are drawn as such (mainLine)');
+});
+
+test('with boxes, an exception branch goes above, and a store only it writes to goes above with it, off the main row', () => {
+  const m = ORDER('main', { containers: [...BOXES.slice(0, 1), { ...BOXES[1], nodeIds: ['pay', 'refund', 'ledger'] }, BOXES[2]] }, { kind: 'guard', flow: 'branch' });
+  m.nodes.push({ id: 'ledger', label: 'Ledger', kind: 'database' }); m.edges.push({ id: 'l', from: 'refund', to: 'ledger', kind: 'state', label: 'writes' }); m.views[0].nodeIds.push('ledger');
+  const g = layout(m, 'v'), at = Object.fromEntries(g.nodes.map(n => [n.id, n])), y = midY(at.web);
+  MAIN.forEach(id => assert.equal(midY(at[id]), y, id));
+  assert.ok(midY(at.refund) < y && midY(at.ledger) < y, 'Refund and its ledger above the main row');
+  for (let i = 1; i < MAIN.length; i++) assert.equal(line(g, MAIN[i - 1], MAIN[i]).pts.length, 2);
+  assert.equal(viewMetrics(g, { model: m, view: m.views[0] }).hard, 0);
+});
+
+test('with boxes and no arrange, the main-flow fields change nothing', () => {
+  const m = ORDER('main', { containers: BOXES }); delete m.views[0].arrange; const u = ORDER('none', { containers: BOXES }); delete u.views[0].arrange;
+  const g = layout(m, 'v'); assert.deepEqual(cells(g), cells(layout(u, 'v'))); assert.ok(g.edges.every(e => !e.mainLine));
+});
+
+test('f12\'s boxed views: straight 0 where the main flow passes each box once, and Sign-up, which comes back into App, on two rows', async () => {
+  const { readFileSync } = await import('node:fs'), m = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url)));
+  const s = id => viewMetrics(layout(m, id), { model: m, view: m.views.find(v => v.id === id) });
+  for (const id of ['order-boxed', 'ticket-boxed', 'pipeline-boxed']) assert.equal(s(id).straight, 0, id);
+  const g = layout(m, 'signup-boxed'), at = Object.fromEntries(g.nodes.map(n => [n.id, n]));
+  assert.ok(['s-form', 's-acct', 's-check'].every(id => midY(at[id]) === midY(at['s-user'])), 'the flow up to where it leaves App holds one row');
+  assert.ok(s('signup-boxed').straight <= 6);
+});

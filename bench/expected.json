@@ -53,7 +53,7 @@
   },
   "f12/order-boxed": {
    "hashes": [
-    "18c01c5f"
+    "5ece7f8c"
    ]
   },
   "f12/pipeline": {
@@ -63,7 +63,7 @@
   },
   "f12/pipeline-boxed": {
    "hashes": [
-    "ca870889"
+    "faae87d"
    ]
   },
   "f12/signup": {
@@ -73,7 +73,7 @@
   },
   "f12/signup-boxed": {
    "hashes": [
-    "a2822fb0"
+    "e61001d5"
    ]
   },
   "f12/ticket": {
@@ -83,7 +83,7 @@
   },
   "f12/ticket-boxed": {
    "hashes": [
-    "b0ebfb11"
+    "8c841b0a"
    ]
   },
   "i59/api": {

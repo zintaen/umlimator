@@ -376,6 +376,14 @@ function mapContext(model, opts = {}) {
     // the box 'a' as the card again, for ever; nor is a card in a box of its own id (audit 25)
     const inBox = (x, y) => x === y || tin.get(x) < tin.get(y) && tout.get(y) < tout.get(x), holds = (x, y) => x === y || (isId.has(y) ? home[y] != null && inBox(x, home[y]) : inBox(x, y));
     const first = x => { const k = lp.edges.findIndex(e => holds(x, e.from) || holds(x, e.to)); return k < 0 ? Infinity : k; };
+    // an arranged map view's main flow (section 6.2, "With boxes"); a card's or a box's first main card, and its place on the flow
+    const MF = T ? null : mainOf(vid), firstMain = x => MF ? MF.cards.find(c => isId.has(c) && holds(x, c)) : undefined, mainAt = x => { const c = firstMain(x); return c == null ? -1 : MF.cards.indexOf(c); };
+    // each card's side of the main row, over the whole view, so a branch keeps one side across the boxes it passes (sidesOf,
+    // with the longest-path ranks of the flow lines for its balance); a box takes its first card's
+    const cardSide = MF ? (() => { const onMain = new Set(MF.cards), rk = byId(ids.map(i => [i, 0])), flowL = fwd.filter(e => isId.has(e.from) && isId.has(e.to));
+      for (let k = 0; k < ids.length; k++) flowL.forEach(e => { if (rk[e.to] < rk[e.from] + 1) rk[e.to] = rk[e.from] + 1; });
+      return sidesOf(ids.filter(i => !depOnly.has(i)), flowL, onMain, rk, first, e => wireKind(e, opts.kinds || v.kindsFromLabels) === 'guard'); })() : null;
+    const sideOf = x => isId.has(x) ? cardSide[x] : cardSide[ids.filter(i => holds(x, i) && cardSide[i] != null).sort((a, b) => first(a) - first(b))[0]];
     const sink = x => ids.includes(x) && isState(x) && !fwd.some(e => e.from === x); // state that leads nowhere goes last
     const lined = x => lp.edges.some(e => e.from !== e.to && (holds(x, e.from) || holds(x, e.to)));
     let was = O(), now = O(); // each box as the pass before laid it out, and as this one does
@@ -405,11 +413,28 @@ function mapContext(model, opts = {}) {
         const [mine, other] = fin ? [e.from, e.to] : [e.to, e.from], x = itemIn(mine, g), p = P[mine], q = P[other]; if (x === undefined || !p || !q || p[0] === q[0]) return;
         const id = '\u0002' + far.length, left = q[0] < p[0]; fixed[id] = q[1] - top;
         far.push({ e, id, left, link: left ? [id, x, 0, inside(x, mine)] : [x, id, inside(x, mine), 0] }); });
+      // the main row (section 6.2, "With boxes"): a main card at row 0, a box that holds main cards at the row that puts its
+      // first main card on row 0 (its row inside the box, as the far ends above are), the first of a column in the flow's
+      // order (a flow that comes back into a box is straight only where the box's columns allow); the other items on their
+      // branch's side of it, as flowPos's. A column a main line passes, to a card in the group or out of it, holds its row
+      // free (an anchored gap, taken out once the rows are found): a branch card a box puts in a column of its own beside its
+      // main card sat on the main line
+      let anchor = null, mainRow = null; const gaps = new Set();
+      if (MF) { const taken = new Set();
+        items.filter(x => !depOnly.has(x) && rank[x] != null && mainAt(x) >= 0).sort((a, b) => mainAt(a) - mainAt(b)).forEach(x => { if (taken.has(rank[x])) return; taken.add(rank[x]);
+          (anchor ||= O())[x] = isId.has(x) ? 0 : -size[x].pos[firstMain(x)][1]; });
+        if (anchor) { const on = new Set(Object.keys(anchor)), isMain = e => MF.keys.has(e.from + '>' + e.to), side = byId(items.map(x => [x, sideOf(x)]));
+          main.forEach((m, k) => { main[k] = [...m.filter(x => side[x] === -1 && !on.has(x)), ...m.filter(x => on.has(x)), ...m.filter(x => side[x] !== -1 && !on.has(x))]; });
+          const pass = (a, b) => { for (let k = Math.max(0, a); k <= Math.min(main.length - 1, b); k++) { const m = main[k] || []; if (taken.has(k) || !m.length) continue;
+            taken.add(k); const id = '\u0003' + k; gaps.add(id); anchor[id] = 0; const at = m.findIndex(x => side[x] !== -1); m.splice(at < 0 ? m.length : at, 0, id); } };
+          lines.forEach(l => { if (isMain(l.e)) pass(rank[l.link[0]] + 1, rank[l.link[1]] - 1); });
+          far.forEach(f => { if (isMain(f.e)) { const x = f.link[f.left ? 1 : 0]; if (f.left) pass(0, rank[x] - 1); else pass(rank[x] + 1, main.length - 1); } }); } }
       const L = far.filter(f => f.left).map(f => f.id), R = far.filter(f => !f.left).map(f => f.id), M = [...(L.length ? [L] : []), ...main, ...(R.length ? [R] : [])];
       const hh = x => size[x] ? size[x].h : 1;
-      untangle(M, [...lines.filter(l => dagged.has(l.link[0] + '\u0000' + l.link[1])), ...(order ? far : [])].map(l => l.link), hh, fixed); // in call order, unless another order crosses less (#53)
-      main.splice(0, main.length, ...M.slice(L.length ? 1 : 0, M.length - (R.length ? 1 : 0)));
-      const row = rowsFor(M, [...lines, ...far].filter(l => level(l.e)).map(l => l.link), hh, fixed); // each block level with the cards its lines come from and go to
+      untangle(M, [...lines.filter(l => dagged.has(l.link[0] + '\u0000' + l.link[1])), ...(order ? far : [])].map(l => l.link), hh, fixed, anchor); // in call order, unless another order crosses less (#53)
+      main.splice(0, main.length, ...M.slice(L.length ? 1 : 0, M.length - (R.length ? 1 : 0)).map(l => l.filter(x => !gaps.has(x))));
+      const row = rowsFor(M, [...lines, ...far].filter(l => level(l.e)).map(l => l.link), hh, fixed, anchor); // each block level with the cards its lines come from and go to
+      if (anchor) { const low = Math.min(0, ...items.filter(x => row[x] != null).map(x => row[x])); if (low < 0) items.forEach(x => { if (row[x] != null) row[x] -= low; }); mainRow = -low; } // a branch above: the main row moves down
       main.forEach((l, k) => { cols[k] = [...l, ...(cols[k] || []).filter(sink).sort((a, b) => first(a) - first(b))]; });
       cols.forEach(list => { let r0 = 0, w = 0;
         list.forEach(x => { const sz = size[x]; if (row[x] != null) r0 = Math.max(r0, row[x]);
@@ -417,11 +442,15 @@ function mapContext(model, opts = {}) {
         c0 += w; h = Math.max(h, r0); });
       // a card whose lines are all dependencies, under every flow row of its group, in the column of the median of the
       // cards its lines join it to that are placed there (the later of two middles), stacked when two share one
-      const deps = items.filter(x => depOnly.has(x)).sort((a, b) => first(a) - first(b)), stack = O();
-      deps.forEach(x => { const cs = lp.edges.filter(e => e.from !== e.to && (e.from === x || e.to === x)).map(e => e.from === x ? e.to : e.from)
-        .filter(y => y !== x && !depOnly.has(y) && pos[y]).map(y => pos[y][0]).sort((a, b) => a - b), c = cs.length ? cs[MEDIAN(cs.length)] : 0;
-        pos[x] = [c, h + (stack[c] = (stack[c] ?? -1) + 1)]; });
-      if (deps.length) { h += Math.max(...Object.values(stack)) + 1; c0 = Math.max(c0, 1); }
+      // with a main row, one whose cards are all above it goes above every row instead: its branch's side (section 6.2), so
+      // its lines do not cross the main row
+      const deps = items.filter(x => depOnly.has(x)).sort((a, b) => first(a) - first(b)), stack = O(), over = O();
+      deps.forEach(x => { const ys = lp.edges.filter(e => e.from !== e.to && (e.from === x || e.to === x)).map(e => e.from === x ? e.to : e.from)
+          .filter(y => y !== x && !depOnly.has(y) && pos[y]), cs = ys.map(y => pos[y][0]).sort((a, b) => a - b), c = cs.length ? cs[MEDIAN(cs.length)] : 0;
+        if (mainRow != null && ys.length && ys.every(y => pos[y][1] < mainRow)) pos[x] = [c, -1 - (over[c] = (over[c] ?? -1) + 1)];
+        else pos[x] = [c, h + (stack[c] = (stack[c] ?? -1) + 1)]; });
+      const lift = Math.max(-1, ...Object.values(over)) + 1; if (lift) { Object.values(pos).forEach(p => { p[1] += lift; }); h += lift; }
+      if (deps.length) { h += Math.max(-1, ...Object.values(stack)) + 1; c0 = Math.max(c0, 1); }
       const per = Math.max(2, c0); loose.forEach((x, k) => { pos[x] = [k % per, h + Math.floor(k / per)]; });
       if (loose.length) { c0 = Math.max(c0, Math.min(per, loose.length)); h += Math.ceil(loose.length / per); }
       return (now[g] = { w: c0, h, pos });
@@ -467,8 +496,9 @@ function mapContext(model, opts = {}) {
     const dep = depRule(v); return flowing(vid, dep) ? dep : () => false; };
   /* The main flow (section 6): in an arranged map view, mainFlow's (layered.js) over the view's lines as loopsOf reads them,
      dependency lines left out; null in any other view, or one with no flow line. Its cards hold one row (flowPos), its lines
-     take the middle port of the sides they leave and come into (prepEdges' mainLine, layoutPass's port spread) */
-  const mainOf = vid => { const v = V[vid] || {}; if (v.arrange !== 'flow' || ownLayout(vid) || arrOf(v.containers).length) return null; // boxes: section 12 step 7
+     take the middle port of the sides they leave and come into (prepEdges' mainLine, layoutPass's port spread); with boxes,
+     blockPos anchors each box that holds main cards by the row of its first (section 6.2, "With boxes") */
+  const mainOf = vid => { const v = V[vid] || {}; if (v.arrange !== 'flow' || ownLayout(vid)) return null;
     const dep = depRule(v); if (!flowing(vid, dep)) return null;
     const lp = loopsOf(v), M = mainFlow(lp.edges, { back: lp.back, dep, cards: v.nodeIds, run: v.render === 'sequence' });
     return M && { ...M, keys: new Set(M.lines.map(k => lp.edges[k].from + '>' + lp.edges[k].to)) }; };

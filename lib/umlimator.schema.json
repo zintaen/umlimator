@@ -1691,7 +1691,7 @@
      "enum": [
       "flow"
      ],
-     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and with no boxes the main flow on one straight row. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
+     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and the main flow on one straight row, across boxes too. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
     },
     "zones": {
      "type": "boolean",
