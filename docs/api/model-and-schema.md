@@ -300,11 +300,14 @@ lists the breaks, the map draws the lines that break one in rose, and `umlimator
 ## Story
 
 ```ts
-interface Story { id: string; title?: string; steps: StoryStep[] }
+interface Story { id: string; title?: string; audience?: string; steps: StoryStep[]; chapters?: StoryChapter[] }
+interface StoryChapter { id: string; title?: string; audience?: string; at: number; steps: StoryStep[] }
 ```
 
 A narrated walk-through of the map: its steps, in order. Tell one with [`handle.play(id)`](./render.md#play); the
 standalone page lists them in its Stories menu, and `umlimator.py record` writes one as an animated PNG.
+
+`audience` names who the story is told to (`"business"`, `"engineering"`, any name): the standalone page's Stories menu lists the stories that name none first, then each audience's under its name. `chapters` are stories of their own, each offered in the caption bar while the story shows its step `at` (0-based); a chapter's end, or ‹ on its first step, returns to the story at that step. A branch [`storyFromFlow()`](./apply-and-commands.md#storyfromflow) finds is a chapter. `validate()` checks a chapter's steps as a story's, errs on a chapter with no id, a repeated id or no steps, and warns on an `at` that is not one of the story's steps (the chapter is offered at none) and on an `audience` that is not a name.
 
 ## StoryStep
 
