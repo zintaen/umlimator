@@ -10,8 +10,11 @@ name: layout-loop
 # and the run says so and stops). Two jobs, each on a fresh runner:
 #   measure  a read-only token (and reading this workflow's earlier records); the seed goes to the one step that measures,
 #            which prints and records the held-out corpus's totals only. Its record and candidate go on as an artifact.
-#   publish  contents and pull-requests write, no secret; checks the candidate again (one value, in range), rebuilds
-#            lib/, pushes one new branch layout-tune/<week> and opens the pull request.
+#   publish  contents, pull-requests and actions write, no secret; checks the candidate again (one value, in range),
+#            rebuilds lib/, moves the value's pin in bench/tune-pins.json, pushes one new branch layout-tune/<week>, opens
+#            the pull request, and starts check.yml and layout-score.yml (heldout=false) on the branch: a pull request
+#            opened with the workflow's token starts no workflow, but a workflow_dispatch does, and its checks show on the
+#            pull request's head commit.
 # Schedule: Sunday 03:00 in the maintainer's time (UTC+7), Saturday 20:00 UTC: clear of the nightly fuzz (02:00), the
 # weekly audit (Monday 03:00) and the digest (Monday 09:00), all UTC+7 (.evolve/decisions.md, D1).
 on:
@@ -112,6 +115,7 @@ jobs:
     permissions:
       contents: write        # one new branch, layout-tune/<week>; nothing else is pushed
       pull-requests: write   # the pull request against audit-loop
+      actions: write         # gh workflow run check.yml and layout-score.yml on that branch, the pull request's CI
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

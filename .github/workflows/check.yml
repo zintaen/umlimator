@@ -6,6 +6,11 @@ on:
   pull_request:
   schedule:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
+  # by hand on a branch (`gh workflow run check.yml --ref <branch>`): the weekly layout loop (layout-loop.yml) starts it on
+  # its pull request's branch, since a pull request opened with the workflow's token starts no workflow; the checks land on
+  # the branch's head commit, so they show on the pull request. Like a pull request it checks in full, and the site and
+  # release jobs (push to main only) do not run
+  workflow_dispatch:
 
 # a new push to a pull request cancels that pull request's run still going; a push to main and the weekly run each get a
 # group of their own (the run's id), so they are never cancelled and never wait
