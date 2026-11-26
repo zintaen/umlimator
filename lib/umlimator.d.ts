@@ -51,7 +51,7 @@ export interface MapNode {
   /** Where the card sits in a view with `arrange: 'flow'` (layout by business flow, docs/diagrams/notes/layout-flow.md):
    *  without it, the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes
    *  into first, an external card last, a database, file or board card under). A view's `nodeOverrides` may set it for that
-   *  view. Map views read it, typed views not yet; a pin beats it. validate() warns on any other value, and diff() reports a
+   *  view. Map views read it, and typed views whose type gives zoneOf or flowRole; a pin beats it. validate() warns on any other value, and diff() reports a
    *  change of it. */
   zone?: FlowZone;
   /** In schema version 2 (0.17.0) a node may also be a typed Element: type, parent, props, members. */
@@ -439,7 +439,7 @@ export interface MapView {
   /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
    *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
    *  dependencies sits under the flow, and with no boxes the main flow holds one straight row with each branch on one side
-   *  of it, and cards take their zones; typed views do not read it yet. validate() warns on any other value and on a sequence, timing or mindmap
+   *  of it, and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf. validate() warns on any other value and on a sequence, timing or mindmap
    *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
