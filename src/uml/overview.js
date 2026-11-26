@@ -310,6 +310,10 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
   props: { ...Object.fromEntries(OV_NODES.map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(OV_SHAPE[t]) ? [] : [OV_STEREO]])), 'uml.Comment': [], 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
   layout: ovGeo,
+  // a control-flow diagram, as the activity (layout-flow.md section 7.2; audit 67): a comment link is a dependency, a control
+  // flow a flow line; the initial node comes first, a final node last
+  flowRole: e => (OV_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch'),
+  zoneOf: x => (!OV_OBJ(x) ? null : x.type === 'uml.InitialNode' ? 'first' : x.type === 'uml.ActivityFinalNode' || x.type === 'uml.FlowFinalNode' ? 'last' : null),
   member: { holds: () => false }, // nothing here has members
   validate: ovProblems,
   rules: OV_RULES,
