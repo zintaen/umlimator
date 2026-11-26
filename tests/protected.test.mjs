@@ -155,6 +155,50 @@ test('protect: a protected test wrapped so that node --test no longer runs it is
   assert.match(out, /^tests\/x\.test\.mjs: "doubles": no longer runs \(inside if \{ \.\.\. \}\)\n/);
 });
 
+test('protect: a protected test whose test (or describe around it) is bound to anything but node:test\'s own is reported (audit 66)', (t) => {
+  const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const IMPORT = "import { test } from 'node:test';", head = line => s => s.replace(IMPORT, line);
+  const DOUBLES = /test\('doubles', \(\) => \{\n[^]*?\n\}\);\n/, wrap = (pre, post) => s => s.replace(DOUBLES, m => `${pre}${m}${post}`);
+  const off = [
+    [head("import { skip as test } from 'node:test';"), "test is node:test's skip"],
+    [head("import { todo as test } from 'node:test';"), "test is node:test's todo"],
+    [head("import { test as real, skip as test } from 'node:test';"), "test is node:test's skip"],
+    [head("import { 'skip' as test } from 'node:test';"), "test is node:test's skip"],
+    [head("import * as test from 'node:test';"), "test is node:test's namespace"],
+    [head("import { test } from './helpers.mjs';"), 'test is imported from ./helpers.mjs, not node:test'],
+    [head("import { test as real, skip } from 'node:test';\nconst test = skip;"), "test is declared in the file, not node:test's test"],
+    [head("import nt from 'node:test';\nconst { skip: test } = nt;"), "test is declared in the file, not node:test's test"],
+    [head("import {\n  test as real,\n  skip as test,\n} from 'node:test'"), "test is node:test's skip"],
+    [s => wrap("describe('around', () => {\n", '});\n')(s.replace(IMPORT, `${IMPORT}\nimport { skip as describe } from 'node:test';`)), "describe is node:test's skip"],
+    [s => wrap("describe('a', () => { suite('b', () => {\n", '}); });\n')(s.replace(IMPORT, `${IMPORT}\nlet suite = () => {};`)), "suite is declared in the file, not node:test's suite"],
+  ];
+  for (const [change, why] of off) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.notEqual(readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8'), before, 'the case edits the file');
+    const want = [`doubles: no longer runs (${why})`];
+    if (!/describe|suite/.test(why)) want.push(`quadruples: no longer runs (${why})`);
+    assert.deepEqual(problems(dir), want, why);
+    assert.throws(() => update(dir), /"doubles" does not run/);
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+  const runs = [
+    head("import test from 'node:test';"),
+    head("import { default as test } from 'node:test';"),
+    head("import { it as test } from 'node:test';"),
+    head("import { test, describe as suite, skip } from 'node:test';\nimport assertOk from 'node:assert';"),
+    s => wrap("suite('on', () => {\n", '});\n')(s.replace(IMPORT, "import { test, suite } from 'node:test';")),
+    s => s.replace(IMPORT, `${IMPORT}\nconst it = () => {};`), // it is rebound, and only the unprotected it() test calls it
+  ];
+  for (const change of runs) {
+    const before = readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8');
+    edit(dir, change);
+    assert.notEqual(readFileSync(join(dir, 'tests/x.test.mjs'), 'utf8'), before, 'the case edits the file');
+    assert.deepEqual(problems(dir), []);
+    writeFileSync(join(dir, 'tests/x.test.mjs'), before);
+  }
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));

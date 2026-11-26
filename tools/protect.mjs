@@ -4,7 +4,8 @@
 // and layout taken out, and how many times it calls assert. tests/protected.test.mjs fails when a protected test is gone
 // (deleted or renamed), its hash changed (an assertion weakened, dropped or edited, or a helper changed), or it no longer
 // runs: node --test runs it only as a statement at the top level or in the callback of a describe, suite, test or it, so
-// one wrapped in a skipped describe, an if, a function or an expression is reported.
+// one wrapped in a skipped describe, an if, a function or an expression is reported, and so is one whose test (or the describe
+// around it) is bound to anything but node:test's own (import { skip as test } from 'node:test').
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
 //   node tools/protect.mjs --list                   print the entries
@@ -51,10 +52,54 @@ export function scan(src) {
     return s;
   };
   const newLine = k => /\n/.test(src.slice(sig[k - 1].end, sig[k].start));
+  // how the file binds test, it, describe and suite: node --test runs a test only through node:test's own test (it, only,
+  // its default export) or, around it, describe (suite); `import { skip as test } from 'node:test'`, a name imported from
+  // another module, or one declared in the file (const test = skip) makes every call of it no test that runs (audit 66).
+  // A name the file never binds is a ReferenceError, which fails the run on its own
+  const imports = new Map(), declared = new Set();
+  for (let k = 0; k < sig.length; k++) {
+    const t = sig[k];
+    if (t.type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text)) continue;
+    if (t.text === 'import' && depthAt[k] === 0 && !['(', '.'].includes(sig[k + 1]?.text)) {
+      const named = [];
+      let q = k + 1;
+      for (; q < sig.length && sig[q].text !== ';' && !(sig[q].text === 'from' && sig[q + 1]?.type === 'str') && sig[q].type !== 'str'; q++) {
+        if (sig[q].text === '{') { // { a, b as c, default as d }
+          const e = close(q);
+          for (let r = q + 1; r < e; r++) {
+            if (sig[r].text === ',') continue;
+            const name = literal(sig[r]) ?? sig[r].text;
+            if (sig[r + 1]?.text === 'as') { named.push([sig[r + 2]?.text, name]); r += 2; } else named.push([sig[r].text, name]);
+          }
+          q = e;
+        } else if (sig[q].text === '*' && sig[q + 1]?.text === 'as') { named.push([sig[q + 2]?.text, '*']); q += 2; }
+        else if (sig[q].type === 'id' && sig[q].text !== 'type') named.push([sig[q].text, 'default']);
+      }
+      const from = sig[q]?.type === 'str' ? sig[q] : sig[q + 1];
+      const module = literal(from) ?? '';
+      for (const [local, imported] of named) if (local) imports.set(local, { module, imported });
+      continue;
+    }
+    if (!DECL.has(t.text)) continue;
+    let q = k + 1;
+    if (sig[q]?.text === '*') q++;
+    if (sig[q]?.type === 'id') declared.add(sig[q].text);
+    else if (sig[q]?.text === '{' || sig[q]?.text === '[') for (let r = q + 1, e = close(q); r < e; r++) if (sig[r].type === 'id' && sig[r + 1]?.text !== ':') declared.add(sig[r].text);
+  }
+  const RUNS = { test: ['test', 'it', 'only', 'default'], it: ['test', 'it', 'only', 'default'], describe: ['describe', 'suite'], suite: ['describe', 'suite'] };
+  const rebound = name => {
+    const b = imports.get(name);
+    if (b && !(b.module === 'node:test' && RUNS[name].includes(b.imported))) {
+      return b.module !== 'node:test' ? `${name} is imported from ${b.module || 'elsewhere'}, not node:test` : b.imported === '*' ? `${name} is node:test's namespace` : `${name} is node:test's ${b.imported}`;
+    }
+    return declared.has(name) ? `${name} is declared in the file, not node:test's ${name}` : null;
+  };
   // why the call whose name is at j would not run as a test, or null when it runs: node --test runs a test written as a
   // statement at the top level or in the callback of a describe, suite, test or it that is not skipped
   const off = j => {
     for (;;) {
+      const why = rebound(sig[j].text);
+      if (why) return why;
       let s = j;
       if (sig[s - 1]?.text === 'await') s--;
       const p = sig[s - 1];
