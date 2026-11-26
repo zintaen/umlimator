@@ -51,9 +51,11 @@ TOOLS = [
          "card on the main flow, each with select, highlight (the card and the main line into it), tour (the two cards that line joins) "
          "and a caption from the line's what or label, naming the stores it reads or writes; and `chapters`, each branch off the main "
          "flow as a story of its own, with `at`, the step it leaves from (0-based). A sequence view gives its messages in order, a BPMN "
-         "view its path from the start event. To keep it, add it to the model's stories with set_field or apply.",
+         "view its path from the start event, a communication view its numbered messages. play_story plays it as it is, unsaved; to keep "
+         "it, add it to the model's stories with set_field or apply.",
          {"view": VIEW, "id": {"type": "string", "description": "the story's id (default flow-<view>)"},
-          "title": {"type": "string"}, "chapters": {"type": "boolean", "description": "false: no chapters"}}, "view"),
+          "title": {"type": "string"}, "chapters": {"type": "boolean", "description": "false: no chapters"},
+          "audience": {"type": "string", "description": "who it is told to, kept on the story; business: the captions leave out the stores a step reads or writes"}}, "view"),
     tool("show_view", "Shows a view on the map's page." + PAGE, {"view": VIEW}, "view"),
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
@@ -62,8 +64,12 @@ TOOLS = [
          "on the view, and each must be drawn as a card there, not as a box that holds cards. view: the view to show first; with none, "
          "the view shown now if it shows the cards and draws those lines, else the first view that does." + PAGE,
          {"cards": {"type": "array", "items": {"type": "string"}, "description": "card ids, in order"}, "view": VIEW}, "cards"),
-    tool("play_story", "Plays one of the model's stories on the map's page, step by step, with its captions." + PAGE,
-         {"id": {"type": "string", "description": "a story's id (list_views gives them)"}}, "id"),
+    tool("play_story", "Plays a story on the map's page, step by step, with its captions: one of the model's, by its id, or one given "
+         "as it is (story), such as story_from_flow's, which is played and not saved (the model file is not written). A story's "
+         "chapters are offered in the page's caption bar at their steps. Give id or story." + PAGE,
+         {"id": {"type": "string", "description": "a story's id (list_views gives them)"},
+          "story": {"type": "object", "description": "a story to play as it is: {id, title?, steps: [{view, caption?, select?, highlight?, tour?, camera?, duration?}], "
+                    "chapters?}, as story_from_flow returns it; its steps are checked as validate() checks the model's stories"}}),
     tool("clear", "Takes the assistant's highlight, tour and story off the map's page (a story the reader started is the reader's)." + PAGE),
     tool("page_state", "What the map's page shows now, as each open page reports it: its view, selection, layers ('mcp' is the "
          "assistant's highlight), story, tour and camera (the map's MapState); whether it shows the model's latest version, and "
@@ -553,7 +559,7 @@ def call(name, a):
         v = view(m, a["view"])
         return node("reach", m, v["id"], on(v, a["card"]), {"backward": bool(a.get("backward")), "depth": a.get("depth")})
     if name == "story_from_flow":  # the module's own storyFromFlow(), nothing written
-        v, o = view(m, a["view"]), {k: a[k] for k in ("id", "title", "chapters") if k in a}
+        v, o = view(m, a["view"]), {k: a[k] for k in ("id", "title", "chapters", "audience") if k in a}
         return node("storyFromFlow", m, v["id"], o)
     if name == "broken_rules":
         return node("rules", m)
@@ -601,15 +607,36 @@ def call(name, a):
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":
-        told = [s.get("id") for s in m.get("stories") or [] if isinstance(s, dict) and s.get("steps")]
-        if a["id"] not in told:
-            raise Fail(f"no story {a['id']!r}; the stories: {', '.join(map(str, told)) or 'none'}")
+        if ("id" in a) == ("story" in a):
+            raise Fail("play_story: give id (one of the model's stories) or story (a story to play as it is, as story_from_flow returns it), not both")
+        if "story" in a:  # a story played as given: checked as validate() checks the model's stories, and never written
+            played = given_story(m, a["story"])
+        else:
+            told = [s.get("id") for s in m.get("stories") or [] if isinstance(s, dict) and s.get("steps")]
+            if a["id"] not in told:
+                raise Fail(f"no story {a['id']!r}; the stories: {', '.join(map(str, told)) or 'none'}")
+            played = a["id"]
         def fold(w, n):  # the story sets its own views and lights
-            w.update(view=None, highlight=None, tour=None, story={"n": n, "story": a["id"]})
+            w.update(view=None, highlight=None, tour=None, story={"n": n, "story": played})
     else:
         def fold(w, n):
             w.update(highlight=None, tour=None, story=None)
     return command(fold)
+
+
+def given_story(m, s):
+    """play_story's story, as it is given: an object with an id and steps, each step on one of the model's views; the
+    model's validate() of it in place of the model's stories says what it names that the views do not have (an error
+    refuses it; a warning plays)."""
+    if not isinstance(s, dict) or not isinstance(s.get("id"), str) or not s["id"]:
+        raise Fail("story is a story: an object with an id (a string) and steps")
+    if not isinstance(s.get("steps"), list) or not s["steps"] or not all(isinstance(x, dict) for x in s["steps"]):
+        raise Fail("story.steps is a list of steps, each an object with a view")
+    bad = [p for p in node("validate", {**m, "stories": [s]}) if p.get("level") == "error" and str(p.get("path", "")).startswith("stories[0]")]
+    if bad:
+        raise Fail("story: " + "; ".join(f"{p['path'].replace('stories[0]', 'story', 1)}: {p['message']}" for p in bad[:5])
+                   + (f" (and {len(bad) - 5} more)" if len(bad) > 5 else ""))
+    return s
 
 
 # for each view asked, in turn until one rides: why the page's tour() would not ride it there, or null. The page lays the
@@ -807,8 +834,14 @@ def refit(m):
             want["highlight"] = None
     if want["tour"] and not set(want["tour"]["cards"]) <= known_:
         want["tour"] = None
-    if want["story"] and want["story"]["story"] not in stories:
-        want["story"] = None
+    shown = want["story"] and want["story"]["story"]
+    if shown and (shown not in stories if isinstance(shown, str) else any(not isinstance(x, dict) or x.get("view") not in vs for x in shown.get("steps") or [])):
+        want["story"] = None  # the model's story it no longer has; a story given whose views it no longer has
+
+
+def story_name(s):
+    """The story asked for, as page_state() says it: the model's by its id; one given, by its id and that it was given."""
+    return s if isinstance(s, str) else {"id": s.get("id"), "given": True, "steps": len(s.get("steps") or [])}
 
 
 def page_state():
@@ -817,7 +850,7 @@ def page_state():
     with lock:  # as text, made while no page's report can change it
         now = time.time()
         return json.dumps({"url": URL, "model": {"version": version(), "shown": shown, "renders": not broken, **({"error": broken} if broken else {})},
-                "asked": {**want, "tour": want["tour"] and {"cards": want["tour"]["cards"]}, "story": want["story"] and want["story"]["story"]},
+                "asked": {**want, "tour": want["tour"] and {"cards": want["tour"]["cards"]}, "story": want["story"] and story_name(want["story"]["story"])},
                 "pages": [{"page": pid, "open": bool(p.get("q")), "reported": round(now - p["seen"], 1) if p.get("seen") else None,
                            "latest": p.get("model") == shown, "state": p.get("state"),
                            **({"command": p["ack"][0], **({"error": p["ack"][1]} if p["ack"][1] else {})} if p.get("ack") else {})}
@@ -863,8 +896,8 @@ async function show(c) {
     if (map.state.tour) ends.then(() => { t.on = false; }); // a path lit at rest (reduced motion) stays until a story's step or end takes it
     else if (!map.state.overlays.includes('tour')) { t.on = false; throw new Error('no line joins these cards on this view, so no tour rides'); } } // nothing drawn: not "shown" (audit 47)
   if (want.story && want.story.n !== (story && story.n)) {
-    const told = map.play(want.story.story);
-    if (!told) throw new Error(`the page has no story ${want.story.story}`);
+    const told = map.play(want.story.story); // an id, or a story given as it is (story_from_flow's), played and not saved
+    if (!told) throw new Error(typeof want.story.story === 'string' ? `the page has no story ${want.story.story}` : `the story ${want.story.story.id} has no step the page can show`);
     story = { n: want.story.n, stop: () => told.stop() };
   }
   return true;
