@@ -65,11 +65,14 @@ test('the main flow from steps, with no line marked main; a typed view reads its
 });
 
 test('a sequence view tells its messages in order; a BPMN view its path from the start event', () => {
-  const seq = read('../examples/checkout-sequence.json'), s = U.storyFromFlow(seq, 'checkout-sequence');
-  const msgs = seq.views[0].edges.filter(e => e.type === 'uml.Message').map(e => e.id);
+  const seq = read('./sequence-minimal.json'), v = seq.views[0];
+  v.edges.push({ id: 'self', type: 'uml.Message', from: 'server', to: 'server', label: 'check()', props: { sort: 'call' } });
+  const s = U.storyFromFlow(seq, v.id), msgs = v.edges.filter(e => e.type === 'uml.Message').map(e => e.id);
   assert.deepEqual(s.steps.map(x => x.select), msgs);
-  assert.equal(s.steps[0].caption, '1. checkout(): shopper to storefront.');
+  assert.match(s.steps[0].caption, /^1\. get\(id\): .+ to .+\.$/);
+  assert.deepEqual(s.steps[0].tour, ['client', 'server']);
   assert.ok(!s.steps[2].tour, 'a message to itself has no tour');
+  assert.match(s.steps[2].caption, /to itself\.$/);
   assert.deepEqual(storyProblems(seq, s), []);
   const bp = read('./bpmn-minimal.json'), b = U.storyFromFlow(bp, 'v');
   assert.deepEqual(b.steps.map(x => x.select), ['start', 'task', 'end']);
