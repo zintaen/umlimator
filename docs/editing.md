@@ -323,7 +323,7 @@ The **use case diagram** (`uml.use-case`, `examples/shopping-use-cases.json`):
 | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|
 | add an actor, a use case, a subject, a comment | the palette | `N` (an actor) | `add` with `view` |
-| add an association, include, extend, generalization, comment link | the handle or a drag, then the line's kind | `L`, the other end, Enter, the kind | `add`; an association drawn from a use case to an actor is added from the actor |
+| add an association, include, extend, generalization, comment link | the handle or a drag, then the line's kind | `L`, the other end, Enter, the kind | `add`; an association drawn from a use case to an actor is added from the actor, except in a view with `arrange: "flow"`, where it keeps the drawn direction and so draws that actor, a secondary one, after the use cases |
 | an extend's condition and extension points | the properties panel | Enter | `set props.condition`, `set props.extensionPoints` (ids) |
 | add, rename, reorder an extension point | the use case's member rows | F2, Enter; `Alt + ↑ / ↓` in a row | the member hook; deleting one drops it from every extend that names it, and takes an extend left naming none |
 | put a use case in a subject | drop it into the subject's box | the Owner field | `reparent` |
