@@ -181,7 +181,7 @@ function bzKeeps(model, view, id, geo, d) {
   const c = n && n.col + d[0], r = n && n.row + d[1];
   if (!Number.isFinite(c) || !Number.isFinite(r) || Object.values(L).some(p => p[0] === c && Math.abs(p[1] - r) < 1)) return null;
   const flat = o => Object.keys(o || {}).sort().map(k => `${k}\u0000${o[k]}`).join('\u0001'); // a map's entries in key order, a cell as "col,row"
-  let now, then; try { now = bzCells(P, L); then = bzCells(P, { ...L, [id]: [c, r] }); } catch { return null; }
+  const F = bzFlow(model, view, P); let now, then; try { now = bzCells(P, L, F); then = bzCells(P, { ...L, [id]: [c, r] }, F); } catch { return null; }
   if (!['at', 'runs', 'spans'].every(k => flat(now[k]) === flat(then[k]))) return null;
   // why, said: data beside its flow node, an item alone in its lane's columns, or one its lane stacks back
   const beside = x => (P.dataLane.get(x) || {}).by, b = beside(id);
@@ -195,13 +195,50 @@ function bzKeeps(model, view, id, geo, d) {
 }
 /* each item's cell [col, row] (at) as the view draws it, from the pins: ranked (cpPlace), then the lane pass; with each lane's run
    of rows and each pool's (spans). bzGeo draws from it, and bzKeeps asks it whether a step's pin would move anything (audit 65) */
-function bzCells(P, pins) {
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md sections 6.1 and 7.2, section 12 step 10), read only in a view
+   with arrange "flow". The main flow: from a start event (the one whose flow is longest), each step the first sequence flow out (in the view's
+   order of lines) to an item not yet on it, until an end event. The model has no field for a gateway's default flow (an
+   import keeps one under ext.bpmn, read as plain), so a gateway takes its first flow too. An association or a data association
+   is a dependency (it ranks nothing: cpPlace never ranked one), a sequence flow on the main flow is main; a start event goes
+   first and an end event last (in the main flow's pool, and not one a message flow meets, which keeps the message's column:
+   moved, it crossed more lines in tests/bpmn-stress.json), data objects and data stores under, which the lane pass draws
+   beside their flow node already. The main flow's items hold one row in cpPlace's ranking (its anchors); the lane pass then
+   stacks each lane's items from its first row as before, so a main flow that changes lanes changes rows, and a branch item
+   alone in its column may take the main row there (kept free, it crossed more lines in tests/bpmn-stress.json) */
+const BZ_MAINS = new WeakMap();
+function bzMain(model, view, P0) {
+  let c = BZ_MAINS.get(view); if (c && c.model === model) return c.main;
+  const P = P0 || bzPic(model, view), seq = P.lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null && l.f.at !== l.t.at);
+  const walk = start => { const ids = [], lines = new Set();
+    for (let cur = start, seen = new Set(); cur != null && !seen.has(cur);) { seen.add(cur); ids.push(cur); if (P.I.ty(cur) === 'bpmn.EndEvent') break;
+      const l = seq.find(x => x.f.at === cur && !seen.has(x.t.at)); if (!l) break; lines.add(l.e.id); cur = l.t.at; }
+    return { ids, lines }; };
+  // the start event whose path is longest (the first of equals): a collaboration's main process, not a customer's two steps
+  const main = P.items.filter(id => P.I.ty(id) === 'bpmn.StartEvent').map(walk).reduce((a, b) => (b.ids.length > a.ids.length ? b : a), { ids: [], lines: new Set() });
+  BZ_MAINS.set(view, { model, main }); return main;
+}
+const bzFlowRole = (e, model, view) => !BZ_OBJ(e) ? null : e.type === BZ_ASSOC || e.type === BZ_DATA_ASSOC ? 'dep' : BZ_OBJ(view) && e.type === BZ_SEQ && bzMain(model, view).lines.has(e.id) ? 'main' : 'branch';
+const bzZoneOf = x => !BZ_OBJ(x) ? null : x.type === 'bpmn.StartEvent' ? 'first' : x.type === 'bpmn.EndEvent' ? 'last' : BZ_DATA.includes(x.type) ? 'under' : null;
+// an arranged view's main items and zones, for cpPlace (bzCells); null in any other view
+function bzFlow(model, view, P) {
+  if (!BZ_OBJ(view) || view.arrange !== 'flow') return null;
+  const M = bzMain(model, view, P), on = new Set(M.ids), ov = BZ_OBJ(view.nodeOverrides) ? view.nodeOverrides : {}, zone = Object.create(null), ZS = ['first', 'flow', 'last', 'under'];
+  // zones in the main flow's pool only (or in no pool): another pool's end event is not drawn past this one's flow
+  const pool = M.ids.length ? P.I.poolOf(M.ids[0]) : undefined;
+  const msg = new Set(P.lines.filter(l => l.e.type === BZ_MSG).flatMap(l => [l.f.at, l.t.at])); // an event a message flow meets keeps its column: the message's
+  P.items.forEach(id => { if (!M.ids.length || P.I.poolOf(id) !== pool) return; const x = P.I.el(id) || {}, o = BZ_OBJ(ov[id]) ? ov[id] : {}, own = ZS.includes(o.zone) ? o.zone : ZS.includes(x.zone) ? x.zone : null;
+    const z = own || (view.zones === false ? null : bzZoneOf(x)); if (!msg.has(id) && (z === 'first' && (!on.has(id) || M.ids[0] === id) || z === 'last' && (!on.has(id) || M.ids.at(-1) === id))) zone[id] = z; });
+  const under = Object.create(null); P.lines.filter(l => (l.e.type === BZ_DATA_ASSOC || l.e.type === BZ_ASSOC) && l.f.at != null && l.t.at != null).forEach(l => [[l.f.at, l.t.at], [l.t.at, l.f.at]].forEach(([a, b]) => {
+    if (a !== b && BZ_DATA.includes(P.I.ty(a)) && !(view.zones === false && !ZS.includes((BZ_OBJ(ov[a]) ? ov[a] : {}).zone))) (under[a] ||= []).push(b); }));
+  return { anchor: on, zone, under, role: l => (l.e ? bzFlowRole(l.e, model, view) : 'branch') };
+}
+function bzCells(P, pins, F) {
   const { open, lines } = P, pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
   // ranked: the sequence flows (a boundary event's from its activity), then each message flow between laid-out items that closes no cycle
   const links = lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null).map(l => [l.f.at, l.t.at]);
   const reach = (a, b) => { const seen = new Set([a]), q = [a]; while (q.length) { const u = q.pop(); if (u === b) return true; links.forEach(([s, t]) => { if (s === u && !seen.has(t)) { seen.add(t); q.push(t); } }); } return false; };
   lines.forEach(l => { if (l.e.type === BZ_MSG && l.f.at != null && l.t.at != null && !reach(l.t.at, l.f.at)) links.push([l.f.at, l.t.at]); });
-  const placed = cpPlace(pic, links.map(([a, b]) => ({ f: { at: a }, t: { at: b } })), pins);
+  const placed = cpPlace(pic, links.map(([a, b]) => ({ f: { at: a }, t: { at: b }, e: (lines.find(l => l.f.at === a && l.t.at === b) || {}).e })), pins, F || undefined);
   // the lane pass (§8.1): each lane's top-level items in cpPlace's order, stacked in their columns from the lane's first row,
   // a block whole; data beside the flow node it is associated with; a pool's own items after its lanes; pools apart by an
   // empty row; what is in no pool after them all
@@ -226,7 +263,7 @@ function bzCells(P, pins) {
 }
 function bzGeo({ model, view, pos: pins, memo }) {
   const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
-  const leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]), { at, runs, spans } = bzCells(P, pins);
+  const leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]), { at, runs, spans } = bzCells(P, pins, bzFlow(model, view, P));
   const rowOf = x => Math.min(...leaves(x).map(id => at[id][1])), colOf = x => Math.min(...leaves(x).map(id => at[id][0]));
   const toward = (me, other) => (other.pool ? (spans[other.pool] || [0])[0] : rowOf(other.at)) < (me.pool ? spans[me.pool][0] : rowOf(me.at));
   // anchors (§7.2): a message flow to or from a pool ends at a 2 px node in the empty row beside it, on the other end's side
@@ -748,6 +785,8 @@ const BZ_TYPE = registerDiagramType('bpmn', {
     [BZ_NOTE]: [BZ_DOC, BZ_GROUPS], [BZ_GROUP]: [BZ_DOC], [BZ_SEQ]: [BZ_DOC], [BZ_MSG]: [BZ_DOC], [BZ_ASSOC]: [BZ_DOC, { key: 'direction', label: 'Direction', kind: 'enum', options: ['none', 'one', 'both'] }], [BZ_DATA_ASSOC]: [BZ_DOC] },
   // an activity deleted takes its boundary events with it; a group deleted leaves the elements that named it
   refs: Object.fromEntries([...BZ_FLOW, ...BZ_DATA, BZ_NOTE].map(t => [t, { 'props.categoryValueRef': 'drop', ...(t === BZ_BE ? { 'props.attachedTo': 'cascade' } : {}) }])),
+  flowRole: bzFlowRole,
+  zoneOf: bzZoneOf,
   layout: Object.assign(bzGeo, { rank: false, keepsRank: bzKeeps, keepsRow: bzKeeps }), // bzGeo ranks the view itself (cpPlace): the host passes only the pins
   boxes: (model, view) => bzPic(model, view).boxes,
   draw: bzDraw,

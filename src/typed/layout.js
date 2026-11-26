@@ -82,6 +82,9 @@ function layoutTyped(dg0, memo) {
   let [g, tried] = best(t);
   if (g.edges.some(e => e[FOLLOWED])) { const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
     const a = told(g); if (a[0] || a[1]) { const [h, ht] = best({ ...t, [PORTS_PLAIN]: true }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } } }
+  // main cards centred on their row (an arranged view's, memo.flow) are laid out top-aligned too, and that kept when check()
+  // has less to say of it: a centred event can push a line into a crossing (tests/bpmn-stress.json's edge cases)
+  if (F && (t.nodes || []).some(n => n.mainCard)) { const [h, ht] = best({ ...t, nodes: t.nodes.map(n => (n.mainCard ? { ...n, mainCard: false } : n)) }); if (less(said(h), said(g))) { g = h; tried = ht; } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;
 }

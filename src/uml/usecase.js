@@ -185,12 +185,26 @@ const ucLegend = edges => Object.keys(UC_SAYS).filter(t => edges.some(e => e.typ
   .concat(edges.some(e => !Object.hasOwn(UC_LINE_WORD, e.type)) ? [lineItem()] : []); // a kind it does not draw as its own: "Line", its arrow (audit 27)
 
 /* ---- the view laid out (§8.1) ---- */
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a primary actor first (as ucActorsFirst holds every actor), a secondary actor (one whose associations all
+   come from use cases, none from it) last; nothing under. Each by the view's lines, read once a view */
+const UC_ACTOR_ENDS = new WeakMap();
+function ucZoneOf(x, model, view) {
+  if (!UC_OBJ(x) || !UC_OBJ(view) || x.type !== 'uml.Actor') return null;
+  let by = UC_ACTOR_ENDS.get(view); if (!by || by.model !== model) { by = { model, ends: new Map() }; UC_ACTOR_ENDS.set(view, by);
+    ucLines(model, view, ucPic(model, view)).filter(e => e.type === 'uml.Association' && e.from !== e.to).forEach(e => [[e.from, 0], [e.to, 1]].forEach(([id, k]) => { const s = by.ends.get(id) || [0, 0]; s[k]++; by.ends.set(id, s); })); }
+  const [out, inn] = by.ends.get(x.id) || [0, 0];
+  return inn && !out ? 'last' : 'first';
+}
+// an actor an arranged view puts last (its zone, else its view's nodeOverrides' or its own zone field), which ucActorsFirst leaves where the host put it
+const ucLast = (model, view, x) => { if (!UC_OBJ(view) || view.arrange !== 'flow') return false; const o = UC_OBJ(view.nodeOverrides) && UC_OBJ(view.nodeOverrides[x.id]) ? view.nodeOverrides[x.id] : {};
+  const z = ['first', 'flow', 'last', 'under'].includes(o.zone) ? o.zone : ['first', 'flow', 'last', 'under'].includes(x.zone) ? x.zone : view.zones === false ? null : ucZoneOf(x, model, view); return z === 'last'; };
 // actors first: each actor the view shows outside a box goes to a column before the rest, in the order of the rows of the
 // use cases it is associated with, a specialization after its general; a pinned actor keeps its row. The rest keep the host's
 // places, so a pin, read in the host's ranking, is where it was drawn and moves no other node. pos is the host's ranking, kept
 // (a cache holds it): a new object is returned
-function ucActorsFirst(pos, view, pic, lines) {
-  const A = pic.holds(null).filter(id => pic.at.get(id).type === 'uml.Actor' && Object.hasOwn(pos, id)), rest = Object.keys(pos).filter(id => !A.includes(id) && pic.ids.includes(id) && !pic.open.has(id));
+function ucActorsFirst(pos, view, pic, lines, model) {
+  const A = pic.holds(null).filter(id => pic.at.get(id).type === 'uml.Actor' && Object.hasOwn(pos, id) && !ucLast(model, view, pic.at.get(id))), rest = Object.keys(pos).filter(id => !A.includes(id) && pic.ids.includes(id) && !pic.open.has(id));
   if (!A.length || !rest.length) return pos;
   const L = UC_OBJ(view.layout) ? view.layout : {}, pinned = A.filter(id => Array.isArray(L[id])), c = Math.min(...rest.map(id => pos[id][0])) - 1;
   const at = id => { const r = lines.filter(e => e.type === 'uml.Association' && (e.from === id || e.to === id)).map(e => (e.from === id ? e.to : e.from)).filter(x => Object.hasOwn(pos, x)).map(x => pos[x][1]); // a box takes no slot
@@ -206,13 +220,13 @@ function ucActorsFirst(pos, view, pic, lines) {
 // rank axis asks this (src/canvas/edit.js) and says why instead of writing a pin that moves nothing (audit 63)
 function ucKeepsRank(model, view, id) {
   const pic = ucPic(model, view), x = pic.at.get(id);
-  if (!x || x.type !== 'uml.Actor' || !pic.holds(null).includes(id)) return null;
+  if (!x || x.type !== 'uml.Actor' || !pic.holds(null).includes(id) || ucLast(model, view, x)) return null; // a last actor: its pin holds
   const actor = i => pic.at.get(i).type === 'uml.Actor' && pic.holds(null).includes(i);
   if (!pic.ids.some(i => !pic.open.has(i) && !actor(i))) return null; // actors alone: ranked as any card
   return view.direction === 'down' ? 'An actor stays in the actors\' row: Alt + Left or Right moves it along' : 'An actor stays in the actors\' column: Alt + Up or Down moves it along';
 }
 function ucGeo({ model, view, pos: ranked, memo }) {
-  const pic = ucPic(model, view), lines = ucLines(model, view, pic), pos = ucActorsFirst(ranked || {}, view, pic, lines), P = id => (Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
+  const pic = ucPic(model, view), lines = ucLines(model, view, pic), pos = ucActorsFirst(ranked || {}, view, pic, lines, model), P = id => (Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = ucStereo(n);
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st } : n.type === 'uml.Actor' ? { shape: 'actor', stereotypes: st }
       : n.type === 'uml.UseCase' ? { shape: 'ellipse', stereotypes: st, points: ucPointsOf(n).map(ucName) } : { shape: 'classifier', stereotypes: st, compartments: [], ariaOwn: ucNodeName(model, n, pic) }; // a closed subject, or another node: named as describe() names it (audit 28)
@@ -365,6 +379,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   refs: { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } }, // a deleted extension point leaves every extend that names it; an extend left naming none goes too, on any path (audit 19)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.Extend', // the parent and the base first
   layout: Object.assign(ucGeo, { keepsRank: ucKeepsRank }), // keepsRank: the canvas's Alt + an arrow writes no rank an actor ignores
+  zoneOf: ucZoneOf, // no flowRole: an arranged view's lines all rank, its main flow is none (rankFlip turns its generalizations and extends)
   boxes: (model, view) => ucPic(model, view).boxes,
   owners: ucOwners,
   member: { print: m => String(m.label ?? ''), edit: (m, t) => { const r = ucPointText(t); return r.error ? r : { commands: [{ op: 'set', id: m.id, path: 'label', value: r.label }] }; }, add: ucPointText, holds: n => n.type === 'uml.UseCase' },
