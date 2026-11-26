@@ -8,6 +8,7 @@
 #     - uses: zintaen/umlimator@v0.45.0
 #       with:
 #         models: "docs/*.json"   # optional: git pathspecs of the model files (default: every .json that is a map model)
+#         stable: "true"          # optional: draw each model against its base version, so untouched cards keep their places
 #
 # For each model file the pull request changes: a page with each change marked (umlimator.py diff), stills of the views
 # that show one, and a summary in words with a mermaid sketch, which GitHub draws in the comment, so no picture needs
@@ -24,6 +25,9 @@ inputs:
   models:
     description: Git pathspecs of the model files, separated by spaces (default every .json that is a map model)
     default: "*.json"
+  stable:
+    description: Draw each model as changed against its version on the base branch, so the cards the change left alone keep their places (default false, each drawn afresh)
+    default: "false"
   comment:
     description: Post one comment on the pull request with the summary, and update it on later pushes
     default: "true"
@@ -44,12 +48,14 @@ runs:
       shell: bash
       env:
         MODELS: ${{ inputs.models }}
+        STABLE: ${{ inputs.stable }}
         OUT: ${{ runner.temp }}/umlimator-diff
       run: |
         set -f   # the pathspecs are git's to match, not the shell's
         # a pull request's checkout is its merge commit, whose first parent is the base branch as it is now
         git rev-parse -q --verify HEAD^1 > /dev/null || git fetch -q --no-tags --depth=2 origin "$GITHUB_SHA"
-        python3 "$GITHUB_ACTION_PATH/umlimator.py" diff --base HEAD^1 --out "$OUT" --models $MODELS > "$OUT.json"
+        STABLE_FLAG=; [ "$STABLE" = true ] && STABLE_FLAG=--stable   # opt-in: the base branch's model is passed only when asked
+        python3 "$GITHUB_ACTION_PATH/umlimator.py" diff --base HEAD^1 --out "$OUT" --models $MODELS $STABLE_FLAG > "$OUT.json"
         echo "changed=$(python3 -I -c 'import json, sys; print(len(json.load(open(sys.argv[1]))))' "$OUT.json")" >> "$GITHUB_OUTPUT"
         echo "summary=$OUT/summary.md" >> "$GITHUB_OUTPUT"
     - id: pictures

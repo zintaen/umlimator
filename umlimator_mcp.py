@@ -267,6 +267,24 @@ EDITOR = cli.HERE / "umlimator_edit.mjs"  # the edit tools' Node half: the page'
 KEEP, ROOM = 50, 16 << 20                  # changes the undo history keeps, and the most text it holds (16 MB)
 
 
+def base_of():
+    """The model before the last change the edit tools wrote, from the undo history, while the file is still what that change
+    wrote: the page draws the model against it (stableFrom), so the cards the change left alone keep their places. None when
+    there is no such change, or the file has been written since (layout-flow.md section 8)."""
+    h = history()
+    c = h["done"][-1] if h["done"] and isinstance(h["done"][-1], dict) else None
+    if not c or not isinstance(c.get("before"), str):
+        return None
+    try:
+        now, _ = model_file()
+        if sha(now) != c.get("after_sha"):
+            return None
+        b = cli.load_json(c["before"], MODEL.name)
+    except (Fail, ValueError, RecursionError, SystemExit):
+        return None
+    return b if isinstance(b, dict) and not cli.not_objects(b) else None
+
+
 def history_file():
     """The undo history, next to the model: MODEL.json.undo (not *.json, so a folder of models never takes it for one)."""
     return MODEL.with_name(MODEL.name + ".undo")
@@ -896,7 +914,7 @@ def page():
                 m = cli.load_json(data, MODEL.name)  # as the CLI reads a model: a number out of range refused (audit 30)
                 with tempfile.TemporaryDirectory() as tmp:
                     out = Path(tmp) / "page.html"
-                    cli.render_model(m, MODEL, out)  # drawn as the model's own file is: its copy sits next to it
+                    cli.render_model(m, MODEL, out, base_of())  # drawn as the model's own file is: its copy sits next to it
                     head, _, tail = out.read_text(encoding="utf-8").rpartition("</body>")
             except (Exception, SystemExit) as e:  # the CLI ends on a model the engine rejects: here it is the page's
                 said = f"it is not JSON ({e})" if isinstance(e, ValueError) else "it nests too deep to read" if isinstance(e, RecursionError) else str(e.code) if isinstance(e, SystemExit) else repr(e)
