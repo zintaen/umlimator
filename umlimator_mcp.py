@@ -47,6 +47,13 @@ TOOLS = [
     tool("diff", "What changed from another model file to this one: the changes in words, and the views that show them.",
          {"other_model_path": {"type": "string", "description": "the other model's JSON file: absolute, or relative to the model's folder (else to where the server runs)"}},
          "other_model_path"),
+    tool("story_from_flow", "A story told from a view's main flow, returned and not saved (the model file is not written): one step per "
+         "card on the main flow, each with select, highlight (the card and the main line into it), tour (the two cards that line joins) "
+         "and a caption from the line's what or label, naming the stores it reads or writes; and `chapters`, each branch off the main "
+         "flow as a story of its own, with `at`, the step it leaves from (0-based). A sequence view gives its messages in order, a BPMN "
+         "view its path from the start event. To keep it, add it to the model's stories with set_field or apply.",
+         {"view": VIEW, "id": {"type": "string", "description": "the story's id (default flow-<view>)"},
+          "title": {"type": "string"}, "chapters": {"type": "boolean", "description": "false: no chapters"}}, "view"),
     tool("show_view", "Shows a view on the map's page." + PAGE, {"view": VIEW}, "view"),
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
@@ -527,6 +534,9 @@ def call(name, a):
     if name == "reach":
         v = view(m, a["view"])
         return node("reach", m, v["id"], on(v, a["card"]), {"backward": bool(a.get("backward")), "depth": a.get("depth")})
+    if name == "story_from_flow":  # the module's own storyFromFlow(), nothing written
+        v, o = view(m, a["view"]), {k: a[k] for k in ("id", "title", "chapters") if k in a}
+        return node("storyFromFlow", m, v["id"], o)
     if name == "broken_rules":
         return node("rules", m)
     if name == "validate":

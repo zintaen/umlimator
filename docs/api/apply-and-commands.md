@@ -368,6 +368,24 @@ slow.total;              // 45
 map.highlight(slow.refs);
 ```
 
+## storyFromFlow
+
+```ts
+function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean }): FlowStory;
+```
+
+A story told from a view's main flow ([layout by business flow](../diagrams/notes/layout-flow.md), section 10), as a [`Story`](./model-and-schema.md#story) that `validate()` accepts: one step per card on the main flow, in order. Each step selects its card, highlights it and the main line into it, rides that line (a `tour` of the two cards, which the view draws a line between), and says what the line does: its `what`, else its label, as in `"4. Charges: Cart charges Payments; reads Orders."`. A dependency line (`flow: "dep"`, or a `state` or `guard` line) is no step: the card it joins is named in the caption of the step that reads or writes it. The main flow is the one the layout reads (`flow: "main"`, else steps, else the longest path of flow lines), on any view, arranged or not.
+
+`FlowStory` adds `chapters`: each branch off the main flow (a chain of flow lines from a main card to cards off it) as a story of its own, with `at`, the step of the main story where the branch leaves (0-based). `chapters: false` leaves them out. A sequence view tells its messages in the order the view lists them; a BPMN view its path from the start event, taking each node's first sequence flow out (default flows are not in the model yet). `id` defaults to `flow-<viewId>`, `title` to the view's title and "the main flow". Throws when the view has no main flow. The model is not changed: play the story with [`play(story)`](./render.md#play), or add it to the model's `stories`.
+
+```js
+const s = storyFromFlow(model, 'order');
+s.steps.length;            // 6: one per card on the main flow
+s.steps[3].caption;        // "4. Charges: Cart charges Payments."
+s.chapters[0].at;          // 3: a branch leaves at Payments, the fourth step
+map.play(s);
+```
+
 ## whatIf
 
 ```ts
