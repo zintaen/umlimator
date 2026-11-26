@@ -9,7 +9,7 @@ const ORDER = [
   'core/model', 'core/registry', 'core/warn', 'core/text', 'core/history', 'core/apply',
   'draw/shapes', 'draw/lines', 'draw/svg',
   'layout/tune', 'layout/layered', 'layout/audit',
-  'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
+  'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/stories', 'map/lens',
   'canvas/styles', 'canvas/camera', 'canvas/edit', 'canvas/render', 'canvas/pieces',
   'page/page', 'page/print',
 ];

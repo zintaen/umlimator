@@ -34,6 +34,8 @@ before or after. `validate()` checks each step.
 and shows a caption bar with ‹ ▶ › ✕; ← → step through and Esc closes. In the standalone page, the Stories menu plays
 one, and `#story=<id>&step=<n>` links to a step.
 
+**From the main flow.** `storyFromFlow(model, viewId)` tells a story from a view's main flow (the lines marked `flow: "main"`, else its steps, else its longest path of flow lines), with no story written by hand: a step per card on the main flow, each selecting the card, lighting it and the main line into it, riding that line, and saying what the line does, from its `what` or its label (`"4. Charges: Cart charges Payments."`). A dependency line is no step: the store it reads or writes is named in the caption (`"5. Ships: Payments ships Shipping; reads Orders."`). Each branch off the main flow comes back as a chapter, a story of its own with `at`, the step it leaves from. A sequence view tells its messages in order, a BPMN view its path from the start event. The story is not added to the model: `map.play(story)` plays it as given, and the page's link does not name it. In the standalone page, on a view with `arrange: "flow"`, the Stories menu offers **From the main flow**, which plays it; on a view that is not arranged it is not offered. From an assistant, the MCP tool `story_from_flow` returns it ([MCP server](../use/mcp.md)). See [`storyFromFlow()`](../api/apply-and-commands.md#storyfromflow).
+
 **Recording one.** In the page, Export ▸ Record a story… turns each view and card you come to into a step, takes
 captions, and saves `<id>.story.json` for the model's `stories`. `umlimator.py record PAGE.html --story ID --out
 STORY.png` writes a story as an animated PNG ([Command line](../use/cli.md#record)).

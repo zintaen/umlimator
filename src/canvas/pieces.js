@@ -291,7 +291,7 @@ function pieces(X, el, o) {
   function story(e) { // the map's story event
     if (!e || e.step == null) { told = null; return; }
     if (told && told.id === e.story && told.step === e.step) return; // the same step, said again (paused, played on)
-    const def = arrOf(X().ctx().D.stories).find(s => s && s.id === e.story), step = def && arrOf(def.steps).filter(s => s && typeof s === 'object')[e.step];
+    const now = X().storyNow && X().storyNow(), def = now && now.id === e.story ? now : arrOf(X().ctx().D.stories).find(s => s && s.id === e.story), step = def && arrOf(def.steps).filter(s => s && typeof s === 'object')[e.step];
     const pointer = step ? pointerOf(step.select) : null, already = pointer != null && sel === pointer && step.view === X().view() && !X().busy(); // its select changes nothing: no event comes
     told = { id: e.story, step: e.step, pointer, pending: pointer != null && !already };
     if (already && el.panel) hide();
