@@ -10,8 +10,9 @@ import { arrOf } from './validate.js';
    does: "2. Charges: Cart charges Payments; reads Orders". A dependency line is no step: the card it joins is named in
    the caption of the step that reads or writes it. A branch (a chain of flow lines off the main flow) is a chapter,
    offered at the step where it leaves. A sequence view tells its messages in order; a BPMN view its path from the start
-   event. The lines are read as the view draws them (its geometry), so every tour rides a drawn line. Pure: nothing is
-   saved, the model is not changed. */
+   event, a communication view its numbered messages in time order. The lines are read as the view draws them (its
+   geometry), so every tour rides a drawn line. audience: who it is told to, kept on the story (and its chapters); for
+   "business" the captions leave out the stores a step reads or writes. Pure: nothing is saved, the model is not changed. */
 const STORY_ROLES = ['main', 'branch', 'dep'];
 const STORY_START = /StartEvent$/, STORY_SEQ_FLOW = /SequenceFlow$/;
 // storyPlain words from a field's Markdown: its first sentence, with no marks
@@ -20,7 +21,8 @@ const storyPlain = s => { const t = String(s).replace(/\[([^\]]*)\]\([^)]*\)/g, 
 const storyUpper = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
 /** A story generated from the main flow of a view (#flow-stories): one step per main card, each with select, highlight,
- *  tour and caption; branches as chapters offered at the step they leave from. Throws when the view has no main flow. */
+ *  tour and caption; branches as chapters offered at the step they leave from. options: id, title, chapters (false: none),
+ *  audience. Throws when the view has no main flow. */
 export function storyFromFlow(model, viewId, options = {}) {
   const ctx = mapContext(model), v = ctx.V[viewId];
   if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
@@ -50,6 +52,7 @@ export function storyFromFlow(model, viewId, options = {}) {
   const idOf = e => e.id != null ? String(e.id) : e._id;
   const id = typeof options.id === 'string' && options.id ? options.id : `flow-${viewId}`;
   const title = typeof options.title === 'string' && options.title.trim() ? options.title : `${String(labelOr(v.title, viewId))}: the main flow`;
+  const audience = typeof options.audience === 'string' && options.audience.trim() ? options.audience.trim() : null, brief = !!audience && /^business$/i.test(audience);
   const caption = (n, head, body, deps) => { let s = `${n}. ${head}: ${body}`; if (deps.length) s += '; ' + deps.join(', '); return /[.!?]$/.test(s) ? s : s + '.'; };
   // a line's words: a map line's or a relationship's label is a verb ("charges"); a flow's, a path's or a data flow's names
   // what goes along it or when ("yes", "HTTPS", "priced order"), as does a label that starts with a capitalised short word
@@ -59,7 +62,7 @@ export function storyFromFlow(model, viewId, options = {}) {
   const lineSays = e => { if (e.what != null && String(e.what).trim()) return storyPlain(e.what);
     const w = words(e); if (!w) return `${name(e.from)} leads to ${name(e.to)}`;
     return verbal(e) ? `${name(e.from)} ${verb(w)} ${name(e.to)}` : /DataFlow$/.test(String(e.type || '')) ? `${name(e.from)} sends ${w} to ${name(e.to)}` : `${name(e.from)} to ${name(e.to)} (${w})`; };
-  const depsOf = c => lines.filter(e => dep(e) && e.from !== e.to && (e.from === c || e.to === c)).map(e => { const w = words(e), x = name(e.from === c ? e.to : e.from);
+  const depsOf = c => brief ? [] : lines.filter(e => dep(e) && e.from !== e.to && (e.from === c || e.to === c)).map(e => { const w = words(e), x = name(e.from === c ? e.to : e.from);
     if (verbal(e)) return e.from === c ? `${verb(w)} ${x}` : `${verb(w)} from ${x}`;
     return e.from === c ? `${w ? w + ' to' : 'uses'} ${x}` : `${w ? w + ' from' : 'takes from'} ${x}`; }).filter((x, i, a) => a.indexOf(x) === i);
   // one step: card c, reached by line e from card p (none for the first)
@@ -72,7 +75,7 @@ export function storyFromFlow(model, viewId, options = {}) {
     s.caption = caption(n, head, body, depsOf(c));
     if (!s.highlight.length) delete s.highlight;
     return s; };
-  const out = { id, title, steps: [], chapters: [] };
+  const out = { id, title, ...(audience ? { audience } : {}), steps: [], chapters: [] };
   // a sequence view: its messages in the order the view lists them
   if (T && /sequence$/.test(String(v.diagram))) {
     const msgs = lines.filter(e => e.from != null).sort((a, b) => order(a) - order(b));
@@ -81,6 +84,21 @@ export function storyFromFlow(model, viewId, options = {}) {
       if (e.from !== e.to && mine.has(e.from) && mine.has(e.to) && joined(e.from, e.to)) s.tour = [e.from, e.to];
       const head = e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : 'Message';
       s.caption = caption(k + 1, head, e.what != null && String(e.what).trim() ? storyPlain(e.what) : e.from === e.to ? `${name(e.from)} to itself` : `${name(e.from)} to ${name(e.to)}`, []);
+      out.steps.push(s); });
+    if (!out.steps.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no messages to tell`);
+    return out;
+  }
+  // a communication view: its messages, each a row its picture draws with its number (1, 1.1, 1.1.2), in the time order the
+  // view lists them; a step selects the message, lights it and the cards it joins, and rides the connector that carries it
+  if (T && /communication$/.test(String(v.diagram))) {
+    const listed = arrOf(v.edges).map(x => x && typeof x === 'object' ? x.id : x), rows = Object.values(byId).filter(n => n && n.shape === 'message-row' && n.id != null);
+    const at = n => { const k = listed.indexOf(n.id); return k < 0 ? 1e9 : k; }, says = { call: 'calls', async: 'signals', reply: 'replies to', create: 'creates', delete: 'deletes' };
+    rows.sort((a, b) => at(a) - at(b)).forEach(r => { const e = modelLine.get(r.id) || {}, f = e.from, t = e.to, self = f === t;
+      const s = { view: viewId, select: r.id, highlight: [r.id, ...[f, t].filter((x, i, a) => mine.has(x) && a.indexOf(x) === i)] };
+      if (!self && mine.has(f) && mine.has(t) && joined(f, t)) s.tour = [f, t];
+      const head = e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : 'Message';
+      const body = e.what != null && String(e.what).trim() ? storyPlain(e.what) : f == null ? head : `${name(f)} ${says[r.sort] || 'calls'} ${self ? 'itself' : name(t)}`;
+      s.caption = caption(r.num != null && String(r.num) ? String(r.num) : out.steps.length + 1, head, body, []);
       out.steps.push(s); });
     if (!out.steps.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no messages to tell`);
     return out;
@@ -108,7 +126,7 @@ export function storyFromFlow(model, viewId, options = {}) {
       while (e && !onMain.has(e.to) && !seen.has(e.to)) { chain.push([e, p]); seen.add(e.to); p = e.to; const nx = flowOut(p, seen)[0]; e = nx ? nx[0] : null; }
       if (!chain.length) return; chain.forEach(([x]) => taken.add(x.to));
       const n = out.chapters.length + 1;
-      out.chapters.push({ id: `${id}-branch-${n}`, title: `Branch from ${name(c)} to ${name(chain[0][0].to)}`, at: i,
+      out.chapters.push({ id: `${id}-branch-${n}`, title: `Branch from ${name(c)} to ${name(chain[0][0].to)}`, ...(audience ? { audience } : {}), at: i,
         steps: chain.map(([x, q], j) => stepOf(`${i + 1}.${j + 1}`, x.to, x, q)) }); }));
   }
   return out;

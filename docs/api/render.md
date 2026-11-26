@@ -322,6 +322,8 @@ step's time is up. Returns a [`StoryPlayer`](./events-and-state.md#storyplayer),
 
 A [`Story`](./model-and-schema.md#story) object plays as it is given, such as one [`storyFromFlow()`](./apply-and-commands.md#storyfromflow) told from a view's main flow: it is not added to the model, and the standalone page's link does not name it. It plays while the views its steps name are in the model.
 
+The caption bar has a scrubber, a range input named "Story step", which goes to any step by pointer or by its own keys (the arrows, Page Up and Page Down, Home and End; the map's keys leave it alone, and Esc closes the story). Playing goes on from the step it comes to, at the map's [speed](#properties). A story's chapters are offered in the bar at their step `at` (and ticked on the scrubber): pressing one tells it, and ↩ in the bar, its end, or ‹ on its first step returns to the story at that step. A chapter's step is in no page link.
+
 ```js
 const player = map.play('checkout');
 if (player && await player.done) console.log('told to the end');

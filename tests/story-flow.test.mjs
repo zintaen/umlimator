@@ -92,6 +92,33 @@ test('lib/umlimator.js has storyFromFlow too, and lib/umlimator.d.ts types it', 
   const core = await import('../lib/umlimator.js');
   assert.equal(core.storyFromFlow(F12, 'order').steps.length, 6);
   const dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
-  assert.match(dts, /export function storyFromFlow\(model: MapModel, viewId: string, options\?: \{ id\?: string; title\?: string; chapters\?: boolean \}\): FlowStory;/);
+  assert.match(dts, /export function storyFromFlow\(model: MapModel, viewId: string, options\?: \{ id\?: string; title\?: string; chapters\?: boolean; audience\?: string \}\): FlowStory;/);
   assert.match(dts, /export interface FlowStory extends Story/);
+});
+
+test('a communication view is told from its numbered messages, in time order: each step selects the message and rides the connector that carries it', () => {
+  const m = read('./communication-minimal.json'), s = U.storyFromFlow(m, 'v'), drawn = drawnPairs(m, 'v');
+  assert.deepEqual(s.steps.map(x => x.caption), ['1. get(id): client calls server.', '1.1. item: server replies to client.']);
+  assert.deepEqual(s.steps.map(x => x.select), ['get', 'got']);
+  assert.deepEqual(s.steps.map(x => x.tour), [['client', 'server'], ['server', 'client']]);
+  s.steps.forEach(x => { assert.ok(drawn.has(x.tour.join('>'))); assert.deepEqual(x.highlight.slice(1).sort(), ['client', 'server']); });
+  assert.deepEqual(storyProblems(m, s), []);
+  // the stress fixture: every message once, numbered as its picture numbers it, and validate() clean
+  const st = read('./communication-stress.json');
+  for (const v of st.views) { let t; try { t = U.storyFromFlow(st, v.id); } catch (e) { assert.match(e.message, /has no messages to tell/); continue; }
+    const rows = U.layout(st, v.id).nodes.filter(n => n.shape === 'message-row');
+    assert.equal(t.steps.length, rows.length, v.id); assert.deepEqual(storyProblems(st, t), [], v.id);
+    assert.deepEqual(t.steps.map(x => x.caption.split('. ')[0]).sort(), rows.map(n => String(n.num)).sort(), v.id); }
+});
+
+test('audience: kept on the story and its chapters; for "business" the captions leave out the stores a step reads or writes', () => {
+  const plain = U.storyFromFlow(F12, 'order'), biz = U.storyFromFlow(F12, 'order', { audience: 'Business' }), eng = U.storyFromFlow(F12, 'order', { audience: 'engineering' });
+  assert.equal(plain.audience, undefined);
+  assert.deepEqual([biz.audience, ...biz.chapters.map(c => c.audience)], ['Business', 'Business', 'Business']);
+  assert.equal(biz.steps[4].caption, '5. Ships: Payments ships Shipping.');
+  assert.equal(plain.steps[4].caption, '5. Ships: Payments ships Shipping; reads Orders.');
+  assert.deepEqual(eng.steps.map(x => x.caption), plain.steps.map(x => x.caption), 'another audience changes no caption');
+  assert.deepEqual(storyProblems(F12, biz), []);
+  // the story with its chapters in the model, as a story's own chapters: validate() accepts them
+  assert.deepEqual(U.validate({ ...F12, stories: [biz] }).filter(p => p.path.startsWith('stories')), []);
 });
