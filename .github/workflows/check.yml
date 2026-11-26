@@ -142,7 +142,9 @@ jobs:
   # the tests whose titles end "(timed)" assert a CPU or wall time (P1, linear time): one file at a time, so the rest of
   # the suite running beside them cannot push a 1 s ceiling over (the maintainer's decision of 13 Nov 2026). Every test
   # file goes to one of three jobs by Node's --test-shard, so a new timed test is in one without a list to edit; each job
-  # runs its files one at a time, alone on its runner (about 2 min each)
+  # runs its files one at a time, alone on its runner (about 2 min each). A test is timed by its title alone, so
+  # tests/timed-titles.test.mjs fails when a test that reads a clock lacks "(timed)": it would run in the node jobs, beside
+  # the rest of the suite, where a loaded runner pushes it over its budget
   timed:
     needs: gate
     if: needs.gate.outputs.full == 'yes'

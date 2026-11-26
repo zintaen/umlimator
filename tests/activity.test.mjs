@@ -369,7 +369,7 @@ test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full la
   for (const k of Object.keys(edits)) console.log(`# P1 target 100 ms: ` + best(k) + ' ' + `${k}: ${best(k)} ms`);
 });
 
-test('partitions nested 3,000 deep: describe() and layout() in time near linear, and no recursion (audit 3)', () => {
+test('partitions nested 3,000 deep: describe() and layout() in time near linear, and no recursion (audit 3) (timed)', () => {
   const N = 3000, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.ActivityPartition', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
   nodes.push({ id: 'i', type: 'uml.InitialNode', parent: 'p' + (N - 1) }, { id: 'a', type: 'uml.Action', label: 'Do', parent: 'p' + (N - 1) });
   const m = { schemaVersion: 2, nodes, edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'i', to: 'a' }], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: nodes.map(n => n.id) }] };
@@ -580,7 +580,7 @@ test('audit 39: every word an activity node draws is in its accessible name, an 
     .map(([from, to], i) => ({ id: 'l' + i, type: 'uml.ControlFlow', from, to })),
   views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'm<img src=https://e.example/t.png>', 'd', 'q', 'j', 'f', 'e'] }] };
   const models = [['odd', odd], ['integration.json', JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8'))],
-    ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
+    ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
   let diamonds = 0;
   for (const [name, m] of models) for (const v of (m.views || []).filter(v => v && v.diagram === 'uml.activity')) {
     const g = layout(m, v.id), d = describe(m, v.id);

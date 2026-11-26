@@ -21,9 +21,9 @@ for (const d of families) { const u = new URL(d + '/', src); for (const f of rea
 
 const arr = x => (Array.isArray(x) ? x : []), read = url => JSON.parse(readFileSync(url));
 const files = () => { const ex = new URL('../examples/', import.meta.url), seen = new Map();
-  readdirSync(ex).filter(f => f.endsWith('.json')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
+  readdirSync(ex).filter(f => f.endsWith('.json') && !f.startsWith('.')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
   // and examples/types/, one model per type (audit 52: deleting its interface block left proxy port errors there)
-  const ty = new URL('types/', ex); readdirSync(ty).filter(f => f.endsWith('.json')).forEach(f => seen.set(new URL(f, ty).href, 'examples/types/' + f));
+  const ty = new URL('types/', ex); readdirSync(ty).filter(f => f.endsWith('.json') && !f.startsWith('.')).forEach(f => seen.set(new URL(f, ty).href, 'examples/types/' + f));
   seen.set(new URL('./fixtures/integration.json', import.meta.url).href, 'tests/fixtures/integration.json');
   targets().forEach(([f, url]) => { if (!seen.has(url.href)) seen.set(url.href, f); });
   return [...seen].map(([href, name]) => [name, read(new URL(href))]); };

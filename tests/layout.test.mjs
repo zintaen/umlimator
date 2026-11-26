@@ -629,7 +629,7 @@ test('audit 25: a name or line label broken on 200,000 lines lays out and is che
 
 // audit 25: a card's details cut in two at a space pushed every space as an argument (a spread) and counted the backticks
 // before each one again: a body of 150,000 words threw, and a long one took seconds
-test('audit 25: a card\'s details of 150,000 words are cut into points, quickly', async () => {
+test('audit 25: a card\'s details of 150,000 words are cut into points, quickly (timed)', async () => {
   const { detailBullets } = await import('../src/canvas/pieces.js');
   const t = Date.now(), out = detailBullets('word '.repeat(150000));
   assert.ok(out.length >= 2); assert.ok(Date.now() - t < 2000, `${Date.now() - t} ms`);
@@ -693,7 +693,7 @@ const foreignUnder = (m, vid, g) => { const fs = g.families || [], out = [];
   const holds = (b, id, k = 0) => k <= fs.length && ((b.nodeIds || []).includes(id) || fs.some(c => c.parent === b.id && holds(c, id, k + 1)));
   fs.forEach(f => g.nodes.forEach(n => { if (n.id !== f.id && !holds(f, n.id) && n.x < f.x + f.w - 1 && f.x < n.x + n.w - 1 && n.y < f.y + f.h - 1 && f.y < n.y + n.h - 1) out.push(`${f.id} over ${n.id}`); }));
   return out; };
-test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped', async () => {
+test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped (timed)', async () => {
   const U = await import('../lib/umlimator-all.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
   try {
     // edit.html's own add-in-box: a new card in each box of each integration fixture view (the rider shop's checkout among them), with no pin
