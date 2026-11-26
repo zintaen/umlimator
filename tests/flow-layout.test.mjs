@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { layout, check, validate } from '../lib/umlimator-all.js';
 import { viewMetrics } from '../src/layout/score.js';
 import { mainFlow } from '../src/layout/layered.js';
+import { readFileSync } from 'node:fs';
 
 // section 5.4's view: A -> B -> C, each also writing to L with a state line
 const ABC = (arrange, more = {}) => ({ schemaVersion: 2,
@@ -121,4 +122,101 @@ test('validate() warns where an arranged view\'s steps break into chains, and sa
   m.edges.find(e => e.id === 'm1').from = 'web'; // step 2 starts at Web, not at Api where step 1 ends
   const said = validate(m).map(p => `${p.level} ${p.path} ${p.message}`);
   assert.deepEqual(said, ['warning edges[1] step 2 starts at "Web", not at "Api" where step 1 ends: the steps break into chains here, and the longest chain (4 lines, from "Web") is the main flow']);
+});
+
+// Step 9 (section 7): semantic zones on a map. In an arranged view a card's zone is its own, else the map's default (section
+// 7.2): a person first, and a public card no line comes into; an external card last; a database, file or board card under.
+// A first card sits in a column before every flow rank, a last card in one after, an under card below every flow row; the
+// main flow keeps its place (but for its first card going first and its last going last). zones: false turns the defaults off.
+const STEPS = ['a', 'b', 'c', 'd'];
+const ZONED = (extra, lines, more = {}) => ({ schemaVersion: 2,
+  nodes: [...STEPS.map(id => ({ id, label: id.toUpperCase() + ' step' })), ...extra],
+  edges: [...STEPS.slice(1).map((to, i) => ({ id: 'm' + i, from: STEPS[i], to, label: 'then', flow: 'main' })), ...lines],
+  views: [{ id: 'v', nodeIds: [...STEPS, ...extra.map(n => n.id)], arrange: 'flow', ...more }] });
+const PERSON = () => ZONED([{ id: 'p', label: 'Shopper', shape: 'person' }], [{ id: 'dp', from: 'd', to: 'p', label: 'tells' }]);
+const BANK = () => ZONED([{ id: 'x', label: 'Bank', kind: 'external' }], [{ id: 'bx', from: 'b', to: 'x', label: 'pays' }]);
+const STORE = () => ZONED([{ id: 's', label: 'Orders', kind: 'database' }, { id: 'e', label: 'E step' }],
+  [{ id: 'bs', from: 'b', to: 's', label: 'feeds' }, { id: 'se', from: 's', to: 'e', label: 'feeds' }, { id: 'ce', from: 'c', to: 'e', label: 'then' }]);
+const off = m => { m.views[0].zones = false; return m; };
+
+test('a person card is in column 0 though a line comes into it from the last column, drawn as a line back', () => {
+  const m = PERSON(), g = layout(m, 'v'), c = cells(g);
+  assert.equal(c.p[0], 0, 'the person first');
+  STEPS.forEach((id, i) => assert.deepEqual(c[id], [i + 1, c.a[1]], id));
+  assert.ok(line(g, 'd', 'p').back, 'the line into the person runs back, as a loop does');
+  assert.deepEqual(check(m, 'v'), [], 'check() says nothing of it running right to left');
+  assert.equal(viewMetrics(g, { model: m, view: m.views[0] }).reverse, 0);
+  assert.equal(cells(layout(off(PERSON()), 'v')).p[0], 4, 'zones: false: ranked after its caller');
+});
+
+test('an external card is in the last column, a database below every flow row, and zones: false ranks as section 5', () => {
+  const b = cells(layout(BANK(), 'v')); assert.equal(b.x[0], Math.max(...Object.values(b).map(p => p[0])), 'the bank last');
+  assert.ok(b.x[0] > b.d[0], 'past the last main card');
+  assert.deepEqual(cells(layout(off(BANK()), 'v')).x, [2, 1], 'zones: false: right after its caller, below the row');
+  const m = STORE(), c = cells(layout(m, 'v')), flow = Object.entries(c).filter(([id]) => id !== 's').map(([, p]) => p[1]);
+  assert.ok(c.s[1] > Math.max(...flow), 'the store under every flow row');
+  assert.ok(c.s[0] > c.b[0] && c.s[0] < c.e[0], 'between the card that feeds it and the one it feeds, so its lines run the reading way');
+  assert.deepEqual(check(m, 'v'), []);
+  assert.ok(cells(layout(off(STORE()), 'v')).s[1] < Math.max(...flow) + 1, 'zones: false: ranked in the flow rows');
+});
+
+test('a card\'s own zone wins over the default, in the card or the view\'s nodeOverrides; "flow" ranks it', () => {
+  const m = BANK(); m.nodes.find(n => n.id === 'x').zone = 'flow';
+  assert.deepEqual(cells(layout(m, 'v')).x, cells(layout(off(BANK()), 'v')).x, 'zone "flow": ranked');
+  const f = BANK(); f.views[0].nodeOverrides = { x: { zone: 'first' } };
+  assert.equal(cells(layout(f, 'v')).x[0], 0, 'zone "first" from the view');
+  const z = off(BANK()); z.nodes.find(n => n.id === 'x').zone = 'last';
+  assert.equal(cells(layout(z, 'v')).x[0], 4, 'a card\'s own zone holds with zones: false');
+  const u = ZONED([], []); u.nodes.find(n => n.id === 'c').zone = 'under';
+  const c = cells(layout(u, 'v')); assert.ok(c.c[1] > c.a[1], 'a main card under, when it says so');
+});
+
+test('the main flow keeps its place: a database on it is not moved under, an external that starts it is not moved last', () => {
+  const m = ZONED([], []); m.nodes.find(n => n.id === 'b').kind = 'database'; m.nodes.find(n => n.id === 'a').kind = 'external';
+  const c = cells(layout(m, 'v')); STEPS.forEach((id, i) => assert.deepEqual(c[id], [i, 0], id));
+});
+
+test('a view whose cards all have a zone has no flow left, and ranks as without zones (section 7.4)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', label: 'User', shape: 'person' }, { id: 'd', label: 'Data', kind: 'database' }, { id: 'f', label: 'File', kind: 'file' }],
+    edges: [{ id: 'ud', from: 'u', to: 'd', label: 'saves' }, { id: 'df', from: 'd', to: 'f', label: 'exports' }], views: [{ id: 'v', nodeIds: ['u', 'd', 'f'], arrange: 'flow' }] };
+  m.nodes.forEach(n => { n.zone = n.id === 'u' ? 'first' : 'under'; });
+  assert.deepEqual(cells(layout(m, 'v')), cells(layout(off(structuredClone(m)), 'v')));
+  const n = structuredClone(m); n.nodes.forEach(x => { delete x.zone; });
+  assert.deepEqual(cells(layout(m, 'v')), cells(layout(n, 'v')));
+});
+
+test('pins win over zones, and boxes too: a store in a box sits under that box\'s flow', () => {
+  const pin = PERSON(); pin.views[0].layout = { p: [5, 0] }; assert.deepEqual(cells(layout(pin, 'v')).p, [5, 0], 'a pin beats a zone');
+  const m = STORE(); m.views[0].containers = [{ id: 'box', label: 'Box', nodeIds: ['a', 'b', 's'] }];
+  const g = layout(m, 'v'), c = cells(g); assert.ok(c.s[1] > Math.max(c.a[1], c.b[1]), 'under the box\'s flow');
+  const box = g.families.find(x => x.id === 'box'), s = g.nodes.find(n => n.id === 's');
+  assert.ok(s.x >= box.x && s.x + s.w <= box.x + box.w && s.y + s.h <= box.y + box.h, 'inside its box');
+});
+
+test('a default zone that would draw more problems is dropped; a card\'s own zone holds even then', () => {
+  const sign = { schemaVersion: 2, nodes: ['user', 'form', 'acct', 'check', 'review', 'active', 'mail'].map(id => ({ id, label: id }))
+      .concat([{ id: 'staff', label: 'Staff', kind: 'public' }, { id: 'users', label: 'Users', kind: 'database' }]),
+    edges: [['user', 'form'], ['form', 'acct'], ['acct', 'check'], ['check', 'active'], ['active', 'mail']].map(([from, to], i) => ({ id: 'm' + i, from, to, label: 'then', flow: 'main' }))
+      .concat([{ id: 'b1', from: 'check', to: 'review', label: 'flags' }, { id: 'b2', from: 'staff', to: 'review', label: 'approves' }, { id: 'b3', from: 'review', to: 'active', label: 'releases' },
+        { id: 'd1', from: 'acct', to: 'users', label: 'writes', flow: 'dep' }, { id: 'd2', from: 'active', to: 'users', label: 'updates', flow: 'dep' }]),
+    views: [{ id: 'v', nodeIds: ['user', 'form', 'acct', 'check', 'review', 'staff', 'active', 'mail', 'users'], arrange: 'flow' }] };
+  // Staff first would run its line under the flow, across the one Accounts writes Users with
+  assert.deepEqual(cells(layout(sign, 'v')), cells(layout(off(structuredClone(sign)), 'v')));
+  assert.equal(viewMetrics(layout(sign, 'v'), { model: sign, view: sign.views[0] }).cross, 0);
+  const own = structuredClone(sign); own.nodes.find(n => n.id === 'staff').zone = 'first';
+  assert.equal(cells(layout(own, 'v')).staff[0], 0);
+});
+
+test('without arrange a zone changes nothing', () => {
+  const m = BANK(); delete m.views[0].arrange; m.nodes.find(n => n.id === 'x').zone = 'first';
+  const u = BANK(); delete u.views[0].arrange; assert.deepEqual(cells(layout(m, 'v')), cells(layout(u, 'v')));
+});
+
+test('f12: reverse and cross of every arranged map view are not above the same view with zones: false (section 7.4)', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url)));
+  for (const v of f12.views.filter(x => !x.diagram && x.zones !== false)) {
+    const z = viewMetrics(layout(f12, v.id), { model: f12, view: v }), o = structuredClone(f12), ov = o.views.find(x => x.id === v.id); ov.zones = false;
+    const b = viewMetrics(layout(o, v.id), { model: o, view: ov });
+    assert.ok(z.reverse <= b.reverse && z.cross <= b.cross, `${v.id}: reverse ${z.reverse} (${b.reverse}), cross ${z.cross} (${b.cross})`);
+  }
 });
