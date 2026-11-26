@@ -72,19 +72,6 @@ test('arrange on a type that lays out on its own axis (sequence, timing, mindmap
   assert.ok(at(mm, 'views[0].arrange').some(s => /a mindmap view lays out on its own axis/.test(s)));
 });
 
-// audit 66: layout-flow.md section 5.1 says arrange on a structure type (class, ER, component ...) warns and does nothing new;
-// validate() said nothing
-test('arrange on a type that reads no flow (an ER, a class, an information flow view) is a warning; on one that does, none', () => {
-  const er = { schemaVersion: 2, nodes: [{ id: 'a', type: 'er.Entity', label: 'A' }, { id: 'b', type: 'er.Entity', label: 'B' }], edges: [], views: [{ id: 'e', diagram: 'er', arrange: 'flow', nodeIds: ['a', 'b'] }] };
-  assert.deepEqual(at(er, 'views[0].arrange'), ['warning: er draws structure, not a flow: arrange "flow" changes nothing']);
-  const cl = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], edges: [], views: [{ id: 'k', diagram: 'uml.class', arrange: 'flow', nodeIds: ['a'] }] };
-  assert.deepEqual(at(cl, 'views[0].arrange'), ['warning: uml.class draws structure, not a flow: arrange "flow" changes nothing']);
-  const ex = JSON.parse(readFileSync(new URL('../examples/order-information-flow.json', import.meta.url), 'utf8')); ex.views[0].arrange = 'flow';
-  assert.ok(validate(ex).some(p => p.path === 'views[0].arrange' && /draws structure/.test(p.message)));
-  const fc = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }], edges: [], views: [{ id: 'f', diagram: 'flowchart', arrange: 'flow', nodeIds: ['s'] }] };
-  assert.deepEqual(at(fc, 'views[0].arrange'), []);
-});
-
 // step 4 (section 5) gives arranged map views their dependency lines; tests/flow-layout.test.mjs holds what they do, and step
 // 10 the typed types that read the flow (flowRole, zoneOf), each type's test file what its own do. The rest reads the fields
 // still not: a view of a type with neither, and a map view with no dependency line, draw as with the fields taken out

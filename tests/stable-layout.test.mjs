@@ -149,13 +149,3 @@ test('stable: a card added past a snake\'s last card goes a column past it, as t
   assert.deepEqual(s['zz-onboard-boxed-card'], [b['n-live'][0] - 1, b['n-live'][1]], 'the new card is a column past Go live, on its row');
   assert.deepEqual(hardIn(after, view, before), []);
 });
-
-// audit 66: a card the fresh layout gives no cell (here its id is also a box's, validate()'s error) named like an
-// Object.prototype member: the stable ways read the member (a function) as its slot and threw "function is not iterable"
-test('a stable layout of a card named like an Object.prototype member with no fresh cell draws as the fresh one', () => {
-  for (const [a, b] of [['toString', 'valueOf'], ['constructor', 'hasOwnProperty'], ['valueOf', '__proto__']]) {
-    const m = { schemaVersion: 1, title: 'p', nodes: [{ id: a }, { id: b }], edges: [], views: [{ id: 'v', nodeIds: [a, b], containers: [{ id: b, label: 'Box', nodeIds: [a] }] }] };
-    const fresh = layout(m, 'v'), xy = g => g.nodes.map(n => [n.id, n.x, n.y]);
-    assert.deepEqual(xy(layout(m, 'v', { stableFrom: m })), xy(fresh), `${a}, ${b}`);
-    const d = diff(m, m); assert.deepEqual(xy(layout(d.model, 'v', { stableFrom: d.stableFrom })), xy(fresh), `${a}, ${b}: diff`); }
-});

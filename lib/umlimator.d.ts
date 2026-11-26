@@ -442,8 +442,8 @@ export interface MapView {
    *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
    *  dependencies sits under the flow, and the main flow holds one straight row with each branch on one side of it,
    *  across the view's boxes too (more than 10 main cards wrap onto a second row that runs back under the first: the
-   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf (but for the snake, map views only for now). validate() warns on any other value, on a sequence, timing or mindmap
-   *  view, which does not rank its elements, and on a type that gives neither flowRole nor zoneOf, where it changes nothing; diff() reports a change of it. */
+   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf (but for the snake, map views only for now). validate() warns on any other value and on a sequence, timing or mindmap
+   *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
   zones?: boolean;
