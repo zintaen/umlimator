@@ -11,7 +11,7 @@ import { arrOf } from './validate.js';
    does: "2. Charges: Cart charges Payments; reads Orders". A dependency line is no step: the card it joins is named in
    the caption of the step that reads or writes it. A branch (a chain of flow lines off the main flow) is a chapter,
    offered at the step where it leaves. A sequence view tells its messages in order; a BPMN view its path from the start
-   event, a communication view its numbered messages in time order. The lines are read as the view draws them (its
+   event (each gateway's or activity's default flow where it names one), a communication view its numbered messages in time order. The lines are read as the view draws them (its
    geometry), so every tour rides a drawn line. audience: who it is told to, kept on the story (and its chapters); for
    "business" the captions leave out the stores a step reads or writes. Pure: nothing is saved, the model is not changed. */
 const STORY_ROLES = ['main', 'branch', 'dep'];
@@ -112,11 +112,12 @@ export function storyFromFlow(model, viewId, options = {}) {
     return out;
   }
   let main = null;
-  if (bpmn) { // the path from the start event, each node's first flow out, never coming back
+  if (bpmn) { // the path from the start event, each node's default flow out (props.default) else its first, never coming back
     const node = id => ctx.N[id] || {}, start = cards.find(c => STORY_START.test(String(node(c).type || '')));
+    const dflt = id => { const p = node(id).props; return p && typeof p === 'object' && typeof p.default === 'string' ? p.default : null; };
     if (start != null) { const flows = lines.map((e, k) => [e, k]).filter(([e, k]) => !back.has(k) && !dep(e) && e.from !== e.to && STORY_SEQ_FLOW.test(String(e.type || '')));
       const seen = new Set([start]), ks = []; let at = start;
-      for (;;) { const nx = flows.find(([e]) => e.from === at && !seen.has(e.to)); if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
+      for (;;) { const d = dflt(at), out = flows.filter(([e]) => e.from === at && !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
       if (ks.length) main = { cards: [start, ...ks.map(k => lines[k].to)], lines: ks }; }
   }
   if (!main) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)

@@ -75,7 +75,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let bad = 0;
   for (const t of all) if (!S.types[t]) { console.error(`tools/types.json has no type ${t}`); bad++; }
   for (const t of Object.keys(S.types)) if (!all.includes(t)) { console.error(`tools/types.json's type ${t} is in none of its families`); bad++; }
-  for (const f of readdirSync(new URL('examples/types/', ROOT)).filter(f => f.endsWith('.json')))
+  for (const f of readdirSync(new URL('examples/types/', ROOT)).filter(f => f.endsWith('.json') && !f.startsWith('.')))  // a hidden file is a render's temporary copy, never a type
     if (!all.includes(f.slice(0, -5))) { console.error(`examples/types/${f}: no such type; delete it`); bad++; }
   // a name given that is no type, or a type whose model is missing or not JSON: one line each, not a stack trace (audit 53)
   for (const t of want) if (!all.includes(t)) { console.error(`tools/types.mjs: no type ${t}; the types: ${all.join(', ')}`); bad++; }

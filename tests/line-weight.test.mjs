@@ -114,7 +114,7 @@ test("audit 54: a weighted line's first sentence ends at no abbreviation, its fi
   assert.ok(c.includes('e.g. book') && !c.includes('Also refunds'), c.match(/Stores[^<]*/)?.[0]);
 });
 
-test('audit 54 follow-up: firstSentence checks only a 9-character tail for an abbreviation (constant work per period on any regex engine) and still cuts as before', async () => {
+test('audit 54 follow-up: firstSentence checks only a 9-character tail for an abbreviation (constant work per period on any regex engine) and still cuts as before (timed)', async () => {
   const { firstSentence } = await import('../src/core/text.js');
   const s = 'x e.g. '.repeat(40000) + 'end. tail';
   const t0 = performance.now();
