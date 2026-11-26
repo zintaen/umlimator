@@ -154,7 +154,7 @@ interface MapEdge {
 | `drift` | What [`drift()`](./apply-and-commands.md#drift) found: `undrawn` or `idle`. |
 | `latency`, `cost` | Budgets, in ms and in any unit, that [`critical()`](./apply-and-commands.md#critical) sums along a path. Not drawn. |
 | `edited` | Draws a marker at the middle of the line. |
-| `flow` | The line's part in a view with `arrange: 'flow'`: a [`FlowRole`](#flowrole). Without it, the line's kind decides. A typed line takes it too. Read on a map view so far: a `dep` line ranks nothing, and a `state` or `guard` line counts as `dep` unless its `flow` says otherwise. |
+| `flow` | The line's part in a view with `arrange: 'flow'`: a [`FlowRole`](#flowrole). Without it, the line's kind decides. A typed line takes it too. Read on a map view so far: a `dep` line ranks nothing, and a `state` or `guard` line counts as `dep` unless its `flow` says otherwise; `main` lines hold the main flow's one row (with no boxes). |
 
 Other fields the map reads: `fromSide` and `toSide` (the card sides the line uses).
 
@@ -174,7 +174,7 @@ or writes a file, board or config: a thinner line, a muted label, no flow) and `
 type FlowRole = 'main' | 'branch' | 'dep';
 ```
 
-A line's part in a view laid out by business flow ([design note](../diagrams/notes/layout-flow.md)): on the main flow, a flow line off it, or a dependency line that ranks nothing. Map views read it so far (`main` as `branch` until the main flow lands); typed views do not yet. In a view with `arrange: 'flow'`, `validate()` warns when the `main` lines are not one path: a card with two main lines out or in, or a main line that closes a loop.
+A line's part in a view laid out by business flow ([design note](../diagrams/notes/layout-flow.md)): on the main flow, a flow line off it, or a dependency line that ranks nothing. Map views read it so far; typed views do not yet. The main flow is the longest path among the `main` lines; with none, the stepped lines in step order (2 < 2a < 2b < 3, a step's first suffix on it), each starting where the one before ends, the longest such chain kept; else a numbered view's run order; else the longest path of flow lines. In a view with `arrange: 'flow'`, `validate()` warns when the `main` lines are not one path (a card with two main lines out or in, or a main line that closes a loop), and, with no `main` line, where the steps break into chains.
 
 ## FlowZone
 
@@ -210,7 +210,7 @@ interface MapView {
 | `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, a `tone` that tints the region behind it, and a `change` mark, as a card's, that [`diff()`](./apply-and-commands.md#diff) sets on a box the view gained or lost, written in lower case (`validate()` warns on another case or a value with no mark). |
 | `subAndChips` | Cards 80 px tall that show their sub-line, then their chips. |
 | `kindsFromLabels` | Guess a line's kind from its label's words when its edges name none. The standalone page always guesses. |
-| `arrange` | `'flow'`: lay the view out by business flow, where [`FlowRole`](#flowrole) and [`FlowZone`](#flowzone) apply. On a map view, dependency lines rank nothing: a card whose lines are all dependencies sits in a band under the flow, in the column of the middle card it is joined to (the right one of two), and those lines are routed after the flow lines and may run right to left without `check()` saying so. A view with no flow line draws as without it, and a typed view does too for now. `validate()` warns on another value, and on a sequence, timing or mindmap view, which does not rank its elements. `diff()` reports a change of it, of a line's `flow` and of a card's `zone`. |
+| `arrange` | `'flow'`: lay the view out by business flow, where [`FlowRole`](#flowrole) and [`FlowZone`](#flowzone) apply. On a map view, dependency lines rank nothing: a card whose lines are all dependencies sits in a band under the flow, in the column of the middle card it is joined to (the right one of two), and those lines are routed after the flow lines and may run right to left without `check()` saying so. On a map view with no boxes, the main flow (see [`FlowRole`](#flowrole)) holds one straight row: each main line leaves its card's right side and comes into the next card's left side at their middles, and each branch keeps to one side of the row, above when one of its lines is a guard, else below (the other side when a column already holds two more cards on that one). A pinned card keeps its pin. A view with no flow line draws as without it, and a typed view does too for now. `validate()` warns on another value, and on a sequence, timing or mindmap view, which does not rank its elements. `diff()` reports a change of it, of a line's `flow` and of a card's `zone`. |
 | `zones` | `false`: no default zones in an arranged view; a card's own `zone` still holds. |
 
 Other view fields: `gap` and `rgap` (space between columns and rows), `keepPairs` (A→B and B→A drawn as two lines),

@@ -1,9 +1,9 @@
 {
- "commit": "17939850",
+ "commit": "cb86b03b",
  "corpus": "fixed",
  "total": {
   "views": 253,
-  "score": 607744.08
+  "score": 607629.43
  },
  "views": {
   "b10/overview": {
@@ -81,18 +81,18 @@
   "f12/order": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 867.93
+   "score": 877.73
   },
   "f12/signup": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
-   "straight": 4,
+   "labels": 1,
+   "straight": 0,
    "reverse": 0,
-   "score": 626.23
+   "score": 567.69
   },
   "f12/ticket": {
    "hard": 0,
@@ -100,15 +100,15 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 492.77
+   "score": 491.17
   },
   "f12/pipeline": {
    "hard": 0,
    "cross": 0,
-   "labels": 5,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
-   "score": 1107.43
+   "score": 1043.12
   },
   "f12/checkout-c4": {
    "hard": 0,

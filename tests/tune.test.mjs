@@ -52,6 +52,7 @@ const READS = {
     FLOW_WAYS: /for \(const o of FLOW_WAYS\.slice\(1\)\)/,
     FAN_IN: /\) >= FAN_IN\); \};/,
     SCORE_WEIGHTS: /const W = SCORE_WEIGHTS;/,
+    BRANCH_BALANCE: /held\(rank\[i\], s\) - held\(rank\[i\], -s\) >= BRANCH_BALANCE\)/,
   },
 };
 

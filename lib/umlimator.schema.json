@@ -1176,7 +1176,7 @@
       "branch",
       "dep"
      ],
-     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): the line's part in a view with arrange: flow, on the main flow (main), a flow line off it (branch), or a dependency line that ranks nothing (dep). Absent: from the line's kind. validate() warns when an arranged view's main lines are not one path. Read by no layout yet: validate() checks it and diff() reports a change of it."
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): the line's part in a view with arrange: flow, on the main flow (main), a flow line off it (branch), or a dependency line that ranks nothing (dep). Absent: from the line's kind. With no main line, the main flow is the stepped lines chained in step order, else the longest path of flow lines. validate() warns when an arranged view's main lines are not one path, or its steps break into chains. Read on map views so far; diff() reports a change of it."
     },
     "what": {
      "type": "string",
@@ -1691,7 +1691,7 @@
      "enum": [
       "flow"
      ],
-     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read by no layout yet: validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
+     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and with no boxes the main flow on one straight row. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
     },
     "zones": {
      "type": "boolean",
