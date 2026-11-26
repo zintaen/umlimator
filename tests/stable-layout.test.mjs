@@ -128,11 +128,14 @@ test('stable: a fresh layout that moves unchanged cards pays for them in the gua
 const hardIn = (model, view, base) => check(model, view, { stableFrom: base }).filter(i => / share a line$| which it does not hold$| overlap$/.test(i.message));
 
 test('stable: the ends of an added line may take their slots in the fresh layout, the other cards their old cells', async () => {
-  // f12's pipeline with a line added: with both ends at their old cells the new line crosses four (guarded out); with them at
-  // their fresh slots and the rest soft-pinned it does not, where the fresh layout moves two cards the edit left alone
-  const { before, after, view, touched } = await pairOf('f12/pipeline/5-add-line'), b = cells(layout(before, view));
+  // i59's overview with a line added: the fresh layout moves eleven cards the edit left alone; the stable one keeps them and
+  // both ends of the new line take their fresh slots (f12's pipeline showed this until its arranged layout, D13's fixes, no
+  // longer moved its cards for that edit)
+  const { before, after, view, touched } = await pairOf('i59/overview/5-add-line'), b = cells(layout(before, view));
   assert.ok(moved(b, cells(layout(after, view)), touched).length >= 2, 'laid out afresh, cards move');
-  assert.deepEqual(moved(b, cells(layout(after, view, { stableFrom: before })), touched), [], 'against the base, none does');
+  const s = cells(layout(after, view, { stableFrom: before }));
+  assert.deepEqual(moved(b, s, touched), [], 'against the base, none does');
+  assert.ok(touched.some(i => i in b && String(b[i]) !== String(s[i])), 'an end of the new line takes its fresh slot');
   assert.deepEqual(hardIn(after, view, before), []);
 });
 

@@ -1,11 +1,75 @@
 {
- "commit": "4066b80a",
+ "commit": "07effce2",
  "corpus": "fixed",
  "total": {
-  "views": 255,
-  "score": 606971.2
+  "views": 263,
+  "score": 611401.55
  },
  "views": {
+  "a8/dsl-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 601.23
+  },
+  "a8/dsl-containers": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "score": 1161.01
+  },
+  "a8/dsl-api-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 918.93
+  },
+  "a8/puml-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 654.61
+  },
+  "a8/checkout-flowchart": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 303.76
+  },
+  "a8/meals-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "score": 325.61
+  },
+  "a8/compose-services": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 373.67
+  },
+  "a8/k8s-cluster": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 183.93
+  },
   "b10/overview": {
    "hard": 0,
    "cross": 2,
@@ -148,7 +212,7 @@
    "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 826.7
+   "score": 738.42
   },
   "f12/signup-boxed": {
    "hard": 0,
@@ -161,10 +225,10 @@
   "f12/ticket-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 548.85
+   "score": 544.73
   },
   "f12/pipeline-boxed": {
    "hard": 0,
