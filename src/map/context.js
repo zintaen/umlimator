@@ -454,7 +454,9 @@ function mapContext(model, opts = {}) {
     // a view whose zones come from the defaults (section 7.2) is also laid out without them, and keeps them unless they draw
     // more problems (what check() says, crossings, labels not drawn): a default never makes a view worse to read
     const seen = new Set([JSON.stringify(first)]), ways = [[first, 0]];
-    for (const o of [...FLOW_WAYS.slice(1), ...(zoneDefaults(vid) ? FLOW_WAYS.map(w => ({ ...w, bare: true })) : [])]) { const p = flowPos(vid, o), k = JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push([p, o.bare ? 1 : 0]); } }
+    const add = o => { const p = flowPos(vid, o), k = JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push([p, o.bare ? 1 : 0]); } };
+    for (const o of FLOW_WAYS.slice(1)) add(o);
+    if (zoneDefaults(vid)) FLOW_WAYS.forEach(w => add({ ...w, bare: true }));
     if (ways.length < 2) return first;
     const best = [{ score: Infinity }, { score: Infinity }];
     scouting = true; ways.forEach(([p, b]) => { const g = buildGeo(vid, p), s = scoreGeo(g), B = best[b]; if (s < B.score - 0.5) Object.assign(B, { score: s, pos: p, g }); }); scouting = false; // as it will be drawn: with port repair
