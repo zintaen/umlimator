@@ -617,14 +617,17 @@ function mapContext(model, opts = {}) {
      of a last one, or a line to or from an under card (its own zone, else its type's), is no candidate unless it says main, so
      a person called back by the system does not end the flow (C4's rankFlip did this before zones) nor a flowchart's flow into
      its document. null as mainOf's */
-  const typedMain = vid => { const v = V[vid] || {}, T = flowT(vid); if (v.arrange !== 'flow' || !T) return null;
+  const typedMain = (vid, any) => { const v = V[vid] || {}, T = flowT(vid); if (!any && v.arrange !== 'flow' || !T) return null; // any: an arranged view's or not (storyFlow)
     const dep = depRule(v, T); if (!flowing(vid, dep)) return null;
     const lp = loopsOf(v), lines = lp.edges.map(e => !FLOW_ROLES.includes(e.flow) && roleIn(T, e, v) === 'main' ? { ...e, flow: 'main' } : e);
     const zr = O(), zone = i => { if (!(i in zr)) { const n = nodeIn(i, vid); let z = ZONES.includes(n.zone) ? n.zone : null;
       if (!z && v.zones !== false && typeof T.zoneOf === 'function') try { z = T.zoneOf(n, D, v); } catch { z = null; } zr[i] = z; } return zr[i]; };
     const back = new Set(lp.back); lines.forEach((e, k) => { if (e.flow !== 'main' && (zone(e.to) === 'first' && zone(e.from) !== 'first' || zone(e.from) === 'last' && zone(e.to) !== 'last' || [e.from, e.to].some(i => zone(i) === 'under'))) back.add(k); });
     const M = mainFlow(lines, { back, dep, cards: v.nodeIds });
-    return M && { ...M, keys: new Set(M.lines.map(k => lp.edges[k].from + '>' + lp.edges[k].to)), ids: new Set(M.lines.map(k => lp.edges[k].id).filter(x => x != null)) }; };
+    return M && { ...M, keys: new Set(M.lines.map(k => lp.edges[k].from + '>' + lp.edges[k].to)), ids: new Set(M.lines.map(k => lp.edges[k].id).filter(x => x != null)), lineIds: M.lines.map(k => lp.edges[k].id) }; };
+  /* A typed view's flow as storyFromFlow tells it: its type's dependency rule and the main flow typedMain finds (an arranged
+     view's is the one its picture draws, mainLine); null for a type with no flowRole, whose views have no main flow */
+  const storyFlow = vid => { const T = flowT(vid); return T ? { dep: depRule(V[vid] || {}, T), main: typedMain(vid, true) } : null; };
   /* The main flow (section 6): in an arranged map view, mainFlow's (layered.js) over the view's lines as loopsOf reads them,
      dependency lines left out; null in any other view, or one with no flow line. Its cards hold one row (flowPos), its lines
      take the middle port of the sides they leave and come into (prepEdges' mainLine, layoutPass's port spread); with boxes,
@@ -1449,7 +1452,7 @@ function mapContext(model, opts = {}) {
     const n = (v.nodeIds || []).length;
     return key(n > FLOW_CAP || n < FLOW_MIN ? [flowPos(vid, FLOW_WAYS[0])] : FLOW_WAYS.map(o => flowPos(vid, o))); }
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), plainOf: withM(vid => { cellsOf(vid); return plainMain.has(vid); }), cellsOf: withM(cellsOf), homeOf, flowKeys, softOf: withM(softOf), guardScore, buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), plainOf: withM(vid => { cellsOf(vid); return plainMain.has(vid); }), cellsOf: withM(cellsOf), homeOf, flowKeys, softOf: withM(softOf), guardScore, storyFlow: withM(storyFlow), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
 }
 
 export { mapContext, boxHolds, elementCount };
