@@ -1,6 +1,6 @@
 // Layout by business flow, step 3 (docs/diagrams/notes/layout-flow.md sections 3 and 12): the model fields arrange, zones,
 // flow and zone, checked by validate(), described by the schema and lib/umlimator.d.ts, reported by diff(); from step 4 an
-// arranged map view's dependency lines rank nothing (tests/flow-layout.test.mjs), and no other layout reads them yet. bench/models/f12.json is the fixed
+// arranged map view's dependency lines rank nothing (tests/flow-layout.test.mjs), and from step 10 the typed types' that read the flow. bench/models/f12.json is the fixed
 // corpus's flow model: it validates clean, and its map views are in bench/expected.json.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,12 +72,14 @@ test('arrange on a type that lays out on its own axis (sequence, timing, mindmap
   assert.ok(at(mm, 'views[0].arrange').some(s => /a mindmap view lays out on its own axis/.test(s)));
 });
 
-// step 4 (section 5) gives arranged map views their dependency lines; tests/flow-layout.test.mjs holds what they do. The rest
-// reads the fields still not: a typed view, and a map view with no dependency line, draw as with the fields taken out
-test('no typed layout reads the fields yet, nor a map view with no dependency line: each draws as with them taken out', () => {
-  const m = read('../bench/models/f12.json'), bare = strip(m);
-  assert.ok(m.views.every(v => v.arrange === 'flow') && m.views.length === 14);
-  for (const v of m.views.filter(v => v.diagram)) assert.deepEqual(drawn(quiet(() => layout(m, v.id))), drawn(quiet(() => layout(bare, v.id))), v.id);
+// step 4 (section 5) gives arranged map views their dependency lines; tests/flow-layout.test.mjs holds what they do, and step
+// 10 the typed types that read the flow (flowRole, zoneOf), each type's test file what its own do. The rest reads the fields
+// still not: a view of a type with neither, and a map view with no dependency line, draw as with the fields taken out
+test('a type that reads no flow (a class view), and a map view with no dependency line, draw as with the fields taken out', () => {
+  const cl = (id, label) => ({ id, type: 'uml.Class', label, zone: 'first' });
+  const k = { schemaVersion: 2, nodes: [cl('a', 'A'), cl('b', 'B'), cl('c', 'C')], edges: [{ id: 'ab', type: 'uml.Association', from: 'a', to: 'b', flow: 'main' },
+    { id: 'bc', type: 'uml.Association', from: 'b', to: 'c', flow: 'dep' }], views: [{ id: 'k', diagram: 'uml.class', arrange: 'flow', nodeIds: ['a', 'b', 'c'] }] };
+  assert.deepEqual(drawn(quiet(() => layout(k, 'k'))), drawn(quiet(() => layout(strip(k), 'k'))));
   const s = MAP(); s.edges = s.edges.filter(e => e.flow !== 'dep'); s.nodes[2].zone = 'last';
   assert.deepEqual(drawn(layout(s, 'v')), drawn(layout(strip(s), 'v')));
 });

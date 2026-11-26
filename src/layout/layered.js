@@ -397,6 +397,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const place = () => {
     x = 0; for (let c = Math.floor(cols[0] ?? 0); c <= Math.ceil(cols[cols.length - 1] ?? 0); c++) { colX[c] = x; x += (colW[c] || NW) + gap(c); }
     nodes.forEach(n => { n.x = cx(n.col) + ((colW[n.col] || n.w) - n.w) / 2; n.y = rowY(n.row); if (map && n.k === 'm-script') { n.h = NH - 22; n.y += 11; } });
+    // an arranged typed view's main cards (mainCard, layout-flow.md section 12 step 10) centred on the tallest main card of their row
+    if (dg.typed && nodes.some(n => n.mainCard)) { const H = Object.create(null); nodes.forEach(n => { if (n.mainCard) H[n.row] = Math.max(H[n.row] || 0, n.h); });
+      nodes.forEach(n => { if (n.mainCard) n.y += (H[n.row] - n.h) / 2; }); }
     let prev = null; // that row in column order: each card at its column, or right of the one before when that one is wider
     nodes.filter(n => n.aside).sort((a, b) => a.row - b.row || a.col - b.col).forEach(n => { if (prev && prev.row === n.row) n.x = Math.max(n.x, prev.x + prev.w + CG); prev = n; });
   };

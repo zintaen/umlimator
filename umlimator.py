@@ -944,24 +944,41 @@ def cmd_diff(a):
     before, after = map(read_model, a.files)
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
-    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable)
+    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True, stable=False):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=False, story=False):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
     leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
-    stable: the page draws the model after against the model before, so the cards the change left alone keep their cells."""
+    stable: the page draws the model after against the model before, so the cards the change left alone keep their cells.
+    story: each view that shows a change gets a story of it (storyFromDiff, told on the diff's model), in the page's Stories
+    menu, and the answer names them."""
     d = js("diff", before, after, {"stable": True}) if stable else js("diff", before, after)
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
+    told = []
+    if story:  # a story of each view's change, on the page's own model (which draws the removed cards and lines too)
+        mine = {s.get("id") for s in m.get("stories") or [] if isinstance(s, dict)}
+        for v in d["views"]:
+            sid = f"diff-{v}"
+            while sid in mine:
+                sid += "-2"
+            try:
+                told.append(js("storyFromDiff", before, after, v, {"on": "diff", "id": sid}))
+                mine.add(sid)
+            except SystemExit:  # a view whose change draws nothing the story can name (a moved view): no story
+                pass
+        if told:
+            m["stories"] = [*(m.get("stories") if isinstance(m.get("stories"), list) else []), *told]
     m["title"] = f"{title_of(m, near)}: what changed"
     rep = render_model(m, near, out, d.get("stableFrom") if stable else None)
     pngs, failed = shots(out, stills, d["views"])
-    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
+    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], **({"stories": [s["id"] for s in told]} if story else {}),
+            "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
 
 
 def model_of(text, where=None):
@@ -1133,7 +1150,7 @@ def diff_since(a):
             # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
             # symbolic link, so a deleted model never writes outside it (audit 19)
             near = top / name if after or inside(top / name, folder=True) else out / f"{stem}.json"
-            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False, stable=a.stable)
+            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False, stable=a.stable, story=a.story)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
@@ -1981,6 +1998,7 @@ def main():
     d.add_argument("--stills", help="a folder for stills of the views that show a change"); d.add_argument("--base", help="a git ref: diff the working tree's models against it")
     d.add_argument("--models", nargs="*", help="with --base, git pathspecs of the model files (default: every .json that is a map model)")
     d.add_argument("--stable", action="store_true", help="draw the model after against the model before: the cards the change left alone keep their places")
+    d.add_argument("--story", action="store_true", help="a story of each changed view (what was added, changed or removed, along its main flow) in the page's Stories menu")
     d.set_defaults(f=cmd_diff)
     dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
     dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")
