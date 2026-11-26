@@ -238,6 +238,22 @@ function fcMoveTo(model, view, id) {
   return [...FC_ARR(model && model.edges), ...FC_ARR(FC_OBJ(view) && view.edges)].some(e => FC_OBJ(e) && e.id === id) ? { error: 'A flow follows its nodes: move a node instead' } : null;
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a flow is a flow line and a comment link a dependency; the start terminal (one no flow comes into) first,
+   an end terminal (one no flow leaves) last, a data or document symbol (input/output, document, database) in the band under
+   the flow. Each by the view's flows, read once a view */
+const fcFlowRole = e => (FC_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch');
+const FC_UNDER = ['flow.InputOutput', 'flow.Document', 'flow.Database'], FC_ENDS = new WeakMap();
+function fcZoneOf(x, model, view) {
+  if (!FC_OBJ(x) || !FC_OBJ(view)) return null;
+  if (FC_UNDER.includes(x.type)) return 'under';
+  if (x.type !== 'flow.Terminator') return null;
+  let by = FC_ENDS.get(view); if (!by || by.model !== model) { by = { model, ends: new Map() }; FC_ENDS.set(view, by);
+    fcIndex(model, view).flows.filter(e => e.from !== e.to).forEach(e => [[e.from, 0], [e.to, 1]].forEach(([id, k]) => { const s = by.ends.get(id) || [0, 0]; s[k]++; by.ends.set(id, s); })); }
+  const [out, inn] = by.ends.get(x.id) || [0, 0];
+  return out && !inn ? 'first' : inn && !out ? 'last' : null;
+}
+
 /* ---- the type ---- */
 const FC_TYPE = registerDiagramType('flowchart', {
   untyped: 'Node', // an element of no type (or ""): a node, as named (audit 30)
@@ -245,6 +261,8 @@ const FC_TYPE = registerDiagramType('flowchart', {
   elements: [...FC_NODES, 'uml.Comment'].map(type => ({ type, label: FC_LOOK[type][1] })),
   lines: [{ type: 'flow.Flow', label: 'Flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   layout: fcGeo,
+  flowRole: fcFlowRole,
+  zoneOf: fcZoneOf,
   validate: fcProblems,
   rules: FC_RULES,
   describe: fcDescribe,
@@ -256,4 +274,4 @@ const FC_TYPE = registerDiagramType('flowchart', {
     return e && !FC_TXT(e.label) && d && d.type === 'flow.Decision' ? `an exit of ${fcCalled(d)} with no label` : null; },
 });
 
-export { FC_TYPE, FC_RULES, FC_LOOK, fcGeo, fcProblems, fcDescribe, fcConnect, fcMoveTo };
+export { FC_TYPE, FC_RULES, fcFlowRole, fcZoneOf, FC_LOOK, fcGeo, fcProblems, fcDescribe, fcConnect, fcMoveTo };

@@ -455,3 +455,15 @@ test('audit 43: the legend keys the process rectangle a node of no type or of an
     assert.deepEqual(keys(x), ['Flow', 'Terminator', 'Process'], JSON.stringify(x));
   assert.deepEqual(keys(N('x', 'Decision', 'Ok?')), ['Flow', 'Terminator', 'Decision'], 'a symbol of its own: no Process key');
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the flowchart's zoneOf and
+// flowRole, read only in an arranged view
+test('zoneOf: the start terminal first, an end terminal last, a data or document symbol under; flowRole: a flow flows, a comment link is a dependency', () => {
+  const m = one([N('s', 'Terminator', 'Start'), N('p', 'Process', 'Do'), N('io', 'InputOutput', 'Read'), N('doc', 'Document', 'Report'), N('db', 'Database', 'Save'), N('e', 'Terminator', 'End'), N('t', 'Terminator', 'Alone')],
+    [F('f1', 's', 'p'), F('f2', 'p', 'e'), F('f3', 'p', 'db'), F('f4', 'p', 'doc')], { arrange: 'flow' });
+  const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['s', 'p', 'io', 'doc', 'db', 'e', 't'].map(id => T.zoneOf(n(id), m, V0)), ['first', null, 'under', 'under', 'under', 'last', null]);
+  assert.deepEqual([F('x', 'p', 'e'), { id: 'c', type: 'uml.CommentLink', from: 'p', to: 'e' }].map(e => T.flowRole(e, m, V0)), ['branch', 'dep']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(['db', 'doc'].every(d => at(d).row > at('p').row), 'laid out down, the stores in the band beside the flow');
+});
