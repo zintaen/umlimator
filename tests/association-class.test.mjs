@@ -191,6 +191,39 @@ test('an association a view holds as its own line: drawn with its class, and the
   assert.match(field(m, m.views[1], 'c', 'props.associationClass', 'x').error, /^association-class: no association/);
 });
 
+test('a tie whose way round has to cross a line takes it rather than run through a card, laid out right and down (audit 66)', () => {
+  // tieDraw weighed a card entered the same as a line crossed, so a way round with one crossing lost to a path through a card
+  const C = (id, label) => ({ id, type: 'uml.Class', label }), A = (id, from, to) => ({ id, type: 'uml.Association', from, to });
+  const right = { schemaVersion: 2,
+    nodes: [C('c0', 'Class0'), C('c1', 'Class1'), { ...C('c3', 'Class3'), members: [{ id: 'c3.a', type: 'uml.Property', label: 'attr', props: { valueType: 'String' } }] }, C('c4', 'Class4'), C('c5', 'Class5'), { ...C('ac0', 'Assoc0'), props: { associationClass: 'e0' } }],
+    edges: [A('e0', 'c3', 'c0'), A('e2', 'c0', 'c1'), A('e3', 'c4', 'c5'), A('e5', 'c5', 'c0'), A('e6', 'c3', 'c5'), A('e7', 'c3', 'c1')],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['c0', 'c1', 'c3', 'c4', 'c5', 'ac0'] }] };
+  const down = { schemaVersion: 2,
+    nodes: [C('c0', 'Class0'), C('c1', 'Class1'), C('c2', 'Class2'), C('c3', 'Class3'), { ...C('ac0', 'Assoc0'), props: { associationClass: 'e1' } }],
+    edges: [{ id: 'e0', type: 'uml.Generalization', from: 'c0', to: 'c2' }, A('e1', 'c2', 'c0'), A('e3', 'c2', 'c3'), A('e4', 'c3', 'c0')],
+    views: [{ id: 'v', diagram: 'uml.class', direction: 'down', nodeIds: ['c0', 'c1', 'c2', 'c3', 'ac0'] }] };
+  for (const [name, m] of [['right', right], ['down', down]]) {
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], name);
+    const g = layout(m, 'v'); tieClear(g, g.edges.find(e => e.id === 'association-class:ac0'), name);
+    assert.deepEqual(check(m, 'v').map(x => x.message).filter(x => /passes through card/.test(x)), [], `${name}: no line through a card`);
+  }
+});
+
+test('hiding a class at an end of an association the view holds as its own line takes the association, and so the field, as a delete does (audit 66)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'person', type: 'uml.Class', label: 'Person' }, { id: 'company', type: 'uml.Class', label: 'Company' }, { id: 'job', type: 'uml.Class', label: 'Job', props: { associationClass: 'works' } }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['person', 'company', 'job'], edges: [{ id: 'works', type: 'uml.Association', from: 'person', to: 'company', label: 'works for' }] }] };
+  for (const id of ['person', 'company']) {
+    const h = apply(m, [{ op: 'hide', id, view: 'v' }]);
+    assert.deepEqual([h.views[0].edges, h.nodes.find(n => n.id === 'job').props], [[], {}], id);
+    assert.deepEqual(validate(h), [], id);
+    assert.deepEqual(h.nodes.find(n => n.id === 'job').props, apply(m, [{ op: 'delete', id }]).nodes.find(n => n.id === 'job').props, `${id}: as a delete`);
+  }
+  // hiding the class itself leaves the association, and a model association keeps its class when a view hides an end
+  assert.deepEqual(apply(m, [{ op: 'hide', id: 'job', view: 'v' }]).views[0].edges.map(e => e.id), ['works']);
+  const mm = model(), hm = apply(mm, [{ op: 'hide', id: 'person', view: 'v' }]);
+  assert.equal(hm.nodes.find(n => n.id === 'job').props.associationClass, 'works');
+});
+
 // the tie's way round is bounded (audit 65 review): its grid is at most TIE_CELLS cells, and a layout's ties share TIE_WORK
 // of work; past either a tie is drawn its fixed way, as before audit 65. A view as the layout draws a large one: n associations
 // down the page, their classes in a column below them all, so each tie's way round spans the view
