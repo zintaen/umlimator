@@ -1171,6 +1171,28 @@ test('flowRole: the main flow runs from the start event along each gateway\'s fi
   delete v.arrange; const g0 = layout(m, 'v'); assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
 });
 
+// audit 66: an activity's main step is its own flow out, never a boundary event's exception flow, whatever the order of the
+// edges (a .bpmn file may list the exception flow first); flowRole, the rows and storyFromFlow agree
+test('audit 66: the arranged main flow skips a boundary event\'s exception flow in any edge order', () => {
+  const nodes = [N('s', 'StartEvent', 'Order in', { props: { definition: 'none' } }), N('a', 'Task', 'Take payment'),
+    N('t', 'BoundaryEvent', '2 minutes', { props: { definition: 'timer', attachedTo: 'a' } }), N('x', 'Task', 'Cancel order'), N('e2', 'EndEvent', 'Cancelled', { props: { definition: 'none' } }),
+    N('b', 'Task', 'Pack'), N('c', 'Task', 'Ship'), N('e', 'EndEvent', 'Shipped', { props: { definition: 'none' } })];
+  const all = [F('f0', 's', 'a'), F('ft', 't', 'x'), F('fx', 'x', 'e2'), F('f1', 'a', 'b'), F('f2', 'b', 'c'), F('f3', 'c', 'e')];
+  const orders = [all, [all[0], ...all.slice(3), all[1], all[2]], [...all].reverse(), [all[1], all[3], all[0], all[5], all[2], all[4]]];
+  for (const def of ['timer', 'message']) for (const edges of orders) {
+    const m = one(structuredClone(nodes), structuredClone(edges), { arrange: 'flow' }); m.nodes[2].props.definition = def;
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+    const v = m.views[0], main = m.edges.filter(e => T.flowRole(e, m, v) === 'main').map(e => e.id).sort();
+    assert.deepEqual(main, ['f0', 'f1', 'f2', 'f3'], `${def}, ${edges.map(e => e.id)}`);
+    assert.deepEqual(storyFromFlow(m, 'v').steps.map(x => x.select), ['s', 'a', 'b', 'c', 'e'], 'the story tells the same path');
+    const g = layout(m, 'v'); assert.equal(new Set(['s', 'a', 'b', 'c', 'e'].map(id => g.byId[id].row)).size, 1, 'the normal path on one row');
+    assert.ok(!['x', 'e2'].some(id => g.byId[id].row === g.byId.a.row), 'the exception path off the main row');
+  }
+  // an activity whose only flow out is its boundary event's: the main flow ends there (the exception path stays a branch)
+  const only = one(structuredClone(nodes.slice(0, 5)), [F('f0', 's', 'a'), F('ft', 't', 'x'), F('fx', 'x', 'e2')], { arrange: 'flow' });
+  assert.deepEqual(only.edges.map(e => T.flowRole(e, only, only.views[0])), ['main', 'branch', 'branch']);
+});
+
 /* ---- a default flow (props.default): an exclusive gateway's or an activity's, the way taken when no condition holds. The
    view draws it with a slash near its source and names it; the main flow (an arranged view's), describe() and storyFromFlow
    follow it, not the first flow out; deleting the flow drops it; diff() says the gateway changed ---- */

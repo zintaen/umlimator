@@ -494,6 +494,31 @@ test('audit 50: connect refuses a line validate() calls an error, in the rule\'s
   assert.deepEqual(c('track', 'shopper', 'Association'), [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'shopper', to: 'track' }, view: 'shopping' }]);
 });
 
+// audit 66: in an arranged view, connect keeps an association's drawn direction, so a line dragged from a use case to an actor
+// (the secondary actor's way) reaches the zone that draws that actor last; any other view still adds it from the actor
+test('audit 66: connect from a use case to an actor in an arranged view keeps the direction, and the actor is drawn last', () => {
+  const m = { schemaVersion: 2, nodes: [A('shopper', 'Shopper'), A('bank', 'Bank'), U('buy', 'Buy'), U('pay', 'Pay')],
+    edges: [L('a1', 'Association', 'shopper', 'buy'), L('i', 'Include', 'buy', 'pay')],
+    views: [{ id: 'v', diagram: 'uml.use-case', arrange: 'flow', nodeIds: ['shopper', 'bank', 'buy', 'pay'] }] };
+  const line = { type: 'uml.Association' }, canvas = (mm, f, t) => { const r = T.edits.connect(mm, mm.views[0], f, t, null, line);
+    return apply(mm, r || [{ op: 'add', element: { id: 'n' + mm.edges.length, type: 'uml.Association', from: f, to: t }, view: 'v' }]); }; // null: the canvas's own add, as drawn
+  assert.equal(T.edits.connect(m, m.views[0], 'pay', 'bank', null, line), null, 'arranged: the drawn direction');
+  const a = canvas(m, 'pay', 'bank'), col = (mm, id) => layout(mm, 'v').byId[id].col;
+  assert.equal(T.zoneOf(a.nodes[1], a, a.views[0]), 'last');
+  assert.ok(col(a, 'bank') > col(a, 'pay') && col(a, 'shopper') < col(a, 'buy'), 'the bank after the use cases, the shopper before');
+  // dragged the other way, from the actor: a primary actor, first
+  const b = canvas(m, 'bank', 'pay'); assert.equal(T.zoneOf(b.nodes[1], b, b.views[0]), 'first'); assert.ok(col(b, 'bank') < col(b, 'pay'));
+  // a second use case dragged to the bank keeps it last; one from the bank makes it primary again
+  const c = canvas(canvas(m, 'pay', 'bank'), 'buy', 'bank'); assert.ok(col(c, 'bank') > col(c, 'pay'));
+  // not arranged: added from the actor, as before (actors ranked first)
+  const p = structuredClone(m); delete p.views[0].arrange;
+  assert.deepEqual(T.edits.connect(p, p.views[0], 'pay', 'bank', null, line), [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'bank', to: 'pay' }, view: 'v' }]);
+  // the shipped example arranged: every use case to actor drag keeps its direction and validates
+  const ex = structuredClone(UC), v = ex.views[0]; v.arrange = 'flow';
+  const ty = t => ex.nodes.filter(n => n.type === t && v.nodeIds.includes(n.id)).map(n => n.id);
+  for (const u of ty('uml.UseCase')) for (const x of ty('uml.Actor')) { const r = T.edits.connect(ex, v, u, x, null, line); assert.ok(r === null || (r && r.error), `${u} -> ${x}: ${JSON.stringify(r)}`); }
+});
+
 test('audit 58: a use case named with no spaces (Chinese) wraps to more than one line', () => {
   const n = { id: 'u', label: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', x: 0, y: 0 }; Object.assign(n, SHAPE.ellipse.size(n));
   const ls = [...SHAPE.ellipse.draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);

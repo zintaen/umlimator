@@ -219,10 +219,11 @@ const BZ_MAINS = new WeakMap();
 function bzMain(model, view, P0) {
   let c = BZ_MAINS.get(view); if (c && c.model === model) return c.main;
   const P = P0 || bzPic(model, view), seq = P.lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null && l.f.at !== l.t.at);
+  // an activity's step is its own flow out: a boundary event's (l.f.port) is an exception path, whatever the edge order (audit 66)
   const walk = start => { const ids = [], lines = new Set();
     for (let cur = start, seen = new Set(); cur != null && !seen.has(cur);) { seen.add(cur); ids.push(cur); if (P.I.ty(cur) === 'bpmn.EndEvent') break;
       const d = BZ_DEFAULTS.includes(P.I.ty(cur)) ? bzProps(P.I.el(cur)).default : null;
-      const l = (d != null && seq.find(x => x.f.at === cur && !x.f.port && x.e.id === d && !seen.has(x.t.at))) || seq.find(x => x.f.at === cur && !seen.has(x.t.at)); if (!l) break; lines.add(l.e.id); cur = l.t.at; }
+      const l = (d != null && seq.find(x => x.f.at === cur && !x.f.port && x.e.id === d && !seen.has(x.t.at))) || seq.find(x => x.f.at === cur && !x.f.port && !seen.has(x.t.at)); if (!l) break; lines.add(l.e.id); cur = l.t.at; }
     return { ids, lines }; };
   // the start event whose path is longest (the first of equals): a collaboration's main process, not a customer's two steps
   const main = P.items.filter(id => P.I.ty(id) === 'bpmn.StartEvent').map(walk).reduce((a, b) => (b.ids.length > a.ids.length ? b : a), { ids: [], lines: new Set() });

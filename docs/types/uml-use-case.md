@@ -79,7 +79,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 | 18.1 Classifier as a subject | `uml.Subject`, a use case's `parent` (at most one) | a box holding its shown use cases, its name in bold at the top left; with nothing shown, a closed rectangle with its name |
 | 18.1 Include | `uml.Include`, from the including use case to the included one | dashed, an open arrowhead, «include» |
 | 18.1 Extend | `uml.Extend`, from the extending use case to the extended one; `props.extensionPoints` (ids, one at least), `props.condition` (text) | dashed, an open arrowhead, `«extend» (payment) [the shopper has a voucher code]`: its points by name, then its condition, cut at 280 px |
-| 11.5 Association (an actor's) | `uml.Association`, between an actor and a use case; its ends' props are not read | a plain line |
+| 11.5 Association (an actor's) | `uml.Association`, between an actor and a use case; its ends' props are not read | a plain line; in a view with `arrange: "flow"`, an actor whose associations all come from use cases (a secondary actor) is drawn after them |
 | 9.9 Generalization | `uml.Generalization`, from the specific to the general, between two actors or two use cases | a hollow triangle |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line |
 
@@ -98,12 +98,7 @@ store) does the same since audit 19 (the type's `refs`: `drop empties`), without
 
 ### Left out
 
-`notes/stage-4.md` §18: use-case descriptions; several subjects per use case, a subject distinct from the use case's
-owner, and the subject as a typed classifier (a use case's `parent`, so at most one, and an untyped box); an actor drawn
-as a rectangle «actor»; a use case drawn as a classifier rectangle; an extend's condition in a note (it is on the line);
-association ends (multiplicity, navigability); n-ary associations; secondary actors placed on the right; realizations
-of a use case. And for all four stage 4 types: XMI, copy and paste, per-type `diff()` writers (a reorder reads as
-changed), resizing by hand.
+`notes/stage-4.md` §18: use-case descriptions; several subjects per use case, a subject distinct from the use case's owner, and the subject as a typed classifier (a use case's `parent`, so at most one, and an untyped box); an actor drawn as a rectangle «actor»; a use case drawn as a classifier rectangle; an extend's condition in a note (it is on the line); association ends (multiplicity, navigability); n-ary associations; realizations of a use case. And for all four stage 4 types: XMI, copy and paste, per-type `diff()` writers (a reorder reads as changed), resizing by hand.
 
 Layout limits, measured on `examples/shopping-use-cases.json` and `tests/usecase-stress.json`:
 
