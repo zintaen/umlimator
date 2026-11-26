@@ -79,7 +79,8 @@ test('arrange on a type that reads no flow (an ER, a class, an information flow 
   assert.deepEqual(at(er, 'views[0].arrange'), ['warning: er draws structure, not a flow: arrange "flow" changes nothing']);
   const cl = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], edges: [], views: [{ id: 'k', diagram: 'uml.class', arrange: 'flow', nodeIds: ['a'] }] };
   assert.deepEqual(at(cl, 'views[0].arrange'), ['warning: uml.class draws structure, not a flow: arrange "flow" changes nothing']);
-  const ex = JSON.parse(readFileSync(new URL('../examples/order-information-flow.json', import.meta.url), 'utf8')); ex.views[0].arrange = 'flow';
+  // a copy of the information flow example, kept in tests/fixtures/
+  const ex = JSON.parse(readFileSync(new URL('./fixtures/order-information-flow.json', import.meta.url), 'utf8')); ex.views[0].arrange = 'flow';
   assert.ok(validate(ex).some(p => p.path === 'views[0].arrange' && /draws structure/.test(p.message)));
   const fc = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }], edges: [], views: [{ id: 'f', diagram: 'flowchart', arrange: 'flow', nodeIds: ['s'] }] };
   assert.deepEqual(at(fc, 'views[0].arrange'), []);

@@ -146,9 +146,9 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
   const min = arranged(read('./dfd-minimal.json')), sm = U.storyFromFlow(min, min.views[0].id);
   assert.deepEqual(sm.steps.map(x => x.select), ['customer', 'take']);
   assert.match(sm.steps[1].caption, /; saved order to Orders\.$/);
-  // every view of the data flow example and of each typed example with a flowRole, arranged: the story's steps are the drawn
-  // main flow, and no data store is a step
-  for (const f of ['../examples/bookshop-data-flow.json', '../examples/types/dfd.json', '../examples/returns-flowchart.json', '../examples/fulfil-activity.json', '../examples/bookshop-c4.json', '../examples/bookshop-aws.json']) {
+  // every view of the data flow example and of each typed example with a flowRole (copies kept in tests/fixtures/; dfd-gallery
+  // is the DFD type page's model), arranged: the story's steps are the drawn main flow, and no data store is a step
+  for (const f of ['./fixtures/bookshop-data-flow.json', './fixtures/dfd-gallery.json', './fixtures/returns-flowchart.json', './fixtures/fulfil-activity.json', './fixtures/bookshop-c4.json', './fixtures/bookshop-aws.json']) {
     const m = arranged(read(f)), store = new Set(m.nodes.filter(n => /DataStore$/.test(n.type)).map(n => n.id));
     for (const v of m.views) { const want = drawnMain(m, v.id); let got;
       try { got = U.storyFromFlow(m, v.id).steps.map(x => x.select); } catch (e) { assert.match(e.message, /has no main flow/); assert.deepEqual(want, [], `${f} ${v.id}`); continue; }
@@ -163,6 +163,6 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
   assert.deepEqual(a.steps.map(x => x.select), ['i', 'take', 'pack', 'f']);
   assert.ok(!a.steps.some(x => x.select === 'note') && /Orders over 50 ship free\.$/.test(a.steps[1].caption), a.steps[1].caption);
   // a use case view: its type reads no main flow (no step along a generalization), arranged or not
-  const uc = read('../examples/shopping-use-cases.json');
+  const uc = read('./fixtures/use-case-shop.json'); // the shop's use case view, kept in tests/fixtures/
   for (const m of [uc, arranged(uc)]) assert.throws(() => U.storyFromFlow(m, 'shopping'), /has no main flow: a uml\.use-case view reads none/);
 });
