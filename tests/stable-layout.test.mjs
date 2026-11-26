@@ -1,7 +1,7 @@
 // A layout that stays put across edits (docs/diagrams/notes/layout-flow.md section 8.4): laid out with the model before an
 // edit (layout()'s and render()'s stableFrom, mapContext's base), the cards the edit left alone keep their cells; a stable
-// layout that draws worse gives way to the fresh one; diff() with stable: true hands the model before back for that; and
-// with no base nothing draws differently.
+// layout that draws worse gives way to the fresh one; diff() hands the model before back for that (by default; not with
+// stable: false); and with no base nothing draws differently.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layout, check, diff, apply, validate } from '../lib/umlimator.js';
@@ -59,10 +59,11 @@ test('stable: a real pin wins over a soft pin, and the soft pins are never writt
   assert.deepEqual(after, copy, 'the model is as it was: no soft pin in its layout');
 });
 
-test('stable: diff() with stable: true keeps unchanged cards\' cells; without it the result is as before', () => {
+test('stable: diff() keeps unchanged cards\' cells, by default and with stable: true; with stable: false the result has no stableFrom', () => {
   const after = shop([...IDS, 'promo'], [...LINES, ['promo', 'web']]);
-  const plain = diff(base, after), d = diff(base, after, { stable: true });
-  assert.ok(!('stableFrom' in plain), 'the default result has no stableFrom');
+  const plain = diff(base, after, { stable: false }), d = diff(base, after, { stable: true });
+  assert.ok(!('stableFrom' in plain), 'stable: false gives no stableFrom');
+  assert.deepEqual(diff(base, after), d, 'the default is stable (layout-flow.md section 12, step 14)');
   assert.deepEqual({ ...d, stableFrom: undefined }, { ...plain, stableFrom: undefined }, 'the model, summary and views are the same');
   assert.deepEqual(d.stableFrom, base, 'stableFrom is the model before');
   const g = cells(layout(d.model, 'v', { stableFrom: d.stableFrom }));
