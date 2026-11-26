@@ -1,9 +1,9 @@
 {
- "commit": "5130c608",
+ "commit": "75c3a389",
  "corpus": "edits",
  "total": {
   "views": 196,
-  "score": 293615.55
+  "score": 291731.62
  },
  "views": {
   "edits/b10/overview/1-add-card": {
@@ -594,47 +594,47 @@
   "edits/f12/signup-boxed/1-add-card": {
    "hard": 0,
    "cross": 1,
-   "labels": 1,
-   "straight": 5,
-   "reverse": 3,
-   "moved": 0.125,
-   "score": 1493.58
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0,
+   "score": 989.68
   },
   "edits/f12/signup-boxed/2-remove-line": {
    "hard": 0,
-   "cross": 1,
-   "labels": 1,
-   "straight": 6,
-   "reverse": 3,
+   "cross": 0,
+   "labels": 0,
+   "straight": 8,
+   "reverse": 0,
    "moved": 0,
-   "score": 1128.91
+   "score": 860.04
   },
   "edits/f12/signup-boxed/3-rename": {
    "hard": 0,
    "cross": 1,
-   "labels": 1,
-   "straight": 6,
-   "reverse": 3,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
    "moved": 0,
-   "score": 1371.9
+   "score": 895.7
   },
   "edits/f12/signup-boxed/4-add-line": {
    "hard": 0,
-   "cross": 1,
-   "labels": 1,
-   "straight": 6,
-   "reverse": 4,
+   "cross": 0,
+   "labels": 0,
+   "straight": 8,
+   "reverse": 2,
    "moved": 0,
-   "score": 1392.05
+   "score": 1215.36
   },
   "edits/f12/signup-boxed/5-move-into-box": {
    "hard": 0,
-   "cross": 0,
-   "labels": 1,
-   "straight": 8,
-   "reverse": 2,
-   "moved": 0.875,
-   "score": 1240.5
+   "cross": 1,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0,
+   "score": 881.87
   },
   "edits/f12/ticket-boxed/1-add-card": {
    "hard": 0,
@@ -676,10 +676,10 @@
    "hard": 0,
    "cross": 0,
    "labels": 1,
-   "straight": 6,
-   "reverse": 2,
-   "moved": 0,
-   "score": 951.04
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0.571,
+   "score": 851.4
   },
   "edits/f12/pipeline-boxed/1-add-card": {
    "hard": 0,
