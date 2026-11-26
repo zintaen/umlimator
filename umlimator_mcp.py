@@ -56,6 +56,13 @@ TOOLS = [
          {"view": VIEW, "id": {"type": "string", "description": "the story's id (default flow-<view>)"},
           "title": {"type": "string"}, "chapters": {"type": "boolean", "description": "false: no chapters"},
           "audience": {"type": "string", "description": "who it is told to, kept on the story; business: the captions leave out the stores a step reads or writes"}}, "view"),
+    tool("story_from_diff", "A story of what changed on a view from another model file to this one (a pull request's base, say), returned "
+         "and not saved: a step per card and line the change adds, changes or removes, along the view's main flow (else in its order), "
+         "each captioned Added, Changed or Removed. It plays on this model as it is now (play_story with story): a removed card or "
+         "line is named in its caption, and the cards it was joined to are lit.",
+         {"other_model_path": {"type": "string", "description": "the model before the change: absolute, or relative to the model's folder (else to where the server runs)"},
+          "view": VIEW, "id": {"type": "string", "description": "the story's id (default diff-<view>)"}, "title": {"type": "string"},
+          "audience": {"type": "string"}}, "other_model_path", "view"),
     tool("show_view", "Shows a view on the map's page." + PAGE, {"view": VIEW}, "view"),
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
@@ -565,7 +572,7 @@ def call(name, a):
         return node("rules", m)
     if name == "validate":
         return node("validate", m)
-    if name == "diff":
+    if name in ("diff", "story_from_diff"):
         try:
             given = Path(a["other_model_path"]).expanduser()
         except RuntimeError:  # ~name for no user of that name: an Internal error, and a traceback in the log (audit 27)
@@ -584,6 +591,9 @@ def call(name, a):
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
         if bad := cli.not_objects(before) or ([] if "views" in before else ["no views: not a map model"]):  # as render reads it (audit 11, 14)
             raise Fail(f"{a['other_model_path']}: {'; '.join(bad)}")
+        if name == "story_from_diff":  # the module's own storyFromDiff(), on the model as it is now; nothing written
+            v, o = view(m, a["view"]), {k: a[k] for k in ("id", "title", "audience") if k in a}
+            return node("storyFromDiff", before, m, v["id"], o)
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
     # the page's tools: a command for the page, checked against the model first, then folded into `want`

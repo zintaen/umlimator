@@ -806,6 +806,13 @@ export function describe(model: MapModel, viewId: string): string;
  *  "business" the captions leave out the stores a step reads or writes. The model is not changed and the story is not
  *  added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
 export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean; audience?: string }): FlowStory;
+/** A story of what changed on a view from `before` to `after` (a pull request's base and head, say): a step per card and
+ *  line diff() marks added, changed or removed that the view draws, along its main flow (a removed line keeps its place),
+ *  else in the view's order, each captioned "Added", "Changed" (with the fields, and a rename's old name) or "Removed".
+ *  on 'after' (the default): the story plays on the model after, so a removed card or line is selected by no step and the
+ *  cards it was joined to are lit; on 'diff': on diff(before, after).model, which draws the removed ones, and selects them.
+ *  Throws when the view shows no change. Pure: nothing is saved. */
+export function storyFromDiff(before: MapModel, after: MapModel, viewId: string, options?: { id?: string; title?: string; audience?: string; on?: 'after' | 'diff' }): Story;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
