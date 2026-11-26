@@ -413,7 +413,7 @@
       "last",
       "under"
      ],
-     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default. Read by no layout yet: validate() checks it and diff() reports a change of it."
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes into first, an external card last, a database, file or board card under). Map views read it, typed views not yet; a pin beats it. validate() checks it and diff() reports a change of it."
     },
     "credits": {
      "type": "array",
@@ -1691,7 +1691,7 @@
      "enum": [
       "flow"
      ],
-     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and the main flow on one straight row, across boxes too. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
+     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and the main flow on one straight row, across boxes too, and zones. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
     },
     "zones": {
      "type": "boolean",
