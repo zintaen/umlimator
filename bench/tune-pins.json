@@ -1,0 +1,20 @@
+{
+ "note": "The pins of the values of src/layout/tune.js that the weekly layout loop may change (tools/evolve/tune-loop.mjs RANGES): tests/tune.test.mjs holds tune.js to these. The loop moves a pin in the same commit as its value, and the maintainer reviews both; a hand edit of tune.js moves its pin here too. The fixed values stay pinned in the test.",
+ "values": {
+  "BARY_SWEEPS": 8,
+  "ROW_SWEEPS": [1, -1, 1],
+  "FLOW_CAP": 30,
+  "FAN_IN": 6,
+  "FAN_TRIES": 14,
+  "CROSS_CAP": 30,
+  "OUTSIDE_TRIES": 4,
+  "BRANCH_BALANCE": 2,
+  "STABLE_SLACK": 1,
+  "SCORE_WEIGHTS.cross": 150,
+  "SCORE_WEIGHTS.dropped": 40,
+  "SCORE_WEIGHTS.lengthPer": 15,
+  "SCORE_WEIGHTS.corner": 12,
+  "SNAKE_AT": 10,
+  "SNAKE_SLACK": 2
+ }
+}
