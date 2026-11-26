@@ -22,6 +22,7 @@ Any MCP client that starts a stdio server works the same way. The server needs N
 | `reach(view, card, backward?, depth?)` | what a card leads to, or what leads to it, with the distance of each (`reach()`) |
 | `broken_rules()`, `validate()` | each break of the model's `rules` (`rules()`), and its own problems (`validate()`) |
 | `diff(other_model_path)` | what changed from another model file to this one, in words, and the views that show it (`diff()`) |
+| `story_from_flow(view, id?, title?, chapters?)` | a story told from the view's main flow (`storyFromFlow()`), returned and not saved: a step per card on the main flow, each with its select, highlight, tour and caption, and each branch as a chapter with the step it leaves from; to keep it, add it to the model's `stories` with `set_field` or `apply` |
 | `show_view(view)` | shows a view on the page |
 | `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |
 | `tour(cards, view?)` | a dot rides the lines through these cards, so each card must share a line with the next on the view and be drawn there as a card, not as a box that holds cards; with no view, it rides the view shown now if it shows the cards and draws those lines, else the first view that does |

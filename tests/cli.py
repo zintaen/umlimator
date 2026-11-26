@@ -1577,7 +1577,7 @@ if part("mcp"):
     found = rpc("server/discover", NEW).get("result", {})
     ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
     listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
-    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state",
+    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "story_from_flow", "show_view", "highlight", "tour", "play_story", "clear", "page_state",
                                   "add_card", "connect", "rename", "move_to_box", "remove", "set_field", "pin", "preview", "apply", "undo", "redo"], listed)
     ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
        "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
