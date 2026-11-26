@@ -1083,9 +1083,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const depLast = list => list.some(e => e.dep) ? [...list.filter(e => !e.dep), ...list.filter(e => e.dep)] : list;
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
   const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
-  // an arranged view's main lines (mainLine, section 6.2) go before every other, so each takes the straight track between
+  // an arranged map view's main lines (mainLine, section 6.2) go before every other, so each takes the straight track between
   // its two ports on the main row; the lines routed before them took it, and a main line jogged round an empty cell
-  const mainFirst = list => list.some(e => e.mainLine) ? [...list.filter(e => e.mainLine), ...list.filter(e => !e.mainLine)] : list;
+  const mainFirst = list => map && list.some(e => e.mainLine) ? [...list.filter(e => e.mainLine), ...list.filter(e => !e.mainLine)] : list;
   order = depLast(mainFirst([...order.filter(hot), ...order.filter(e => !hot(e))]));
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid

@@ -69,3 +69,11 @@ test('render\'s layout search keeps an arranged view\'s main cards where the lay
     for (const i of main) assert.equal(pos[i][0], at(i)[0], `${vid}: ${i} keeps its column`);
   }
 });
+
+test('a boxed arranged view whose store ranks a card after it lays out: the store\'s rank left an empty column, which threw', () => {
+  const m = read('../bench/models/a8.json');
+  m.edges.push({ id: 'db-worker', from: 'compose-db', to: 'compose-worker', label: 'adds' });
+  const g = layout(m, 'compose-services');
+  assert.equal(g.nodes.length, m.views.find(v => v.id === 'compose-services').nodeIds.length);
+  assert.deepEqual(check(m, 'compose-services').map(x => x.message), []);
+});
