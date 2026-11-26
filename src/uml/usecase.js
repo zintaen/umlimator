@@ -326,7 +326,9 @@ function ucOwners(model, x) {
 }
 // an extension point is a member row, by its name
 const ucPointText = t => { const s = String(t ?? '').trim(); return s ? { type: 'uml.ExtensionPoint', label: s, props: {} } : { error: 'An extension point has a name' }; };
-// connect: an association drawn from a use case to an actor is added from the actor, so that actors are ranked first (§8.1);
+// connect: an association drawn from a use case to an actor is added from the actor, so that actors are ranked first (§8.1),
+// except in an arranged view, where it keeps the drawn direction: an actor whose associations all come from use cases is a
+// secondary actor, drawn last (ucZoneOf; audit 66).
 function ucConnect(model, view, from, to, at, line) {
   const ty = id => (UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || {}).type;
   // a generalization or an include that would close a cycle (generalization-cycle, include-cycle), an extend to its own use
@@ -338,7 +340,7 @@ function ucConnect(model, view, from, to, at, line) {
   if (loop) return loop;
   if (!UC_OBJ(line) || typeof line.type !== 'string' || !UC_OBJ(view)) return null;
   const used = new Set(); usedIds(model, used);
-  const fresh = b => { let k = 1; while (used.has(b + k)) k++; return b + k; }, flip = line.type === 'uml.Association' && ty(from) === 'uml.UseCase' && ty(to) === 'uml.Actor';
+  const fresh = b => { let k = 1; while (used.has(b + k)) k++; return b + k; }, flip = line.type === 'uml.Association' && view.arrange !== 'flow' && ty(from) === 'uml.UseCase' && ty(to) === 'uml.Actor';
   const commands = [{ op: 'add', element: { id: fresh(flip ? 'association' : line.type.split('.').pop().toLowerCase()), type: line.type, from: flip ? to : from, to: flip ? from : to,
     ...(UC_OBJ(line.props) ? { props: copyOf(line.props) } : {}) }, view: view.id }];
   // any other error the line brings (include-ends, extend-ends, association-ends, generalization-kinds) is refused with the
