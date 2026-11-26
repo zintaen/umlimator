@@ -1,11 +1,371 @@
 {
- "commit": "75c3a389",
+ "commit": "07effce2",
  "corpus": "edits",
  "total": {
-  "views": 196,
-  "score": 291731.62
+  "views": 236,
+  "score": 315687.75
  },
  "views": {
+  "edits/a8/dsl-context/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 632.96
+  },
+  "edits/a8/dsl-context/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 242.78
+  },
+  "edits/a8/dsl-context/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 606.23
+  },
+  "edits/a8/dsl-context/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 743.66
+  },
+  "edits/a8/dsl-context/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 608.59
+  },
+  "edits/a8/dsl-containers/1-add-card": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1380.83
+  },
+  "edits/a8/dsl-containers/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.625,
+   "score": 1053.73
+  },
+  "edits/a8/dsl-containers/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 1171.53
+  },
+  "edits/a8/dsl-containers/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 2,
+   "moved": 0,
+   "score": 1464.19
+  },
+  "edits/a8/dsl-containers/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0.889,
+   "score": 1359.96
+  },
+  "edits/a8/dsl-api-components/1-add-card": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1099.82
+  },
+  "edits/a8/dsl-api-components/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1070.23
+  },
+  "edits/a8/dsl-api-components/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 919.04
+  },
+  "edits/a8/dsl-api-components/4-add-line": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 1211.22
+  },
+  "edits/a8/dsl-api-components/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 768.82
+  },
+  "edits/a8/puml-components/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 865.24
+  },
+  "edits/a8/puml-components/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 455.67
+  },
+  "edits/a8/puml-components/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 655.37
+  },
+  "edits/a8/puml-components/4-add-line": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 750.41
+  },
+  "edits/a8/puml-components/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 605.44
+  },
+  "edits/a8/checkout-flowchart/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 378.26
+  },
+  "edits/a8/checkout-flowchart/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 242.5
+  },
+  "edits/a8/checkout-flowchart/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 311.63
+  },
+  "edits/a8/checkout-flowchart/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 376.87
+  },
+  "edits/a8/checkout-flowchart/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 2,
+   "moved": 0,
+   "score": 592.18
+  },
+  "edits/a8/meals-context/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 401.56
+  },
+  "edits/a8/meals-context/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0.25,
+   "score": 296.49
+  },
+  "edits/a8/meals-context/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 326.99
+  },
+  "edits/a8/meals-context/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 367.18
+  },
+  "edits/a8/meals-context/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 277.71
+  },
+  "edits/a8/compose-services/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 420.72
+  },
+  "edits/a8/compose-services/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 315.67
+  },
+  "edits/a8/compose-services/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 372.51
+  },
+  "edits/a8/compose-services/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 528.67
+  },
+  "edits/a8/compose-services/5-move-into-box": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 374.12
+  },
+  "edits/a8/k8s-cluster/1-add-card": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 263.57
+  },
+  "edits/a8/k8s-cluster/2-remove-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 152.4
+  },
+  "edits/a8/k8s-cluster/3-rename": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 183.93
+  },
+  "edits/a8/k8s-cluster/4-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "moved": 0,
+   "score": 287.97
+  },
+  "edits/a8/k8s-cluster/5-add-line": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 1,
+   "moved": 0,
+   "score": 421.13
+  },
   "edits/b10/overview/1-add-card": {
    "hard": 0,
    "cross": 7,
@@ -451,10 +811,10 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": 0,
    "reverse": 1,
    "moved": 0,
-   "score": 817.26
+   "score": 672.79
   },
   "edits/f12/ticket/1-add-card": {
    "hard": 0,
@@ -553,7 +913,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 937.47
+   "score": 910.73
   },
   "edits/f12/order-boxed/2-remove-line": {
    "hard": 0,
@@ -571,7 +931,7 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 826.83
+   "score": 738.55
   },
   "edits/f12/order-boxed/4-add-line": {
    "hard": 0,
@@ -580,16 +940,16 @@
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 1061.66
+   "score": 974.24
   },
   "edits/f12/order-boxed/5-move-into-box": {
    "hard": 0,
    "cross": 0,
    "labels": 1,
    "straight": 0,
-   "reverse": 1,
+   "reverse": 0,
    "moved": 0,
-   "score": 862.19
+   "score": 729.35
   },
   "edits/f12/signup-boxed/1-add-card": {
    "hard": 0,
@@ -638,48 +998,48 @@
   },
   "edits/f12/ticket-boxed/1-add-card": {
    "hard": 0,
-   "cross": 0,
-   "labels": 1,
+   "cross": 1,
+   "labels": 0,
    "straight": 0,
-   "reverse": 1,
+   "reverse": 0,
    "moved": 0,
-   "score": 803.18
+   "score": 806.06
   },
   "edits/f12/ticket-boxed/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 438.09
+   "score": 440.04
   },
   "edits/f12/ticket-boxed/3-rename": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 550.53
+   "score": 546.41
   },
   "edits/f12/ticket-boxed/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 721.38
+   "score": 729.82
   },
   "edits/f12/ticket-boxed/5-move-into-box": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 4,
    "reverse": 0,
    "moved": 0.571,
-   "score": 851.4
+   "score": 849.5
   },
   "edits/f12/pipeline-boxed/1-add-card": {
    "hard": 0,
@@ -755,12 +1115,12 @@
   },
   "edits/f12/onboard/4-add-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 2,
    "labels": 0,
-   "straight": 3,
-   "reverse": 2,
+   "straight": 0,
+   "reverse": 1,
    "moved": 0,
-   "score": 1489.79
+   "score": 1360.64
   },
   "edits/f12/onboard/5-add-line": {
    "hard": 0,

@@ -72,7 +72,8 @@ function stackAt(c, h, fixed, pin, at) {
 /* A view's main flow (layout-flow note, section 6.1), from its lines as the layout reads them: lines, [{ from, to, flow, step,
    change }]; o.back, the indexes of the lines that close a loop (loopsOf's); o.dep(line), true for a dependency line; o.cards,
    the view's cards in order (ties go to the first mentioned); o.run, a numbered view (render "sequence"), whose lines are its
-   steps in order. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
+   steps in order; o.pairs, a view that draws a line and its pair the other way as one two-way line (a map without keepPairs);
+   o.avoid, the indexes of lines the longest path keeps off where it can. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
    chain of stepped lines in step order (2 < 2a < 2b < 3), each starting where the one before ends, the first of a step's
    suffixes on it and the others branches; else, in a numbered view, the longest such chain in run order; else the longest
    path of flow lines from a card no flow line comes into. Returns null when the view has no flow line, else { cards, lines,
@@ -112,7 +113,13 @@ function mainFlow(lines, o = {}) {
     const c = chainOf(ks); return done(c.ks, 'step', c.breaks);
   }
   if (o.run) { const ks = flowK.filter(k => !(typeof list[k].change === 'string' && list[k].change.toLowerCase() === 'removed')), c = chainOf(ks); return done(c.ks, 'run', c.breaks); }
-  return done(pathOf(flowK), 'path');
+  // o.pairs: a line whose pair the other way is a line too is drawn as one line with a head at each end (prepEdges), which
+  // reads no way, so the longest path does not run along it
+  // o.avoid: the indexes of lines the path takes only when it has no other (a line into a person at the start, out of an
+  // external card at the end, to or from a store under the flow: section 7.1's zones)
+  const two = o.pairs ? new Set(list.filter(e => e && e.from !== e.to).map(e => e.from + '>' + e.to)) : null, avoid = o.avoid || new Set();
+  const free = flowK.filter(k => !avoid.has(k) && !(two && two.has(list[k].to + '>' + list[k].from))), path = free.length ? pathOf(free) : [];
+  return done(path.length ? path : pathOf(flowK), 'path');
 }
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
@@ -1072,7 +1079,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const depLast = list => list.some(e => e.dep) ? [...list.filter(e => !e.dep), ...list.filter(e => e.dep)] : list;
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
   const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
-  order = depLast([...order.filter(hot), ...order.filter(e => !hot(e))]);
+  // an arranged map view's main lines (mainLine, section 6.2) go before every other, so each takes the straight track between
+  // its two ports on the main row; the lines routed before them took it, and a main line jogged round an empty cell
+  const mainFirst = list => map && list.some(e => e.mainLine) ? [...list.filter(e => e.mainLine), ...list.filter(e => !e.mainLine)] : list;
+  order = depLast(mainFirst([...order.filter(hot), ...order.filter(e => !hot(e))]));
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
