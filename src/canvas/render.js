@@ -1184,9 +1184,11 @@ export function render(container, model, options = {}) {
     const chs = st.ch ? [] : chaptersOf(st.s, n), ticks = bar.querySelector('.um-ticks'), row = bar.querySelector('.um-ch');
     ticks.replaceChildren(...[...new Set(chs.map(c => c.at))].map(at => Object.assign(stage.ownerDocument.createElement('option'), { value: String(at + 1) })));
     const here = chs.filter(c => c.at === k), btn = (text, label, set) => { const x = stage.ownerDocument.createElement('button'); x.type = 'button'; x.textContent = text; x.setAttribute('aria-label', label); x.title = label; set(x); return x; };
+    const root = stage.getRootNode(), held = !!root.activeElement && row.contains(root.activeElement); // a chapter's or the back button pressed by key: the focus stays in the bar
     row.replaceChildren(...(st.ch ? [btn(`↩ ${main}`, 'Back to the main story, at step ' + (st.ch.at + 1), x => { x.dataset.s = 'back'; })]
       : here.map(c => btn(`⤷ ${labelOr(c.title, c.id)}`, 'Chapter: ' + labelOr(c.title, c.id), x => { x.dataset.ch = c.id; }))));
     row.hidden = !row.childElementCount;
+    if (held) (row.firstElementChild || (sc.hidden ? b('play') : sc)).focus({ preventScroll: true });
     if (k <= 0) b('prev').setAttribute('aria-disabled', 'true'); else b('prev').removeAttribute('aria-disabled'); // off, and focusable still: a focused ‹ keeps the focus
     b('play').textContent = st.auto ? '❚❚' : '▶'; b('play').setAttribute('aria-label', st.auto ? 'Pause' : 'Play'); b('play').title = st.auto ? 'Pause' : 'Play';
     b('next').textContent = k + 1 < n ? '›' : '✓'; b('next').setAttribute('aria-label', k + 1 < n ? 'Next step' : 'Finish the story');
