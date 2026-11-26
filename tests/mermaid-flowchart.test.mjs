@@ -423,7 +423,7 @@ test('audit 31: every Mermaid writer writes a node or line label that is a numbe
 
 // audit 34: the dash form's text (Mermaid's edgeText) stopped at a |, so both readers dropped `S -- yes|no --> T` whole, its
 // nodes too; the text now runs to the first close outside quotes, in this reader and in the map importer alike
-test('a | in the dash form\'s link text is text, bare or quoted, in this reader and the map importer alike (audit 34)', () => {
+test('a | in the dash form\'s link text is text, bare or quoted, in this reader and the map importer alike (audit 34) (timed)', () => {
   const src = ['flowchart LR', 'S -- yes|no --> T', 'U -- "a|b" --> V', 'A -- "x --> y" --> B', 'E -- open " quote --> F', 'G -- x --> H -- y|z --> I', 'J -->|"p|q"| K', 'L -- plain --> M'].join('\n');
   const want = [['S', 'T', 'yes|no'], ['U', 'V', 'a|b'], ['A', 'B', 'x --> y'], ['E', 'F', 'open " quote'], ['G', 'H', 'x'], ['H', 'I', 'y|z'], ['J', 'K', 'p|q'], ['L', 'M', 'plain']];
   const { model, report } = read(src);
@@ -464,7 +464,7 @@ test('an unclosed @{ field list of quotes and colons is read in linear time (aud
 
 // audit 37: mfCloseAt ran over the whole run of one character before it said no close starts there, and the text scan moves on by
 // one character, so a long unclosed link text of one repeated character (x, [, ...) took time in the square of its length
-test('an unclosed link text of one repeated character is read in linear time, as before for each kind of character (audit 37)', () => {
+test('an unclosed link text of one repeated character is read in linear time, as before for each kind of character (audit 37) (timed)', () => {
   for (const c of ['x', '[', '(', '{', '<', "'", 'o', '>', '|', '.', '-', '=']) {
     const t = performance.now(), r = read('flowchart TD\nA -- ' + c.repeat(200000));
     assert.ok(performance.now() - t < 1500, `${JSON.stringify(c)}: ${Math.round(performance.now() - t)} ms`);
