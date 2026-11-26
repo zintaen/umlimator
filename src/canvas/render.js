@@ -1136,11 +1136,19 @@ export function render(container, model, options = {}) {
      PageDown, Esc) step through and stop it. One story at a time.
      The player's state (0.14.0): entering a step (its view, camera, selection and highlight on their way), then playing or
      paused on it, until ended or stopped. A story event comes on each of these changes. The reader taking the map (a press,
-     a key, a view or a selection the story didn't make) pauses it; a step lights its own layer, 'story'. */
-  let story = null;
+     a key, a view or a selection the story didn't make) pauses it; a step lights its own layer, 'story'.
+     The bar's scrubber goes to any step (by pointer, or its own keys: arrows, Page Up and Down, Home and End). A story's
+     chapters (a branch storyFromFlow() tells, or the model's own) are offered in the bar at their step `at`: entering one
+     tells its steps, and its end, ‹ on its first step or ↩ return to the main story at that step. */
+  let story = null, tickIds = 0;
   const stepsOf = s => s && Array.isArray(s.steps) ? s.steps.filter(x => x && typeof x === 'object') : [];
+  // a story's chapters: those with an id, steps and a step `at` of the main story to be offered at (validate() says the rest)
+  const chaptersOf = (s, n) => (s && Array.isArray(s.chapters) ? s.chapters : []).filter(c => c && typeof c === 'object' && typeof c.id === 'string' && c.id
+    && stepsOf(c).length && Number.isInteger(c.at) && c.at >= 0 && c.at < n);
+  // in a chapter: its id, and the main story's step it was entered from (at); none on the main story, as before chapters
+  const chapterOf = st => st.ch ? { chapter: st.ch.c.id, at: st.ch.at } : {};
   // the story event, on every change: a step entered, a pause or a resume (playing), the end (step null), destroy() too
-  const storyEvent = st => emit('story', { story: st.s.id, step: story === st ? st.at : null, steps: st.steps.length, playing: story === st && !!st.auto }, dead);
+  const storyEvent = st => emit('story', { story: st.s.id, step: story === st ? st.at : null, steps: st.steps.length, playing: story === st && !!st.auto, ...(story === st ? chapterOf(st) : {}) }, dead);
   // a step's card or line: a string names a card of the view, else a line by its id (the drawn line that has it); an
   // object is a Ref already
   const stepRef = x => typeof x !== 'string' ? (x && typeof x === 'object' ? x : null) : geo.byId[x] ? nodeRef(x)
@@ -1153,17 +1161,32 @@ export function render(container, model, options = {}) {
   function storyBar(st) {
     let bar = stage.querySelector('.um-story');
     if (!bar) {
-      stage.insertAdjacentHTML('beforeend', `<div class="um-story" role="group"><div class="um-cap"><span class="um-st"></span><p></p></div><div class="um-sb">
+      stage.insertAdjacentHTML('beforeend', `<div class="um-story" role="group"><div class="um-cap"><span class="um-st"></span><p></p>
+        <input class="um-scrub" type="range" min="1" step="1" aria-label="Story step"><datalist class="um-ticks"></datalist><div class="um-ch"></div></div><div class="um-sb">
         <button data-s="prev" title="Previous step (←)" aria-label="Previous step">‹</button><button data-s="play"></button><button data-s="next" title="Next step (→)"></button><button data-s="stop" title="Close (Esc)" aria-label="Close the story">✕</button></div></div>`);
       bar = stage.lastElementChild; clear = null; // the fit keeps the cards off the bar as it does off the controls
+      bar.querySelector('.um-ticks').id = 'um-ticks-' + (++tickIds); bar.querySelector('.um-scrub').setAttribute('list', bar.querySelector('.um-ticks').id); // the chapters' steps, ticked on the scrubber
       bar.addEventListener('dblclick', e => e.stopPropagation()); // two quick clicks on › are two steps, not a zoom
       bar.addEventListener('click', e => { e.stopPropagation(); const s = story, b = e.target.closest('button'); if (!s || !b) return;
-        ({ prev: () => stepStory(-1), next: () => stepStory(1), stop: () => stopStory(), play: () => s.auto ? s.ctl.pause() : s.ctl.resume() })[b.dataset.s](); });
+        if (b.dataset.ch != null) return enterChapter(s, b.dataset.ch);
+        ({ prev: () => stepStory(-1), next: () => stepStory(1), stop: () => stopStory(), back: () => leaveChapter(s), play: () => s.auto ? s.ctl.pause() : s.ctl.resume() })[b.dataset.s](); });
+      // the scrubber: its own keys and a drag move it, and each step it comes to is shown (playing goes on from there, as ‹ and › do)
+      bar.addEventListener('input', e => { const s = story; if (!s || !e.target.classList.contains('um-scrub')) return;
+        const k = Math.max(0, Math.min(s.steps.length - 1, Math.round(+e.target.value) - 1)); if (k !== s.at) showStep(s, k); });
+      bar.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.classList.contains('um-scrub')) { e.preventDefault(); stopStory(); } }); // the map's keys leave a field alone
     }
-    const k = st.at, n = st.steps.length, b = s => bar.querySelector(`[data-s="${s}"]`);
-    bar.setAttribute('aria-label', 'Story: ' + labelOr(st.s.title, st.s.id));
-    bar.querySelector('.um-st').textContent = `${labelOr(st.s.title, st.s.id)} · ${k + 1} / ${n}`;
+    const k = st.at, n = st.steps.length, b = s => bar.querySelector(`[data-s="${s}"]`), main = labelOr(st.s.title, st.s.id);
+    bar.setAttribute('aria-label', 'Story: ' + main);
+    bar.querySelector('.um-st').textContent = `${main}${st.ch ? ' › ' + labelOr(st.ch.c.title, st.ch.c.id) : ''} · ${k + 1} / ${n}`;
     bar.querySelector('p').textContent = (st.steps[k] || {}).caption || '';
+    const sc = bar.querySelector('.um-scrub'); sc.hidden = n < 2; sc.max = String(n); sc.value = String(k + 1);
+    sc.setAttribute('aria-valuetext', `Step ${k + 1} of ${n}${st.ch ? ', in the chapter ' + labelOr(st.ch.c.title, st.ch.c.id) : ''}`);
+    const chs = st.ch ? [] : chaptersOf(st.s, n), ticks = bar.querySelector('.um-ticks'), row = bar.querySelector('.um-ch');
+    ticks.replaceChildren(...[...new Set(chs.map(c => c.at))].map(at => Object.assign(stage.ownerDocument.createElement('option'), { value: String(at + 1) })));
+    const here = chs.filter(c => c.at === k), btn = (text, label, set) => { const x = stage.ownerDocument.createElement('button'); x.type = 'button'; x.textContent = text; x.setAttribute('aria-label', label); x.title = label; set(x); return x; };
+    row.replaceChildren(...(st.ch ? [btn(`↩ ${main}`, 'Back to the main story, at step ' + (st.ch.at + 1), x => { x.dataset.s = 'back'; })]
+      : here.map(c => btn(`⤷ ${labelOr(c.title, c.id)}`, 'Chapter: ' + labelOr(c.title, c.id), x => { x.dataset.ch = c.id; }))));
+    row.hidden = !row.childElementCount;
     if (k <= 0) b('prev').setAttribute('aria-disabled', 'true'); else b('prev').removeAttribute('aria-disabled'); // off, and focusable still: a focused ‹ keeps the focus
     b('play').textContent = st.auto ? '❚❚' : '▶'; b('play').setAttribute('aria-label', st.auto ? 'Pause' : 'Play'); b('play').title = st.auto ? 'Pause' : 'Play';
     b('next').textContent = k + 1 < n ? '›' : '✓'; b('next').setAttribute('aria-label', k + 1 < n ? 'Next step' : 'Finish the story');
@@ -1205,19 +1228,35 @@ export function render(container, model, options = {}) {
   stage.addEventListener('wheel', e => { if (!ctrlWheel || e.ctrlKey || e.metaKey || stage.classList.contains('full')) readerMoved(); }, { capture: true, passive: true }); // a wheel that zooms (wheel: 'ctrl' leaves the rest to the page)
   function restory() { // update(): the story shown takes the model's steps, at the step it is on, or stops when the model has it no more
     const st = story; if (!st) return;
-    if (st.own) { if (st.steps.some(x => !ctx.V[x.view])) stopStory(); else storyBar(st); return; } // a story played as given keeps its steps while their views last
-    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
-    if (!steps.length) return stopStory();
-    const was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
-    st.s = s; st.steps = steps;
+    if (st.own) { if (st.main.some(x => !ctx.V[x.view]) || st.steps.some(x => !ctx.V[x.view])) stopStory(); else storyBar(st); return; } // a story played as given keeps its steps while their views last
+    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), main = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
+    if (!main.length) return stopStory();
+    // in a chapter: the model's chapter of that id, at a step it still has; else back to the main story, at the chapter's step
+    const c = st.ch && chaptersOf(s, main.length).find(x => x.id === st.ch.c.id);
+    if (st.ch && !c) { const at = Math.min(st.ch.at, main.length - 1); st.s = s; st.main = st.steps = main; st.ch = null; return showStep(st, at); }
+    if (c) st.ch = { c, at: c.at };
+    const steps = c ? stepsOf(c) : main, was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
+    st.s = s; st.main = main; st.steps = steps;
     if (st.phase !== 'left' && (k !== st.at || JSON.stringify(steps[k]) !== was)) showStep(st, k); // its step changed: shown again, as it is now
     else { st.at = k; storyBar(st); touch(); } // the same step (or one the reader left: the bar keeps within the model's steps)
   }
   function stepStory(d) {
     const st = story; if (!st) return;
     const k = st.at + d;
+    if (st.ch && (k < 0 || k >= st.steps.length)) return leaveChapter(st); // a chapter told, or ‹ on its first step: back to the main story
     if (k >= st.steps.length) return stopStory(true); // past the last step: the story has been told
     if (k >= 0) showStep(st, k);
+  }
+  function enterChapter(st, id) { // a chapter of the main story, from its first step; the main story keeps its place, `at`
+    if (story !== st) return false;
+    const c = chaptersOf(st.s, st.main.length).find(x => x.id === id); if (!c) return false;
+    st.ch = { c, at: c.at }; st.steps = stepsOf(c); say('Chapter: ' + labelOr(c.title, c.id));
+    showStep(st, 0); return true;
+  }
+  function leaveChapter(st) { // back to the main story, at the step the chapter is offered at
+    if (story !== st || !st.ch) return false;
+    const at = st.ch.at; st.ch = null; st.steps = st.main;
+    showStep(st, Math.min(at, st.steps.length - 1)); return true;
   }
   function stopStory(told = false) {
     const st = story; if (!st) return;
@@ -1242,11 +1281,14 @@ export function render(container, model, options = {}) {
     const own = typeof id === 'object' && !Array.isArray(id), s = own ? id : ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
     if (dead || !geo || !steps.length || own && typeof s.id !== 'string') return null; // a story the model lacks: the one shown plays on
     stopStory();
-    let end; const st = { s, steps, own, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
+    let end; const st = { s, steps, main: steps, ch: null, own, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
     st.end = end;
     st.ctl = { get story() { return st.s.id; }, get step() { return st.at; }, get steps() { return st.steps.length; }, get playing() { return st.auto && story === st; },
       get state() { return story !== st ? (st.told ? 'ended' : 'stopped') : st.phase === 'entering' ? 'entering' : st.auto ? 'playing' : 'paused'; },
       next() { if (story === st) stepStory(1); }, prev() { if (story === st) stepStory(-1); }, stop() { if (story === st) stopStory(); },
+      go(k) { if (story === st && Number.isInteger(k) && k >= 0 && k < st.steps.length) showStep(st, k); }, // a step of the story (or the chapter) shown, as the scrubber goes
+      get chapter() { return st.ch ? st.ch.c.id : null; }, get chapters() { return chaptersOf(st.s, st.main.length).map(c => ({ id: c.id, title: c.title == null ? null : labelOr(c.title, c.id), at: c.at })); },
+      enter(id) { return enterChapter(st, id); }, back() { return leaveChapter(st); },
       pause() { if (story === st && st.auto) pauseStory(st); },
       resume() { if (story !== st || st.auto) return; st.auto = true; st.held = false; storyBar(st); storyEvent(st); touch(); if (st.phase === 'left') showStep(st, st.at); else arm(st); }, done: st.done };
     story = st;
@@ -1290,7 +1332,7 @@ export function render(container, model, options = {}) {
   function snapshot(event = false) { // MapState: built fresh on every read, frozen all the way down, plain JSON; event: the camera at rest
     const deep = o => { Object.values(o).forEach(v => v && typeof v === 'object' && deep(v)); return Object.freeze(o); }, st = story, t = trip;
     return deep({ view: cur, navigating: nav ? nav.to : null, selection: picked(), expanded: [...(expanded[cur] || [])], lens: lensId, overlays: [...layers.keys()],
-      story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
+      story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto, ...chapterOf(st) } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
       camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), speed: speedNow(), gesture: gestureNow(), destroyed: dead });
   }
   const first = () => {

@@ -89,6 +89,12 @@ export function mountPage(container, model, options = {}) {
   // in a frame (a docs page that frames it is that page already) or when the href is a script's (javascript:, data:)
   const docs = typeof options.docs === 'string' && options.docs.trim() && !/^\s*(javascript|data|vbscript):/i.test(options.docs) && !framed() ? options.docs.trim() : null;
   const app = container; app.className = 'mapapp';
+  // the Stories menu's stories: those that name no audience first, then each audience's in a group of its own, under its name
+  // (in the order the model first names it): the stories told to one reader together
+  const audienceOf = s => s && typeof s.audience === 'string' && s.audience.trim() ? s.audience.trim() : null;
+  const storyItem = s => `<button data-story="${esc(s && s.id)}">${esc(s ? labelOr(labelOr(s.title, s.id), '') : '')}</button>`;
+  const storyItems = list => { const groups = [...new Set(list.map(audienceOf).filter(Boolean))];
+    return list.filter(s => !audienceOf(s)).map(storyItem).join('') + groups.map((g, i) => `<div class="m-aud" role="group" aria-labelledby="m-aud-${i}"><div class="m-aud-t" id="m-aud-${i}">For ${esc(g)}</div>${list.filter(s => audienceOf(s) === g).map(storyItem).join('')}</div>`).join(''); };
   // an arranged view (arrange "flow", layout-flow note section 10): the Stories menu offers a story told from its main flow
   const arrangedView = vid => !!V[vid] && V[vid].arrange === 'flow', arranged = views.some(v => v && v.arrange === 'flow');
   app.innerHTML = `
@@ -99,7 +105,7 @@ export function mountPage(container, model, options = {}) {
       <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${arrOf(D.stories).length || arranged ? `
       <div class="menu" id="m-stories-menu"><button class="ibtn txt" id="m-stories" aria-controls="m-stories-pop" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
-        <div class="menu-pop" id="m-stories-pop" hidden>${arrOf(D.stories).map(s => `<button data-story="${esc(s && s.id)}">${esc(s ? labelOr(labelOr(s.title, s.id), '') : '')}</button>`).join('')}${arranged ? `<hr id="m-flow-hr"${arrOf(D.stories).length ? '' : ' hidden'}><button id="m-flow-story" data-flow-story title="A story told from this view's main flow: one step per card on it">From the main flow</button>` : ''}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
+        <div class="menu-pop" id="m-stories-pop" hidden>${storyItems(arrOf(D.stories))}${arranged ? `<hr id="m-flow-hr"${arrOf(D.stories).length ? '' : ' hidden'}><button id="m-flow-story" data-flow-story title="A story told from this view's main flow: one step per card on it">From the main flow</button>` : ''}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
       <div class="menu"><button class="ibtn txt" id="m-lenses" aria-controls="m-lenses-pop" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
         <div class="menu-pop" id="m-lenses-pop" hidden>${D.lenses.filter(l => l && l.id).map(l => `<button data-lens="${esc(l.id)}" aria-pressed="false">${esc(labelOr(l.title, l.id))}</button>`).join('')}<hr><button data-lens="" aria-pressed="true">No lens</button></div></div>` : ''}
       <div class="menu"><button class="pbtn" id="m-export" aria-controls="m-export-pop" aria-expanded="false">Export ▾</button>
@@ -162,7 +168,7 @@ export function mountPage(container, model, options = {}) {
   function write(push = false) {
     if (!X || linking || handle.destroyed) return;
     const p = new URLSearchParams(); p.set('view', cur); if (sel) p.set('node', sel);
-    if (told && !X.storyOwn()) { p.set('story', told.id); p.set('step', told.step + 1); } // the story shown, at its step (#69); one played as given is in no link
+    if (told && !told.chapter && !X.storyOwn()) { p.set('story', told.id); p.set('step', told.step + 1); } // the story shown, at its step (#69); one played as given, or a chapter's step, is in no link
     if (lensOn) p.set('lens', lensOn); // the lens on the map (#94)
     if (Q.get('theme')) p.set('theme', document.documentElement.dataset.theme || Q.get('theme'));
     if (Q.get('speed') != null) p.set('speed', String(handle.speed)); // a link opened with a speed keeps one: the speed shown now
@@ -434,8 +440,8 @@ export function mountPage(container, model, options = {}) {
   const v0 = V[p0.get('view')] ? p0.get('view') : rootId;
   const handle = render($('m-canvas'), model, {
     view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined, stableFrom: options.stableFrom || undefined,
-    on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step }; app.classList.toggle('story', !!told); pc.story(e);
-      const sv = told && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
+    on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step, chapter: e.chapter != null }; app.classList.toggle('story', !!told); pc.story(e);
+      const sv = told && !told.chapter && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
     _page: {
       instant: options.instant, defer: !options.instant, tour: !(Q.get('still') || Q.get('pdf')), openHint: !Q.get('reader'), kinds: true, status, tourAt: Q.get('shot') ? Q.get('at') : null,
       wide: () => innerWidth > 820,
