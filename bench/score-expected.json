@@ -1,11 +1,75 @@
 {
- "commit": "a61c3422",
+ "commit": "4066b80a",
  "corpus": "fixed",
  "total": {
-  "views": 255,
-  "score": 607425.94
+  "views": 263,
+  "score": 611789.23
  },
  "views": {
+  "a8/dsl-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 601.23
+  },
+  "a8/dsl-containers": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": 2,
+   "reverse": 1,
+   "score": 1367.68
+  },
+  "a8/dsl-api-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 918.93
+  },
+  "a8/puml-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 727.22
+  },
+  "a8/checkout-flowchart": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 363.22
+  },
+  "a8/meals-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 284.41
+  },
+  "a8/compose-services": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 373.67
+  },
+  "a8/k8s-cluster": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 183.93
+  },
   "b10/overview": {
    "hard": 0,
    "cross": 2,
@@ -81,10 +145,10 @@
   "f12/order": {
    "hard": 0,
    "cross": 1,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 877.73
+   "score": 781.97
   },
   "f12/signup": {
    "hard": 0,
@@ -100,15 +164,15 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 491.17
+   "score": 509.15
   },
   "f12/pipeline": {
    "hard": 0,
-   "cross": 0,
-   "labels": 4,
+   "cross": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 1043.12
+   "score": 950.4
   },
   "f12/checkout-c4": {
    "hard": 0,
@@ -145,10 +209,10 @@
   "f12/order-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 826.7
+   "score": 681.77
   },
   "f12/signup-boxed": {
    "hard": 0,
@@ -161,18 +225,18 @@
   "f12/ticket-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 548.85
+   "score": 544.73
   },
   "f12/pipeline-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 3,
+   "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 1069.31
+   "score": 931.86
   },
   "f12/onboard": {
    "hard": 0,

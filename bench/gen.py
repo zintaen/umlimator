@@ -14,6 +14,8 @@ same monorepo with fewer imports (15 packages and 16 imports, near a tree), whos
 is u21: a made-up shop whose services open into views of their parts, with the views it unfolds in place listed (0.12.0,
 #71). Nor is f12: twelve views laid out by business flow (arrange: flow, each with a main flow), written by hand for
 the layout-flow note's fixed corpus (docs/diagrams/notes/layout-flow.md section 4.3).
+a8: the import fixtures' eight views as `umlimator.py import --arrange` writes them, with kindsFromLabels (as the page draws
+them), so the score tracks the arranged layout of imported maps (.evolve/decisions.md D13).
 
   python3 -I bench/gen.py --heldout --week 2026-W48 --out DIR [--seed S]
 
@@ -141,6 +143,42 @@ def heldout(seed, week, out):
     print(f"wrote {k} held-out views")
 
 
+# a8's sources: the import fixtures tests/import.py reads, each with the prefix its ids take in a8
+IMPORTS = [("dsl", "tests/fixtures/integration.dsl"), ("puml", "tests/import/parcels.puml"), ("checkout", "tests/import/checkout.mmd"),
+           ("meals", "tests/import/meals.mmd"), ("compose", "tests/import/compose.json"), ("k8s", "tests/import/kubernetes.json")]
+
+
+def imports():
+    """a8: the import fixtures' eight views as `umlimator.py import --arrange` writes them (arrange "flow"), in one model, each
+    id prefixed by its file's name, and with kindsFromLabels: the page reads a line's kind from its words (a line that reads or
+    writes a store is a dependency line there), and bench.py's hashes are the page's, which layout() must draw the same
+    (.evolve/decisions.md D13)."""
+    import subprocess, tempfile
+    root = Path(__file__).resolve().parent.parent
+    nodes, edges, views = [], [], []
+    with tempfile.TemporaryDirectory() as tmp:
+        for pre, src in IMPORTS:
+            out = Path(tmp) / f"{pre}.json"
+            subprocess.run([sys.executable, str(root / "umlimator.py"), "import", str(root / src), "--out", str(out), "--arrange"],
+                           check=True, capture_output=True)
+            m = json.loads(out.read_text(encoding="utf-8"))
+            x = lambda i: None if i is None else f"{pre}-{i}"
+            for n in m["nodes"]:
+                nodes.append({**n, "id": x(n["id"]), **({"opensView": x(n["opensView"])} if n.get("opensView") else {})})
+            for e in m["edges"]:
+                edges.append({**e, "id": x(e["id"]), "from": x(e["from"]), "to": x(e["to"])})
+            for v in m["views"]:
+                w = {**v, "id": x(v["id"]), "nodeIds": [x(i) for i in v["nodeIds"]],
+                     "containers": [{**c, "id": x(c["id"]), "nodeIds": [x(i) for i in c["nodeIds"]], **({"parent": x(c["parent"])} if c.get("parent") else {})}
+                                    for c in v.get("containers", [])]}
+                if "edges" in v:
+                    w["edges"] = [x(i) for i in v["edges"]]
+                if "parent" in v:
+                    w["parent"] = x(v["parent"])
+                views.append({**w, "kindsFromLabels": True})
+    return {"title": "The import fixtures, arranged", "nodes": nodes, "edges": edges, "views": views}
+
+
 def main():
     if len(sys.argv) > 1:
         p = argparse.ArgumentParser()
@@ -196,6 +234,8 @@ def main():
         {"id": "boxed", "title": "An API card, its modules, and systems that call back, in boxes", "nodeIds": ids(n), "layout": lay,
          "containers": [{"id": "app", "label": "App", "nodeIds": ids(hub + mods)}, {"id": "systems", "label": "Other systems", "nodeIds": ids(systems)}]},
         {"id": "plain", "title": "An API card and its modules", "nodeIds": ids(hub + mods), "layout": {i: lay[i] for i in ids(hub + mods)}}])
+
+    M["a8"] = imports()
 
     for k, m in M.items():
         (out / f"{k}.json").write_text(json.dumps(m, indent=1) + "\n")
