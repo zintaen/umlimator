@@ -67,3 +67,17 @@ Questions agents leave for the maintainer (C9, A10.10). Each entry has a status:
 - Status: open
 - Asked: 2026-11-23, by the apply-strategy lane (A1, A4.2)
 - Question: The strategy's lane note is a trailer block in a lane's last commit message (`Lane-Note:`, `Kind:`, `User-visible:` and so on). umlimator's commits carry no trailers. The fix template writes the lane note as plain lines in the message and forbids attribution lines. Is that acceptable, or should the lane note live only in the lane's returned notes?
+
+## D12. diff() stable by default
+
+- Status: answered
+- Asked: 2026-11-22, by the layout-flow note (`docs/diagrams/notes/layout-flow.md` section 13, question 4)
+- Question: Should `diff()`, `umlimator.py diff` and the diff Action lay the model after out against the model before by default, which changes diff pictures?
+- Answer: On 2026-11-24 the maintainer left this to the recommended default (the handoff's `evolve-plan.md`, "Maintainer decisions"). The recommended default is yes, and step 14 of the note builds it: `diff()` returns `stableFrom` unless given `stable: false`, `umlimator.py diff` draws against the model before unless given `--no-stable`, and the Action's `stable` input defaults to `true`. A view whose stable picture draws worse than a fresh one is still drawn fresh.
+
+## D13. arrange "flow" by default for imported and map-repo maps
+
+- Status: deferred
+- Asked: 2026-11-22, by the layout-flow note (`docs/diagrams/notes/layout-flow.md` section 13, question 2)
+- Question: Should `arrange: "flow"` become the default for maps written by the map-repo skill and by `umlimator.py import`?
+- Answer: On 2026-11-24 the maintainer left this to the recommended default (the handoff's `evolve-plan.md`, "Maintainer decisions"). Measured in step 14, the recommended default is not yet. With the layout score (`src/layout/score.js`, lower is better), the import fixtures' eight views total 4387.48 ranked and 5429.49 arranged, and five of them take layout check problems arranged (12 in all) where the ranked layout has none; the example monorepo's two map views total 2460.43 ranked and 2748.18 arranged. So `umlimator.py import` takes `--arrange` (opt-in), and the map-repo skill does not set the field. Revisit when the arranged layout scores no worse on those views and draws no new check problem on them: then `import` sets it by default (with `--no-arrange`), the skill's model sets it on each view, and it reaches the skill's users when the skill's pin moves to the release that has it.

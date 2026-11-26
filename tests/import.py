@@ -888,6 +888,20 @@ with tempfile.TemporaryDirectory() as tmp:
         c = run("check", str(page)) if r.returncode == 0 else r
         rep = json.loads(c.stdout[c.stdout.find("{"):]) if c.returncode == 0 and "{" in c.stdout else {}
         ok(f"{name} · renders, and its layout check is clean", rep.get("checked") and not rep.get("problems") and not rep.get("errors"), rep or c.stderr[-1500:])
+    # arrange "flow" (layout-flow.md section 12 step 14, .evolve/decisions.md D13): opt-in with --arrange, on map views and the
+    # typed views whose type reads the flow; a default import writes none, so its views lay out by rank as before
+    for name, typed in (("tests/fixtures/integration.dsl", []), ("tests/import/checkout.mmd", []), ("tests/import/flowchart.mmd", ["--typed"]),
+                        ("tests/import/classes.mmd", [])):
+        outs = {f: t / f"arr-{Path(name).stem}{f}.json" for f in ("", "--arrange")}
+        rs = {f: run("import", str(ROOT / name), *typed, *([f] if f else []), "--out", str(o)) for f, o in outs.items()}
+        ms = {f: json.loads(o.read_text(encoding="utf-8")) if o.is_file() else {"views": []} for f, o in outs.items()}
+        flows = [v["id"] for v in ms["--arrange"]["views"] if v.get("arrange") == "flow"]
+        reads = [v["id"] for v in ms[""]["views"] if (v.get("diagram") or "map") in ("map", "flowchart", "c4.container")]
+        ok(f"{name}{''.join(' ' + x for x in typed)} · --arrange sets arrange \"flow\" on each view of a type that reads the flow, and says which; without it none",
+           all(r.returncode == 0 for r in rs.values()) and flows == reads == json.loads(rs["--arrange"].stdout)["arranged"]
+           and json.loads(rs[""].stdout)["arranged"] == [] and not any("arrange" in v for v in ms[""]["views"])
+           and [{k: x for k, x in v.items() if k != "arrange"} for v in ms["--arrange"]["views"]] == ms[""]["views"]
+           and (name != "tests/import/classes.mmd" or flows == []), (flows, reads, [r.stderr[-300:] for r in rs.values()]))
     shutil.copy(ROOT / "tests" / "fixtures" / "integration.dsl", t / "integration.txt")
     r = run("import", str(t / "integration.txt"), "--out", str(t / "txt.json"))
     ok("knows a format by its content, whatever the extension", r.returncode == 0 and json.loads(r.stdout).get("format") == "structurizr", r.stderr)
