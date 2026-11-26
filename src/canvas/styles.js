@@ -229,7 +229,9 @@ const STYLES = `
   /* a story's caption bar (#69), bottom left, clear of the controls */
   .um-story { position: absolute; left: 16px; bottom: 40px; z-index: 5; box-sizing: border-box; max-width: min(560px, calc(100% - 290px)); display: flex; align-items: flex-end; gap: 10px; padding: 9px 8px 9px 14px; border-radius: 12px; background: var(--um-panel); border: 1px solid var(--um-border-2); box-shadow: var(--um-shadow); color: var(--um-text); font: 13px/1.45 var(--um-sans); }
   .um-story .um-st { display: block; font: 600 11px var(--um-mono); color: var(--um-muted); margin-bottom: 2px; }
-  .um-story p { margin: 0; } .um-story .um-sb { display: flex; gap: 2px; flex: none; }
+  .um-story p { margin: 0; } .um-story .um-sb { display: flex; gap: 2px; flex: none; } .um-story .um-cap { flex: 1 1 auto; min-width: 0; } .um-story [hidden] { display: none; }
+  .um-story .um-scrub { display: block; width: 100%; margin: 6px 0 0; accent-color: var(--um-accent); cursor: pointer; }
+  .um-story .um-ch { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .um-story .um-ch button { height: 24px; border: 1px solid var(--um-border-2); font: 12px var(--um-sans); }
   .um-story button { min-width: 30px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--um-text); font: 600 13px var(--um-mono); cursor: pointer; padding: 0 7px; }
   .um-story button:hover:not([aria-disabled="true"]) { background: var(--um-panel-2); color: var(--um-accent); } .um-story button[aria-disabled="true"] { opacity: .35; cursor: default; }
   @media (max-width: 820px) { .um-story { left: 12px; right: 12px; bottom: 60px; max-width: none; } }
