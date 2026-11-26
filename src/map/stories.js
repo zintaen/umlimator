@@ -38,10 +38,11 @@ function storyView(model, viewId) {
       .forEach(x => { if (x.from != null && x.to != null && byId[x.from] && byId[x.to]) (isGone(d) || isGone(x) ? gone : lines).push({ ...x, drawn: d }); }); });
   const near = new Set(g.edges.flatMap(d => [d.from + '\u0000' + d.to, d.to + '\u0000' + d.from]));
   const joined = (a, b) => near.has(a + '\u0000' + b);
-  // a dependency line, which is no step: its flow field says, else a map line's kind as drawn (state, guard), else in BPMN
-  // any line but a sequence flow (a data association)
-  const bpmn = !!T && /^bpmn/.test(String(v.diagram));
-  const dep = e => STORY_ROLES.includes(e.flow) ? e.flow === 'dep' : bpmn ? !STORY_SEQ_FLOW.test(String(e.type || '')) : !T && ['state', 'guard'].includes(e.drawn.wk);
+  // a dependency line, which is no step: its flow field says, else in BPMN any line but a sequence flow (a data association),
+  // else a typed view's type as the layout reads it (its flowRole: a DFD flow to or from a store, a comment link), else a
+  // map line's kind as drawn (state, guard)
+  const bpmn = !!T && /^bpmn/.test(String(v.diagram)), TF = T ? ctx.storyFlow(viewId) : null;
+  const dep = e => STORY_ROLES.includes(e.flow) ? e.flow === 'dep' : bpmn ? !STORY_SEQ_FLOW.test(String(e.type || '')) : TF ? TF.dep(e) : !T && ['state', 'guard'].includes(e.drawn.wk);
   const cards = [...arrOf(v.nodeIds), ...Object.keys(byId)].filter((id, i, a) => byId[id] && a.indexOf(id) === i);
   // the lines that close a loop: marked loop, else found depth-first from the cards no line comes into (as the layout reads them)
   const back = new Set(), st = new Map(); lines.forEach((e, k) => { if (e.loop) back.add(k); });
@@ -58,14 +59,14 @@ function storyView(model, viewId) {
   const lineSays = e => { if (e.what != null && String(e.what).trim()) return storyPlain(e.what);
     const w = words(e); if (!w) return `${name(e.from)} leads to ${name(e.to)}`;
     return verbal(e) ? `${name(e.from)} ${verb(w)} ${name(e.to)}` : /DataFlow$/.test(String(e.type || '')) ? `${name(e.from)} sends ${w} to ${name(e.to)}` : `${name(e.from)} to ${name(e.to)} (${w})`; };
-  return { ctx, v, T, g, mine, byId, modelLine, name, lines, gone, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays };
+  return { ctx, v, T, TF, g, mine, byId, modelLine, name, lines, gone, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays };
 }
 
 /** A story generated from the main flow of a view (#flow-stories): one step per main card, each with select, highlight,
  *  tour and caption; branches as chapters offered at the step they leave from. options: id, title, chapters (false: none),
  *  audience. Throws when the view has no main flow. */
 export function storyFromFlow(model, viewId, options = {}) {
-  const { ctx, v, T, g, mine, byId, modelLine, name, lines, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays } = storyView(model, viewId);
+  const { ctx, v, T, TF, g, mine, byId, modelLine, name, lines, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays } = storyView(model, viewId);
   const id = typeof options.id === 'string' && options.id ? options.id : `flow-${viewId}`;
   const title = typeof options.title === 'string' && options.title.trim() ? options.title : `${String(labelOr(v.title, viewId))}: the main flow`;
   const audience = typeof options.audience === 'string' && options.audience.trim() ? options.audience.trim() : null, brief = !!audience && /^business$/i.test(audience);
@@ -120,10 +121,17 @@ export function storyFromFlow(model, viewId, options = {}) {
       for (;;) { const d = dflt(at), out = flows.filter(([e]) => e.from === at && !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
       if (ks.length) main = { cards: [start, ...ks.map(k => lines[k].to)], lines: ks }; }
   }
-  if (!main) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
+  if (!main && T) { // a typed view: the main flow its type reads (typedMain, which an arranged view's picture draws), each of
+    // its lines the drawn line that stands for it; a type with no flowRole (a use case, a class view) reads none
+    const M = TF && TF.main, ks = [];
+    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1];
+      const k = lines.findIndex(e => e.from === a && e.to === b && lid != null && idOf(e) === String(lid)), j = k >= 0 ? k : lines.findIndex(e => e.from === a && e.to === b && !dep(e));
+      ks.push(j); });
+    if (M && M.cards.length && ks.every(k => k >= 0)) main = { cards: M.cards, lines: ks };
+  } else if (!main) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
     main = mainFlow(lines, { back, dep, cards, run: v.render === 'sequence' });
   }
-  if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: no flow line joins two of its cards`);
+  if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: ${T && !TF && !bpmn ? `a ${String(v.diagram)} view reads none` : 'no flow line joins two of its cards'}`);
   const onMain = new Set(main.cards), mainKs = new Set(main.lines);
   main.cards.forEach((c, i) => { const e = i ? lines[main.lines[i - 1]] : null; out.steps.push(stepOf(i + 1, c, e, i ? main.cards[i - 1] : null)); });
   // branches: from each main card, each flow line off the main flow to a card off it, followed while it stays off it
