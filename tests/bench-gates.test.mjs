@@ -58,34 +58,27 @@ export function layout(...a) { const g = real.layout(...a); clock.t += ${t}; ret
   if (baseMs != null) args.push('--base-lib', stub(`base-${baseMs}.mjs`, baseMs));
   return spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
 }
-// a C4 example's view: its budget is 1500 ms
-const VIEW = (() => {
-  for (const f of readdirSync(join(ROOT, 'examples')).filter(f => f.endsWith('.json')).sort()) {
-    const m = JSON.parse(readFileSync(join(ROOT, 'examples', f), 'utf8')), v = (m.views || []).find(v => /^c4\./.test(v.diagram || ''));
-    if (v) return `examples/${f.slice(0, -5)}/${v.id}`;
-  }
-  return null;
-})();
+// a view of bench/models/m50.json: its budget is 1000 ms
+const VIEW = `m50/${JSON.parse(readFileSync(join(ROOT, 'bench/models/m50.json'), 'utf8')).views[0].id}`;
 
 test('the layout-score gate: with a base lib in the run, a view over its budget fails only when also over 1.10 times its base time; without a base the budget holds (1b5d04a3)', () => {
-  assert.ok(VIEW, 'an example has a C4 view');
   const dir = mkdtempSync(join(tmpdir(), 'umlimator-score-'));
   try {
     const said = r => r.stdout + r.stderr;
-    // no base: 1600 ms is over the 1500 ms budget
-    let r = scoreRun(dir, 1600);
-    assert.equal(r.status, 1, said(r)); assert.match(said(r), /> its budget of 1500 ms/);
+    // no base: 1100 ms is over the 1000 ms budget
+    let r = scoreRun(dir, 1100);
+    assert.equal(r.status, 1, said(r)); assert.match(said(r), /> its budget of 1000 ms/);
     // within budget, no base: passes
-    r = scoreRun(dir, 1400);
+    r = scoreRun(dir, 900);
     assert.equal(r.status, 0, said(r));
-    // over budget, the base as slow on this machine (1600 is within 1.10 times 1500): passes, with a note
-    r = scoreRun(dir, 1600, 1500);
-    assert.equal(r.status, 0, said(r)); assert.match(r.stdout, /note: .*within 1\.10 times the base's 1500 ms/);
-    // over budget and over 1.10 times the base (1600 > 1.10 * 1400 = 1540): fails
-    r = scoreRun(dir, 1600, 1400);
-    assert.equal(r.status, 1, said(r)); assert.match(said(r), /over 1\.10 times the base's 1400 ms/);
+    // over budget, the base as slow on this machine (1100 is within 1.10 times 1050): passes, with a note
+    r = scoreRun(dir, 1100, 1050);
+    assert.equal(r.status, 0, said(r)); assert.match(r.stdout, /note: .*within 1\.10 times the base's 1050 ms/);
+    // over budget and over 1.10 times the base (1100 > 1.10 * 950 = 1045): fails
+    r = scoreRun(dir, 1100, 950);
+    assert.equal(r.status, 1, said(r)); assert.match(said(r), /over 1\.10 times the base's 950 ms/);
     // within budget but over 1.10 times the base: the corpus gate fails on the ratio, as before
-    r = scoreRun(dir, 1200, 1000);
+    r = scoreRun(dir, 960, 800);
     assert.equal(r.status, 1, said(r)); assert.match(said(r), /the corpus takes 1\.200 times the base's time/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
