@@ -13,8 +13,9 @@
    theirs a member, nested by `parent`), tasks (user, service), sub-processes, call activities, start, end, intermediate
    and boundary events with the definitions their kind may take, exclusive and parallel gateways, data object references
    (with their data object) and data store references, text annotations, groups (a category value names its group in
-   `categoryValueRef`), documentation, sequence and message flows, associations and data associations. Weakened, kept
-   under the element's `ext.bpmn`: a sequence flow's condition, a gateway's default, a send or receive task's kind, a
+   `categoryValueRef`), documentation, sequence and message flows, associations and data associations, an exclusive
+   gateway's or an activity's default flow (`props.default`, the flow's id; one that is no sequence flow out of it read is
+   weakened). Weakened, kept under the element's `ext.bpmn`: a sequence flow's condition, a send or receive task's kind, a
    timer's time. A none end or throw event a message flow leaves, or a none start event one arrives at (bpmn-js draws
    them), is read as a message event and reported weakened (audit 44). Anything else (an element, an event definition or
    a marker outside the subset, an extension) is reported `skipped` and kept under the model's `ext.bpmn.skipped` as
@@ -29,7 +30,7 @@
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
    <participant>-process) that holds anything and one for what is in no pool, and one BPMNDiagram per `bpmn` view. Its
    shapes and edges take their bounds and points from `geo` ({ nodes: [{ id, x, y, w, h }], edges: [{ id, pts }] }, the
-   layout of `viewId`), any other on a plain grid. An id that is not an XML name is written escaped (`_` and its code
+   layout of `viewId`), any other on a plain grid. A `props.default` is written as its node's `default`. An id that is not an XML name is written escaped (`_` and its code
    points), the model's id in `umlimator:id`. Not written, and reported: what `ext.bpmn` holds, other diagrams' elements
    and views, a property or field outside row 24 or on a type it is not for, a data association against BPMN's direction
    (§4's data-ends), and whatever a reader would read back otherwise (note §12.5: a cycle of lanes, a lane as the parent
@@ -62,7 +63,8 @@ const BX_DEF_OUT = { message: 'bpmn:MessageEventDefinition', timer: 'bpmn:TimerE
 const BX_SAME = new Set(['Participant', 'SubProcess', 'CallActivity', 'ExclusiveGateway', 'ParallelGateway', 'DataStoreReference',
   'TextAnnotation', 'Group', ...Object.keys(BX_DEFS)]); // bpmn.X is bpmn:X
 const BX_ACTIVITY = new Set(['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity']);
-const BX_PROPS = { 'bpmn.Participant': ['processRef'], 'bpmn.Task': ['taskType'], 'bpmn.CallActivity': ['calledElement'], 'bpmn.Association': ['direction'],
+const BX_PROPS = { 'bpmn.Participant': ['processRef'], 'bpmn.Task': ['taskType', 'default'], 'bpmn.SubProcess': ['default'], 'bpmn.CallActivity': ['calledElement', 'default'],
+  'bpmn.ExclusiveGateway': ['default'], 'bpmn.Association': ['direction'],
   'bpmn.BoundaryEvent': ['definition', 'attachedTo', 'cancelActivity'], 'bpmn.DataStoreReference': ['dataStoreRef'] }; // and documentation on any
 const bxProp = (t, k) => k === 'documentation' || (BX_PROPS[t] || (t.slice(5) in BX_DEFS ? ['definition'] : [])).includes(k)
   || k === 'categoryValueRef' && !['bpmn.Group', 'bpmn.Lane'].includes(t) && !/(Flow|Association)$/.test(t); // a node's groups (row 24)
@@ -222,6 +224,7 @@ async function readBpmnXml(xml, moddle) {
     };
     const weak = (n, what, key, value) => { (n.ext ??= { bpmn: {} }).bpmn[key] = value; say(n.id, 'weakened', `${what}: kept under ext.bpmn, read as plain`); };
     const pending = []; // [moddle element, model type, from element, to element, parent]
+    const defaults = [], lineOf = new Map(); // [node, its default flow's moddle element]; a sequence flow's moddle element -> its line
     const groups = [], tagged = [], hosts = []; // groups by their category value; elements naming category values; boundary events' hosts
 
     // a process's (a collaboration's, a lane set's) name and documentation the model has no place for (audits 45 and 46)
@@ -303,11 +306,13 @@ async function readBpmnXml(xml, moddle) {
         const r0 = report.length, s0 = skipped.length, p0 = pending.length; // what reading it says, keeps and links: a boundary event's, taken back if it is dropped
         if (t in BX_TASK) {
           n = add(el, 'bpmn.Task', at, { taskType: BX_TASK[t] in BX_TASK_OUT ? BX_TASK[t] : 'none' });
+          if (n && el.default) defaults.push([n, el.default]);
           if (n && !(BX_TASK[t] in BX_TASK_OUT)) weak(n, `a ${BX_TASK[t]} task`, 'task', BX_TASK[t]);
         } else if (t === 'bpmn:SubProcess' && !el.triggeredByEvent) {
           n = add(el, 'bpmn.SubProcess', at);
           if (n) queue.push([el, n.id]);
-        } else if (t === 'bpmn:CallActivity') n = add(el, 'bpmn.CallActivity', at, bxStr(el.calledElement) ? { calledElement: el.calledElement } : {});
+          if (n && el.default) defaults.push([n, el.default]);
+        } else if (t === 'bpmn:CallActivity') { n = add(el, 'bpmn.CallActivity', at, bxStr(el.calledElement) ? { calledElement: el.calledElement } : {}); if (n && el.default) defaults.push([n, el.default]); }
         else if (kind in BX_DEFS) {
           const ds = el.eventDefinitions || [], def = ds.length ? BX_DEF[ds[0].$type] : 'none';
           if (ds.length > 1 || !BX_DEFS[kind].includes(def)) { skip(el, at, `with ${ds.map(d => d.$type.replace('bpmn:', '')).join(', ') || 'no definition'}`); continue; }
@@ -318,7 +323,7 @@ async function readBpmnXml(xml, moddle) {
           if (n && time && time.length) weak(n, `a timer's ${time.map(x => x[0]).join(', ')}`, 'timer', Object.fromEntries(time));
         } else if (t === 'bpmn:ExclusiveGateway' || t === 'bpmn:ParallelGateway') {
           n = add(el, `bpmn.${kind}`, at);
-          if (n && el.default) weak(n, 'a gateway\'s default flow', 'default', idOf(el.default));
+          if (n && el.default) defaults.push([n, el.default]); // a parallel gateway has none (moddle reads no default on one)
         } else if (t === 'bpmn:DataObjectReference') {
           n = add(el, 'bpmn.DataObject', parent, {}, bxStr(el.name) || (el.dataObjectRef && el.dataObjectRef.name));
           if (el.dataObjectRef) refd.add(el.dataObjectRef);
@@ -409,7 +414,7 @@ async function readBpmnXml(xml, moddle) {
       if (doc) props.documentation = doc;
       if (type === 'bpmn.Association' && el.associationDirection && el.associationDirection !== 'None') props.direction = el.associationDirection.toLowerCase();
       const e = { id, type, from: from.id, to: to.id, ...(bxStr(el.name) && type.endsWith('Flow') ? { label: el.name } : {}), ...(Object.keys(props).length ? { props } : {}) };
-      edges.push(e); byId.set(id, e); foreign(el, id); ext(el, id);
+      edges.push(e); byId.set(id, e); lineOf.set(el, e); foreign(el, id); ext(el, id);
       if (w) weak(e, w[0], w[1], w[2]);
       // what the diagram keeps and does not draw (notes/milestone-4b.md §8.3): said, never shown as nothing (audit 27)
       const on = x => (x.type === 'bpmn.BoundaryEvent' && x.props && x.props.attachedTo) || null; // a boundary event's activity
@@ -429,6 +434,12 @@ async function readBpmnXml(xml, moddle) {
       const ends = [from.type, to.type];
       if (type === 'bpmn.Association' && (ends.includes('bpmn.Participant') || ends.includes('bpmn.Group'))) say(id, 'weakened', `an association with a ${ends.includes('bpmn.Group') ? 'group' : 'pool'}: kept, not drawn`);
     }
+    // a default flow (an exclusive gateway's or an activity's `default`): props.default, the id of that sequence flow, once
+    // the lines are read; one that is not a sequence flow out of it read is kept under ext.bpmn and said, as validate()'s
+    // default-flow refuses it
+    for (const [n, d] of defaults) { const e = lineOf.get(d);
+      if (e && e.type === 'bpmn.SequenceFlow' && e.from === n.id) n.props = { ...n.props, default: e.id };
+      else weak(n, `a default flow, ${idOf(d) || '(no id)'}, that is no sequence flow out of it read`, 'default', idOf(d)); }
     // views: one per diagram, its shapes in order; what no plane shows goes to the first
     const shown = new Set(), seen = new Set(), first = new Map(); // nodes in a plane; view ids; a node -> the first two views showing it
     let placed = false;
@@ -636,6 +647,13 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       if (e.label != null && (e.type === 'bpmn.Association' || e.type === 'bpmn.DataAssociation')) say(e.id, 'label, which BPMN gives no association');
       lines.set(e, x);
     }
+    // a default flow: the gateway's or activity's `default`, the sequence flow written for its props.default; one that names
+    // no sequence flow out of it written is said (validate()'s default-flow)
+    const flowOf = new Map([...lines].map(([e, x]) => [e.id, [e, x]]));
+    for (const n of nodes) { if (!bxProp(n.type, 'default') || !n.props || n.props.default == null) continue;
+      const d = n.props.default, f = typeof d === 'string' ? flowOf.get(d) : null, A = els.get(n);
+      if (A && f && f[0].type === 'bpmn.SequenceFlow' && f[0].from === n.id) A.default = f[1];
+      else say(n.id, typeof d === 'string' ? `props.default ${d}, which is no sequence flow out of it` : 'props.default, which is not a sequence flow\'s id'); }
     // what a reader derives from the diagrams, against the model: a view's subject (a sub-process), its parent (the first
     // other view showing its subject), a sub-process's opensView (the first view with it as subject), a node in no view
     const sub = v => { const s = byId.get(v.subject); return s && s.type === 'bpmn.SubProcess' && els.get(s) ? s : null; };

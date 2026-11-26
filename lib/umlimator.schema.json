@@ -762,6 +762,10 @@
           "type": "string"
          },
          "description": "A bpmn flow node, data object or annotation (0.27.0): the ids of the groups (bpmn.Group) it is in; a deleted group is dropped."
+        },
+        "default": {
+         "type": "string",
+         "description": "bpmn.ExclusiveGateway, bpmn.Task, bpmn.SubProcess, bpmn.CallActivity (after 0.45.0): the id of its default flow, one of its sequence flows out, the one taken when no condition on the others holds (BPMN's default attribute); drawn with a slash near its source, and the main flow and storyFromFlow follow it. A declared reference: a deleted flow is dropped. Rule default-flow: it is one of the node's own sequence flows out, with no condition (ext.bpmn.condition), and a parallel gateway or an event has none."
         }
        }
       },
