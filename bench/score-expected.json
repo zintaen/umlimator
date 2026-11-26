@@ -1,9 +1,9 @@
 {
- "commit": "5e5204c8",
+ "commit": "07effce2",
  "corpus": "fixed",
  "total": {
   "views": 263,
-  "score": 611334.49
+  "score": 611401.55
  },
  "views": {
   "a8/dsl-context": {
@@ -16,11 +16,11 @@
   },
   "a8/dsl-containers": {
    "hard": 0,
-   "cross": 3,
+   "cross": 0,
    "labels": 0,
-   "straight": 2,
+   "straight": 0,
    "reverse": 1,
-   "score": 1367.68
+   "score": 1161.01
   },
   "a8/dsl-api-components": {
    "hard": 0,
@@ -36,7 +36,7 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 727.22
+   "score": 654.61
   },
   "a8/checkout-flowchart": {
    "hard": 0,
@@ -44,15 +44,15 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 363.22
+   "score": 303.76
   },
   "a8/meals-context": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 284.41
+   "score": 325.61
   },
   "a8/compose-services": {
    "hard": 0,
@@ -145,10 +145,10 @@
   "f12/order": {
    "hard": 0,
    "cross": 1,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 781.97
+   "score": 877.73
   },
   "f12/signup": {
    "hard": 0,
@@ -164,15 +164,15 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "score": 509.15
+   "score": 491.17
   },
   "f12/pipeline": {
    "hard": 0,
-   "cross": 1,
-   "labels": 0,
+   "cross": 0,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
-   "score": 950.4
+   "score": 1043.12
   },
   "f12/checkout-c4": {
    "hard": 0,
@@ -209,10 +209,10 @@
   "f12/order-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "score": 681.77
+   "score": 738.42
   },
   "f12/signup-boxed": {
    "hard": 0,
@@ -233,10 +233,10 @@
   "f12/pipeline-boxed": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 3,
    "straight": 0,
    "reverse": 0,
-   "score": 931.86
+   "score": 1069.31
   },
   "f12/onboard": {
    "hard": 0,
