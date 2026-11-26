@@ -154,13 +154,38 @@ test('with boxes and no arrange, the main-flow fields change nothing', () => {
   const g = layout(m, 'v'); assert.deepEqual(cells(g), cells(layout(u, 'v'))); assert.ok(g.edges.every(e => !e.mainLine));
 });
 
-test('f12\'s boxed views: straight 0 where the main flow passes each box once, and Sign-up, which comes back into App, on two rows', async () => {
+test('f12\'s boxed views: straight 0 where the main flow passes each box once; Sign-up, which leaves App for Risk and comes back, keeps App\'s runs on one row with Risk under the gap', async () => {
   const { readFileSync } = await import('node:fs'), m = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url)));
   const s = id => viewMetrics(layout(m, id), { model: m, view: m.views.find(v => v.id === id) });
   for (const id of ['order-boxed', 'ticket-boxed', 'pipeline-boxed']) assert.equal(s(id).straight, 0, id);
-  const g = layout(m, 'signup-boxed'), at = Object.fromEntries(g.nodes.map(n => [n.id, n]));
-  assert.ok(['s-form', 's-acct', 's-check'].every(id => midY(at[id]) === midY(at['s-user'])), 'the flow up to where it leaves App holds one row');
-  assert.ok(s('signup-boxed').straight <= 6);
+  const g = layout(m, 'signup-boxed'), at = Object.fromEntries(g.nodes.map(n => [n.id, n])), box = id => g.families.find(f => f.id === id), cx = n => n.x + n.w / 2;
+  assert.ok(['s-form', 's-acct', 's-active', 's-welcome'].every(id => midY(at[id]) === midY(at['s-user'])), 'App\'s two runs on the main row');
+  const app = box('sb-app'), risk = box('sb-risk');
+  assert.ok(risk.y >= app.y + app.h && risk.x >= app.x && risk.x + risk.w <= app.x + app.w, 'Risk under App, within its columns');
+  assert.ok(cx(at['s-acct']) < cx(at['s-check']) && cx(at['s-check']) < cx(at['s-active']), 'Risk check between the two runs');
+  // the one card off the row costs 2 (two rows), and the lines into and out of it, which come into their cards at the top and
+  // the bottom, one corner each: 4, where the second row was 6 with 4 lines back
+  const r = s('signup-boxed'); assert.deepEqual([r.hard, r.straight, r.reverse], [0, 4, 0]);
+  assert.deepEqual(['s-m2', 's-m3'].map(id => g.edges.find(e => e.id === id).pts.length), [3, 3], 'into Risk and back out: one corner each');
+  assert.deepEqual(check(m, 'signup-boxed').filter(p => /right-to-left/.test(p.message)), []);
+});
+
+test('a main flow that leaves a box for one card and comes back: the box\'s runs on one row, the card under the gap, the box one rectangle not over it', () => {
+  const C = ['a', 'b', 'c', 'd', 'e'], m = { schemaVersion: 2, nodes: C.map(i => ({ id: i, label: 'Step ' + i.toUpperCase() })),
+    edges: C.slice(1).map((to, i) => ({ id: 'm' + i, from: C[i], to, label: 'then', flow: 'main' })),
+    views: [{ id: 'v', arrange: 'flow', nodeIds: C, containers: [{ id: 'app', label: 'App', nodeIds: ['a', 'b', 'd', 'e'] }] }] };
+  const g = layout(m, 'v'), at = Object.fromEntries(g.nodes.map(n => [n.id, n])), app = g.families.find(f => f.id === 'app'), c = at.c;
+  assert.ok(['b', 'd', 'e'].every(id => midY(at[id]) === midY(at.a)), 'the box\'s runs on one row');
+  assert.ok(c.y >= app.y + app.h && c.x > at.b.x + at.b.w && c.x + c.w < at.d.x, 'the card under the box, between its runs');
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.equal(s.hard, 0); assert.equal(s.reverse, 0); assert.equal(s.straight, 4);
+});
+
+test('a box that holds the flow\'s first card and comes back after a box beside it: no hole in its parent\'s columns, the box\'s runs on one row', async () => {
+  const { readFileSync } = await import('node:fs'), m = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url)));
+  m.views.find(v => v.id === 'ticket-boxed').containers = [{ id: 'tb-l1', label: 'First line', nodeIds: ['t-desk', 't-triage', 't-kb'] }, { id: 'tb-l2', label: 'Engineering', nodeIds: ['t-fix', 't-verify', 't-cust'] }];
+  const g = layout(m, 'ticket-boxed'), at = id => g.byId[id]; // the edit corpus's move into a box, which threw in untangle
+  assert.ok(['t-fix', 't-verify'].every(id => midY(at(id)) === midY(at('t-cust'))), 'Engineering\'s runs on one row');
+  const s = viewMetrics(g, { model: m, view: m.views.find(v => v.id === 'ticket-boxed') }); assert.deepEqual([s.hard, s.straight, s.reverse], [0, 4, 0]);
 });
 
 // Step 9 (section 7): semantic zones on a map. In an arranged view a card's zone is its own, else the map's default (section
@@ -372,4 +397,39 @@ test('a typed BPMN view (its type ranks its own cells, cpPlace): the main flow f
   assert.ok(g.edges.filter(e => e.mainLine).length >= 5 && g.edges.some(e => e.dep), 'a main flow and dependency lines');
   assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
   assert.ok(cross(on, g) <= cross(ex, g0), `crossings ${cross(on, g)} against ${cross(ex, g0)}`);
+});
+
+// a typed view with boxes (blockPos with the type's boxes) holds its main flow on one row as a map's: a C4 boundary whose
+// branches are mentioned before the main lines put the main cards on other rows when blockPos read no main flow
+const C4BOX = () => ({ schemaVersion: 2,
+  nodes: [{ id: 'u', type: 'c4.Person', label: 'Shopper' }, { id: 'sys', type: 'c4.SoftwareSystem', label: 'Shop' },
+    ...[['web', 'Web app'], ['cache', 'Cache warmer'], ['api', 'API'], ['audit', 'Audit'], ['worker', 'Worker']].map(([id, label]) => ({ id, type: 'c4.Container', label, parent: 'sys', props: { technology: 'Go' } })),
+    { id: 'psp', type: 'c4.SoftwareSystem', label: 'Payments', props: { external: true } }],
+  edges: [{ id: 'r0', type: 'c4.Relationship', from: 'web', to: 'cache', label: 'Warms' }, { id: 'r0b', type: 'c4.Relationship', from: 'api', to: 'audit', label: 'Logs' },
+    ...[['u', 'web'], ['web', 'api'], ['api', 'worker'], ['worker', 'psp']].map(([from, to], i) => ({ id: 'r' + (i + 1), type: 'c4.Relationship', from, to, label: 'then', flow: 'main' }))],
+  views: [{ id: 'v', diagram: 'c4.container', subject: 'sys', arrange: 'flow', nodeIds: ['u', 'sys', 'web', 'cache', 'api', 'audit', 'worker', 'psp'] }] });
+
+test('a typed view with boxes: the main flow on one row across the boundary, the branches off it, straight 0', () => {
+  const m = C4BOX(), g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(['web', 'api', 'worker', 'psp'].every(id => midY(at(id)) === midY(at('u'))), 'every main card on the main row');
+  assert.ok(['cache', 'audit'].every(id => midY(at(id)) !== midY(at('u'))), 'the branches off it');
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.deepEqual([s.hard, s.straight, s.reverse], [0, 0, 0]);
+});
+
+// the snake (section 14) for a typed view: its main flow from the type's typedMain, its cards' runs and lines' ways in memo.flow
+const DFD = n => { const P = Array.from({ length: n }, (_, i) => 'p' + i);
+  return { schemaVersion: 2, nodes: [{ id: 'cust', type: 'dfd.ExternalEntity', label: 'Customer' }, ...P.map((id, i) => ({ id, type: 'dfd.Process', label: 'Step ' + (i + 1), props: { number: String(i + 1) } })),
+    { id: 'st', type: 'dfd.DataStore', label: 'Orders', props: { number: 'D1' } }],
+  edges: [{ id: 'f0', type: 'dfd.DataFlow', from: 'cust', to: 'p0', label: 'order', flow: 'main' }, ...P.slice(1).map((to, i) => ({ id: 'm' + i, type: 'dfd.DataFlow', from: P[i], to, flow: 'main' })),
+    { id: 'd1', type: 'dfd.DataFlow', from: 'p2', to: 'st', label: 'saves', flow: 'dep' }],
+  views: [{ id: 'v', diagram: 'dfd', arrange: 'flow', nodeIds: ['cust', ...P, 'st'] }] }; };
+
+test('a typed view whose main flow is longer than SNAKE_AT snakes: two rows, the second reading back, runs and ways marked, check() silent', () => {
+  const m = DFD(14), g = layout(m, 'v'), main = ['cust', ...Array.from({ length: 14 }, (_, i) => 'p' + i)];
+  assert.equal(new Set(main.map(id => midY(g.byId[id]))).size, 2, 'two rows');
+  assert.deepEqual(main.map(id => g.byId[id].run), [...Array(8).fill(0), ...Array(7).fill(1)]);
+  assert.equal(g.edges.find(e => e.id === 'm6').dir, 'down'); assert.ok(g.edges.filter(e => e.dir === 'left').length === 6 && g.edges.filter(e => e.dir === 'down').every(e => e.pts.length === 2));
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.deepEqual([s.hard, s.straight, s.reverse], [0, 0, 0]);
+  assert.deepEqual(check(m, 'v'), []);
+  const short = DFD(9), h = layout(short, 'v'); assert.ok(h.nodes.every(n => n.run == null) && h.edges.every(e => !e.dir), 'a flow of SNAKE_AT cards or fewer: one row, nothing marked');
 });

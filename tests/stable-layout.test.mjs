@@ -6,6 +6,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layout, check, diff, apply, validate } from '../lib/umlimator.js';
 import { STABLE_SLACK } from '../src/layout/tune.js';
+import { readFileSync } from 'node:fs';
+
+const PINS = JSON.parse(readFileSync(new URL('../bench/tune-pins.json', import.meta.url), 'utf8')).values;
 
 // ten cards of a shop's order flow, as a map view lays them out:
 // web api auth|orders pay|stock ship mail|audit report, in seven columns
@@ -47,7 +50,7 @@ test('stable: a change whose stable layout would add a crossing falls back to th
   assert.ok(check(pinned, 'v').some(i => / cross$/.test(i.message)), 'the soft-pinned cells force a crossing');
   assert.equal(check(after, 'v').length, 0, 'the fresh layout has none');
   assert.deepEqual(cells(layout(after, 'v', { stableFrom: base })), cells(layout(after, 'v')), 'so the fresh layout is drawn');
-  assert.equal(STABLE_SLACK, 1, 'the guard: no more hard issues, and no worse than one label not drawn (tune.js)');
+  assert.equal(STABLE_SLACK, PINS.STABLE_SLACK, 'the guard: no more hard issues, and no worse than STABLE_SLACK labels not drawn (tune.js, pinned in bench/tune-pins.json)');
 });
 
 test('stable: a real pin wins over a soft pin, and the soft pins are never written to the model', () => {
