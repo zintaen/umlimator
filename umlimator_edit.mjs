@@ -1,7 +1,9 @@
 /* umlimator_edit.mjs: the edit tools of umlimator.py mcp (umlimator_mcp.py), in Node. It reads one JSON object on stdin,
    { model, steps, source }, and writes one on stdout: the apply() commands each step makes, the model after them, its
    text (source, the file's text, kept as it is written wherever the change leaves it alone: rewritten), and what the
-   change does (validate() problems, rules() breaks and check() issues it adds, and diff()'s summary in words).
+   change does (validate() problems, rules() breaks and check() issues it adds, and diff()'s summary in words). The model
+   after is checked as the page draws it after the change: against the model before (stableFrom), so the cards the change
+   left alone keep their places.
 
    A step is an edit tool's call, { tool, ...its arguments }, or an apply() command as it is, { op, ... }. On a typed view
    a tool runs the page's own editor (typedEditor, src/canvas/edit.js, with the type's hooks, src/typed/edit.js): the
@@ -380,7 +382,7 @@ async function main() {
   const errs = x => safe(() => u.validate(x), []), probs = more(errs(model), errs(m), p => p.level + '\u0000' + p.message);
   const d = safe(() => u.diff(model, m), { summary: [], views: [] });
   const has = (x, vid) => arr(x.views).some(v => isObj(v) && v.id === vid);
-  const layout = d.views.filter(vid => has(m, vid)).flatMap(vid => more(has(model, vid) ? safe(() => u.check(model, vid), []) : [], safe(() => u.check(m, vid), []), x => x.message).map(x => x.message));
+  const layout = d.views.filter(vid => has(m, vid)).flatMap(vid => more(has(model, vid) ? safe(() => u.check(model, vid), []) : [], safe(() => u.check(m, vid, { stableFrom: model }), []), x => x.message).map(x => x.message));
   const rules = more(safe(() => u.rules(model), []), safe(() => u.rules(m), []), x => x.message).map(x => x.message);
   return { steps: done, commands: done.flatMap(x => x.commands), model: m, text: typeof source === 'string' ? written(source, model, m) : JSON.stringify(m, null, 2) + '\n',
     summary: d.summary, views: d.views, problems: probs, rules, layout };

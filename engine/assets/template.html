@@ -585,7 +585,10 @@ try {
   if (D.kind === 'map') {
     mapCtx = mapContext(D, { kinds: true });
     // the map's handle (setView, highlight, tour, play ...) on window.umlimatorMap, for scripts and tests: umlimator.py mcp's page drives it
-    if (!Q.get('bench')) { document.querySelector('.bar').remove(); window.umlimatorMap = mountPage(app, D, { params: Q, instant: INSTANT, docs: INSTANT ? null : DOCS }); }
+    // a page drawn against the model before an edit (umlimator.py diff --stable, the MCP page after an edit): its JSON in
+    // #umlimator-base, which the cards the edit left alone keep their cells from (layout-flow.md section 8)
+    let BASE = null; try { const b = document.getElementById('umlimator-base'); BASE = b ? JSON.parse(b.textContent) : null; } catch (_) { BASE = null; }
+    if (!Q.get('bench')) { document.querySelector('.bar').remove(); window.umlimatorMap = mountPage(app, D, { params: Q, instant: INSTANT, docs: INSTANT ? null : DOCS, stableFrom: BASE && typeof BASE === 'object' ? BASE : undefined }); }
   } else renderDoc();
 } catch (err) { errors.push('render: ' + err.message); console.error(err); }
 
