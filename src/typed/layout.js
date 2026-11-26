@@ -41,7 +41,10 @@ function repaint(g, was, dg) {
    calls; while the geometry key is the same, the geometry it holds is repainted and returned, and nothing is laid out or
    routed. memo.runs counts the layouts. dg.reroute false: lines that had to cross are not routed again in a new order (the
    rip-up and reroute pass, layered.js), for a type whose edits must be quick (risks.md P1); a map never sets it. */
-function layoutTyped(dg, memo) {
+function layoutTyped(dg0, memo) {
+  // an arranged view's lines by their part in the flow (memo.flow, set by the host, src/map/context.js: layout-flow.md section
+  // 12 step 10): a main line takes the middle port of its sides, a dependency line is routed after the flow lines, as a map's
+  const F = memo && memo.flow, dg = F ? { ...dg0, edges: (dg0.edges || []).map(e => { const k = e._id ?? e.id, m = F.main.has(k), d = F.dep.has(k); return m || d ? { ...e, ...(m && { mainLine: true }), ...(d && { dep: true }) } : e; }) } : dg0;
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
   const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'

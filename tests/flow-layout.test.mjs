@@ -220,3 +220,20 @@ test('f12: reverse and cross of every arranged map view are not above the same v
     assert.ok(z.reverse <= b.reverse && z.cross <= b.cross, `${v.id}: reverse ${z.reverse} (${b.reverse}), cross ${z.cross} (${b.cross})`);
   }
 });
+
+// section 12 step 10: the typed types that read the flow (flowRole, zoneOf). An arranged C4 or DFD view of f12 holds its main
+// flow on one row, its stores under it and its dependency lines out of the ranks; the same view without arrange draws as before
+test('typed C4 and DFD views: the main flow on one row, people first, stores under, and nothing new without arrange', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url), 'utf8')), off = structuredClone(f12);
+  off.views.forEach(v => { delete v.arrange; });
+  const d = layout(f12, 'orders-dfd'), row = id => d.byId[id].row;
+  assert.deepEqual(['d-cust', 'd-take', 'd-bill', 'd-ship'].map(row), [1, 1, 1, 1], 'the main flow on one row');
+  assert.ok(['d-orders', 'd-stock'].every(s => row(s) > 1), 'the stores under it');
+  assert.deepEqual(d.edges.filter(e => e.mainLine).map(e => e.id), ['d-f1', 'd-f2', 'd-f3']);
+  assert.deepEqual(d.edges.filter(e => e.dep).map(e => e.id), ['d-f5', 'd-f6', 'd-f7']);
+  assert.ok(d.edges.filter(e => e.mainLine && e.id !== 'd-f1').every(e => e.pts.length === 2), 'a main line between two processes is one straight segment');
+  const c = layout(f12, 'checkout-c4'), x = id => c.byId[id].col;
+  assert.ok(['c-web', 'c-api', 'c-worker', 'c-psp'].every(i => x('c-shopper') < x(i)) && x('c-psp') > x('c-worker'), 'the shopper first, the provider after the flow');
+  for (const v of ['orders-dfd', 'checkout-c4']) { const g = layout(off, v); assert.ok(g.edges.every(e => !e.dep && !e.mainLine), `${v} without arrange: no line marked`); }
+  assert.notDeepEqual(cells(layout(off, 'orders-dfd')), cells(d), 'the arranged DFD lays out otherwise than without arrange');
+});
