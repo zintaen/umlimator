@@ -22,6 +22,8 @@ const PINNED = {
   LABEL_PASSES: { map: [0, 1, 2], typed: [0], mapLate: [4, 3], late: [0, 4, 3, 5, 1, 2] },
   BRANCH_BALANCE: 2,
   STABLE_SLACK: 1,
+  SNAKE_AT: 10,
+  SNAKE_SLACK: 2,
 };
 
 test('tune.js exports exactly the named constants, with today\'s values', () => {

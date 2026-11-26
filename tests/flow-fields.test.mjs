@@ -76,7 +76,7 @@ test('arrange on a type that lays out on its own axis (sequence, timing, mindmap
 // reads the fields still not: a typed view, and a map view with no dependency line, draw as with the fields taken out
 test('no typed layout reads the fields yet, nor a map view with no dependency line: each draws as with them taken out', () => {
   const m = read('../bench/models/f12.json'), bare = strip(m);
-  assert.ok(m.views.every(v => v.arrange === 'flow') && m.views.length === 12);
+  assert.ok(m.views.every(v => v.arrange === 'flow') && m.views.length === 14);
   for (const v of m.views.filter(v => v.diagram)) assert.deepEqual(drawn(quiet(() => layout(m, v.id))), drawn(quiet(() => layout(bare, v.id))), v.id);
   const s = MAP(); s.edges = s.edges.filter(e => e.flow !== 'dep'); s.nodes[2].zone = 'last';
   assert.deepEqual(drawn(layout(s, 'v')), drawn(layout(strip(s), 'v')));
@@ -85,8 +85,8 @@ test('no typed layout reads the fields yet, nor a map view with no dependency li
 test('bench/models/f12.json validates clean, holds the views the note lists, and its map views are in bench/expected.json', () => {
   const m = read('../bench/models/f12.json');
   assert.deepEqual(validate(m), []);
-  assert.deepEqual(m.views.map(v => v.diagram || 'map').sort(), ['c4.container', 'dfd', 'flowchart', 'gcp', 'map', 'map', 'map', 'map', 'map', 'map', 'map', 'map']);
-  assert.equal(m.views.filter(v => (v.containers || []).length).length, 4, 'four with boxes');
+  assert.deepEqual(m.views.map(v => v.diagram || 'map').sort(), ['c4.container', 'dfd', 'flowchart', 'gcp', 'map', 'map', 'map', 'map', 'map', 'map', 'map', 'map', 'map', 'map']);
+  assert.equal(m.views.filter(v => (v.containers || []).length).length, 5, 'five with boxes');
   const lines = new Map(m.edges.map(e => [e.id, e]));
   for (const v of m.views) assert.ok(m.edges.some(e => e.flow === 'main' && v.nodeIds.includes(e.from) && v.nodeIds.includes(e.to)), `${v.id}: a main flow`);
   assert.ok(lines.size === m.edges.length);

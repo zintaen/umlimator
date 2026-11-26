@@ -1433,7 +1433,7 @@ def at_least_1(s):
 # one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it. Each
 # is read from the start of what follows "view <id>: ", where its own words begin (audit 31: a card labelled "Red cross"
 # ended a label-on-line message in " cross", which read as a crossing)
-KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs right-to-left$",
+KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs (?:right-to-left|left-to-right|bottom-to-top)$",
          "detours": r"edge .+ takes a detour \(\d+px for \d+px\)$", "shortLine": r'label ".*" leaves its line \d+ px \(.*\)$',
          "roundEnd": r'edge .+ runs round its own end ".*"$', "nearNode": r'edge .+ passes within [\d.]+px of node ".*"$',
          "onMark": r'text ".*" touches the mark on node ".*"$', "labelOnBorder": r'label ".*" sits on the border of family ".*"$',
