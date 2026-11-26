@@ -518,3 +518,18 @@ test('audit 54: a lifeline named with a run of 200,000 dashes is added in linear
   assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
   assert.equal(c.element.id, `a${d}b`);
 });
+
+test('apply() hide of a call the view lists by id takes its reply with it, so the model still validates (audit 67)', () => {
+  const m = JSON.parse(readFileSync(new URL('./fixtures/uml-communication.json', import.meta.url), 'utf8')), base = errors(m).length;
+  for (const v of m.views) {
+    assert.ok(v.edges.every(y => typeof y === 'string'));
+    for (const [call, reply] of [['m-authorise', 'm-approved'], ['m-charge', 'm-paid'], ['m-place', 'm-result'], ['m-checkout', 'm-page']]) {
+      const r = apply(m, [{ op: 'hide', id: call, view: v.id }]), rv = r.views.find(x => x.id === v.id);
+      assert.ok(!rv.edges.includes(call) && !rv.edges.includes(reply), `${v.id}: hide ${call} leaves ${reply}`);
+      assert.equal(errors(r).length, base, `${v.id} ${call}: ${errors(r).map(p => p.message).join('; ')}`);
+      // the other view, and the model's lines, keep both
+      m.views.filter(x => x !== v).forEach(o => assert.ok(r.views.find(x => x.id === o.id).edges.includes(reply)));
+      assert.ok(r.edges.some(e => e.id === reply));
+    }
+  }
+});
