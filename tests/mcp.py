@@ -79,6 +79,40 @@ with tempfile.TemporaryDirectory() as d48:
     mcp.MODEL, mcp.page = keep48
 ok("audit 48 · tour on cards split over two views says no view shows them all, and blames no line on a view",
    all(x == "no view shows all these cards; describe_view lists a view's cards" for x in said48), said48)
+# story_from_flow (layout-flow note, section 10): a story told from a view's main flow, returned and never written: one step
+# per main card, a tour of each two the view draws a line between, validate() finds nothing in it, and the model file's
+# bytes are as they were; a view with no main flow, or no view, is the tool's error
+keep_sf = (mcp.MODEL, mcp.page)
+with tempfile.TemporaryDirectory() as dsf:
+    mcp.MODEL = Path(dsf) / "f12.json"
+    mcp.MODEL.write_bytes((ROOT / "bench" / "models" / "f12.json").read_bytes())
+    before_sf = mcp.MODEL.read_bytes()
+    told_sf = mcp.call("story_from_flow", {"view": "order"})
+    titled_sf = mcp.call("story_from_flow", {"view": "orders-dfd", "id": "dfd", "title": "Orders", "chapters": False})
+    f12_sf = json.loads(before_sf)
+    probs_sf = mcp.node("validate", dict(f12_sf, stories=[{k: x for k, x in told_sf.items() if k != "chapters"},
+                                                          *({k: x for k, x in c.items() if k != "at"} for c in told_sf["chapters"])]))
+    unchanged_sf = mcp.MODEL.read_bytes() == before_sf
+    errs_sf = []
+    for a in ({"view": "nope"}, {"view": "lonely"}):
+        if a["view"] == "lonely":
+            mcp.MODEL.write_text(json.dumps({"nodes": [{"id": "a"}, {"id": "b"}], "edges": [], "views": [{"id": "lonely", "nodeIds": ["a", "b"]}]}), encoding="utf-8")
+        try:
+            errs_sf.append(mcp.call("story_from_flow", a))
+        except mcp.Fail as e:
+            errs_sf.append(str(e))
+mcp.MODEL, mcp.page = keep_sf
+mains_sf = ["o-web", "o-api", "o-cart", "o-pay", "o-ship", "o-mail"]
+ok("story_from_flow returns the main flow's story without writing the model: a step per main card, each tour two cards in turn, validate() clean",
+   "story_from_flow" in mcp.TOOL and told_sf["id"] == "flow-order" and [x.get("select") for x in told_sf["steps"]] == mains_sf
+   and [x.get("tour") for x in told_sf["steps"][1:]] == [list(p) for p in zip(mains_sf, mains_sf[1:])]
+   and told_sf["steps"][3]["caption"] == "4. Charges: Cart charges Payments." and "reads Orders" in told_sf["steps"][4]["caption"]
+   and [c["at"] for c in told_sf["chapters"]] == [3, 3] and not [p for p in probs_sf if p["path"].startswith("stories")] and unchanged_sf,
+   (told_sf, probs_sf, unchanged_sf))
+ok("story_from_flow takes an id, a title and chapters: false; on a typed view its lines as drawn",
+   titled_sf["id"] == "dfd" and titled_sf["title"] == "Orders" and titled_sf["chapters"] == [] and len(titled_sf["steps"]) == 4, titled_sf)
+ok("story_from_flow on no view, or on a view with no main flow, is the tool's error, said",
+   errs_sf[0].startswith("no view 'nope'") and "has no main flow" in errs_sf[1], errs_sf)
 # audit 51: a tour with no view took the first view that shows its cards (containers, where shopper and bookshop share no
 # line) and refused it, though the context view draws the route shopper -> bookshop -> payments: it rides the first that does
 keep51 = (mcp.MODEL, mcp.page, dict(mcp.want))
