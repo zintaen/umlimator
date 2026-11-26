@@ -379,6 +379,101 @@
    "props": {
     "icon": "Cloud-SQL"
    }
+  },
+  {
+   "id": "n-visit",
+   "label": "Landing page",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-form",
+   "label": "Sign-up form",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-verify",
+   "label": "Verify email",
+   "kind": "backend"
+  },
+  {
+   "id": "n-profile",
+   "label": "Profile",
+   "kind": "backend"
+  },
+  {
+   "id": "n-plan",
+   "label": "Choose plan",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-pay",
+   "label": "Payment",
+   "kind": "backend"
+  },
+  {
+   "id": "n-kyc",
+   "label": "Identity check",
+   "kind": "backend"
+  },
+  {
+   "id": "n-receipt",
+   "label": "Receipt",
+   "kind": "backend"
+  },
+  {
+   "id": "n-team",
+   "label": "Invite team",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-import",
+   "label": "Import data",
+   "kind": "backend"
+  },
+  {
+   "id": "n-setup",
+   "label": "Workspace setup",
+   "kind": "backend"
+  },
+  {
+   "id": "n-tour",
+   "label": "Product tour",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-project",
+   "label": "First project",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-hooks",
+   "label": "Integrations",
+   "kind": "backend"
+  },
+  {
+   "id": "n-health",
+   "label": "Health check",
+   "kind": "backend"
+  },
+  {
+   "id": "n-live",
+   "label": "Go live",
+   "kind": "frontend"
+  },
+  {
+   "id": "n-declined",
+   "label": "Card declined",
+   "kind": "backend"
+  },
+  {
+   "id": "n-mapping",
+   "label": "Field mapping",
+   "kind": "backend"
+  },
+  {
+   "id": "n-accounts",
+   "label": "Accounts",
+   "kind": "database"
   }
  ],
  "edges": [
@@ -889,6 +984,162 @@
    "to": "g-sql",
    "flow": "dep",
    "label": "SQL"
+  },
+  {
+   "id": "n-m0",
+   "from": "n-visit",
+   "to": "n-form",
+   "label": "opens",
+   "flow": "main"
+  },
+  {
+   "id": "n-m1",
+   "from": "n-form",
+   "to": "n-verify",
+   "label": "submits",
+   "flow": "main"
+  },
+  {
+   "id": "n-m2",
+   "from": "n-verify",
+   "to": "n-profile",
+   "label": "confirms",
+   "flow": "main"
+  },
+  {
+   "id": "n-m3",
+   "from": "n-profile",
+   "to": "n-plan",
+   "label": "fills in",
+   "flow": "main"
+  },
+  {
+   "id": "n-m4",
+   "from": "n-plan",
+   "to": "n-pay",
+   "label": "picks",
+   "flow": "main"
+  },
+  {
+   "id": "n-m5",
+   "from": "n-pay",
+   "to": "n-kyc",
+   "label": "charges",
+   "flow": "main"
+  },
+  {
+   "id": "n-m6",
+   "from": "n-kyc",
+   "to": "n-receipt",
+   "label": "clears",
+   "flow": "main"
+  },
+  {
+   "id": "n-m7",
+   "from": "n-receipt",
+   "to": "n-team",
+   "label": "sends",
+   "flow": "main"
+  },
+  {
+   "id": "n-m8",
+   "from": "n-team",
+   "to": "n-import",
+   "label": "invites",
+   "flow": "main"
+  },
+  {
+   "id": "n-m9",
+   "from": "n-import",
+   "to": "n-setup",
+   "label": "uploads",
+   "flow": "main"
+  },
+  {
+   "id": "n-m10",
+   "from": "n-setup",
+   "to": "n-tour",
+   "label": "configures",
+   "flow": "main"
+  },
+  {
+   "id": "n-m11",
+   "from": "n-tour",
+   "to": "n-project",
+   "label": "starts",
+   "flow": "main"
+  },
+  {
+   "id": "n-m12",
+   "from": "n-project",
+   "to": "n-hooks",
+   "label": "creates",
+   "flow": "main"
+  },
+  {
+   "id": "n-m13",
+   "from": "n-hooks",
+   "to": "n-health",
+   "label": "connects",
+   "flow": "main"
+  },
+  {
+   "id": "n-m14",
+   "from": "n-health",
+   "to": "n-live",
+   "label": "checks",
+   "flow": "main"
+  },
+  {
+   "id": "n-b1",
+   "from": "n-pay",
+   "to": "n-declined",
+   "label": "declines",
+   "kind": "guard",
+   "flow": "branch"
+  },
+  {
+   "id": "n-b2",
+   "from": "n-declined",
+   "to": "n-kyc",
+   "label": "retries",
+   "flow": "branch"
+  },
+  {
+   "id": "n-b3",
+   "from": "n-import",
+   "to": "n-mapping",
+   "label": "maps fields"
+  },
+  {
+   "id": "n-b4",
+   "from": "n-mapping",
+   "to": "n-setup",
+   "label": "applies"
+  },
+  {
+   "id": "n-d1",
+   "from": "n-profile",
+   "to": "n-accounts",
+   "label": "writes",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "n-d2",
+   "from": "n-setup",
+   "to": "n-accounts",
+   "label": "updates",
+   "kind": "state",
+   "flow": "dep"
+  },
+  {
+   "id": "n-d3",
+   "from": "n-live",
+   "to": "n-accounts",
+   "label": "reads",
+   "kind": "state",
+   "flow": "dep"
   }
  ],
  "views": [
@@ -1173,6 +1424,102 @@
       "p-load",
       "p-wh",
       "p-report"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "onboard",
+   "title": "Onboarding",
+   "arrange": "flow",
+   "nodeIds": [
+    "n-visit",
+    "n-form",
+    "n-verify",
+    "n-profile",
+    "n-plan",
+    "n-pay",
+    "n-kyc",
+    "n-receipt",
+    "n-team",
+    "n-import",
+    "n-setup",
+    "n-tour",
+    "n-project",
+    "n-hooks",
+    "n-health",
+    "n-live",
+    "n-declined",
+    "n-mapping",
+    "n-accounts"
+   ]
+  },
+  {
+   "id": "onboard-boxed",
+   "title": "Onboarding by stage",
+   "arrange": "flow",
+   "nodeIds": [
+    "n-visit",
+    "n-form",
+    "n-verify",
+    "n-profile",
+    "n-plan",
+    "n-pay",
+    "n-kyc",
+    "n-receipt",
+    "n-team",
+    "n-import",
+    "n-setup",
+    "n-tour",
+    "n-project",
+    "n-hooks",
+    "n-health",
+    "n-live",
+    "n-declined",
+    "n-mapping",
+    "n-accounts"
+   ],
+   "containers": [
+    {
+     "id": "nb-signup",
+     "label": "Sign-up",
+     "nodeIds": [
+      "n-visit",
+      "n-form",
+      "n-verify",
+      "n-profile"
+     ]
+    },
+    {
+     "id": "nb-billing",
+     "label": "Billing",
+     "nodeIds": [
+      "n-plan",
+      "n-pay",
+      "n-kyc",
+      "n-receipt",
+      "n-declined"
+     ]
+    },
+    {
+     "id": "nb-setup",
+     "label": "Setup",
+     "nodeIds": [
+      "n-team",
+      "n-import",
+      "n-setup",
+      "n-tour",
+      "n-mapping"
+     ]
+    },
+    {
+     "id": "nb-launch",
+     "label": "Launch",
+     "nodeIds": [
+      "n-project",
+      "n-hooks",
+      "n-health",
+      "n-live"
      ]
     }
    ]

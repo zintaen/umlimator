@@ -66,8 +66,11 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
       const dt = detour(e.pts); if (dt) say(`${where}: edge ${name(e)} takes a detour (${Math.round(dt[0])}px for ${Math.round(dt[1])}px)`, e);
       const r = roundEnd(e); if (r) say(`${where}: edge ${name(e)} runs round its own end "${nm(r[0])}"`, e, r[0].box ? (geo.families || []).find(f => f.id === r[0].id) : r[0]);
       // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs), or a
-      // dependency line of an arranged view (layout-flow.md section 5.2), which may run either way
-      if (!e.back && !e.both && !e.dep && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
+      // dependency line of an arranged view (layout-flow.md section 5.2), which may run either way. A snake's line (section
+      // 14.2) reads its run's way: dir "left" right to left, "down" (a turn line) top to bottom
+      if (!e.back && !e.both && !e.dep && !drawn.has(e.to + '>' + e.from)) {
+        if (e.dir === 'left' ? e.t.x + e.t.w / 2 >= e.s.x + e.s.w / 2 : e.dir === 'down' ? e.t.y + e.t.h / 2 <= e.s.y + e.s.h / 2 : e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2)
+          say(`${where}: edge ${name(e)} runs ${e.dir === 'left' ? 'left-to-right' : e.dir === 'down' ? 'bottom-to-top' : 'right-to-left'}`, e); }
     });
     if (geo.hub) { // hub views: one visible line into each callee
       const into = Object.create(null); geo.edges.forEach(e => { (into[e.to] ||= []).push(e); });

@@ -7,6 +7,7 @@ Questions agents leave for the maintainer (C9, A10.10). Each entry has a status:
 - Status: open
 - Asked: 2026-11-23, by the apply-strategy lane (A10.11)
 - Question: When and by what does each job start? Proposed defaults (`tools/evolve/README.md`): nightly fuzz at 02:00 with a 30-minute budget, the weekly digest Monday 09:00, the weekly audit Monday 03:00 once the loop is in maintenance mode, an hourly watcher that takes an expired lease, and the weekly dependency and upstream check on the digest day. Until answered nothing is scheduled, and the orchestrator runs due jobs itself at session start (C3 step 7).
+- Layout loop (decided by default, 2026-11-26, with step 12 of `docs/diagrams/notes/layout-flow.md`): the weekly propose-measure-keep loop for `src/layout/tune.js` runs Sunday 03:00 UTC+7 (cron `0 20 * * 6`, Saturday 20:00 UTC), clear of the fuzz at 02:00, the audit at Monday 03:00 and the digest at Monday 09:00, by `.github/workflows/layout-loop.yml`, which stays off until the repository variable `LAYOUT_LOOP_ENABLED` is `true` and the secret `LAYOUT_HELDOUT_SEED` is set. The other jobs' times above stay open.
 
 ## D2. A bot account for automated pushes
 

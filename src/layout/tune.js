@@ -27,5 +27,9 @@ const LABEL_PASSES = Object.freeze({ map: Object.freeze([0, 1, 2]), typed: Objec
 // sends the next branch to the other); and a placeholder read by no code yet, the stability guard of section 8.2 (a stable
 // layout is kept unless its score is worse than a fresh one's by more than this many label units)
 const BRANCH_BALANCE = 2, STABLE_SLACK = 1;
+// the snake (section 14, context.js snakeOf): an arranged map view whose main flow has more than SNAKE_AT cards wraps it onto
+// rows of at most SNAKE_AT cards, each running back under the one before; a cut is one of the main cards within SNAKE_SLACK of
+// the middle. The loop may move SNAKE_AT between 8 and 16
+const SNAKE_AT = 10, SNAKE_SLACK = 2;
 
-export { BARY_SWEEPS, ROW_SWEEPS, FLOW_MIN, FLOW_CAP, FLOW_WAYS, FAN_IN, FAN_TRIES, CROSS_CAP, OUTSIDE_TRIES, SCORE_WEIGHTS, LABEL_PASSES, BRANCH_BALANCE, STABLE_SLACK };
+export { BARY_SWEEPS, ROW_SWEEPS, FLOW_MIN, FLOW_CAP, FLOW_WAYS, FAN_IN, FAN_TRIES, CROSS_CAP, OUTSIDE_TRIES, SCORE_WEIGHTS, LABEL_PASSES, BRANCH_BALANCE, STABLE_SLACK, SNAKE_AT, SNAKE_SLACK };

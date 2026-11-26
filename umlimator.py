@@ -905,7 +905,12 @@ def render_model(m, near, out, base=None):
 
 def with_base(page, base):
     """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
-    script (each "</" in it escaped, so no text in the model ends the script)."""
+    script (each "</" in it escaped, so no text in the model ends the script). The base goes through own_media as every page
+    model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
+    the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
+    base = json.loads(json.dumps(base))
+    with contextlib.redirect_stderr(io.StringIO()):
+        own_media(base, page.parent, "base")
     text = page.read_text(encoding="utf-8")
     tag = '<script id="umlimator-base" type="application/json">' + json.dumps(base).replace("</", "<\\/") + "</script>\n"
     at = text.find('<script id="visual-data"')
@@ -1451,7 +1456,7 @@ def at_least_1(s):
 # one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it. Each
 # is read from the start of what follows "view <id>: ", where its own words begin (audit 31: a card labelled "Red cross"
 # ended a label-on-line message in " cross", which read as a crossing)
-KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs right-to-left$",
+KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs (?:right-to-left|left-to-right|bottom-to-top)$",
          "detours": r"edge .+ takes a detour \(\d+px for \d+px\)$", "shortLine": r'label ".*" leaves its line \d+ px \(.*\)$',
          "roundEnd": r'edge .+ runs round its own end ".*"$', "nearNode": r'edge .+ passes within [\d.]+px of node ".*"$',
          "onMark": r'text ".*" touches the mark on node ".*"$', "labelOnBorder": r'label ".*" sits on the border of family ".*"$',
