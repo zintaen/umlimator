@@ -259,3 +259,82 @@ test('f12: reverse and cross of every arranged map view are not above the same v
     assert.ok(z.reverse <= b.reverse && z.cross <= b.cross, `${v.id}: reverse ${z.reverse} (${b.reverse}), cross ${z.cross} (${b.cross})`);
   }
 });
+
+// Step 8 (section 14): the snake. An arranged map view whose main flow has more than SNAKE_AT (10) cards wraps it onto a
+// second row that runs back under the first, joined by one turn line straight down; each line of the snake says its
+// reading way (dir), which check() and the score read, and each main card its run.
+const LONG = (n, { labels = () => 'next', more = {}, extra = [], lines = [] } = {}) => { const ids = Array.from({ length: n }, (_, i) => 'c' + i);
+  return { schemaVersion: 2, nodes: [...ids.map(i => ({ id: i, label: 'Step ' + i.slice(1) })), ...extra],
+    edges: [...ids.slice(1).map((to, i) => ({ id: 'm' + i, from: ids[i], to, flow: 'main', ...(labels(i) != null && { label: labels(i) }) })), ...lines],
+    views: [{ id: 'v', arrange: 'flow', nodeIds: [...ids, ...extra.map(x => x.id)], ...more }] }; };
+const ids = n => Array.from({ length: n }, (_, i) => 'c' + i);
+
+test('a 14-card main flow is on two rows: seven at row 0 in columns 0 to 6, seven at one row M in columns 6 to 0, every main line two points, the turn line straight down, and check() says nothing', () => {
+  const m = LONG(14), g = layout(m, 'v'), c = cells(g), M = c.c7[1];
+  assert.ok(M > 0);
+  ids(14).forEach((id, i) => assert.deepEqual(c[id], i < 7 ? [i, 0] : [13 - i, M], id));
+  assert.ok(ids(14).slice(1).every((to, i) => line(g, 'c' + i, to).pts.length === 2), 'every main line is one segment');
+  const turn = line(g, 'c6', 'c7'); assert.equal(turn.pts[0][0], turn.pts[1][0], 'the turn line is vertical'); assert.equal(turn.dir, 'down');
+  assert.equal(line(g, 'c2', 'c3').dir, 'right'); assert.equal(line(g, 'c9', 'c10').dir, 'left');
+  assert.deepEqual(g.nodes.map(n => n.run), ids(14).map((_, i) => i < 7 ? 0 : 1));
+  assert.deepEqual(check(m, 'v'), []);
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.equal(s.straight, 0); assert.equal(s.reverse, 0);
+});
+
+test('a main flow of SNAKE_AT cards is one row, as step 6 draws it, and no line has a dir nor any card a run', () => {
+  const g = layout(LONG(10), 'v');
+  assert.deepEqual(cells(g), Object.fromEntries(ids(10).map((id, i) => [id, [i, 0]])));
+  assert.ok(g.edges.every(e => !('dir' in e)) && g.nodes.every(n => !('run' in n)));
+  for (const f of ['order', 'signup', 'order-boxed', 'signup-boxed']) { const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url))); assert.ok(layout(f12, f).edges.every(e => !('dir' in e)), f); }
+});
+
+test('the route audit reads each snake line against its dir: a line on the second row that runs right is still reported', () => {
+  const m = LONG(14, { extra: [{ id: 'x', label: 'Extra' }], lines: [{ id: 'bx', from: 'c9', to: 'x', label: 'hands to' }, { id: 'xb', from: 'x', to: 'c11', label: 'back' }], more: { layout: { x: [9, 4] } } });
+  const g = layout(m, 'v'); assert.equal(line(g, 'c9', 'x').dir, 'left'); assert.deepEqual(cells(g).x, [9, 4]);
+  const said = check(m, 'v').map(p => p.message);
+  assert.ok(said.includes('view v: edge Step 9→Extra runs left-to-right'), said.join('\n'));
+  assert.ok(!said.some(s => /Step 1\d?→Step|bottom-to-top/.test(s) && !/Extra/.test(s)), said.join('\n'));
+});
+
+test('the cut falls on the main line with no label near the middle; it never makes the second run longer than the first', () => {
+  const c = cells(layout(LONG(14, { labels: i => i === 7 ? null : 'next' }), 'v'));
+  assert.equal(c.c7[1], 0); assert.ok(c.c8[1] > 0); assert.equal(c.c8[0], c.c7[0]);
+  const d = cells(layout(LONG(13, { labels: i => i === 4 ? null : 'next' }), 'v')); // a cut after c4 would leave the second run longer
+  assert.equal(d.c6[1], 0); assert.ok(d.c7[1] > 0);
+});
+
+test('with boxes the cut falls between two boxes, a box that holds the whole flow holds both rows, and a cut that must split a box leaves one row', () => {
+  const box = (id, a, z) => ({ id, label: id.toUpperCase(), nodeIds: ids(14).slice(a, z) });
+  const g = layout(LONG(14, { more: { containers: [box('a', 0, 8), box('b', 8, 14)] } }), 'v'), c = cells(g), F = id => g.families.find(f => f.id === id);
+  assert.equal(c.c7[1], c.c0[1]); assert.ok(c.c8[1] > c.c7[1]); assert.equal(c.c8[0], c.c7[0]);
+  assert.ok(F('b').y > F('a').y + F('a').h, 'B under A'); assert.equal(line(g, 'c7', 'c8').pts.length, 2);
+  const w = layout(LONG(14, { more: { containers: [box('all', 0, 14)] } }), 'v'), cw = cells(w), A = w.families.find(f => f.id === 'all');
+  assert.ok(cw.c7[1] > cw.c6[1]); assert.ok(w.nodes.every(n => n.y >= A.y && n.y + n.h <= A.y + A.h), 'the box holds both rows');
+  const s = cells(layout(LONG(14, { more: { containers: [box('a', 0, 4), box('b', 4, 14)] } }), 'v'));
+  assert.equal(new Set(ids(14).map(i => s[i][1])).size, 1, 'one row');
+});
+
+test('pins win: a pinned main card keeps its pin, and with half the main cards pinned the view is one row', () => {
+  const p = cells(layout(LONG(14, { more: { layout: { c3: [3, 5] } } }), 'v'));
+  assert.deepEqual(p.c3, [3, 5]); assert.ok(p.c10[1] > p.c2[1], 'the rest still snakes');
+  const h = layout(LONG(14, { more: { layout: Object.fromEntries(ids(7).map((id, i) => [id, [i, 0]])) } }), 'v');
+  assert.equal(new Set(h.nodes.map(n => n.row)).size, 1); assert.ok(h.edges.every(e => !('dir' in e)));
+});
+
+test('a first card and a last card are both at the left, on the first row and the second; a branch from the first run into the second sits between the rows; a store both runs write sits between them too', () => {
+  const m = LONG(14, { extra: [{ id: 'p', label: 'Shopper', shape: 'person' }, { id: 'e', label: 'Bank', kind: 'external' }, { id: 'x', label: 'Side step' }, { id: 's', label: 'Orders', kind: 'database' }],
+    lines: [{ id: 'pc', from: 'p', to: 'c0', label: 'starts' }, { id: 'ce', from: 'c13', to: 'e', label: 'settles' }, { id: 'cx', from: 'c4', to: 'x', label: 'skips' }, { id: 'xc', from: 'x', to: 'c10', label: 'joins' },
+      { id: 'w1', from: 'c2', to: 's', label: 'writes', flow: 'dep' }, { id: 'w2', from: 'c11', to: 's', label: 'writes', flow: 'dep' }] });
+  const g = layout(m, 'v'), c = cells(g);
+  assert.ok(c.p[0] < c.c0[0] && c.p[1] === c.c0[1], 'the first card left of the flow, on its first row');
+  assert.ok(c.e[0] < c.c13[0] && c.e[1] === c.c13[1], 'the last card left of the second run\'s end, on its row');
+  for (const x of ['x', 's']) assert.ok(c[x][1] > c.c0[1] && c[x][1] < c.c13[1], x + ' between the rows');
+  const s = viewMetrics(g, { model: m, view: m.views[0] }); assert.equal(s.hard, 0); assert.equal(s.cross, 0); assert.equal(s.straight, 0);
+});
+
+test('f12\'s onboarding views snake: two rows, straight 0 and reverse 0, with and without boxes', () => {
+  const f12 = JSON.parse(readFileSync(new URL('../bench/models/f12.json', import.meta.url)));
+  for (const id of ['onboard', 'onboard-boxed']) { const v = f12.views.find(x => x.id === id), g = layout(f12, id), s = viewMetrics(g, { model: f12, view: v });
+    assert.deepEqual([s.hard, s.straight, s.reverse], [0, 0, 0], id); assert.equal(new Set(g.nodes.filter(n => n.run != null).map(n => n.y)).size, 2, id);
+    assert.deepEqual(check(f12, id), [], id); }
+});

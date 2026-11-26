@@ -439,7 +439,8 @@ export interface MapView {
   /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
    *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
    *  dependencies sits under the flow, and the main flow holds one straight row with each branch on one side of it,
-   *  across the view's boxes too, and cards take their zones; typed views do not read it yet. validate() warns on any other value and on a sequence, timing or mindmap
+   *  across the view's boxes too (more than 10 main cards wrap onto a second row that runs back under the first: the
+   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; typed views do not read it yet. validate() warns on any other value and on a sequence, timing or mindmap
    *  view, which does not rank its elements; diff() reports a change of it. */
   arrange?: 'flow';
   /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
