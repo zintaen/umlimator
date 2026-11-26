@@ -1,9 +1,9 @@
 {
- "commit": "9a950a83",
+ "commit": "75c3a389",
  "corpus": "edits",
  "total": {
   "views": 196,
-  "score": 295327.96
+  "score": 291731.62
  },
  "views": {
   "edits/b10/overview/1-add-card": {
@@ -17,12 +17,12 @@
   },
   "edits/b10/overview/2-remove-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 2,
    "labels": 0,
    "straight": null,
    "reverse": 1,
-   "moved": 0.75,
-   "score": 1264.52
+   "moved": 0,
+   "score": 1136.67
   },
   "edits/b10/overview/3-rename": {
    "hard": 0,
@@ -89,12 +89,12 @@
   },
   "edits/b10/norepair/5-add-line": {
    "hard": 0,
-   "cross": 6,
+   "cross": 8,
    "labels": 0,
    "straight": null,
-   "reverse": 2,
-   "moved": 0.625,
-   "score": 1942.77
+   "reverse": 1,
+   "moved": 0,
+   "score": 1914.54
   },
   "edits/b26/overview/1-add-card": {
    "hard": 2,
@@ -134,12 +134,12 @@
   },
   "edits/b26/overview/5-move-into-box": {
    "hard": 2,
-   "cross": 86,
+   "cross": 83,
    "labels": 1,
    "straight": null,
-   "reverse": 9,
+   "reverse": 10,
    "moved": 0,
-   "score": 16300.44
+   "score": 16165.05
   },
   "edits/b26/n01/1-add-card": {
    "hard": 0,
@@ -198,11 +198,11 @@
   "edits/b69/front/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 382.78
+   "score": 323.11
   },
   "edits/b69/front/3-rename": {
    "hard": 0,
@@ -219,8 +219,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.231,
-   "score": 434.54
+   "moved": 0,
+   "score": 449.59
   },
   "edits/b69/front/5-add-line": {
    "hard": 0,
@@ -269,12 +269,12 @@
   },
   "edits/b69/back/5-add-line": {
    "hard": 0,
-   "cross": 9,
+   "cross": 10,
    "labels": 0,
    "straight": null,
-   "reverse": 4,
-   "moved": 0.765,
-   "score": 3066.83
+   "reverse": 2,
+   "moved": 0,
+   "score": 2873.89
   },
   "edits/d24/boxed/1-add-card": {
    "hard": 1,
@@ -372,17 +372,17 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.111,
-   "score": 963.14
+   "moved": 0,
+   "score": 924.6
   },
   "edits/f12/order/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 5,
-   "reverse": 1,
+   "straight": 0,
+   "reverse": 0,
    "moved": 0,
-   "score": 925.8
+   "score": 682.87
   },
   "edits/f12/order/3-rename": {
    "hard": 0,
@@ -539,12 +539,12 @@
   },
   "edits/f12/pipeline/5-add-line": {
    "hard": 0,
-   "cross": 2,
-   "labels": 3,
+   "cross": 1,
+   "labels": 4,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.25,
-   "score": 1345.76
+   "moved": 0,
+   "score": 1245.03
   },
   "edits/f12/order-boxed/1-add-card": {
    "hard": 0,
@@ -684,20 +684,20 @@
   "edits/f12/pipeline-boxed/1-add-card": {
    "hard": 0,
    "cross": 0,
-   "labels": 3,
+   "labels": 2,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 1138.56
+   "score": 1069.25
   },
   "edits/f12/pipeline-boxed/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 3,
+   "labels": 1,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.25,
-   "score": 1069.23
+   "moved": 0,
+   "score": 967.56
   },
   "edits/f12/pipeline-boxed/3-rename": {
    "hard": 0,
@@ -711,11 +711,11 @@
   "edits/f12/pipeline-boxed/4-add-line": {
    "hard": 0,
    "cross": 1,
-   "labels": 5,
+   "labels": 3,
    "straight": 0,
    "reverse": 0,
    "moved": 0,
-   "score": 1313.36
+   "score": 1204.39
   },
   "edits/f12/pipeline-boxed/5-move-into-box": {
    "hard": 0,
@@ -768,8 +768,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.471,
-   "score": 1357.58
+   "moved": 0,
+   "score": 1301.39
   },
   "edits/f12/onboard-boxed/1-add-card": {
    "hard": 0,
@@ -777,8 +777,8 @@
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 1,
-   "score": 1316.42
+   "moved": 0,
+   "score": 1116.42
   },
   "edits/f12/onboard-boxed/2-remove-line": {
    "hard": 0,
@@ -809,21 +809,21 @@
   },
   "edits/f12/onboard-boxed/5-move-into-box": {
    "hard": 0,
-   "cross": 0,
+   "cross": 1,
    "labels": 0,
    "straight": 0,
    "reverse": 0,
-   "moved": 0.5,
-   "score": 1229.86
+   "moved": 0,
+   "score": 1188.55
   },
   "edits/i59/context/1-add-card": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.2,
-   "score": 449.69
+   "reverse": 1,
+   "moved": 0,
+   "score": 497.62
   },
   "edits/i59/context/2-remove-line": {
    "hard": 0,
@@ -857,9 +857,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
+   "reverse": 0,
    "moved": 0,
-   "score": 512.73
+   "score": 486.83
   },
   "edits/i59/system/1-add-card": {
    "hard": 0,
@@ -938,18 +938,18 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.3,
-   "score": 756.63
+   "reverse": 1,
+   "moved": 0,
+   "score": 698.1
   },
   "edits/i59/trips/5-add-line": {
    "hard": 0,
-   "cross": 2,
+   "cross": 1,
    "labels": 0,
    "straight": null,
-   "reverse": 0,
-   "moved": 0.4,
-   "score": 1047.49
+   "reverse": 1,
+   "moved": 0,
+   "score": 804.44
   },
   "edits/i59/fleet/1-add-card": {
    "hard": 0,
@@ -967,7 +967,7 @@
    "straight": null,
    "reverse": 1,
    "moved": 0,
-   "score": 588.07
+   "score": 586.69
   },
   "edits/i59/fleet/3-rename": {
    "hard": 0,
@@ -1047,8 +1047,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.545,
-   "score": 758.51
+   "moved": 0,
+   "score": 696.34
   },
   "edits/i59/overview/3-rename": {
    "hard": 0,
@@ -1073,9 +1073,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 1,
-   "score": 1064.35
+   "reverse": 2,
+   "moved": 0,
+   "score": 912.22
   },
   "edits/i59/api/1-add-card": {
    "hard": 0,
@@ -1188,11 +1188,11 @@
   "edits/i59/dock-feed/4-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.143,
-   "score": 812.46
+   "moved": 0,
+   "score": 776.87
   },
   "edits/i59/dock-feed/5-move-into-box": {
    "hard": 0,
@@ -1334,18 +1334,18 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 2,
+   "reverse": 1,
    "moved": 0,
-   "score": 1214.92
+   "score": 1172.5
   },
   "edits/r15/plain/4-add-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 0.154,
-   "score": 1305.36
+   "reverse": 2,
+   "moved": 0,
+   "score": 1180.35
   },
   "edits/r19/boxed/1-add-card": {
    "hard": 3,
@@ -1402,22 +1402,22 @@
    "score": 3766.59
   },
   "edits/r19/plain/3-add-line": {
-   "hard": 1,
-   "cross": 18,
-   "labels": 1,
+   "hard": 0,
+   "cross": 22,
+   "labels": 0,
    "straight": null,
-   "reverse": 4,
-   "moved": 0.118,
-   "score": 5810.09
+   "reverse": 5,
+   "moved": 0,
+   "score": 5186.44
   },
   "edits/r19/plain/4-add-line": {
    "hard": 0,
-   "cross": 21,
-   "labels": 1,
+   "cross": 18,
+   "labels": 0,
    "straight": null,
    "reverse": 3,
-   "moved": 0.706,
-   "score": 5279.76
+   "moved": 0,
+   "score": 4740.68
   },
   "edits/s16/site/1-add-card": {
    "hard": 0,
@@ -1452,8 +1452,8 @@
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.6,
-   "score": 448.07
+   "moved": 0,
+   "score": 332.74
   },
   "edits/s16/site/5-add-line": {
    "hard": 0,
@@ -1543,16 +1543,16 @@
    "straight": null,
    "reverse": 1,
    "moved": 0,
-   "score": 821.99
+   "score": 795.86
   },
   "edits/u21/shop/2-remove-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
+   "labels": 2,
    "straight": null,
    "reverse": 1,
-   "moved": 0.75,
-   "score": 754.61
+   "moved": 0,
+   "score": 727.26
   },
   "edits/u21/shop/3-rename": {
    "hard": 0,
@@ -1577,9 +1577,9 @@
    "cross": 0,
    "labels": 0,
    "straight": null,
-   "reverse": 1,
-   "moved": 0.625,
-   "score": 951.41
+   "reverse": 2,
+   "moved": 0,
+   "score": 953.79
   },
   "edits/u21/teams/1-add-card": {
    "hard": 0,
@@ -1683,11 +1683,11 @@
   "edits/u21/checkout/3-add-line": {
    "hard": 0,
    "cross": 0,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": 0,
-   "moved": 0.333,
-   "score": 365.26
+   "moved": 0,
+   "score": 285.01
   },
   "edits/u21/checkout/4-add-line": {
    "hard": 0,
