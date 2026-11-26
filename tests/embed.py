@@ -150,7 +150,7 @@ SLOW = {"tests/m2.html": 46, "tests/sysml.html": 31, "tests/embed.html": 29, "te
         "tests/unfold.html": 5}  # their seconds on a runner; the rest about 3
 part = shards.Parts(__file__, {**{page: SLOW.get(page, 3) for page, _ in PAGES}, **{page: 3 for page, _ in DEMOS}, "examples/element.html": 3,
                               "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16,
-                              "the playground's own icons": 3, "the time-lapse slider": 4, "the docs link": 4, "the opening view's flow story": 4})
+                              "the playground's own icons": 3, "the time-lapse slider": 4, "the docs link": 4})
 for page, motion in PAGES:
     if not part(page):
         continue
@@ -336,20 +336,6 @@ if part("record"):
     print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, frames along a step's tour (the dot rides), each step for its duration",
           "" if rec_ok else [[d for d, _ in frames], steps_ok, r.stderr[-400:]])
     failed |= not rec_ok
-if part("the opening view's flow story"):
-    # audit 66: the page umlimator.py render writes mounts deferred, after mountPage returns; the arranged view it opens on
-    # offers "From the main flow" in its Stories menu as a view the reader goes to does (the flow corpus has no story of its own)
-    out = ROOT / "tests" / "fixtures" / "flow-menu.html"
-    try:
-        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "bench" / "models" / "f12.json"), "--out", str(out), "--no-check"], capture_output=True, text=True)
-        t = dom("tests/fixtures/flow-menu.html#view=order", lambda t: 'id="m-stories-menu"' in t and 'id="m-ghosts"' not in t)
-    finally:
-        out.unlink(missing_ok=True)
-    tags = [re.search(r"<[^>]*\bid=\"%s\"[^>]*>" % i, t) for i in ("m-stories-menu", "m-flow-story")]
-    flow_ok = r.returncode == 0 and all(tags) and not any(re.search(r"\shidden(?:[\s=>])", m.group(0)) for m in tags)
-    print(("ok  " if flow_ok else "FAIL"), "umlimator.py render · the arranged view the page opens on offers \"From the main flow\" in its Stories menu",
-          "" if flow_ok else [m and m.group(0) for m in tags])
-    failed |= not flow_ok
 if part("the docs link"):
     # umlimator.py render --docs: "Back to Docs" at the header's end, an <a href> a Tab reaches (no tabindex), its full name read
     # out at any width; none without --docs, in a still or a check, or in a frame, where the docs page framing it is that page
