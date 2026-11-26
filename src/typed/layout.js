@@ -45,8 +45,10 @@ function layoutTyped(dg0, memo) {
   // an arranged view's lines by their part in the flow (memo.flow, set by the host, src/map/context.js: layout-flow.md section
   // 12 step 10): a main line takes the middle port of its sides, a dependency line is routed after the flow lines, as a map's
   // and a main card is centred on its row, so main lines between cards of other heights run straight (layoutPass)
-  const F = memo && memo.flow, dg = F ? { ...dg0, nodes: (dg0.nodes || []).map(n => (F.cards && F.cards.has(n.id) ? { ...n, mainCard: true } : n)),
-    edges: (dg0.edges || []).map(e => { const k = e._id ?? e.id, m = F.main.has(k), d = F.dep.has(k); return m || d ? { ...e, ...(m && { mainLine: true }), ...(d && { dep: true }) } : e; }) } : dg0;
+  // a snake's (memo.flow's run and dir): each main card's run and each line's reading way, which the route audit and the score read
+  const F = memo && memo.flow, R = F && F.run, dg = F ? { ...dg0, nodes: (dg0.nodes || []).map(n => (F.cards && F.cards.has(n.id) ? { ...n, mainCard: true, ...(R && R[n.id] != null && { run: R[n.id] }) } : n)),
+    edges: (dg0.edges || []).map(e => { const k = e._id ?? e.id, m = F.main.has(k), d = F.dep.has(k), w = F.dir && F.dir.get(k);
+      return m || d || w ? { ...e, ...(m && { mainLine: true }), ...(d && { dep: true }), ...(w && { dir: w }) } : e; }) } : dg0;
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
   const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'
