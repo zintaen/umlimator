@@ -35,7 +35,7 @@ TYPED_EXAMPLES = ("sales-classes", "order-objects", "bookshop-packages", "checko
                   "bookshop-azure", "bookshop-order-to-shipment")  # the typed examples the map-repo and schema version 2 loops below take, each a part
 SLOW = {"bookshop-c4": 18, "buy-book-overview": 16, "checkout-sequence": 14, "sales-classes": 13, "fulfil-activity": 12, "order-states": 10, "bookshop-gcp": 10}
 part = shards.Parts(__file__, {
-    "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 38,
+    "the summary's text and the icon cache": 3, "diff and drift": 14, "trace": 15, "timelapse": 10, "stills file names": 38,
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
     "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "audit 25 diff": 4, "diff Action 2.6": 6, "diff Action stage 4": 26,
     "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
@@ -241,13 +241,19 @@ with tempfile.TemporaryDirectory() as tmp:
         page = (t / "diff.html").read_text(encoding="utf-8") if (t / "diff.html").is_file() else ""
         ok("diff · the page draws the marks", all(s in page for s in ['"change": "added"', '"change": "removed"', '"style": "added"', '"style": "removed"', ": what changed"]))
         ok("diff · leaves no copy of the model next to it", not [p.name for p in t.iterdir() if p.name.startswith(".")], [p.name for p in t.iterdir()])
-        # --stable (layout-flow.md section 8): the page holds the model before, which it draws the model after against; without
-        # it the page holds none, as before
+        # stable (layout-flow.md section 8, on by default since section 12 step 14): the page holds the model before, which it
+        # draws the model after against; --stable says the default; --no-stable holds none, each view drawn fresh
         r2 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-stable.html"), "--stable") or {}
         page2 = (t / "diff-stable.html").read_text(encoding="utf-8") if (t / "diff-stable.html").is_file() else ""
         base = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page2, re.S)
-        ok("diff --stable · the same summary, and the page holds the model before for the layout to keep its cards' places",
-           r2.get("summary") == SAID and base is not None and json.loads(base.group(1)) == fixture and 'id="umlimator-base"' not in page, r2)
+        base0 = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page, re.S)
+        ok("diff · stable by default: the page holds the model before for the layout to keep its cards' places, and --stable says the same",
+           r2.get("summary") == SAID and base is not None and json.loads(base.group(1)) == fixture
+           and base0 is not None and json.loads(base0.group(1)) == fixture, r2)
+        r4 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-fresh.html"), "--no-stable") or {}
+        page4 = (t / "diff-fresh.html").read_text(encoding="utf-8") if (t / "diff-fresh.html").is_file() else ""
+        ok("diff --no-stable · the same summary, and the page holds no model before: each view is drawn fresh",
+           r4.get("summary") == SAID and ": what changed" in page4 and 'id="umlimator-base"' not in page4, r4)
 
         # --story (product item 4): a story of each changed view, on the page's model (diff()'s, which draws the removed too), in
         # its Stories menu; the JSON names them. Without it the page has none of its own, as before

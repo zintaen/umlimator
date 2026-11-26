@@ -238,14 +238,14 @@ A member drawn as its own shape (a part, a port, a lane) that was renamed or ret
 
 Only what changed is marked. A mark the model carries of its own, such as a card's `change: "new"` or `"removed"`, a line's `edited` dot or its `added` or `removed` style, or a `change` on a box, a member or a view's `nodeOverrides`, is dropped from `model` where the change leaves that element as it was, so the page draws nothing as new or removed that the summary does not say. A `planned` mark stays, since it draws as itself and `diff()` never writes it. A mark the change itself adds or takes off is a change of that element: "changes Shop app (change)", marked changed.
 
-With `{ stable: true }`, the result also holds `stableFrom`, the model before, to draw `model` with: `render(el, d.model, { stableFrom: d.stableFrom })` (or `layout()` and `check()` with the same option) keeps each card the change left alone at the cell it had before, and draws a removed card back where it was. Without the option the result is as it always was, and `model` is drawn fresh.
+The result also holds `stableFrom`, the model before, to draw `model` with: `render(el, d.model, { stableFrom: d.stableFrom })` (or `layout()` and `check()` with the same option) keeps each card the change left alone at the cell it had before, and draws a removed card back where it was. It is there by default since 0.46.0 (before, only with `{ stable: true }`); with `{ stable: false }` the result has none, and `model` is drawn fresh.
 
 ```js
-const d = diff(before, after, { stable: true });
+const d = diff(before, after);
 render(el, d.model, { view: d.views[0], stableFrom: d.stableFrom });
 ```
 
-`umlimator.py diff` and the GitHub Action draw the same result for a pull request (with `--stable`, and the Action's `stable: true`, drawn stable).
+`umlimator.py diff` and the GitHub Action draw the same result for a pull request, stable unless told `--no-stable` (the Action's `stable: "false"`).
 
 ## DiffResult
 
@@ -258,7 +258,7 @@ interface DiffResult { model: MapModel; summary: string[]; views: string[]; stab
 | `model` | `after` with the change marks, and none of its own but `planned` on what the change leaves as it was: a card's `change` (a NEW or CHANGED tab; REMOVED is faded, dashed and struck through), a line's `style` (`added` or `removed`) or `edited`, and `nodeOverrides` for a card put into or taken out of one view. The marks are the model's own fields, so a page or still the CLI makes shows them. |
 | `summary` | What changed, in words and in model order ("adds Readers, from umlimator.py"). |
 | `views` | The views that show a change. |
-| `stableFrom` | With `{ stable: true }` only: the model before, for `render()`, `layout()` or `check()` to draw `model` with, so the cards the change left alone keep their cells. |
+| `stableFrom` | The model before (a copy), for `render()`, `layout()` or `check()` to draw `model` with, so the cards the change left alone keep their cells. Left out with `{ stable: false }`. |
 
 ## drift
 

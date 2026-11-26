@@ -53,6 +53,7 @@ kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py
   phone apps phones. A Structurizr workspace's `styles` give its elements their shapes (`shape Person`, `Cylinder`,
   `WebBrowser`, ...), in Structurizr's own order; a shape the map has no counterpart for is listed in `notImported`.
 - Whatever the file holds that `import` doesn't read is listed on stderr with its line (in JSON, its path).
+- `--arrange` lays the model's map views, and its typed views of a type that reads the flow (C4 but deployment, flowchart, DFD, activity, use case, BPMN, the cloud types), out by business flow: each gets `arrange: "flow"`, and the JSON `import` prints lists them under `arranged`. Without it they lay out by rank. It is not the default yet: on the import fixtures the arranged layout still draws worse than the ranked one.
 
 What each element becomes, and what is left out: [`docs/module-api.md` § Import](../module-api.md#import-90).
 
