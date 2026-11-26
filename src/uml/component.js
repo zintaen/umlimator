@@ -141,20 +141,41 @@ function cpRank(items, links) {
   for (let it = 0, more = true; more && it <= items.length; it++) { more = false; fwd.forEach(([a, b]) => { if (rank[b] < rank[a] + 1) { rank[b] = rank[a] + 1; more = true; } }); }
   return { rank, fwd };
 }
-function cpPlace(pic, lines, pins) {
-  const links = lines.filter(l => !l.inner).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
+/* o (layout-flow.md sections 5.3, 6.3 and 7.3, section 12 step 10), from a type whose arranged view reads the flow: role(line)
+   'dep' ranks nothing; anchor, the main flow's items, each the first of its column held at the main row (rowsFor's and
+   untangle's anchors); zone, id -> 'first' or 'last', an item in a column before its block's flow or after it; under, id ->
+   ids, an item no ranked line reaches, under the items its dependency lines join it to */
+function cpPlace(pic, lines, pins, o = {}) {
+  const links = lines.filter(l => !l.inner && !(o.role && o.role(l) === 'dep')).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
   const itemIn = (x, g) => { for (let k = 0; x != null && k <= seq.size; k++, x = pic.owner(x)) if (pic.owner(x) === g) return x; };
   const done = new Map(), seq = new Set([null]); for (const g of seq) pic.holds(g).forEach(x => pic.open.has(x) && seq.add(x)); // top down; laid out bottom up: no recursion, boxes nested to any depth
   const block = g => { const items = pic.holds(g), size = Object.create(null), pos = Object.create(null);
     items.forEach(x => { size[x] = pic.open.has(x) ? done.get(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
     const L = links.map(([a, b]) => [itemIn(a, g), itemIn(b, g)]).filter(([a, b]) => a !== undefined && b !== undefined && a !== b), lined = new Set(L.flat());
-    const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h;
+    const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h, Z = o.zone || {};
+    const zoned = items.filter(x => lined.has(x) && (Z[x] === 'first' || Z[x] === 'last')), rest = items.filter(x => lined.has(x) && !zoned.includes(x));
+    if (zoned.length && rest.length) { const f = zoned.some(x => Z[x] === 'first') && rest.some(x => rank[x] === 0) ? 1 : 0;
+      rest.forEach(x => { rank[x] += f; }); const last = Math.max(...rest.map(x => rank[x])) + 1; zoned.forEach(x => { rank[x] = Z[x] === 'first' ? 0 : last; }); }
     items.filter(x => lined.has(x)).forEach(x => (cols[rank[x]] ||= []).push(x));
-    untangle(cols, fwd, hh); const row = rowsFor(cols, fwd, hh);
+    if (zoned.length) cols.splice(0, cols.length, ...cols.filter(c => c && c.length)); // a column zones emptied: none
+    let anchor = null; const holds = []; if (o.anchor) { const taken = new Set(); items.filter(x => lined.has(x) && o.anchor.has(x)).forEach(x => { if (taken.has(rank[x])) return; taken.add(rank[x]); (anchor ||= Object.create(null))[x] = 0; });
+      // a column between two main items with none of its own holds its place on the main row (the main line runs through it)
+      if (anchor) { const rs = [...taken], lo = Math.min(...rs), hi = Math.max(...rs); for (let k = lo + 1; k < hi; k++) if (!taken.has(k) && cols[k]) { const id = '\u0003' + k; holds.push(id); size[id] = { w: 1, h: 1, pos: {} }; anchor[id] = 0; cols[k].push(id); } } }
+    untangle(cols, fwd, hh, undefined, anchor || undefined);
+    if (holds.length) cols.forEach(c => { const k = c.findIndex(x => holds.includes(x)); if (k > 0) c.unshift(...c.splice(k, 1)); }); // a held column's branch items under the main row
+    const row = rowsFor(cols, fwd, hh, undefined, anchor || undefined);
+    if (holds.length) cols.forEach((c, k) => { cols[k] = c.filter(x => !holds.includes(x)); });
+    if (anchor) { const low = Math.min(0, ...Object.values(row)); if (low < 0) Object.keys(row).forEach(x => { row[x] -= low; }); } // a branch above: the main row moves down
     let c0 = 0, h = 0; cols.forEach(list => { let r0 = 0, w = 0;
       list.forEach(x => { r0 = Math.max(r0, row[x] ?? 0); Object.entries(size[x].pos).forEach(([id, [c, r]]) => { pos[id] = [c0 + c, r0 + r]; }); r0 += size[x].h; w = Math.max(w, size[x].w); });
       c0 += w; h = Math.max(h, r0); });
-    const loose = items.filter(x => !lined.has(x)), per = Math.max(2, c0);
+    // an under item (o.under: id -> the items its dependency lines join it to) in a band under the lined columns, in the column of
+    // the median of those placed here (the later of two middles), stacked when two share one
+    const near = x => (o.under && o.under[x] || []).filter(y => pos[y]).map(y => pos[y][0]).sort((a, b) => a - b);
+    const band = items.filter(x => !lined.has(x) && size[x].w === 1 && size[x].h === 1 && near(x).length), at = Object.create(null);
+    band.forEach(x => { const cs = near(x), k = cs[cs.length >> 1]; pos[x] = [k, h + (at[k] = (at[k] ?? -1) + 1)]; });
+    if (band.length) h += Math.max(...Object.values(at)) + 1;
+    const loose = items.filter(x => !lined.has(x) && !band.includes(x)), per = Math.max(2, c0);
     let c = 0, r = h, rh = 0; // packed by size in rows under the lined columns, a row as tall as its tallest
     loose.forEach(x => { if (c && c + size[x].w > per) { r += rh; c = 0; rh = 0; }
       Object.entries(size[x].pos).forEach(([id, [a, b]]) => { pos[id] = [c + a, r + b]; }); c += size[x].w; rh = Math.max(rh, size[x].h); c0 = Math.max(c0, c); });

@@ -733,3 +733,21 @@ test('audit 62: one Alt + arrow on a card of the AWS gallery view never draws it
   assert.ok(q[0] >= c + 1, JSON.stringify([[c, r], q]));
   assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the cloud families' zoneOf and
+// flowRole, read only in an arranged view
+test('zoneOf: users and clients first, a data or storage service under, a service in no group last; flowRole: a line to or from a data service is a dependency', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', type: 'gcp.User', label: 'Shoppers' }, { id: 'p', type: 'gcp.Zone', label: 'prod', props: { zoneType: 'project' } },
+    { id: 'run', type: 'gcp.Product', label: 'API', parent: 'p', props: { icon: 'Cloud-Run' } }, { id: 'sql', type: 'gcp.Product', label: 'Orders', parent: 'p', props: { icon: 'Cloud-SQL' } },
+    { id: 'gcs', type: 'gcp.Product', label: 'Files', parent: 'p', props: { icon: 'Cloud-Storage' } }, { id: 'mail', type: 'gcp.Product', label: 'Mail', props: { icon: 'Cloud-Run' } }],
+  edges: [{ id: 'a', type: 'gcp.Path', from: 'u', to: 'run' }, { id: 'b', type: 'gcp.Path', from: 'run', to: 'sql' }, { id: 'c', type: 'gcp.Path', from: 'run', to: 'mail' }, { id: 'd', type: 'gcp.Path', from: 'gcs', to: 'run' }],
+  views: [{ id: 'v', diagram: 'gcp', arrange: 'flow', nodeIds: ['u', 'p', 'run', 'sql', 'gcs', 'mail'] }] };
+  const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id), G = T.gcp;
+  assert.deepEqual(['u', 'p', 'run', 'sql', 'gcs', 'mail'].map(id => G.zoneOf(n(id), m, V0)), ['first', null, null, 'under', 'under', 'last']);
+  assert.equal(G.zoneOf(n('mail'), m, { ...V0, nodeIds: ['u', 'run', 'mail'] }), null, 'no group shown: nothing is outside one');
+  assert.deepEqual(m.edges.map(e => G.flowRole(e, m, V0)), ['branch', 'dep', 'branch', 'dep']);
+  const aws = { schemaVersion: 2, nodes: [{ id: 'c', type: 'aws.Resource', label: 'Clients', props: { icon: 'Res_Users' } }, { id: 's3', type: 'aws.Service', label: 'Bucket', props: { icon: 'Amazon-Simple-Storage-Service' } }], edges: [], views: [{ id: 'w', diagram: 'aws', arrange: 'flow', nodeIds: ['c', 's3'] }] };
+  assert.deepEqual(aws.nodes.map(x => T.aws.zoneOf(x, aws, aws.views[0])), ['first', 'under']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(at('u').col < at('run').col && at('mail').col > at('run').col && at('sql').row > at('run').row, 'users first, the outside service last, the database under');
+});

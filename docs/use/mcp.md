@@ -22,6 +22,7 @@ Any MCP client that starts a stdio server works the same way. The server needs N
 | `reach(view, card, backward?, depth?)` | what a card leads to, or what leads to it, with the distance of each (`reach()`) |
 | `broken_rules()`, `validate()` | each break of the model's `rules` (`rules()`), and its own problems (`validate()`) |
 | `diff(other_model_path)` | what changed from another model file to this one, in words, and the views that show it (`diff()`) |
+| `story_from_diff(other_model_path, view, id?, title?, audience?)` | a story of what changed on the view from another model file to this one (`storyFromDiff()`), returned and not saved: a step per card and line added, changed or removed, along the view's main flow; `play_story(story=...)` plays it on the page of the model as it is now |
 | `story_from_flow(view, id?, title?, chapters?, audience?)` | a story told from the view's main flow (`storyFromFlow()`), returned and not saved: a step per card on the main flow, each with its select, highlight, tour and caption, and each branch as a chapter with the step it leaves from; `audience: "business"` leaves the stores out of the captions; `play_story(story=...)` plays it as it is, and to keep it, add it to the model's `stories` with `set_field` or `apply` |
 | `show_view(view)` | shows a view on the page |
 | `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |

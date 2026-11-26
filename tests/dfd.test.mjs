@@ -535,3 +535,20 @@ test('a node of an unknown dfd kind is named Element, as it is keyed (audit 45)'
   assert.equal(DFD_TYPE.word(m, 'e'), 'Element');
   assert.equal(DFD_TYPE.word(m, 'p'), 'Process');
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the DFD's zoneOf and flowRole,
+// read only in an arranged view
+test('zoneOf: an entity that only sends first, one that only receives last, a data store under; flowRole: a flow to or from a store is a dependency', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'dfd.ExternalEntity', label: 'Customer' }, { id: 'b', type: 'dfd.ExternalEntity', label: 'Bank' },
+    { id: 'w', type: 'dfd.ExternalEntity', label: 'Warehouse' }, P('p', 'Take order', '1'), { id: 's', type: 'dfd.DataStore', label: 'Orders', props: { number: 'D1' } }],
+  edges: [{ id: 'f1', type: 'dfd.DataFlow', from: 'c', to: 'p', label: 'order' }, { id: 'f2', type: 'dfd.DataFlow', from: 'p', to: 'b', label: 'charge' },
+    { id: 'f3', type: 'dfd.DataFlow', from: 'p', to: 'w', label: 'pick' }, { id: 'f4', type: 'dfd.DataFlow', from: 'w', to: 'p', label: 'picked' }, { id: 'f5', type: 'dfd.DataFlow', from: 'p', to: 's', label: 'saved' }],
+  views: [{ id: 'v', diagram: 'dfd', arrange: 'flow', nodeIds: ['c', 'b', 'w', 'p', 's'] }] };
+  const V = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['c', 'b', 'w', 'p', 's'].map(id => T.zoneOf(n(id), m, V)), ['first', 'last', null, null, 'under']);
+  assert.deepEqual(m.edges.map(e => T.flowRole(e, m, V)), ['branch', 'branch', 'branch', 'branch', 'dep']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(at('c').col < at('p').col && at('b').col > at('p').col, 'the customer first, the bank last');
+  assert.ok(at('s').row > Math.max(at('c').row, at('p').row, at('b').row), 'the store under every flow row');
+  assert.ok(g.edges.find(e => e.id === 'f5').dep && !g.edges.find(e => e.id === 'f1').dep, 'the store\'s flow is drawn as a dependency line');
+});

@@ -76,7 +76,7 @@
         "helpers": []
       },
       "audit 20: every exported function reads a hostile model (an object with a toString or valueOf key in a label, a title, an id, a rule, a story) as validate() does: none throws": {
-        "sha256": "6dd49390871dd0df",
+        "sha256": "d12ed64897ad1fd7",
         "asserts": 2,
         "helpers": [
           "modelFiles",

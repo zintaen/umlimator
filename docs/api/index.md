@@ -63,6 +63,7 @@ From a CDN, with no install:
 | `reach(model, viewId, from, options?)` | no | What a card leads to, or what leads to it. | [apply and commands](./apply-and-commands.md#reach) |
 | `critical(model, viewId, options?)` | no | The slowest or costliest path along a view's lines. | [apply and commands](./apply-and-commands.md#critical) |
 | `storyFromFlow(model, viewId, options?)` | no | A story told from a view's main flow, one step per main card, branches as chapters. | [apply and commands](./apply-and-commands.md#storyfromflow) |
+| `storyFromDiff(before, after, viewId, options?)` | no | A story of what changed on a view: the cards and lines added, changed or removed, along its main flow. | [apply and commands](./apply-and-commands.md#storyfromdiff) |
 | `whatIf(model, viewId, options)` | no | What loses its way when cards are taken out. | [apply and commands](./apply-and-commands.md#whatif) |
 | `otlpSpans(otlp)` | no | The spans of an OpenTelemetry trace, ready for `replay()`. | [events and state](./events-and-state.md#otlpspans) |
 | `sequenceFromTrace(model, spans, options?)` | no | A trace kept as a numbered view of the model. | [events and state](./events-and-state.md#sequencefromtrace) |

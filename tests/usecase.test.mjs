@@ -509,3 +509,20 @@ test('a pinned view warns only of the layout it draws (audit 59)', () => {
   assert.deepEqual(check(m, m.views[0].id), []);
   assert.deepEqual(said.filter(s => /runs through/.test(s)), []);
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the use case's zoneOf, read
+// only in an arranged view: a primary actor first (where every actor goes today), a secondary actor (whose associations all
+// come from use cases) last; no flowRole, so no line is a dependency and the view has no main flow
+test('zoneOf: a primary actor first, a secondary actor last; an arranged view draws the secondary actor after the use cases', () => {
+  const m = { schemaVersion: 2, nodes: [A('shopper', 'Shopper'), A('bank', 'Bank'), A('idle', 'Idle'), U('buy', 'Buy'), U('pay', 'Pay')],
+    edges: [L('a1', 'Association', 'shopper', 'buy'), L('a2', 'Association', 'pay', 'bank'), L('i', 'Include', 'buy', 'pay')],
+    views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['shopper', 'bank', 'idle', 'buy', 'pay'] }] };
+  const v = m.views[0], el = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['shopper', 'bank', 'idle', 'buy'].map(id => T.zoneOf(el(id), m, v)), ['first', 'last', 'first', null]);
+  assert.equal(T.flowRole, undefined);
+  const col = (mm, id) => layout(mm, 'v').byId[id].col;
+  assert.ok(col(m, 'bank') < col(m, 'pay'), 'not arranged: every actor in the actors\' column');
+  const a = structuredClone(m); a.views[0].arrange = 'flow';
+  assert.ok(col(a, 'shopper') < col(a, 'buy') && col(a, 'bank') > col(a, 'pay'), 'arranged: the bank after the use cases');
+  assert.equal(T.layout.keepsRank(a, a.views[0], 'bank'), null, 'a last actor\'s pin holds');
+});

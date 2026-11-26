@@ -363,6 +363,24 @@ function actOwners(model, x) {
   return [...N.values()].filter(n => n.type === 'uml.ActivityPartition').map(n => ({ id: n.id, label: full(n.id) }));
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a control or object flow is a flow line and a comment link a dependency; the initial node first, a final
+   node last, an object node (or data store) that only one action reads or writes in the band under the flow. Each by the
+   view's flows, read once a view */
+const actFlowRole = e => (AC_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch');
+const AC_ACTIONS = ['uml.Action', 'uml.CallBehaviorAction', 'uml.SendSignalAction', 'uml.AcceptEventAction'], AC_NEAR = new WeakMap();
+function actZoneOf(x, model, view) {
+  if (!AC_OBJ(x) || !AC_OBJ(view)) return null;
+  if (x.type === 'uml.InitialNode') return 'first';
+  if (x.type === 'uml.ActivityFinalNode' || x.type === 'uml.FlowFinalNode') return 'last';
+  if (!AC_OBJECTS.includes(x.type)) return null;
+  let by = AC_NEAR.get(view); if (!by || by.model !== model) { const I = actIndex(model, view); by = { model, near: new Map() }; AC_NEAR.set(view, by);
+    I.lines.filter(e => AC_FLOWS.includes(e.type) && e.from !== e.to).forEach(e => [[e.from, e.to], [e.to, e.from]].forEach(([a, b]) => { const y = I.N.get(b);
+      if (y && AC_ACTIONS.includes(y.type)) { const s = by.near.get(a) || new Set(); s.add(b); by.near.set(a, s); } })); }
+  const near = by.near.get(x.id);
+  return near && near.size === 1 ? 'under' : null;
+}
+
 /* ---- the type ---- */
 const AC_ST = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }, AC_GUARD = { key: 'guard', label: 'Guard', kind: 'text' };
 const ACT_TYPE = registerDiagramType('uml.activity', {
@@ -375,6 +393,8 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
   props: { ...Object.fromEntries(Object.keys(AC_LOOK).map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(AC_LOOK[t][0]) ? [] : [AC_ST]])), 'uml.Comment': [], 'uml.ControlFlow': [AC_GUARD, AC_ST], 'uml.ObjectFlow': [AC_GUARD, AC_ST], 'uml.CommentLink': [] },
   layout: Object.assign(actGeo, { keepsRow: actKeeps }), // the canvas's Alt + an arrow writes no row the lanes override
+  flowRole: actFlowRole,
+  zoneOf: actZoneOf,
   draw: actDraw,
   owners: actOwners,
   member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
@@ -389,4 +409,4 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
 });
 
-export { ACT_TYPE, ACT_RULES, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };
+export { ACT_TYPE, ACT_RULES, actFlowRole, actZoneOf, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };
