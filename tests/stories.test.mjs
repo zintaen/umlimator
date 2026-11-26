@@ -113,3 +113,22 @@ test('audit 39: a step names a line written in another view: no line of its own 
   assert.deepEqual(validate(m).filter(p => p.path.startsWith('stories')).map(p => p.message), ['"__proto__" is no line of view "a": it is written in view "b"',
     '"constructor" is neither one of view "a"\'s cards nor a line', '"toString" is neither one of view "a"\'s cards nor a line']);
 });
+
+test("a story's audience and chapters: validate() checks each chapter's steps as a story's, and says a chapter with no id, a repeated one, no steps or a step `at` the story lacks", () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', audience: 'business', steps: [{ view: 'v' }, { view: 'v', select: 'b' }], chapters: [{ id: 'c', title: 'Side', at: 1, steps: [{ view: 'v', select: 'ab' }] }] }] };
+  assert.deepEqual(validate(m), []);
+  const bad = structuredClone(m);
+  bad.stories[0].audience = 3;
+  bad.stories[0].chapters.push({ id: 'c', at: 2, steps: [{ view: 'v', select: 'zz' }] }, { id: 'd', at: -1, steps: [] }, { at: 0, steps: [{ view: 'v' }] });
+  assert.deepEqual(validate(bad).map(p => `${p.level} ${p.path}`), [
+    'warning stories[0].audience',
+    'error stories[0].chapters[1].id',
+    'warning stories[0].chapters[1].at',
+    'error stories[0].chapters[1].steps[0].select',
+    'error stories[0].chapters[2].steps',
+    'warning stories[0].chapters[2].at',
+    'error stories[0].chapters[3].id',
+  ]);
+  assert.deepEqual(validate({ ...m, stories: [{ ...m.stories[0], chapters: {} }] }).map(p => p.path), ['stories[0].chapters']);
+});

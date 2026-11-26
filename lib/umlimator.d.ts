@@ -483,8 +483,8 @@ export interface Events {
    *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
   /** A story changed: it shows a step (0-based), it was paused or resumed (playing), or it ended (step null, on destroy()
-   *  too). playing (0.14.0): it goes on by itself. */
-  story: { story: string; step: number | null; steps: number; playing: boolean };
+   *  too). playing (0.14.0): it goes on by itself. chapter: the chapter told (its id), and at, the story's step it is offered at; none on the main story. */
+  story: { story: string; step: number | null; steps: number; playing: boolean; chapter?: string; at?: number };
   /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The
    *  camera is the exception: a pan, zoom, glide or drag is one event, once it comes to rest, and until then the event's
    *  camera is where it last rested (handle.state reads it live). The last event, on destroy(), has destroyed: true. */
@@ -502,7 +502,7 @@ export interface MapState {
   expanded: string[];             // as `expanded`
   lens: string | null;
   overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', 'story', 'tour', a host's)
-  story: { id: string; step: number; steps: number; playing: boolean } | null;   // playing: the player's own (it goes on by itself)
+  story: { id: string; step: number; steps: number; playing: boolean; chapter?: string; at?: number } | null;   // playing: the player's own (it goes on by itself); in a chapter: its id, and the story's step it is offered at
   tour: boolean;                  // a tour's dot is on the map, riding or held (by paused, or by its story's pause); a path lit at rest: false
   replay: { playing: boolean } | null;   // a replay under way: playing, or paused by its own pause()
   /** The standalone page's ❚❚ is on (0.15.0): it holds every clock (a tour's or a replay's dot, a story's step, the flow)
@@ -666,8 +666,11 @@ export interface Handle {
   destroy(): void;
 }
 
-/** A walk-through: its steps, in order. */
-export interface Story { id: string; title?: string; steps: StoryStep[] }
+/** A walk-through: its steps, in order. audience: who it is told to (the standalone page's Stories menu groups by it).
+ *  chapters: stories of their own, each offered in the caption bar while the story shows its step `at`. */
+export interface Story { id: string; title?: string; audience?: string; steps: StoryStep[]; chapters?: StoryChapter[] }
+/** A chapter of a story: offered at the story's step `at` (0-based); its end, or ‹ on its first step, returns there. */
+export interface StoryChapter { id: string; title?: string; audience?: string; at: number; steps: StoryStep[] }
 /** What one step shows. select: a card id, a line id, or a Ref. highlight: card ids, line ids or Lits; the lines between
  *  two cards it names light too. tour: card ids, the dot's path. camera: 'fit' (the default), a point and zoom, or a card
  *  to frame. duration: the step's time in ms when playing (default 4000; its tour runs to its end first). */
@@ -677,14 +680,18 @@ export interface StoryStep {
 }
 /** A story storyFromFlow() tells from a view's main flow: a Story, and each branch off the main flow as a chapter, a Story of
  *  its own offered at the main story's step `at` (0-based), where the branch leaves the main flow. */
-export interface FlowStory extends Story { chapters: (Story & { at: number })[] }
+export interface FlowStory extends Story { chapters: StoryChapter[] }
 /** A story being told. step: the one shown (0-based). next() past the last step ends it (done: true); stop() closes it
  *  (done: false). state (0.14.0): entering a step (its view, camera, selection and highlight on their way), playing or paused
- *  on it, then ended or stopped. */
+ *  on it, then ended or stopped. go(k): step k shown, as the caption bar's scrubber does. chapters: the story's chapters;
+ *  enter(id) tells one from its first step (false when the story has no such chapter), and while it is told, chapter is its
+ *  id and step and steps are the chapter's; back(), or next() past its last step, or prev() on its first, returns to the
+ *  main story at the chapter's step `at`. */
 export interface StoryPlayer {
   readonly story: string; readonly step: number; readonly steps: number; readonly playing: boolean; readonly done: Promise<boolean>;
   readonly state: 'entering' | 'playing' | 'paused' | 'ended' | 'stopped';
-  next(): void; prev(): void; pause(): void; resume(): void; stop(): void;
+  readonly chapter: string | null; readonly chapters: { id: string; title: string | null; at: number }[];
+  next(): void; prev(): void; pause(): void; resume(): void; stop(): void; go(step: number): void; enter(chapter: string): boolean; back(): boolean;
 }
 
 /** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */
@@ -794,9 +801,11 @@ export function describe(model: MapModel, viewId: string): string;
  *  it and the main line into it, riding that line (a tour of the two cards, which the view draws a line between) and saying
  *  what the line does ("2. Charges: Cart charges Payments; reads Orders"), a dependency line's card named in the caption of
  *  the step it joins. Branches are chapters, offered at the step they leave from (chapters: false leaves them out). A
- *  sequence view tells its messages in order, a BPMN view its path from the start event. The model is not changed and the
- *  story is not added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
-export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean }): FlowStory;
+ *  sequence view tells its messages in order, a BPMN view its path from the start event, a communication view its numbered
+ *  messages in time order ("1.1. place(order): storefront calls api."). audience: kept on the story and its chapters; for
+ *  "business" the captions leave out the stores a step reads or writes. The model is not changed and the story is not
+ *  added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
+export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean; audience?: string }): FlowStory;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
