@@ -1242,3 +1242,19 @@ test('a gateway\'s default flow: a slash near its source, named; the main flow a
   assert.deepEqual(layout(t, 'v').edges.filter(e => e.end.from === 'slash').map(e => e.id), ['a-e2']);
   assert.deepEqual(storyFromFlow(t, 'v').steps.map(x => x.select), ['s', 'a', 'e2']);
 });
+
+test('audit bh1: a BPMN view of sub-processes nested thousands deep validates in time linear in the nodes and lays out with no recursion (timed)', { timeout: 300000 }, () => {
+  const deep = n => { const nodes = [{ id: 'P', type: 'bpmn.Participant', label: 'P' }];
+    for (let i = 0; i < n; i++) nodes.push({ id: 's' + i, type: 'bpmn.SubProcess', label: 'S' + i, parent: i ? 's' + (i - 1) : 'P' });
+    nodes.push({ id: 'a', type: 'bpmn.StartEvent', parent: 's' + (n - 1), props: { definition: 'none' } }, { id: 'b', type: 'bpmn.EndEvent', parent: 's' + (n - 1), props: { definition: 'none' } });
+    return { schemaVersion: 2, nodes, edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: nodes.map(x => x.id) }] }; };
+  const time = m => { let best = Infinity; for (let k = 0; k < 3; k++) { const t = performance.now(); validate(m); best = Math.min(best, performance.now() - t); } return best; };
+  const quarter = time(deep(1000)), full = time(deep(4000)); // each node's whole chain of owners walked: n squared, 325 s at 27,000
+  assert.ok(full < 12 * Math.max(quarter, 5), `four times the depth took ${(full / Math.max(quarter, 5)).toFixed(1)} times as long (${quarter.toFixed(0)} ms, ${full.toFixed(0)} ms)`);
+  // a box's contents read by recursion: "Maximum call stack size exceeded" from 3,000 deep; at 12,000 the stage's bounds,
+  // its ends spread as Math.min's arguments, overflowed it too
+  for (const n of [12000]) { const g = layout(deep(n), 'v');
+    assert.ok(g.byId.a && g.byId.b, `${n}: the start and end events in the deepest sub-process are drawn`);
+    assert.ok(g.order.indexOf('s' + (n - 1)) < g.order.indexOf('a'), `${n}: a box before what it holds in the reading order`);
+    assert.ok(Number.isFinite(g.bounds.w) && g.bounds.w > 0, `${n}: the stage has a width`); }
+});
