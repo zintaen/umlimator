@@ -14,6 +14,7 @@ import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
 import { SHAPE, drawnPts } from '../src/draw/shapes.js';
 import '../src/map/typed.js';
+import '../src/uml/overview.js'; // the interaction overview, for audit 69's generated views
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
@@ -662,4 +663,49 @@ test('arranged, the example and the stress view laid out right draw no more layo
   for (const [m, id, direction] of [[EX, 'fulfil', 'down'], [EX, 'fulfil', 'right'], [STRESS, 'all', 'right']]) {
     const at = arrange => { const c = structuredClone(m), v = V(c, id); v.direction = direction; if (arrange) v.arrange = 'flow'; return check(c, id).length; };
     assert.ok(at(true) <= at(false), `${id} ${direction}: ${at(true)} arranged, ${at(false)} ranked`); }
+});
+
+// audit 69: arranged, a fork nested in another fork drew both branches below the main row, the outer branch's line to its join
+// across the inner branch's lines (two crossings, labels as here; none ranked). bestTyped also tries each branch's side chosen
+// by its span (sidesOf), and keeps the view ranked when every arranged way draws more problems than that
+const nestedFork = direction => { const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) }), fl = (f, t) => ({ id: f + t, type: 'uml.ControlFlow', from: f, to: t });
+  const nodes = [n('s', 'InitialNode'), n('r', 'CallBehaviorAction', 'Receive order'), n('f1', 'ForkNode'), n('a', 'Action', 'Pack the books'), n('f2', 'ForkNode'), n('b', 'SendSignalAction', 'Email the receipt'),
+    n('c', 'SendSignalAction', 'Notify the warehouse'), n('j2', 'JoinNode'), n('j1', 'JoinNode'), n('e', 'ActivityFinalNode')];
+  const edges = [fl('s', 'r'), fl('r', 'f1'), fl('f1', 'a'), fl('f1', 'f2'), fl('f2', 'b'), fl('f2', 'c'), fl('b', 'j2'), fl('c', 'j2'), fl('a', 'j1'), fl('j2', 'j1'), fl('j1', 'e')];
+  return { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, arrange: 'flow' }] }; };
+test('audit 69: arranged, a fork nested in a fork draws no crossing, its main row kept, laid out right and down', () => {
+  for (const direction of ['right', 'down']) { const m = nestedFork(direction);
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], direction);
+    const g = layout(m, 'v'), at = id => g.byId[id];
+    assert.ok(['r', 'f1', 'f2', 'j2', 'j1'].every(id => at(id).row === at('s').row), `${direction}: the main flow keeps one row`);
+    assert.ok((at('a').row - at('s').row) * (at('c').row - at('s').row) < 0, `${direction}: the outer branch and the inner one on opposite sides of the main row`); }
+});
+
+// random activities and interaction overviews (sequences, decisions, forks and loops nested two deep, as the audit's generator
+// makes them; on 7108d2b5 six of these 75 drew one or two crossings more arranged): arranged, none draws more layout check
+// problems than ranked. Laid out down, a loop's back line can still cross the main line into its merge (a known gap)
+test('audit 69: arranged, no generated activity or interaction overview draws more layout check problems than ranked', () => {
+  const worse = [];
+  for (const [TYPE, seed0] of [['activity', 2], ['activity', 6], ['activity', 10], ['overview', 4], ['overview', 22]]) {
+    let seed = seed0; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, pick = a => a[Math.floor(rnd() * a.length)];
+    for (let it = 0; it < 15; it++) {
+      const nodes = [], edges = []; let c = 0; const id = p => p + c++;
+      const add = (type, label) => { const i = id('n'); nodes.push({ id: i, type, label }); return i; };
+      const flow = (a, b, label) => edges.push({ id: id('e'), type: 'uml.ControlFlow', from: a, to: b, ...(label && { label }) });
+      const act = TYPE === 'overview' ? () => add('uml.InteractionUse', 'Use ' + c) : () => add(pick(['uml.Action', 'uml.CallBehaviorAction', 'uml.SendSignalAction']), 'Do thing ' + c);
+      const block = depth => { const k = Math.floor(rnd() * 2) + 1; let first, last;
+        for (let i = 0; i < k; i++) { const t = depth < 2 ? pick(['a', 'a', 'if', 'par', 'loop']) : 'a'; let e, x;
+          if (t === 'a') e = x = act();
+          else if (t === 'if') { const d = add('uml.DecisionNode', 'ok' + c + '?'), m = add('uml.MergeNode'), [a, b] = block(depth + 1); flow(d, a, '[yes]'); flow(b, m);
+            if (rnd() < 0.7) { const [a2, b2] = block(depth + 1); flow(d, a2, '[no]'); flow(b2, m); } else flow(d, m, '[no]'); e = d; x = m; }
+          else if (t === 'par') { const f = add('uml.ForkNode'), j = add('uml.JoinNode'); for (let q = 0; q < 2; q++) { const [a, b] = block(depth + 1); flow(f, a); flow(b, j); } e = f; x = j; }
+          else { const m = add('uml.MergeNode'), d = add('uml.DecisionNode', 'again' + c + '?'), [a, b] = block(depth + 1); flow(m, a); flow(b, d); flow(d, m, '[retry]'); e = m; x = d; }
+          if (first == null) first = e; else flow(last, e); last = x; }
+        return [first, last]; };
+      const st = add('uml.InitialNode'), [a, b] = block(0), en = add('uml.ActivityFinalNode'); flow(st, a); flow(b, en);
+      for (const direction of ['right']) {
+        const said = arrange => check({ schemaVersion: 2, title: 't', root: 'v', nodes: structuredClone(nodes), edges: structuredClone(edges),
+          views: [{ id: 'v', diagram: TYPE === 'overview' ? 'uml.interaction-overview' : 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, ...(arrange && { arrange }) }] }, 'v').length;
+        const r = said(false), f = said('flow'); if (f > r) worse.push(`${TYPE} ${seed0}#${it} ${direction}: ${f} arranged, ${r} ranked`); } } }
+  assert.deepEqual(worse, []);
 });
