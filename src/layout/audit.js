@@ -155,6 +155,31 @@ function throughIssues(geo, where, refs) {
         say(`${where}: edge ${name(e)} runs back inside its own box "${nm(b)}"`, e, (geo.families || []).find(f => f.id === b.id) || b); }); });
   return issues;
 }
+// a typed view's line through a box that holds neither of its ends, nor a port or box of either (audit 71: a cloud view's line
+// between two cards outside a VPC ran across it), in a view whose type runs layered.js's box pass (geo[SHUT_BOXES]: the class,
+// component, deployment, cloud, requirement and C4 views), which routes such a line round the box; what it cannot
+// avoid is said here. check() given throughBoxes only, kept out of throughIssues, the page's check and the scores, so no picture
+// and no default check() changes; a map's boxes are groups a wire may cross. The layout marks such a view under SHUT_BOXES, a symbol key: a type's copy of the geometry ({ ...g })
+// keeps it, and the geometry's fields, JSON and hashes are as they were
+const SHUT_BOXES = Symbol('shutBoxes');
+function boxThroughIssues(geo, where, refs) {
+  const issues = [], say = teller(issues, refs), F = geo.families || []; if (geo.map || !geo[SHUT_BOXES] || !F.length) return issues;
+  const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
+  const byF = new Map(F.map(f => [f.id, f])), at = id => (geo.byId && geo.byId[id]) || byF.get(id);
+  const holds = (f, n, k = 0) => !!n && (n.id === f.id || inside(n, f) || (n.owner != null && k < 9 && holds(f, at(n.owner), k + 1)));
+  geo.edges.forEach(e => { const P = e.pts || [], a = e.s || at(e.from), b = e.t || at(e.to); if (P.length < 2 || !a || !b) return;
+    F.forEach(f => { if (holds(f, a) || holds(f, b)) return;
+      if (P.some((p, k) => k && Math.max(p[0], P[k - 1][0]) > f.x + 1 && Math.min(p[0], P[k - 1][0]) < f.x + f.w - 1 && Math.max(p[1], P[k - 1][1]) > f.y + 1 && Math.min(p[1], P[k - 1][1]) < f.y + f.h - 1))
+        say(`${where}: edge ${name(e)} runs through box "${nm(f)}", which holds neither of its ends`, e, f); }); });
+  return issues;
+}
+// the view types whose layout runs that box pass (dg.shutBoxes: class, component, deployment, cloud, requirement and C4): the
+// layout score's through term (src/layout/score.js, decision D17) and the stability guard count boxThroughIssues on these, read
+// by type and not by SHUT_BOXES, so a geometry laid out by a lib with no such mark (the bench's base) is counted the same
+const BOX_PASS_TYPES = new Set(['uml.class', 'uml.component', 'uml.deployment', 'aws', 'gcp', 'azure', 'sysml.requirement']);
+const boxPassType = d => BOX_PASS_TYPES.has(d) || typeof d === 'string' && d.startsWith('c4.');
+// the lines through a box that hold neither end on a view of such a type (the score's through), else null
+const throughBoxes = (geo, d) => boxPassType(d) && !geo.map ? boxThroughIssues({ ...geo, [SHUT_BOXES]: true }, '').length : null;
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
   // a labelled line, on a map or a typed view, whose label found no spot at all: not drawn, so said (audit 6). A numbered
@@ -206,4 +231,4 @@ function auditSvg(svg, geo, where) {
   return issues;
 }
 
-export { onBorder, detour, behind, boxClash, routeAudit, overlapIssues, throughIssues, leaveIssues };
+export { SHUT_BOXES, boxPassType, throughBoxes, onBorder, detour, behind, boxClash, boxThroughIssues, routeAudit, overlapIssues, throughIssues, leaveIssues };

@@ -163,9 +163,10 @@ function dpGeo({ model, view, pos, memo }) {
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: Object.hasOwn(DP_LINE_LOOK, e.type) ? DP_LINE_LOOK[e.type] : { from: 'none', to: 'arrow' }, aria: dpLineName(e, pic),
       ...(e.type === 'uml.CommunicationPath' ? { cut: 280 } : {}), ...(DP_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // a small gap with gapAfter's widening, and labelGaps for a label left with no spot (§8, decision 9); stage 2's 12 px padding:
-  // a deployment view has no ports (§7)
+  // a deployment view has no ports (§7); the box pass round a box that holds neither end of a line (shutBoxes 1, audit 71), with
+  // crossings weighed first, as a class view's past 30 cards
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, shutBoxes: 1 }, memo);
   // on a copy: a line's end on a cube box's slanted corner goes in on to it, as SHAPE.cube.inset does for a closed cube
   const fams = new Map((g.families || []).map(f => [f.id, f])), at = (f, s, p) => (f && s ? SHAPE.cube.inset(f, s, s === 'T' || s === 'B' ? p[0] : p[1]) : 0);
   const out = g.edges.map(e => { const da = e.pts && at(fams.get(e.from), e.fs, e.pts[0]), db = e.pts && at(fams.get(e.to), e.ts, e.pts.at(-1));

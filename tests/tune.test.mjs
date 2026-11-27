@@ -21,7 +21,7 @@ const FIXED = {
   'SCORE_WEIGHTS.issue': 1000,
   'SCORE_WEIGHTS.areaPer': 4e5,
   // the stability guard's weights are section 4.1's (bench/score-weights.json), which the loop may not change
-  ...Object.fromEntries(Object.entries({ hard: 1000, cross: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 }).map(([k, v]) => ['STABLE_WEIGHTS.' + k, v])),
+  ...Object.fromEntries(Object.entries({ hard: 1000, cross: 100, through: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 }).map(([k, v]) => ['STABLE_WEIGHTS.' + k, v])),
 };
 
 test('tune.js exports exactly the named constants, with the pinned values', () => {

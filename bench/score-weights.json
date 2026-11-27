@@ -1,6 +1,7 @@
 {
  "hard": 1000,
  "cross": 100,
+ "through": 100,
  "labels": 60,
  "reverse": 40,
  "straight": 30,

@@ -4,7 +4,7 @@ import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2, shapeOf } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
-import { boxClash, leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
+import { boxClash, leaveIssues, overlapIssues, routeAudit, throughBoxes, throughIssues } from '../layout/audit.js';
 import { layoutGraph, mainFlow, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
 import { BRANCH_BALANCE, FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS, SNAKE_AT, SNAKE_SLACK, STABLE_SLACK, STABLE_WEIGHTS } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
@@ -1157,7 +1157,8 @@ function mapContext(model, opts = {}) {
   const hardOf = g => { const A = routeAudit(g, ''), n = re => A.filter(m => re.test(m)).length;
     return n(/ share a line$/) + n(/ which it does not hold$/) + n(/^: families .* overlap$/) + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length; };
   /* the quality score of section 4.1 for the stability guard (src/layout/score.js holds the bench's copy, which no host
-     loads; tests/stable-layout.test.mjs holds the two to one number): hard issues, crossings, labels, flow lines read backwards,
+     loads; tests/stable-layout.test.mjs holds the two to one number): hard issues, crossings, lines through a box holding neither
+     end (D17), labels, flow lines read backwards,
      the main flow off its row, length, corners and area, with STABLE_WEIGHTS (bench/score-weights.json's values), plus the
      moved weight times the share of the view's unchanged cards the layout takes off their cells */
   const FLOWISH = new Set(['map', 'flowchart', 'uml.activity', 'dfd', 'bpmn', 'aws', 'gcp', 'azure']);
@@ -1184,7 +1185,7 @@ function mapContext(model, opts = {}) {
       if (cards) for (let i = 1; i < cards.length; i++) { const a = byNode[cards[i - 1]], b = byNode[cards[i]]; if (!a || !b) continue; const ra = a.run ?? 0, rb = b.run ?? 0;
         if (ra !== rb ? at(b) <= at(a) : ra % 2 ? along(b) >= along(a) : along(b) <= along(a)) reverse++; } }
     const length = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0), points = g.edges.reduce((a, e) => a + e.pts.length, 0);
-    return W.hard * hard + W.cross * n(/ cross$/) + W.labels * labels + W.reverse * reverse + W.straight * straight + W.moved * share + W.length * length + W.points * points + W.area * g.bounds.w * g.bounds.h; }
+    return W.hard * hard + W.cross * n(/ cross$/) + W.through * (throughBoxes(g, d) || 0) + W.labels * labels + W.reverse * reverse + W.straight * straight + W.moved * share + W.length * length + W.points * points + W.area * g.bounds.w * g.bounds.h; }
   // the share of the soft-pinned cards (the view's unchanged ones) that cells pos takes off their cells in the base
   const offShare = (S, pos) => { const ids = Object.keys(S); return ids.length ? ids.filter(i => !Array.isArray(pos[i]) || pos[i][0] !== S[i][0] || pos[i][1] !== S[i][1]).length / ids.length : 0; };
   // the stable layout g1 (cells p1) is kept over the fresh one g0 (cells p0) unless it has more hard issues, or its score with

@@ -325,9 +325,13 @@ test('the state machine and component notes\' layout limits name what check() fi
   const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   const sm = json('../examples/order-states.json'), crossings = d => check(turned(sm, sm.views[0].id, d), sm.views[0].id).filter(p => / cross$/.test(p.message)).length;
   assert.match(doc('../docs/diagrams/conformance/uml-state-machine.md'), new RegExp(`Example 10 has ${words[crossings('right')]} crossing laid out right \\([^)]*\\) and ${words[crossings('down')]} laid out down`));
-  const found = check(turned(json('./component-stress.json'), 'all', 'down'), 'all').map(p => p.message).filter(p => !/ cross$/.test(p));
-  assert.deepEqual(found.map(p => / share a line$/.test(p) ? 'share' : /: header crossed by edge /.test(p) ? 'header' : p).sort(), ['header', 'share']);
+  const said = d => check(turned(json('./component-stress.json'), 'all', d), 'all', { throughBoxes: true }).map(p => p.message).filter(p => !/ cross$/.test(p)), boxed = / which holds neither of its ends$/;
+  const found = said('down');
+  assert.deepEqual(found.filter(p => !boxed.test(p)).map(p => / share a line$/.test(p) ? 'share' : /: header crossed by edge /.test(p) ? 'header' : p).sort(), ['header', 'share']);
   assert.match(doc('../docs/diagrams/conformance/uml-component.md'), /Laid out down: one pair of lines sharing a line and one line across a box's header/);
+  // and since audit 71, check() given throughBoxes, the lines through a box that holds neither of their ends, each run and each line counted as the note does
+  const runs = d => said(d).filter(p => boxed.test(p)), lines = d => new Set(runs(d).map(p => p.split(' runs through ')[0])).size;
+  assert.ok(doc('../docs/diagrams/conformance/uml-component.md').includes(`${runs('right').length} such runs of ${lines('right')} lines laid out right and ${runs('down').length} of ${lines('down')} lines down`), 'the note counts what check() names');
 });
 
 // audit 39: the note's count of labels drawn on a looser spot named one on a region's border in the stress file, which check()

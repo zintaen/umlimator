@@ -515,3 +515,18 @@ test('audit 73: a requirement view laid out down puts no relationship label on a
   }
   assert.deepEqual(left, []);
 });
+
+// audit 71: laid out right, the type page's walkthrough -> checkout-pages line ran across the payments package, which holds
+// neither of its ends, and check() said nothing: the requirement view takes layered.js's box pass (shutBoxes 2)
+test('audit 71: a requirement view routes no line through a package that holds neither of its ends, right and down', () => {
+  const g0 = JSON.parse(readFileSync(new URL('fixtures/sysml-requirement.json', import.meta.url)));
+  for (const direction of ['right', 'down']) {
+    const m = structuredClone(g0); m.views.find(v => v.id === V).direction = direction;
+    const g = layout(m, V), F = g.families, byF = new Map(F.map(f => [f.id, f]));
+    const ups = id => { const s = new Set([id]); for (const f of F) if ((f.nodeIds || []).includes(id)) for (let x = f; x; x = byF.get(x.parent)) s.add(x.id); for (let x = byF.get(id); x; x = byF.get(x.parent)) s.add(x.id); return s; };
+    const through = g.edges.flatMap(e => F.filter(f => !ups(e.from).has(f.id) && !ups(e.to).has(f.id) && e.pts.some((p, k) => k && Math.max(p[0], e.pts[k - 1][0]) > f.x + 1 && Math.min(p[0], e.pts[k - 1][0]) < f.x + f.w - 1
+      && Math.max(p[1], e.pts[k - 1][1]) > f.y + 1 && Math.min(p[1], e.pts[k - 1][1]) < f.y + f.h - 1)).map(f => `${e.id} in ${f.id}`));
+    assert.deepEqual(through, [], direction);
+    assert.deepEqual(check(m, V, { throughBoxes: true }).map(p => p.message).filter(s => / which holds neither of its ends$/.test(s)), [], `${direction}: check()`);
+  }
+});

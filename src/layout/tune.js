@@ -29,7 +29,7 @@ const LABEL_PASSES = Object.freeze({ map: Object.freeze([0, 1, 2]), typed: Objec
 const BRANCH_BALANCE = 2, STABLE_SLACK = 1;
 // the weights the stability guard scores a layout with (context.js guardScore): section 4.1's, bench/score-weights.json's
 // values (tests/stable-layout.test.mjs holds them equal), moved counting the share of unchanged cards a layout moves
-const STABLE_WEIGHTS = Object.freeze({ hard: 1000, cross: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 });
+const STABLE_WEIGHTS = Object.freeze({ hard: 1000, cross: 100, through: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 });
 // the snake (section 14, context.js snakeOf): an arranged map view whose main flow has more than SNAKE_AT cards wraps it onto
 // rows of at most SNAKE_AT cards, each running back under the one before; a cut is one of the main cards within SNAKE_SLACK of
 // the middle. The loop may move SNAKE_AT between 8 and 16

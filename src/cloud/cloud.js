@@ -175,7 +175,7 @@ const clGeo = F => ({ model, view, pos, memo }) => {
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: CL_HAS(e.label) ? String(e.label) : undefined, end: { from: 'none', to: 'open' }, cut: 280,
     aria: clLineName(F, e, I), ...(CL_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
   const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo);
   // on a copy (§2.5): the vendor's legal line under the picture, inside its bounds, wherever its icon is drawn (S9; AWS's, 4a.8)
   const B = g.bounds, legal = !!F.legal && nodes.some(n => n.img), tw = legal ? textW(F.legal, 10) : 0;
   const slots = [...g.nodes, ...CL_ARR(g.families)].map(n => ({ after: n.id, parent: null, x: n.x + n.w / 2, y: n.y + n.h / 2 })); // the palette's add hears the selection (profile.js's)

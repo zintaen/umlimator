@@ -435,13 +435,14 @@ Card boxes, drawn lines (one may stand for several model edges, listed in `ids`)
 ## check
 
 ```ts
-function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
+function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel; throughBoxes?: boolean }): CheckIssue[];
 ```
 
 The layout check on `layout()`'s geometry, with no browser: overlapping cards, crossing or shared lines, detours,
 lines that run through a card or against reading order, labels on lines or away from their own, and boxes and lanes. The CLI's `check` adds what only a browser can measure (text overflowing its
 card, for one). In Node, text widths are an estimate unless `measure` is given, so the result can differ from a
-browser's. The options are those of [`layout()`](#layout).
+browser's. The options are those of [`layout()`](#layout), and `throughBoxes: true` also lists a line that runs through a
+box holding neither of its ends, on the class, component, deployment, cloud, requirement and C4 views (not in the default list).
 
 ```js
 import { check } from 'umlimator';
