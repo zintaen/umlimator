@@ -80,6 +80,21 @@ ok("audit 67 · a line nested deeper than 1000 is a parse error on every Python;
    and all(r["id"] == 1 and r["result"]["isError"] and r["result"]["content"][0]["text"] == "set_field: value is not JSON: it holds NaN, Infinity or a number out of range" for r in args67)
    and kept67[0] == [mcp.failure(None, -32600, "Invalid Request")] and kept67[1]["id"] == "[{" * 2000 and "result" in kept67[1]
    and kept67[2]["id"] == 1e300 and "result" in kept67[2], (deep67, ids67, args67, kept67[0], str(kept67[1])[:200]))
+# audit 68: a _meta protocolVersion of NaN, 1e400 or [Infinity] went back bare in the -32022 error's data, which is not JSON;
+# every line serve() writes is now JSON, a reply that would hold such a number an internal error with its id
+meta68 = [mcp.answer(b'{"jsonrpc":"2.0","id":%d,"method":"ping","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":%s}}}' % (i, x))
+          for i, x in enumerate((b"NaN", b"1e400", b"[Infinity]", b'"1999-01-01"'))]
+def strict68(b):  # the line as a client's JSON.parse reads it
+    return json.loads(b, parse_constant=lambda c: (_ for _ in ()).throw(ValueError(c)))
+lines68 = [strict68(mcp.wire(r)) for r in meta68[:3]]
+bad68 = {"jsonrpc": "2.0", "id": 7, "result": {"x": float("nan")}}
+ok("audit 68 · a NaN, 1e400 or [Infinity] _meta protocolVersion gets -32022 without echoing it; a string one is still echoed; "
+   "wire() writes a reply holding NaN as an internal error with its id, a batch reply by reply, and others as json.dumps does",
+   all(r["error"]["code"] == -32022 and r["error"]["data"] == {"supported": mcp.VERSIONS} for r in lines68)
+   and meta68[3]["error"]["data"]["requested"] == "1999-01-01" and all(map(wire, meta68))
+   and strict68(mcp.wire(bad68)) == mcp.failure(7, -32603, "Internal error: the reply holds NaN, Infinity or a number out of range")
+   and strict68(mcp.wire([bad68, meta68[3]])) == [mcp.failure(7, -32603, "Internal error: the reply holds NaN, Infinity or a number out of range"), meta68[3]]
+   and mcp.wire(meta68[3]) == json.dumps(meta68[3]).encode() + b"\n", (meta68,))
 # audit 48: cards that no one view shows (a->b on v1, b->c on v2) are refused as that, not blamed on a line missing from the
 # first view, where c is not even drawn (the tour check fell back to a view when none showed them all)
 with tempfile.TemporaryDirectory() as d48:
