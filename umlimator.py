@@ -288,9 +288,10 @@ def no_git(what):
         sys.exit(f"{what} needs git, and none is installed")
 
 
-def run(cmd, timeout=None, input=None):
+def run(cmd, timeout=None, input=None, started=None):
     """A child process (Chrome, the engine, Node) in a session of its own, so that it and whatever it starts (Chrome's
-    helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed."""
+    helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed. started: called
+    with the process once it runs (the MCP server stops a cancelled call's child)."""
     # UTF-8 both ways, whatever the locale: Node writes UTF-8, and a locale's code page (Latin-1, Windows' ANSI page) read
     # its output as mojibake and could not encode a DBML file's letters (audit 73); a Python child (the engine) is told to
     # write UTF-8 too. A byte that is no UTF-8 is replaced, never a traceback
@@ -298,6 +299,8 @@ def run(cmd, timeout=None, input=None):
                          stderr=subprocess.PIPE, encoding="utf-8", errors="replace", start_new_session=True,
                          env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     try:
+        if started:
+            started(p)
         out, err = p.communicate(input, timeout=timeout)
     except BaseException:
         with contextlib.suppress(ProcessLookupError):

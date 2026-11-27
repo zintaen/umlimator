@@ -13,7 +13,7 @@ The protocol: JSON-RPC 2.0, one message per line on stdin and stdout; logs go to
 the current specification (per-request `_meta`, server/discover), and the `initialize` handshake of the versions before
 it, which a client sends that predates 2026-07-28 or falls back to it.
 """
-import codecs, hashlib, hmac, html, http.server, itertools, json, math, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
+import codecs, errno, hashlib, hmac, html, http.server, itertools, json, math, os, queue, re, secrets, signal, stat, subprocess, sys, tempfile, threading, time, traceback, urllib.parse
 from pathlib import Path
 
 import umlimator as cli
@@ -160,8 +160,62 @@ class Fail(Exception):
     """A tool's error, said to the assistant (isError), which can fix its call."""
 
 
+class Late(Fail):
+    """A Node run of a tool that took longer than its limit, and was stopped (run())."""
+
+
 class RpcError(Exception):
     """A JSON-RPC error: code, message, data."""
+
+
+# One Node run of a tool takes a second or less on a model of a few hundred cards, but laying out a large one grows fast
+# (a 44 KB model of 200 classes in three views took four minutes): each run is stopped after LIMIT s, and the call says
+# so in one line (audit bh1 6). The element counts list_views adds are a nicety: COUNTING s, then the views' cards.
+LIMIT, COUNTING = 30, 10
+here = threading.local()  # here.call: the request this thread answers now, {"proc", "cancelled"}, which the client may cancel
+calls = {}                # each tools/call request waiting or running, by its id as JSON: notifications/cancelled stops it
+calls_lock = threading.Lock()
+
+
+def run(cmd, input, limit=None):
+    """cli.run's child (Node) for a tool: stopped after limit (LIMIT) s, a Late; and stopped when the client cancels the
+    request it answers (notifications/cancelled), so neither a hung run nor a cancelled one holds the server."""
+    limit, call = limit or LIMIT, getattr(here, "call", None)
+    def started(p):
+        with calls_lock:
+            if call is not None:
+                call["proc"] = p
+                if call["cancelled"]:
+                    stop(p)
+    try:
+        r = cli.run(cmd, timeout=limit, input=input, started=started)
+    except subprocess.TimeoutExpired:
+        raise Late(f"stopped after {limit} s: the model is too large for this tool to answer in time") from None
+    finally:
+        with calls_lock:
+            if call is not None:
+                call["proc"] = None
+    if call is not None and call["cancelled"]:
+        raise Fail("cancelled by the client")
+    return r
+
+
+def stop(p):
+    """A child and whatever it started, ended (cli.run starts each in a session of its own)."""
+    try:
+        os.killpg(p.pid, signal.SIGKILL) if hasattr(os, "killpg") else p.kill()
+    except OSError:
+        pass
+
+
+def cancel(rid):
+    """notifications/cancelled: the request rid, waiting or running, is not answered, and its Node run is stopped."""
+    with calls_lock:
+        call = calls.get(json.dumps(rid))
+        if call is not None:
+            call["cancelled"] = True
+            if call["proc"] is not None:
+                stop(call["proc"])
 
 
 MODEL = URL = HELLO = MAPID = None  # MAPID: the model file's own id, which its pages carry
@@ -185,18 +239,47 @@ RUN = os.urandom(4).hex()  # event ids differ from one run of the server to the 
 WAIT, BEAT = 6, 2        # s: how long a page tool waits for a page to show its command; how often an open page is pinged
 
 
-def load():
+def regular(path, cap=None, link=True):
+    """path's bytes, read only when it is a regular file, and of at most cap bytes: a FIFO, /dev/stdin or /dev/zero hung the
+    one thread that answers, or filled the server's memory by gigabytes a second (audit bh1 5), so each is an OSError, as a
+    file that is not there is. link False: never through a symbolic link (a pull request can commit one). Opened without
+    blocking, so even a FIFO with no writer is only looked at."""
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0) | (0 if link else getattr(os, "O_NOFOLLOW", 0)))
+    with os.fdopen(fd, "rb") as f:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise OSError(errno.EINVAL, "not a regular file (a device, a pipe or a socket)")
+        data = f.read() if cap is None else f.read(cap + 1)
+        if cap is not None and len(data) > cap:
+            raise OSError(errno.EFBIG, f"larger than {cap >> 20} MB")
+        return data
+
+
+def model_bytes():
+    """The model file's bytes, read only when it is a regular file (regular()), else the tool's error."""
     try:
-        m = cli.read_json(MODEL)  # as render reads it: a BOM too, an object
-    except SystemExit as e:
-        raise Fail(f"cannot read the model {MODEL.name}: {e.code}")
+        return regular(MODEL)
+    except OSError as e:
+        raise Fail(f"cannot read the model {MODEL.name}: {e.strerror or e}")
+
+
+def load():
+    data = model_bytes()
+    try:  # as render reads it (cli.read_json): a BOM too, an object
+        m = cli.load_json(data, MODEL)
+    except ValueError as e:
+        raise Fail(f"cannot read the model {MODEL.name}: {MODEL} is not valid JSON ({e})")
+    except RecursionError:
+        raise Fail(f"cannot read the model {MODEL.name}: {MODEL} nests too deep to read")
+    if not isinstance(m, dict):
+        raise Fail(f"cannot read the model {MODEL.name}: {MODEL} is not a model: its JSON is not an object")
     if bad := cli.not_objects(m):  # as render refuses it; an id that is a list ended in an internal error (audit 8)
         raise Fail(f"the model {MODEL.name}: {'; '.join(bad)}")
     return m
 
 
 def version():
-    return hashlib.sha256(MODEL.read_bytes()).hexdigest()[:16]
+    return hashlib.sha256(model_bytes()).hexdigest()[:16]
 
 
 def views(m):
@@ -235,7 +318,11 @@ def element_counts(m):
             "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; const [m, ids] = JSON.parse(s), out = {};"
             "for (const id of ids) { try { out[id] = elementCount(m.views.find(v => v && v.id === id), layout(m, id)); } catch { out[id] = null; } }"
             "process.stdout.write(JSON.stringify(out));")
-    r = cli.run([node_bin, "--input-type=module", "-e", code], input=json.dumps([m, typed]))
+    try:  # too long (a large model): the views' cards are counted, and so on each call for this version (audit bh1 6)
+        r = run([node_bin, "--input-type=module", "-e", code], json.dumps([m, typed]), COUNTING)
+    except Late:
+        counted[:] = [at, {}]
+        return {}
     try:
         got = {k: v for k, v in json.loads(r.stdout).items() if isinstance(v, int)} if not r.returncode else {}
     except ValueError:
@@ -250,12 +337,10 @@ def every(m, key):
 
 
 def node(fn, *args):
-    """One of the module's functions, run in Node by the CLI's js(), which ends the CLI on an error: here it is the tool's."""
-    try:
-        return cli.js(fn, *args)
-    except SystemExit as e:
-        said = str(e.code)
-        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
+    """One of the module's functions, run in Node as the CLI's js() runs it, its error the tool's; stopped as run() stops it."""
+    if not cli.shutil.which("node"):
+        raise Fail(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
+    return script(f"return u[{json.dumps(fn)}](...a);", *args)
 
 
 def known(m):
@@ -303,6 +388,7 @@ def refs(m, items):
 
 EDITOR = cli.HERE / "umlimator_edit.mjs"  # the edit tools' Node half: the page's own editor on the model (its header says how)
 KEEP, ROOM = 50, 16 << 20                  # changes the undo history keeps, and the most text it holds (16 MB)
+SHELF = 8 * ROOM  # the largest undo history read: kept() writes far less (its text, escaped as JSON, in two lists)
 
 
 def base_of():
@@ -333,8 +419,9 @@ def history():
     before it (and its encoding and BOM) and a hash of its text after; each change undo() took back, {after, form,
     before_sha, ...}, the other way round. A
     history that is missing or unreadable is an empty one."""
-    try:
-        h = json.loads(history_file().read_text(encoding="utf-8"))
+    try:  # only a regular file the size kept() writes, never through a link: a link to /dev/zero or /dev/stdin, which a
+        # pull request can commit beside the model, filled the memory or hung the server on every page tool (audit bh1 5)
+        h = json.loads(regular(history_file(), SHELF, link=False).decode("utf-8"))
         if isinstance(h, dict) and all(isinstance(h.get(k), list) for k in ("done", "undone")):
             return h
     except (OSError, ValueError, RecursionError):
@@ -345,6 +432,13 @@ def history():
 def kept_history():
     """history(), for a tool that writes: refused (Fail) before anything is written when a change in it is not an object, or
     holds a text that is not a string, which kept() and undo() could not read, so no write is left half done (audit 72)."""
+    try:  # one there that history() will not read (a link, a device, a pipe, too large) is not written over either
+        regular(history_file(), SHELF, link=False)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        raise Fail(f"the undo history {history_file().name} cannot be read: it is a symbolic link, not a regular file, or too large "
+                   f"({e.strerror or e}); nothing written. Remove it to start a new undo history")
     h = history()
     for k in ("done", "undone"):
         for i, c in enumerate(h[k]):
@@ -401,7 +495,7 @@ def model_file():
     """The model file's text, as the CLI reads it: UTF-8 (a BOM too), UTF-16 or UTF-32; and its form, {"codec", "bom"},
     which write() keeps, so an edit and undo() leave the file in its own encoding, byte for byte (audit 65)."""
     try:
-        data = MODEL.read_bytes()
+        data = regular(MODEL)
         codec = next((c for b, c in BOMS if data.startswith(b)), None) or json.detect_encoding(data)
         text = data.decode(codec)
     except (OSError, UnicodeDecodeError) as e:
@@ -462,7 +556,7 @@ def change(steps):
         raise Fail(f"cannot edit the model {MODEL.name}: it is not JSON ({e})" if isinstance(e, ValueError) else f"cannot edit the model {MODEL.name}: it nests too deep to read")
     if not isinstance(m, dict) or (bad := cli.not_objects(m)):
         raise Fail(f"cannot edit the model {MODEL.name}: " + ("its JSON is not an object" if not isinstance(m, dict) else "; ".join(bad)))
-    r = cli.run([nodejs, str(EDITOR)], input=json.dumps({"model": m, "steps": steps, "source": text}))
+    r = run([nodejs, str(EDITOR)], json.dumps({"model": m, "steps": steps, "source": text}))
     try:
         out = json.loads(r.stdout) if not r.returncode else None
     except ValueError:
@@ -730,7 +824,7 @@ def script(body, *args):
         raise Fail("this tool needs Node.js 18 or later: it runs the module's own functions")
     code = (f"import * as u from {json.dumps(cli.LIB.as_uri())}; let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c;"
             f"const a = JSON.parse(s); process.stdout.write(JSON.stringify((() => {{ {body} }})()));")
-    r = cli.run([nodejs, "--input-type=module", "-e", code], input=json.dumps(args))
+    r = run([nodejs, "--input-type=module", "-e", code], json.dumps(args))
     if r.returncode:
         said = r.stderr.strip()[-2000:]
         raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
@@ -988,10 +1082,7 @@ def page():
     snapshot, so the page is labelled with what it shows). A version that doesn't render keeps the last page that did."""
     global tried, why
     with rendering:
-        try:
-            data = MODEL.read_bytes()
-        except OSError as e:
-            raise Fail(f"cannot read the model {MODEL.name}: {e}")
+        data = model_bytes()
         v = hashlib.sha256(data).hexdigest()[:16]
         if v != tried:
             tried = v
@@ -1249,16 +1340,27 @@ def reply(msg):
     if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0" or not isinstance(msg.get("method"), str):
         return failure(msg.get("id") if isinstance(msg, dict) else None, -32600, "Invalid Request")
     if "id" not in msg:
-        # ponytail: notifications/cancelled is not acted on: a call runs to its end, a second or less (one Node run)
+        if msg["method"] == "notifications/cancelled" and isinstance(msg.get("params"), dict):
+            cancel(msg["params"].get("requestId"))  # its Node run stopped, and no answer sent (audit bh1 6)
         return None  # notifications/initialized, notifications/cancelled: nothing to answer
+    with calls_lock:
+        here.call = calls.get(json.dumps(msg["id"])) if getattr(here, "tools", False) else None  # a tools/call on serve()'s worker: the client may cancel it
     try:
-        return {"jsonrpc": "2.0", "id": msg["id"], "result": {**result(msg["method"], msg.get("params") or {}), "resultType": "complete",
+        if here.call is not None and here.call["cancelled"]:  # cancelled while it waited: never run
+            return None
+        said = {"jsonrpc": "2.0", "id": msg["id"], "result": {**result(msg["method"], msg.get("params") or {}), "resultType": "complete",
                                                               "_meta": {"io.modelcontextprotocol/serverInfo": SERVER}}}
     except RpcError as e:
-        return failure(msg["id"], *e.args)
+        said = failure(msg["id"], *e.args)
     except Exception as e:
         traceback.print_exc()
-        return failure(msg["id"], -32603, f"Internal error: {e}")
+        said = failure(msg["id"], -32603, f"Internal error: {e}")
+    finally:
+        with calls_lock:
+            if here.call is not None and calls.get(json.dumps(msg["id"])) is here.call:
+                del calls[json.dumps(msg["id"])]
+            gone, here.call = here.call is not None and here.call["cancelled"], None
+    return None if gone else said
 
 
 def wire(said):
@@ -1300,7 +1402,39 @@ def serve(model, port):
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     print(f"umlimator mcp: {MODEL.name}, its page at {URL}", file=sys.stderr)
     out, sys.stdout = sys.stdout.buffer, sys.stderr  # stdout carries the protocol only: a stray print goes to the log
+    said_lock, work = threading.Lock(), queue.Queue()
+    def send(said):
+        if said is not None:
+            with said_lock:
+                out.write(wire(said))
+                out.flush()
+    def worker():  # the tool calls, one at a time in the order sent, so the thread that reads stdin is never held by one
+        here.tools = True
+        while (line := work.get()) is not None:
+            send(answer(line))
+    tools = threading.Thread(target=worker, daemon=True)
+    tools.start()
+    # a tools/call (alone or in a batch) goes to the worker; the rest (ping, initialize, tools/list, notifications/cancelled)
+    # is answered here at once, so a long call neither starves a ping nor is beyond a cancel (audit bh1 6)
     for line in sys.stdin.buffer:
-        if line.strip() and (said := answer(line)) is not None:
-            out.write(wire(said))
-            out.flush()
+        if not line.strip():
+            continue
+        if (ids := tool_calls(line)) is None:
+            send(answer(line))
+            continue
+        with calls_lock:
+            calls.update((i, {"proc": None, "cancelled": False}) for i in ids)
+        work.put(line)
+    work.put(None)
+    tools.join()
+
+
+def tool_calls(line):
+    """The ids (as JSON) of the tools/call requests a line holds, a batch's too; None when it holds none."""
+    try:
+        msg = parse(line)
+    except (ValueError, RecursionError):
+        return None
+    ids = [json.dumps(x["id"]) for x in (msg if isinstance(msg, list) else [msg]) if isinstance(x, dict) and x.get("method") == "tools/call"
+           and x.get("jsonrpc") == "2.0" and "id" in x and finite(x["id"])]
+    return ids or None
