@@ -8,7 +8,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scan, record, check, update, add, remove, readList, say } from '../tools/protect.mjs';
+import { scan, record, check, update, add, remove, readList, say, assertLoads } from '../tools/protect.mjs';
 import { tokenize, literal } from '../tools/jsscan.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -288,6 +288,44 @@ test('protect: assert handed on through parentheses, an alias or its keys, or pa
   assert.deepEqual(problems(fine), []);
   edit(fine, after('(assert).ok = () => {};'));
   assert.deepEqual(problems(fine), both(handed(3)), 'plain asserts with no assert, and is not reported');
+});
+
+test('protect: node:assert reached by another name (a second import, process.getBuiltinModule, createRequire, a dynamic import, an escaped name) and changed is reported (audit 69)', (t) => {
+  const ASSERT = "import assert from 'node:assert/strict';", after = line => s => s.replace(ASSERT, `${ASSERT}\n${line}`);
+  const both = why => [`doubles: no longer asserts (${why})`, `quadruples: no longer asserts (${why})`];
+  const loads = dir => assertLoads(dir).map(p => `${p.title}: ${p.problem}`), changed = what => `node:assert changed: ${what} was changed or deleted as the file loads`;
+  const cases = [ // the change; what check() says of it (null: nothing, it reads no name the scan knows); what the load says
+    [after("import other from 'node:assert';\nother.equal = () => {};"), "other, node:assert's default export, is changed in the file (line 4)", changed('assert.equal')],
+    [after("import * as ns from 'node:assert/strict';\nns.default.ok = () => {};"), "ns, node:assert's namespace, is changed in the file (line 4)", changed('assert/strict.ok')],
+    [after("process.getBuiltinModule('node:assert/strict').equal = () => {};"), 'node:assert is reached at run time (line 3)', changed('assert/strict.equal')],
+    [after('ass\\u0065rt.equal = () => {};'), 'a name is written with an escape, which can spell assert (line 3)', changed('assert/strict.equal')],
+    [after("import { createRequire } from 'node:module';\nReflect.set(createRequire(import.meta.url)('node:' + 'assert').strict, 'deepEqual', () => {});"), null, changed('assert/strict.deepEqual')],
+    [after("const m = await import(['node', 'assert'].join(':')); Object.defineProperty(m.default, 'equal', { value: () => {} });"), null, changed('assert.equal')],
+    [after("const p = process, k = 'getBuiltin' + 'Module'; delete p[k]('node:' + 'assert').strict.equal;"), null, changed('assert/strict.equal')],
+  ];
+  const SRC2 = SRC.replace("import { test } from 'node:test';", "import { test, it } from 'node:test';"); // it bound, so the file loads
+  for (const [change, why, load] of cases) {
+    const dir = repo(SRC2); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    edit(dir, change);
+    if (why) assert.deepEqual(problems(dir), both(why), why);
+    assert.deepEqual(loads(dir), both(load), load);
+  }
+  // the command says both, each test once
+  const dir = repo(SRC2); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  edit(dir, after("process.getBuiltinModule('node:assert/strict').equal = () => {};"));
+  let out = '', code = 0;
+  try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; out = e.stdout; }
+  assert.equal(code, 1);
+  assert.deepEqual(out.trim().split('\n'), ['tests/x.test.mjs: "doubles": no longer asserts (node:assert is reached at run time (line 3))',
+    'tests/x.test.mjs: "quadruples": no longer asserts (node:assert is reached at run time (line 3))', '2 of 2 protected tests gone or changed: ask the maintainer, who runs node tools/protect.mjs --update after approving']);
+  // what stays fine: a second import only called, a module loaded at run time that is not node:assert, a file that loads as it was
+  const fine = repo(SRC2.replace(ASSERT, `${ASSERT}\nimport also from 'node:assert';\nalso.ok(true);\nconst fs = await import('node:' + 'fs');`)); t.after(() => rmSync(fine, { recursive: true, force: true }));
+  assert.deepEqual(problems(fine), []);
+  assert.deepEqual(loads(fine), []);
+});
+
+test('every protected core test file loads with node:assert as it was (audit 69)', () => {
+  assert.deepEqual(assertLoads(root).map(say), []);
 });
 
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
