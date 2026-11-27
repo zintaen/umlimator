@@ -74,7 +74,9 @@ function dpIndex(model, view) {
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
   // live: not one diff() drew back removed, nor through a removed «deploy» line, as the model after counts them (audit 55)
   const gone = isGone;
-  const deployed = (id, live) => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type) && !(live && gone(n))).map(n => n.id),
+  // the artifacts each target owns, in the model's order, indexed once (audit 72: every node's name looked through the whole model)
+  let owned = null; const ownedBy = id => { if (!owned) { owned = new Map(); at.forEach(n => { if (DP_ARTIFACTS.includes(n.type)) { if (!owned.has(n.parent)) owned.set(n.parent, []); owned.get(n.parent).push(n); } }); } return owned.get(id) || []; };
+  const deployed = (id, live) => [...new Set([...ownedBy(id).filter(n => !(live && gone(n))).map(n => n.id),
     ...into('uml.Deployment', id).filter(e => !(live && gone(e))).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type) && !(live && gone(at.get(x))))])];
   // does a hold b, at any depth
   const holds = (a, b) => { for (let p = (at.get(b) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (at.get(p) || {}).parent) { if (p === a) return true; seen.add(p); } return false; };
