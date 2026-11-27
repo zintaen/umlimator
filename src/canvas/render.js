@@ -57,7 +57,7 @@ export function render(container, model, options = {}) {
   const expanded = O(); // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
   const asked = O(); // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
   // stableFrom: the model before an edit, whose cells the cards it left alone keep in the first picture (layout-flow.md section 8)
-  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
+  let ctx = mapContext(model, { measure, kinds: !!P.kinds, images: options.images, say: true, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
   const root = host.attachShadow({ mode: 'open', delegatesFocus: true }); // host.focus() lands in the map (on the selected card)
   root.adoptedStyleSheets = [sheet()];
   // the standalone page's pieces a host asks for (#99), in a frame around the canvas: the views list left of the map (after
@@ -868,7 +868,7 @@ export function render(container, model, options = {}) {
     const old = ctx, keys = O(), wantNew = selectNew && !own, before = current;
     old.views.forEach(v => { keys[v.id] = relayout ? null : old.viewKey(v.id); });
     current = model2;
-    ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
+    ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, images: options.images, say: true, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
     Object.keys(expanded).forEach(v => { expanded[v] = ctx.unfolded[v] || []; }); // a card or inner view the model no longer has folds
     if (!own) selectNew = false;
     ctx.views.forEach(v => { const id = v.id; if (keys[id] == null || keys[id] !== ctx.viewKey(id)) return;

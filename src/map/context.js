@@ -73,9 +73,36 @@ const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'm
   arrOf(g.nodes).forEach(n => { if (n && !PIECES.has(n.shape) && ((typeof n.type === 'string' && n.type) || (n.type == null && listed.has(n.id) && isEl(n.id)))) ids.add(n.id); });
   arrOf(g.families).forEach(f => { if (f && f.id != null && isEl(f.id)) ids.add(f.id); }); return ids.size; };
 
+/* The images a model names, which a browser fetches when they are drawn (audit bh1: a model's author avatar, icon src and
+   intake logo made each viewer's browser fetch any address the model named). Kept by `allow`, the host's `images` option:
+   'data' (the default) keeps only a data: image, drawn from the model itself; 'local' also a path the page's own site serves
+   (no scheme, no host); 'remote' also an http(s) address (//host too). Anything else, a value that is no string among them, is left out of
+   the context's copy, so no picture, panel or toSVG() names it, and is said once when `say` (the CLI's own_media keeps the
+   same set on a page: risks.md S2, audit 19). Read as a browser reads a URL (tabs and newlines dropped, leading controls
+   and spaces trimmed). */
+const imageOk = (u, allow) => { if (typeof u !== 'string') return false; const s = u.replace(/[\t\n\r]/g, '').replace(/^[\0- ]+/, '');
+  if (/^data:image\/[\w.+-]+[;,]/i.test(s)) return true;
+  if (allow === 'remote' && /^(https?:|[\\/]{2})/i.test(s)) return true;
+  return (allow === 'local' || allow === 'remote') && s !== '' && !/^[a-z][a-z0-9+.-]*:|^[\\/]{2}/i.test(s); };
+function ownImages(D, allow, say) {
+  const ob = x => x && typeof x === 'object' && !Array.isArray(x), drop = (o, k, at) => { if (o[k] == null || o[k] === '' || imageOk(o[k], allow)) return; delete o[k];
+    if (say) warn(`${at} is not drawn: it names an image the browser would fetch${allow === 'local' || allow === 'remote' ? '' : " (a host draws one beside the page with images: 'local', or any address with images: 'remote')"}`); };
+  if (ob(D.authors)) Object.entries(D.authors).forEach(([k, a]) => { if (ob(a)) drop(a, 'avatar', `authors.${k}.avatar`); });
+  if (ob(D.icons)) Object.entries(D.icons).forEach(([k, a]) => { if (ob(a)) drop(a, 'src', `icons.${k}.src`); });
+  const views = Array.isArray(D.views) ? D.views : [], cards = [...arrOf(D.nodes).map((n, i) => [`nodes[${i}]`, n])];
+  views.forEach((v, i) => { if (!ob(v)) return; arrOf(v.intake).forEach((x, j) => { if (ob(x)) drop(x, 'logo', `views[${i}].intake[${j}].logo`); });
+    arrOf(v.nodes).forEach((n, j) => cards.push([`views[${i}].nodes[${j}]`, n]));
+    if (ob(v.nodeOverrides)) Object.entries(v.nodeOverrides).forEach(([k, n]) => cards.push([`views[${i}].nodeOverrides.${k}`, n])); });
+  const seen = new Set(); // a host's model may hold one object twice, or in itself: each walked once
+  for (let c; (c = cards.pop());) { const [at, n] = c; if (!ob(n) || seen.has(n)) continue; seen.add(n); // members too, at any depth (a member's examples draw in its details panel like a card's)
+    arrOf(n.members).forEach((m, j) => cards.push([`${at}.members[${j}]`, m]));
+    arrOf(n.examples).forEach((x, j) => { if (ob(x)) ['thumb', 'full'].forEach(k => drop(x, k, `${at}.examples[${j}].${k}`)); }); }
+}
+
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
   const D = copyOf(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
+  ownImages(D, opts.images, !!opts.say); // no address the model names is fetched unless the host allows it (audit bh1)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
