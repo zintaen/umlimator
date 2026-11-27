@@ -581,3 +581,20 @@ test('audit 74: two self connectors that each need a different way both get a sm
     assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
     assert.deepEqual(outsideStack(g, e), [], `${e.id} is not tied in a knot`); });
 });
+// audit 75: the loops' ways were chosen on the loops' own problems, so a way that left two other connectors on one track
+// was kept laid out right (life2-life0 and life1-life2 ran down x=749 together); a shared line now weighs in every way's
+// score and sends the search on. Each model: lifelines, then connectors a>b, each with a message unless marked !
+test('audit 75: a view with self connectors draws no two connectors on one track, either way round', () => {
+  const build = (n, spec, direction) => { const nodes = [...Array(n)].map((_, i) => ({ id: `l${i}`, type: 'uml.Lifeline', label: `life${i}`, props: { represents: `R${i}` } })), edges = [];
+    spec.split(' ').forEach((s, k) => { const [, a, b, bare] = s.match(/^(\d)>(\d)(!?)$/); edges.push({ id: `c${k}`, type: 'uml.Connector', from: `l${a}`, to: `l${b}` });
+      if (!bare) edges.push({ id: `m${k}`, type: 'uml.Message', from: `l${a}`, to: `l${b}`, label: `msg${k}`, props: { sort: 'call' } }); });
+    return { schemaVersion: 2, title: 't', nodes, edges, views: [{ id: 'v', diagram: 'uml.communication', title: 'v', direction, nodeIds: nodes.map(x => x.id), edges: edges.map(e => e.id) }] }; };
+  const cases = [[4, '3>1 2>0 2>2 0>3 1>2 1>1 3>3'], [4, '2>2 0>0 1>2! 1>3! 3>3 3>2 0>3 2>0!'], [7, '5>5 0>1 1>1 1>2 4>0 1>3 0>2 2>5! 2>2 4>1!'],
+    [4, '0>0 0>2 1>0 3>3 3>2 2>2 3>1 1>2'], [5, '0>1 2>2 3>4 2>4 3>2! 1>1 4>1 1>3']];
+  for (const [n, spec] of cases) for (const dir of ['right', 'down']) {
+    const m = build(n, spec, dir), tag = `${spec} ${dir}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => / share a line$/.test(x)), [], tag);
+    assert.equal(JSON.stringify(layout(m, 'v').edges.map(e => e.pts)), JSON.stringify(layout(m, 'v').edges.map(e => e.pts)), `${tag}: the same picture twice`);
+  }
+  assert.deepEqual(check(build(...cases[0], 'right'), 'v').map(p => p.message), [], 'the reported view is clean');
+});

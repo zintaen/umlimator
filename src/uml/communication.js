@@ -164,19 +164,23 @@ function commGeo({ model, view, memo }) {
   let best = run(0, memo);
   if (loops.length) {
     const ids = new Set(loops.map(l => l.a._id)), mine = h => h.edges.filter(e => ids.has(e.id));
-    const score = h => [mine(h).reduce((k, e) => k + cmKnots(e.pts, cmBox(h, e)), 0), routeAudit({ edges: h.edges }, '', new Set(mine(h))).length,
-      mine(h).reduce((k, e) => k + cmFar(h, e), 0), mine(h).reduce((k, e) => k + cmMeets(h, e), 0), routeAudit({ edges: h.edges }, '').length];
+    // a shared line weighs three crossings: two lines on one track read as one (audit 75: the loops' ways were chosen on
+    // the loops' own problems, so a way that put two other connectors on one track was kept); [5]: some line is shared
+    const shares = x => x.endsWith(' share a line'), weigh = a => a.reduce((k, x) => k + (shares(x) ? 3 : 1), 0);
+    const score = h => { const all = routeAudit({ edges: h.edges }, ''); return [mine(h).reduce((k, e) => k + cmKnots(e.pts, cmBox(h, e)), 0), weigh(routeAudit({ edges: h.edges }, '', new Set(mine(h)))),
+      mine(h).reduce((k, e) => k + cmFar(h, e), 0), mine(h).reduce((k, e) => k + cmMeets(h, e), 0), weigh(all), all.some(shares) ? 1 : 0]; };
     const better = (q, n) => { const i = q.findIndex((v, j) => v !== n[j]); return i >= 0 && q[i] < n[i]; };
     let n = score(best);
     // each other way laid out with a memo of its own, kept on the view's (memo.cmWays), so a redraw of an unchanged view repaints it
-    const bad = q => q[0] || q[1] || q[2] || q[3], lay = k => { const m = memo && ((memo.cmWays ||= {})[k] ||= {}); if (m) m.noSwap = memo.noSwap; return run(k, m); };
+    const bad = q => q[0] || q[1] || q[2] || q[3] || q[5], lay = k => { const m = memo && ((memo.cmWays ||= {})[k] ||= {}); if (m) m.noSwap = memo.noSwap; return run(k, m); };
     let way = loops.map(() => 0);
     for (let k = 1; k < 3 && bad(n); k++) { const h = lay(k), q = score(h); if (better(q, n)) { best = h; n = q; way = loops.map(() => k); } }
     // then, while a loop still strays, crosses or knots, one loop's other ways at a time, the rest kept, never straying
     // further: two loops can each need a different way (audit 74). The loops in trouble first, then the others (one moved
     // aside can make room); at most four more layouts, so a view of many loops that stay crossed pays a few, not two a loop
     const worse = (h, e) => !e || cmKnots(e.pts, cmBox(h, e)) + cmFar(h, e) + cmMeets(h, e) + routeAudit({ edges: h.edges }, '', new Set([e])).length > 0;
-    const sick = loops.length > 1 && bad(n) ? loops.map(l => worse(best, best.edges.find(e => e.id === l.a._id))) : [];
+    const near = new Set(); if (n[5]) { const refs = []; routeAudit({ edges: best.edges }, '', null, refs).forEach((x, j) => { if (shares(x)) for (const e of refs[j]) near.add(e.from).add(e.to); }); }
+    const sick = loops.length > 1 && bad(n) ? loops.map(l => (worse(best, best.edges.find(e => e.id === l.a._id)) ? 2 : near.has(l.a.from) ? 1 : 0)) : [];
     const order = [...sick.keys()].sort((i, j) => sick[j] - sick[i]);
     for (let o = 0, left = 4; o < order.length && left > 0 && bad(n); o++) { const i = order[o];
       for (let k = 0; k < 3 && left > 0 && bad(n); k++) { const w = way.map((v, j) => (j === i ? k : v)); if (k === way[i] || w.every(v => v === w[0])) continue;
