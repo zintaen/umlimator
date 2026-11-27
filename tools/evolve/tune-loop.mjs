@@ -10,6 +10,8 @@
 //                                           [--record <file>] [--candidate-out <file>] [--runs 5] [--restart]
 //                                           [--lease <file>] [--ref origin/main]
 //   node tools/evolve/tune-loop.mjs publish --record <file> --candidate <file> [--base audit-loop] [--dry-run]
+//   node tools/evolve/tune-loop.mjs history-runs --branch <name>... [--runs-file <file>]   gh run list's JSON (stdin) to
+//                                           the ids of the loop's own runs (schedule, workflow_dispatch) on those branches
 //
 // run: the kill switch (killswitch.mjs) and the lease (lease.mjs, held for the whole run, renewed between measures, then
 // released), the guards of section 9.3 (two weeks with nothing kept: stopped until --restart; a change kept last week
@@ -145,14 +147,46 @@ export function pinsMismatch(pins, flat) {
 
 // ---------- the week's proposal ----------
 
-// the previous weeks' records (tune-*.json in each folder, and bench/results/), oldest first, without this week's
+// what a record's status may be (run() writes one of these)
+export const STATUSES = Object.freeze(['kept', 'reverted', 'nothing-kept', 'stopped', 'refused']);
+const WEEK = /^\d{4}-W\d{2}$/;
+
+// null when a record read back is one run() could have written for an earlier week, else the reason. The records come
+// from other runs' artifacts (audit bh1 8): a record of another shape, of this week or a later one, or naming a value the
+// loop may not change or one outside its range is not read, so it can neither stop the loop, pick its revert, nor put
+// its own text in the pull request (revertOf writes the week into the body).
+export function badRecord(r, week) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return 'not an object';
+  if (typeof r.week !== 'string' || !WEEK.test(r.week)) return 'its week is not YYYY-Www';
+  if (week && WEEK.test(week) && r.week >= week) return `its week ${r.week} is not before ${week}`;
+  if (!STATUSES.includes(r.status)) return 'its status is not one the loop writes';
+  if (r.proposal != null) {
+    const p = r.proposal;
+    if (typeof p !== 'object' || Array.isArray(p) || typeof p.path !== 'string' || !Object.hasOwn(RANGES, p.path)) return 'its proposal names no value the loop may change';
+    if (outOfRange(p.path, p.from) || outOfRange(p.path, p.to)) return 'its proposal is outside the value\'s range';
+  } else if (r.status === 'kept' || r.status === 'reverted') return 'it keeps a change but names none';
+  return null;
+}
+
+// the workflow runs whose records count as history (layout-loop.yml lists them with `gh run list --json
+// databaseId,conclusion,event,headBranch`): the loop's own runs, a schedule or a workflow_dispatch that succeeded on one
+// of the given branches, never a pull request's run of an edited copy of the workflow (audit bh1 8). The ids, as text.
+export const HISTORY_EVENTS = Object.freeze(['schedule', 'workflow_dispatch']);
+export function historyRuns(runs, branches) {
+  const ok = new Set([].concat(branches || []));
+  return (Array.isArray(runs) ? runs : []).filter(r => r && r.conclusion === 'success' && HISTORY_EVENTS.includes(r.event) && ok.has(r.headBranch)
+    && Number.isSafeInteger(r.databaseId) && r.databaseId > 0).map(r => String(r.databaseId));
+}
+
+// the previous weeks' records (tune-*.json in each folder, and bench/results/), oldest first, without this week's or
+// any record badRecord refuses
 export function loadHistory(dirs, week) {
   const out = [];
   for (const d of [].concat(dirs || [])) {
     if (!existsSync(d)) continue;
     const walk = p => { for (const f of readdirSync(p, { withFileTypes: true })) {
       if (f.isDirectory()) walk(join(p, f.name));
-      else if (/^tune-.*\.json$/.test(f.name)) { try { const r = JSON.parse(readFileSync(join(p, f.name), 'utf8')); if (r && r.week && r.week !== week) out.push(r); } catch {} } } };
+      else if (/^tune-.*\.json$/.test(f.name)) { try { const r = JSON.parse(readFileSync(join(p, f.name), 'utf8')); if (!badRecord(r, week) && r.week !== week) out.push(r); } catch {} } } };
     walk(d);
   }
   const by = new Map(out.map(r => [r.week, r])); // one record a week, the last read
@@ -186,7 +220,7 @@ export function stopped(history) {
 // section 9.3: the change the last record kept, when tune.js still has it: its revert is measured first this week
 export function revertOf(history, flat) {
   const r = history.at(-1);
-  if (!r || r.status !== 'kept' || !r.proposal) return null;
+  if (!r || r.status !== 'kept' || !r.proposal || badRecord(r)) return null;
   const { path, from, to } = r.proposal;
   if (!(path in flat) || !same(flat[path], to) || outOfRange(path, from)) return null;
   return { path, from: to, to: from, why: `revert ${path} to ${JSON.stringify(from)}: week ${r.week} kept ${JSON.stringify(to)}`, revert: r.week };
@@ -352,7 +386,7 @@ export async function publish(o, deps = {}) {
 export async function main(argv = process.argv.slice(2), deps = {}) {
   const print = deps.print || (s => process.stdout.write(s + '\n'));
   try {
-    const { flags, rest } = parseArgs(argv, ['restart', 'dry-run'], ['tune', 'week', 'candidate', 'owner', 'date', 'history', 'record', 'candidate-out', 'runs', 'lease', 'ref', 'base']), cmd = rest[0];
+    const { flags, rest } = parseArgs(argv, ['restart', 'dry-run'], ['tune', 'week', 'candidate', 'owner', 'date', 'history', 'record', 'candidate-out', 'runs', 'lease', 'ref', 'base', 'branch', 'runs-file']), cmd = rest[0];
     const str = k => (typeof flags[k] === 'string' ? flags[k] : undefined);
     const hist = argv.flatMap((a, i) => (a === '--history' && argv[i + 1] ? [argv[i + 1]] : a.startsWith('--history=') ? [a.slice(10)] : []));
     if (cmd === 'propose') {
@@ -380,7 +414,15 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       for (const n of r.notStarted) print(`::warning::not started on ${r.branch}, run it by hand: ${n}`);
       return r.notStarted.length ? 1 : 0;
     }
-    throw new Error(`usage: tune-loop.mjs propose|check|run|publish (see the file's header)${cmd ? ` (not ${cmd})` : ''}`);
+    if (cmd === 'history-runs') {
+      // gh run list's JSON on stdin (or --runs-file), the ids of the runs whose records count, one a line
+      const branches = argv.flatMap((a, i) => (a === '--branch' && argv[i + 1] ? [argv[i + 1]] : a.startsWith('--branch=') ? [a.slice(9)] : []));
+      if (!branches.length) throw new Error('history-runs needs --branch');
+      const ids = historyRuns(JSON.parse(readFileSync(str('runs-file') || 0, 'utf8')), branches);
+      if (ids.length) print(ids.join('\n'));
+      return 0;
+    }
+    throw new Error(`usage: tune-loop.mjs propose|check|run|publish|history-runs (see the file's header)${cmd ? ` (not ${cmd})` : ''}`);
   } catch (e) {
     process.stderr.write(`tune-loop: ${e.message}\n`);
     return 2;
