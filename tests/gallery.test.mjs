@@ -378,6 +378,17 @@ test('every rendered example links back to a docs page that exists, and the site
     assert.ok(ci.includes(`python3 umlimator.py render "$m" --out "${out}" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"`), out);
 });
 
+// audit 71: an argument other than --docs-of PATH was not read, and the command wrote every generated page
+test('node tools/gallery.mjs refuses an option or argument it does not know with exit 2, and writes nothing', async () => {
+  const { spawnSync } = await import('node:child_process');
+  for (const [args, bad] of [[['--docs-off', 'examples/shapes.json'], 'option --docs-off'], [['--docs'], 'option --docs'], [['examples/shapes.json'], 'argument examples/shapes.json'],
+    [['--docs-of', 'examples/shapes.json', '--check'], 'option --check'], [['--docs-of', 'examples/shapes.json', 'x'], 'argument x']]) {
+    // a copy of the repository's tools and inputs would be needed to see a write; a refusal comes before files() is read at all
+    const r = spawnSync(process.execPath, ['tools/gallery.mjs', ...args], { cwd: new URL('.', root), encoding: 'utf8' });
+    assert.deepEqual([r.status, r.stdout, r.stderr], [2, '', `tools/gallery.mjs: unknown ${bad}; usage: node tools/gallery.mjs [--docs-of MODEL.json]\n`], String(args));
+  }
+});
+
 // node tools/gallery.mjs --docs-of with no path, a path that is not there, a folder or a file that is no model: one line
 // naming the problem and exit 1, no Node stack trace (audit 65); a model there prints its href as docsOf says
 test('node tools/gallery.mjs --docs-of with no path or a bad one says what is wrong in one line and exits 1', async () => {

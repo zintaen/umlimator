@@ -1033,7 +1033,10 @@ class Page(http.server.BaseHTTPRequestHandler):
             return self.send_error(403)
         if self.headers.get_content_type() != "application/json":  # a form on another site can't send one
             return self.send_error(415)
-        size = int(self.headers.get("Content-Length") or 0)
+        length = (self.headers.get("Content-Length") or "0").strip()
+        if not (length.isascii() and length.isdigit()):  # "abc", "-5", "+5", "1e3", "٣" (int() reads some of these): no length (audit 71)
+            return self.send_error(400)
+        size = int(length) if len(length) <= 8 else 1 << 21  # no int() of 5000 digits, which raises
         if not 0 < size <= 1 << 20:
             return self.send_error(413)
         try:

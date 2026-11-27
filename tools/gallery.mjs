@@ -291,7 +291,14 @@ const model = file => {
 
 if (isMain(import.meta.url)) {
   try {
-    if (process.argv[2] === '--docs-of') console.log(docsOf(model(process.argv[3])));
+    const args = process.argv.slice(2);
+    // anything but --docs-of PATH, or nothing, is refused before a file is written (audit 71: a mistyped --docs-of wrote every page)
+    if (args.length && (args[0] !== '--docs-of' || args.length > 2)) {
+      const extra = args[0] === '--docs-of' ? args[2] : args[0];
+      console.error(`tools/gallery.mjs: unknown ${extra.startsWith('-') ? 'option' : 'argument'} ${extra}; usage: node tools/gallery.mjs [--docs-of MODEL.json]`);
+      process.exit(2);
+    }
+    if (args[0] === '--docs-of') console.log(docsOf(model(args[1])));
     else {
       const f = files();
       for (const d of DIRS) {

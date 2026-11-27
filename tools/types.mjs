@@ -9,6 +9,8 @@
 //   node tools/types.mjs                validate and check every type's model, and render its page
 //   node tools/types.mjs uml-class ...  those types' only
 //   --no-html                           validate and check only (rendering needs python3)
+// Any other option is refused with exit 2, before anything is checked or rendered (audit 71: a mistyped --no-html rendered
+// every page named).
 // It exits 1 when a model has a validate() error, more check() issues than its entry allows, or does not match its entry
 // (tests/types.test.mjs checks the same). The pages are not committed (each is the whole module, 2.5 MB): CI's site job
 // renders them. No dependency.
@@ -71,7 +73,9 @@ export function problems(type, m = model(type), T = spec().types[type]) {
 
 if (isMain(import.meta.url)) {
   const { validate, check } = await import(new URL('lib/umlimator-all.js', ROOT).href);
-  const args = process.argv.slice(2), html = !args.includes('--no-html'), names = args.filter(a => !a.startsWith('--'));
+  const args = process.argv.slice(2), html = !args.includes('--no-html'), names = args.filter(a => !a.startsWith('-'));
+  const unknown = args.find(a => a.startsWith('-') && a !== '--no-html');
+  if (unknown !== undefined) { console.error(`tools/types.mjs: unknown option ${unknown}; usage: node tools/types.mjs [--no-html] [type ...]`); process.exit(2); }
   const S = spec(), all = typeIds(), want = names.length ? names : all;
   let bad = 0;
   for (const t of all) if (!S.types[t]) { console.error(`tools/types.json has no type ${t}`); bad++; }
@@ -93,7 +97,10 @@ if (isMain(import.meta.url)) {
     const ok = !p.length && !errs.length && issues.length <= allowed;
     if (!ok) bad++;
     console.log(`${modelPath(t)}: ${ok ? 'ok' : 'NOT ok'}, ${(m.views || []).length} views, ${issues.length} layout issues (allowed ${allowed})${T.pending ? ', pending' : ''}`);
-    if (html) execFileSync('python3', ['umlimator.py', 'render', modelPath(t), '--out', `examples/types/${t}.html`, '--no-check'], { cwd: fileURLToPath(ROOT), stdio: 'inherit' });
+    if (html) {
+      try { execFileSync('python3', ['umlimator.py', 'render', modelPath(t), '--out', `examples/types/${t}.html`, '--no-check'], { cwd: fileURLToPath(ROOT), stdio: 'inherit' }); }
+      catch (e) { console.error(`tools/types.mjs: ${t}: ${e.code === 'ENOENT' ? 'no python3 to render the page (--no-html checks only)' : `render failed (exit status ${e.status})`}`); bad++; }
+    }
   }
   process.exit(bad ? 1 : 0);
 }

@@ -144,6 +144,11 @@ for bad in ("\u00b2", "8\u00b2", "\u0668\u0660"):
     except Exception as e:  # argparse's own type error, not int()'s ValueError
         said = type(e).__name__
     ok(f"--port {bad!r} is not a port, said as a usage error (audit 70)", said == "ArgumentTypeError", said)
+for bad in ("99999999999", "9" * 400, "0", "-1", "86401", "1.5", "abc", "\u00b2", ""):  # a huge number overflowed the wait (audit 71)
+    r = run("check", "no-such-page.html", f"--timeout={bad}")
+    ok(f"check --timeout {bad[:20]!r} is one usage line before Chrome starts (audit 71)",
+       r.returncode == 2 and r.stderr.rstrip().endswith(f"argument --timeout: {bad!r} is not a number of seconds, 1 to 86400") and "Traceback" not in r.stderr, r.stderr[-300:])
+ok("check --timeout 1 and 86400 are taken (audit 71)", [u.seconds("1"), u.seconds("86400"), u.seconds("600")] == [1, 86400, 600])
 m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["web\\u0002"]}, "web\\u0002": {"image": "y", "depends_on": {"web\\u0001": {"condition": "service_started"}}}, "db": {"image": "z", "depends_on": ["web\\u0002"]}}}', "x")
 k8s = {"kind": "List", "items": [
     {"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": {"k\u0002": "b"}}},

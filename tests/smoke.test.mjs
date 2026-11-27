@@ -72,3 +72,15 @@ test('smoke: --repo must hold the released commit\'s examples', async () => {
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /^::error::smoke: example: .*--repo must be a checkout of the released commit/m);
 });
+
+// audit 71: an option it did not know was dropped, so a mistyped --no-cli ran the CLI step; it is a usage error now, before
+// anything is installed
+test('smoke: an option or argument it does not know, or --repo with no folder, is a usage error (exit 2) before anything is installed', async () => {
+  for (const [args, said] of [[['umlimator@0.0.0', '--no-clii'], 'unknown option --no-clii'], [['umlimator@0.0.0', '--repo'], '--repo takes a folder'],
+    [['umlimator@0.0.0', '--repo', '--no-cli'], '--repo takes a folder'], [['umlimator@0.0.0', 'umlimator@0.0.1'], 'unknown argument umlimator@0.0.1'],
+    [['umlimator@0.0.0', '--repo', '.', '--no-cli', '-v'], 'unknown option -v']]) {
+    const r = await smoke(...args);
+    assert.deepEqual([r.code, r.out.trim()], [2, `::error::smoke: usage: ${said}: node tools/smoke.mjs <spec> [--repo <dir>] [--no-cli]`], String(args));
+  }
+});
+
