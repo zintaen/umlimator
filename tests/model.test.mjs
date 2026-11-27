@@ -1006,3 +1006,39 @@ test('motion speed: validate() says a motion that is not an object and a speed t
   // the integration fixture has no motion field: it moves at 1x as before (the showcase test checks examples/)
   assert.equal(JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))).motion, undefined);
 });
+
+// audit cf1: a model's entries left out of a list (unreadable()) are taken out once per list, and a problem's path in the copy
+// is said as the model has it in one pass. Before: a splice per entry (quadratic: 40,000 of them 3.8 s) and back() of each
+// prefix again for each [n] (2^depth: 24 brackets 2.4 s, 40 days). Timed by growth against a quarter, CPU, best of two
+const cpuOf = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+const growth = (make, n, f) => { const q = Math.min(cpuOf(() => f(make(n / 4))), cpuOf(() => f(make(n / 4)))), ms = Math.min(cpuOf(() => f(make(n))), cpuOf(() => f(make(n)))); return [ms, q]; };
+test('audit cf1: many entries left out of one list, and a problem path deep in lists, validate and lay out in near linear time (timed)', () => {
+  const card = { id: 'a', label: 'A' }, view = { id: 'v', nodeIds: ['a'] };
+  const front = n => ({ nodes: [card], views: [view], notes: [...Array(n).fill(0).map(() => ({ toString: 1 })), ...Array(n).fill(0)] });
+  const every = n => ({ nodes: [card], views: [view], notes: Array.from({ length: 2 * n }, (_, i) => i % 2 ? 0 : { toString: 1 }) });
+  const cards = n => ({ nodes: [...Array(n).fill(0).map(() => ({ toString: 1 })), card], views: [view] });
+  for (const [name, make, f] of [['in front', front, validate], ['every other', every, validate], ['cards', cards, m => layout(m, 'v')]]) {
+    const [ms, q] = growth(make, 40000, f); // a splice each was over 20x a quarter
+    assert.ok(ms < 400 || ms / Math.max(q, 1) < 10, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`); }
+  // nested lists 4 and 26 deep, a card left out (the copy's paths go back through the model's), or an entry left out after each list
+  const plain = d => { let x = 'x\u0001'; for (let i = 0; i < d; i++) x = [x]; return { nodes: [card, { toString: 1 }], views: [view], notes: x }; };
+  const cutEach = d => { let x = 'x\u0001'; for (let i = 0; i < d; i++) x = ['y', x, { toString: 1 }]; return { nodes: [card], views: [view], notes: x }; };
+  for (const [name, make, step] of [['plain', plain, '[0]'], ['cut each', cutEach, '[1]']]) {
+    const [ms, q] = growth(make, 26, validate); // 2^26 was minutes
+    assert.ok(ms < 400 || ms / Math.max(q, 1) < 10, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+    const said = validate(make(200)).at(-1); assert.equal(said.level, 'warning'); assert.equal(said.path, 'notes' + step.repeat(200)); }
+});
+
+test('audit cf1: an entry left out of a list keeps every path as the model has it; a key a host put on a list is left out alone', () => {
+  const card = { id: 'a', label: 'A' }, view = { id: 'v', nodeIds: ['a'] }, paths = m => validate(m).map(p => `${p.level} ${p.path}`);
+  assert.deepEqual(paths({ nodes: [card], views: [view], notes: [[{ toString: 1 }, 'y', ['x\u0001']], ['z', 'x\u0001', { toString: 1 }], { toString: 1 }] }),
+    ['error notes[0][0]', 'error notes[1][2]', 'error notes[2]', 'warning notes[1][1]', 'warning notes[0][2][0]']);
+  // a list's own key whose value is left out: before, splice(NaN) took the list's first entry out with it, and card "a" was lost
+  const nodes = [card, { toString: 1 }, { id: 'b', label: 'B' }]; nodes.extra = { toString: 1 };
+  const m = { nodes, views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  assert.deepEqual(paths(m), ['error nodes[1]', 'error nodes[extra]']);
+  assert.deepEqual(layout(m, 'v').nodes.map(n => n.id).sort(), ['a', 'b']);
+  // a hole in a host's list stays a hole
+  const holes = [card, { toString: 1 }]; holes[4] = { id: 'b', label: 'B' };
+  assert.deepEqual(layout({ nodes: holes, views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v').nodes.map(n => n.id).sort(), ['a', 'b']);
+});

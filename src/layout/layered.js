@@ -1,4 +1,4 @@
-import { EDGE_BREAK, EDGE_LH, brLines, fit, linesW, sansW, textW, widest } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, brLines, fit, lastOk, linesW, sansW, textW, widest } from '../core/text.js';
 import { SHUT_BOXES, behind, detour, leaveIssues, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
@@ -547,7 +547,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     if (n.author || n.k === 'm-ext') {
       const A = (dg.authors || {})[n.author] || {}, max = n.w - 40;
       let t = n.author ? '@' + n.author : 'unknown';
-      while (t.length > 4 && sansW(t, 10, .92) + 42 > max) t = [...t].slice(0, -2).join('') + '…'; // whole characters: never half an emoji
+      // cut by whole characters (never half an emoji): the j-th cut keeps all but j + 1 of them and adds an ellipsis; the first that
+      // fits, or is 4 long or less, found by halves (a character at a time was quadratic in the author's length, audit cf1)
+      const over = x => x.length > 4 && sansW(x, 10, .92) + 42 > max;
+      if (over(t)) { const cs = [...t], cutAt = j => cs.slice(0, Math.max(0, cs.length - 1 - j)).join('') + '…';
+        t = cutAt(lastOk(1, cs.length - 1, j => over(cutAt(j))) + 1); }
       const w = Math.ceil(sansW(t, 10, .92) + 42);
       n.tag = { x: n.x + n.w - 12 - w, y: n.y + n.h - 9, w, h: 22, text: t, img: A.avatar || '', name: A.name || '' };
       n.decoB.push([n.tag.x - 2, n.tag.w + 4]);
