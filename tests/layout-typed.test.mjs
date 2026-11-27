@@ -1,7 +1,7 @@
 // A typed view's layout (work package 1.4), at the layout's level: nodes carry their sizes, as shapes will give them (1.5)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutGraph, hit } from '../src/layout/layered.js';
+import { layoutGraph, hit, LABEL_TRIES, LABEL_CAP } from '../src/layout/layered.js';
 import { readFileSync } from 'node:fs';
 import { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped } from '../src/typed/layout.js';
 import { routeAudit, overlapIssues } from '../src/layout/audit.js';
@@ -351,4 +351,21 @@ test('audit 24: a sequence, timing or mindmap view named as a card with three li
   const outs = new Map(); atlas.edges.forEach(e => v.nodeIds.includes(e.from) && outs.set(e.from, (outs.get(e.from) || 0) + 1));
   const top = [...outs].sort((a, b) => b[1] - a[1])[0][0]; atlas.views.forEach(x => { if (x.parent === v.id) x.parent = top; }); v.id = top;
   assert.ok(L.layout(atlas, top).nodes.length > 0, `unlock-sequence renamed ${top}`);
+});
+
+// audit 71 findings 0 and 6: placeLabel's search with a nearby label moved to each of its other spots is counted over a layout
+// pass (ms.moves) and stops at LABEL_TRIES (200), where it had no bound. No real view reaches 200 (29 the most of any test,
+// example or bench view), so the view below, which takes 8, is laid out again with a bound of 3 in its place (LABEL_CAP, read
+// by the same code): it stops at 3, every label still drawn, and the view under the real bound is laid out as with none
+test('moved-label searches stop at their bound', () => {
+  let s = 4 * 7919 + 3; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const nodes = [0, 1].flatMap(c => [0, 1, 2].map(r => ({ id: `n${c}_${r}`, label: `Node ${c} ${r}`, col: c, row: r, w: 140, h: 64 }))), edges = [];
+  for (let k = 0; k < 24; k++) { const a = nodes[Math.floor(rnd() * 6)], b = nodes[Math.floor(rnd() * 6)]; if (a !== b) edges.push({ id: 'e' + k, from: a.id, to: b.id, label: 'label number ' + k }); }
+  const dg = { nodeH: 64, nodes, edges }, geo = g => JSON.stringify(g.edges.map(e => [e.id, e.pts, e.lbl]));
+  assert.equal(LABEL_TRIES, 200);
+  const free = layoutGraph({ ...dg, [LABEL_CAP]: Infinity }, true), real = layoutGraph(dg, true), capped = layoutGraph({ ...dg, [LABEL_CAP]: 3 }, true);
+  assert.equal(free.ms.moves, 8);
+  assert.equal(real.ms.moves, 8); assert.equal(geo(real), geo(free));
+  assert.equal(capped.ms.moves, 3);
+  assert.equal(capped.edges.filter(e => e.label && !e.lbl).length, 0);
 });
