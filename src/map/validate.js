@@ -62,10 +62,8 @@ function arrangeProblems(m, views, warn) {
     const T = m.schemaVersion === 2 && v.diagram != null && v.diagram !== 'map' && diagramOf(v), L = T && T.layout;
     if (L && typeof L === 'object' && L.pins === false) return warn(at + '.arrange', `a ${v.diagram} view lays out on its own axis and does not rank its elements: arrange "flow" changes nothing`);
     // a type with neither flowRole nor zoneOf (class, ER, component and the other structure types, layout-flow.md section 5.1)
-    // reads no main flow and no zone: the view lays out as without arrange (audit 66). A state machine and a communication
-    // view draw behaviour (their type says behaviour: true), yet read no main flow either: the warning says that, not structure (audit 68)
-    if (T && typeof T.flowRole !== 'function' && typeof T.zoneOf !== 'function') return warn(at + '.arrange', T.behaviour
-      ? `${v.diagram} draws behaviour with no main flow to read: arrange "flow" changes nothing` : `${v.diagram} draws structure, not a flow: arrange "flow" changes nothing`);
+    // reads no main flow and no zone: the view lays out as without arrange (audit 66)
+    if (T && typeof T.flowRole !== 'function' && typeof T.zoneOf !== 'function') return warn(at + '.arrange', `${v.diagram} draws structure, not a flow: arrange "flow" changes nothing`);
     // the lines the view draws, as the layout reads them (context.js viewEdges): its list, else every model line between its cards and boxes
     const ids = new Set([...arr(v.nodeIds), ...arr(v.containers).map(c => c && c.id)]), once = new Set();
     const lines = (Array.isArray(v.edges) ? v.edges.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? byId.get(e) : e) : arr(m.edges))
