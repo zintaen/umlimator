@@ -52,7 +52,7 @@ Layout limits, measured on `examples/bookshop-schema.json` and `tests/er-stress.
 - The example lays out clean right and down in both notations: `check()` finds nothing.
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view and its IDEF1X copy are clean both ways, one
   geometry (laid out down, "places" found no spot and was left off with nothing said before audit 6: drawn now). Its
-  generated `all` view (50 entities, 60 relationships) crosses 17 times laid out right and 19 times down (25 before audit 32 placed
+  generated `all` view (50 entities, 60 relationships) crosses 17 times laid out right and 18 times down (19 till audit 73 put a late label on a spot clear of the other lines first; 25 before audit 32 placed
   again a label a later line ran across, the view laid out with room for it), with no label on a line (two down, one of them left off before audit 6, till audit 62 routed the lines under a label left on them again round it, for one crossing more); no line runs through a node, no label lies over one.
 - A row longer than the entity's width is cut with an ellipsis; its whole text is in the entity's accessible name,
   `describe()` and the PDF's rows.

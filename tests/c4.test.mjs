@@ -119,7 +119,7 @@ test('the element (§7.5): the shape props.shape names (a person by default, els
 });
 
 test('23-c4.json\'s static views draw: people and boxes, external grey, the subject a dashed boundary; laid out right and down with no overlap, no line through a node, ends on outlines; the crossings pinned', () => {
-  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross', '6 label on a line'], // five labels left off with nothing said, laid out down: now drawn (audit 6); 8 on a line till a label beside its line kept off the boundary's border (audit 25)
+  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross', '3 label on a line'], // five labels left off with nothing said, laid out down: now drawn (audit 6); 8 on a line till a label beside its line kept off the boundary's border (audit 25), 6 till a late label took a spot clear of the other lines first (audit 73)
     'c4-components right': ['2 cross'], 'c4-components down': ['2 cross'] }, got = {};
   for (const vid of STATIC) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
