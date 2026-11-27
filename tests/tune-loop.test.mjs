@@ -73,6 +73,54 @@ test('tune-loop: two weeks with nothing kept stop the loop, and a change kept la
   assert.equal(L.revertOf([{ ...kept, proposal: { path: 'FAN_IN', from: 6, to: 7 } }], flat), null); // not merged: tune.js does not have it
 });
 
+// audit bh1 8: the records come from other runs' artifacts, so a record of another shape, a later week or a value out of
+// range is not read, and only the loop's own runs (schedule, workflow_dispatch on the loop's branches) supply them
+test('tune-loop: history is read only from records run() could have written, for earlier weeks, from the loop\'s own runs', async () => {
+  const hist = tmp(), put = (dir, name, r) => { mkdirSync(join(hist, dir), { recursive: true }); writeFileSync(join(hist, dir, name), typeof r === 'string' ? r : JSON.stringify(r)); };
+  const good = [{ week: '2026-W45', status: 'nothing-kept', proposal: { path: 'FAN_IN', from: 5, to: 6 } }, { week: '2026-W46', status: 'refused', proposal: null },
+    { week: '2026-W47', status: 'kept', proposal: { path: 'BARY_SWEEPS', from: 8, to: 9, why: 'x' } }];
+  good.forEach((r, i) => put(String(100 + i), `tune-${r.week}.json`, r));
+  const bad = [
+    { week: '9999-W99', status: 'nothing-kept' }, { week: '2026-W48', status: 'nothing-kept' }, // this week and a later one
+    { week: '2026-W47 [notes](https://evil.example) #1', status: 'kept', proposal: { path: 'BARY_SWEEPS', from: 14, to: 8 } },
+    { week: '2026-W44', status: 'merged' }, { week: '2026-W44', status: 'kept' }, { week: 202644, status: 'stopped' },
+    { week: '2026-W43', status: 'kept', proposal: { path: 'FLOW_MIN', from: 3, to: 4 } }, { week: '2026-W43', status: 'kept', proposal: { path: 'BARY_SWEEPS', from: 8, to: 99 } },
+    { week: '2026-W43', status: 'kept', proposal: { path: '__proto__', from: 1, to: 2 } }, { week: '2026-W43', status: 'kept', proposal: 'BARY_SWEEPS' }, [], null,
+  ];
+  bad.forEach((r, i) => put(String(200 + i), `tune-x${i}.json`, r));
+  put('300', 'tune-broken.json', '{ not json');
+  assert.deepEqual(L.loadHistory([hist], '2026-W48'), good);
+  for (const r of bad) assert.ok(L.badRecord(r, '2026-W48'), JSON.stringify(r));
+  for (const r of good) assert.equal(L.badRecord(r, '2026-W48'), null);
+  // the repro of the audit: two forged nothing-kept weeks after the real ones no longer stop the loop, and a forged kept
+  // record no longer picks the revert or writes its week into the pull request
+  put('400', 'tune-2026-W49.json', { week: '2026-W49', status: 'nothing-kept' }); put('401', 'tune-2026-W50.json', { week: '2026-W50', status: 'nothing-kept' });
+  const h = L.loadHistory([hist], '2026-W48'), flat = L.flatten(await L.valuesOf(TUNE));
+  assert.equal(L.stopped(h), false);
+  assert.equal(L.revertOf(h, flat), null); // the last real record kept BARY_SWEEPS 9, which tune.js does not have
+  const forged = { week: '2026-W47 [notes](https://evil.example) #1', status: 'kept', proposal: { path: 'FAN_IN', from: flat.FAN_IN, to: flat.FAN_IN } };
+  assert.equal(L.revertOf([forged], flat), null); // revertOf reads only a record of the shape run() writes, history or not
+  // the run list: only the loop's own successful runs on its branches
+  const runs = [
+    { databaseId: 1, conclusion: 'success', event: 'schedule', headBranch: 'main' },
+    { databaseId: 2, conclusion: 'success', event: 'workflow_dispatch', headBranch: 'audit-loop' },
+    { databaseId: 3, conclusion: 'success', event: 'pull_request', headBranch: 'main' },
+    { databaseId: 4, conclusion: 'success', event: 'pull_request_target', headBranch: 'audit-loop' },
+    { databaseId: 5, conclusion: 'success', event: 'workflow_dispatch', headBranch: 'evil' },
+    { databaseId: 6, conclusion: 'failure', event: 'schedule', headBranch: 'main' },
+    { databaseId: 7, conclusion: 'success', event: 'push', headBranch: 'main' },
+    { databaseId: '8; rm -rf /', conclusion: 'success', event: 'schedule', headBranch: 'main' },
+    null,
+  ];
+  assert.deepEqual(L.historyRuns(runs, ['main', 'audit-loop']), ['1', '2']);
+  assert.deepEqual(L.historyRuns(runs, ['audit-loop']), ['2']);
+  assert.deepEqual(L.historyRuns({ not: 'a list' }, ['main']), []);
+  const f = join(tmp(), 'runs.json'); writeFileSync(f, JSON.stringify(runs));
+  const out = []; assert.equal(await L.main(['history-runs', '--runs-file', f, '--branch', 'main', '--branch', 'audit-loop'], { print: s => out.push(s) }), 0);
+  assert.deepEqual(out, ['1\n2']);
+  assert.equal(await L.main(['history-runs', '--runs-file', f], { print: () => {} }), 2);
+});
+
 // a fake repository: tune.js and lib/, with a fake build, scorer, git and gh
 function fakeRepo({ fixed = corpus(98, 100), edits = corpus(10, 10), heldout = corpus(50, 50), failRun = [] } = {}) {
   const root = tmp(); mkdirSync(join(root, 'src/layout'), { recursive: true }); mkdirSync(join(root, 'lib'));
