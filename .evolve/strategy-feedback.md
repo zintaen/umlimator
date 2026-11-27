@@ -213,6 +213,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: origin/fixcf1-xss 4861b375, origin/fixcf1-perf 1e759b9d, no origin/fixcf1-tools; audit-loop merge 27a7c869; handoff log, 28 Nov 2026, fix round cf1 combine.
 - Proposed change: Carry out F20's proposals (no lane returns while a suite it started is running; an owner for an unpushed lane; one scratchpad subfolder per lane, named after its branch, and nothing deleted outside it). In C9, list the environment a project's gate needs for its optional tools (here UMLIMATOR_BPMN_MODDLE pointing at a scratch `npm install --no-save bpmn-moddle`) next to the gate commands, so baseline and final counts have no skips that CI would run.
 
+### F22. Two combine steps shared the integration worktree at once, and one moved audit-loop under the other's baseline gate
+
+- Date: 2026-11-28
+- Round: fix round 75 (combine)
+- Rule: C4 step 4, A3.4 (step 1, the baseline; step 5, push), C9 (one heavy suite at a time), and F10 again
+- What happened: The round 75 combine fast-forwarded the integration worktree to audit-loop 418f50e5 and started its baseline gate there. While its tests/cli.py run was going, the fix round cf1 combine, started separately, merged fixcf1-xss and fixcf1-perf in the same worktree (27a7c869), left its strategy-feedback entry uncommitted there, ran its own gate in that worktree next to the round 75 one, and pushed 830ad70a. So the round 75 baseline's Python, docs and site runs read a tree that changed under them, and two heavy suites ran side by side. The round 75 combine saw the foreign uncommitted file, waited for the cf1 push, took 830ad70a as its baseline and ran the whole gate again, which cost one more full gate (about 35 minutes). A third combine (bh1) was running its suites in another worktree at the same time. Nothing in the strategy says that only one combine may hold the integration worktree, or how a combine learns that another one is running. All three round 75 lanes again appended to docs/module-api.md's unreleased list, so each of the three merges conflicted there and was resolved by keeping both sides (F10 again); their edits to the section's opening line were the same change and merged cleanly.
+- Evidence: audit-loop 27a7c869 and 830ad70a (cf1 combine) inside the round 75 combine's baseline run, round 75 merges 5cd67a63, fa255dd4 and 69937cf8; handoff log, 28 Nov 2026, fix round 75 combine.
+- Proposed change: In A3.4, a combine takes a lock before step 1 (for example a file in the integration worktree's git directory naming the round and the time, made with an atomic create) and holds it until it has pushed; another combine that finds it waits, or merges in its own worktree and pushes only after a fresh fetch and merge of origin/audit-loop, with its baseline taken after that merge. In C9, the orchestrator runs one combine at a time, since every combine's gate is a heavy suite. For F10, the combine step alone appends the lanes' changelog lines, from each lane note's Summary, so lanes stop editing that list.
+
 ## Closed
 
 None.
