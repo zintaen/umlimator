@@ -492,6 +492,19 @@ test('audit 60: module-api.md\'s section after 0.44.0 names the behaviour change
   assert.match(rel, /Diagrams \(the map and the 28 types\)/);
 });
 
+// audit 68: the opening of the section after the last release said "the fixes of audits 63 and 64" while its lines went
+// on to audits 65 to 67, and the audit 64 test above accepted any "63 and": the opening names 63 to the last round tagged
+test('audit 68: module-api.md\'s section after the last release opens with every round it holds, up to the last', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8');
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  const from = doc.indexOf('\n## ', doc.indexOf(`\n## ${version}:`) + 4), end = doc.indexOf('\n## ', from + 4);
+  const after = doc.slice(from, end > 0 ? end : undefined), lines = after.split('\n');
+  const open = lines.find(l => /^These changes come after/.test(l)), rest = lines.filter(l => l !== open).join('\n');
+  const rounds = [...rest.matchAll(/\baudits? (\d+(?:(?:, | and | to )\d+)*)/g)].flatMap(m => m[1].match(/\d+/g).map(Number)), last = Math.max(...rounds);
+  assert.ok(open && last >= 67, 'an opening paragraph and the rounds named');
+  assert.match(open, new RegExp(`They are the fixes of audits 63 to ${last}, `), `the opening names audits 63 to ${last}`);
+});
+
 // audit 64 finding 9: round 63's fixes landed after 0.45.0 was cut (from 9b836c1e) with no line in the release notes, and
 // 0.45.0's Known gaps list them as open: the section after the last release names each change a host sees and closes them
 test('audit 64: module-api.md\'s section after the last release names round 63\'s changes and closes 0.45.0\'s open audit 63 items', () => {
@@ -502,7 +515,7 @@ test('audit 64: module-api.md\'s section after the last release names round 63\'
   assert.ok(from > 0, `a section after ${version}`);
   const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined).replace(/\s+/g, ' ');
   assert.match(after, new RegExp(`^ ## After ${version.replace(/\./g, '\\.')}: changes not yet released`));
-  for (const [what, re] of [['the audits it holds', /They are the fixes of audits 63 and/], ['0.45.0\'s open items closed', /Audit 63's 5 low findings, open in 0\.45\.0 \(its Known gaps\), are closed/],
+  for (const [what, re] of [['the audits it holds', /They are the fixes of audits 63 to \d+,/], ['0.45.0\'s open items closed', /Audit 63's 5 low findings, open in 0\.45\.0 \(its Known gaps\), are closed/],
     ['the BPMN boundary event on a host not read', /boundary event whose host the reader does not read[^.]*kept whole under `ext\.bpmn\.skipped`/],
     ['the Ingress resource backend', /Ingress resource backend is said as a resource backend/], ['the v1beta1 spec.backend', /`extensions\/v1beta1` `spec\.backend` is read as the default route/],
     ['the use case actor\'s Alt + arrow', /Alt \+ an arrow along the rank axis on an actor[^.]*emits nothing/], ['keepsRank', /`keepsRank\(model, view, id\)`/],
