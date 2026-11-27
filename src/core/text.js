@@ -85,8 +85,8 @@ const lastOk = (lo, hi, ok) => { let r = lo - 1; while (lo <= hi) { const m = (l
    no word wider than max gives its words as before */
 const WB_IDEO = /[\u1100-\u11FF\u2E80-\u2FDF\u3005-\u3007\u3021-\u3029\u3031-\u303C\u3040-\u30FF\u3105-\u312F\u3131-\u318E\u31A0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFF66-\uFF9F]|[\uD840-\uD87F][\uDC00-\uDFFF]/;
 const WB_NOSTART = /^[\p{Pe}\p{Pf}\p{Po}\p{M}\u200D\uFE0F\u30FC\u3005\u309D\u309E\u30FD\u30FEぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶ\u31F0-\u31FF]/u, WB_NOEND = /[\p{Ps}\p{Pi}\u200D"]$/u;
-let WB_SEG; // a grapheme splitter, made once: Intl.Segmenter where the host has it, code points where not
-const wbGraphemes = w => { if (WB_SEG === undefined) WB_SEG = typeof Intl === 'object' && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+let WB_SEG; // a grapheme splitter, made once: Intl.Segmenter where the host has it (in one fixed locale, not the host's), code points where not
+const wbGraphemes = w => { if (WB_SEG === undefined) WB_SEG = typeof Intl === 'object' && Intl.Segmenter ? new Intl.Segmenter('en', { granularity: 'grapheme' }) : null;
   return WB_SEG ? Array.from(WB_SEG.segment(w), x => x.segment) : Array.from(w); };
 // w's pieces, a break allowed between two where brk(previous, next) holds and next may open a line and the piece before may end one
 const wbSplit = (w, brk) => { const out = []; let cur = '', prev = '';
