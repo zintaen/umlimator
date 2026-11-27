@@ -1015,3 +1015,44 @@ test('audit 71: regions never overlap, a region with three labelled transitions 
       check(m, 'v').filter(p => / overlap$| lies over /.test(p.message)).forEach(p => bad.push(`#${it} ${direction}: ${p.message}`)); } }
   assert.deepEqual(bad, []);
 });
+
+// audit 72: audit 71's rule covered only boxes of one parent. Laid out down, two top-level composite states side by side,
+// the first with two labelled transitions between the same two states, fanned out across the pair: its box grew over the
+// second composite's cards and took them (a box with no parent took any card it lay over), and the two overlapped. So did two
+// regions when each held a nested composite: the card's own box was the nested one, not a box beside the region. A typed box
+// now holds no card of any box on whose chain a box beside it lies, at any depth and at the top level too
+test('audit 72: composite states and regions never overlap, at the top level and nested two and three deep, laid out each way', () => {
+  const T3 = (id, from, to, props = {}) => ({ id, type: 'uml.Transition', from, to, props });
+  const st = (id, label, parent, members) => ({ id, type: 'uml.State', label, ...(parent && { parent }), ...(members && { members }) });
+  const init = (id, parent) => ({ id, type: 'uml.Pseudostate', parent, props: { kind: 'initial' } });
+  const views = (nodes, direction) => [{ id: 'v', diagram: 'uml.state-machine', title: 'U', nodeIds: nodes.map(n => n.id), ...(direction && { direction }) }];
+  const clean = (nodes, edges, what) => { for (const direction of [undefined, 'down', 'right', 'up', 'left'])
+    assert.deepEqual(check({ schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: views(nodes, direction) }, 'v').map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${what} ${direction}`); };
+  // two top-level composites
+  const top = [st('ordering', 'Ordering'), init('oi', 'ordering'), st('waiting', 'Waiting', 'ordering'), st('cancelled', 'Cancelled', 'ordering'),
+    st('shipping', 'Shipping'), init('si', 'shipping'), st('packing', 'Packing', 'shipping')];
+  clean(top, [T3('t1', 'oi', 'waiting'), T3('t2', 'waiting', 'cancelled', { trigger: 'timeout', guard: 'unpaid', effect: 'notify' }), T3('t3', 'waiting', 'cancelled', { trigger: 'cancel requested', effect: 'log it' }), T3('t4', 'si', 'packing')], 'top level');
+  // two regions, each holding a composite with regions of its own
+  const R = (id, label) => ({ id, type: 'uml.Region', label });
+  const nested = [st('order', 'Order', null, [R('order.pay', 'Payment'), R('order.ship', 'Fulfilment')]), st('waiting', 'Waiting', 'order.pay'),
+    st('auth', 'Authorising', 'order.pay', [R('auth.card', 'Card'), R('auth.fraud', 'Fraud check')]), st('charging', 'Charging', 'auth.card'), st('scoring', 'Scoring', 'auth.fraud'),
+    st('shipping', 'Shipping', 'order.ship', [R('shipping.main', 'Main')]), init('ship-start', 'shipping.main')];
+  clean(nested, [T3('t1', 'waiting', 'auth', { trigger: 'pay' })], 'nested regions');
+  // generated: composites of two or three regions, nested up to three deep, one to three of them at the top level
+  let seed = 9; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, pick = a => a[Math.floor(rnd() * a.length)], bad = [];
+  const labs = [{}, { trigger: 'timeout', guard: 'ok' }, { trigger: 'timeout', guard: 'ok', effect: 'act' }, { trigger: 'go' }, { trigger: 'a longer trigger name', effect: 'log it' }];
+  for (let it = 0; it < 30; it++) {
+    const ns = [], es = []; let c = 0, sid = 0;
+    const comp = (parent, depth, regions) => { const id = 'c' + sid++, k = regions ? 2 + Math.floor(rnd() * 2) : 0;
+      ns.push(st(id, 'Comp ' + id, parent, k ? [...Array(k)].map((_, i) => R(id + '.r' + i, 'R' + i)) : undefined));
+      for (const box of k ? [...Array(k)].map((_, i) => id + '.r' + i) : [id]) { const xs = [];
+        if (rnd() < 0.6) { const i = 'i' + sid++; ns.push(init(i, box)); xs.push(i); }
+        for (let q = 1 + Math.floor(rnd() * 3); q > 0; q--) xs.push(depth < 2 && rnd() < 0.3 ? comp(box, depth + 1, rnd() < 0.7) : (ns.push(st('x' + sid, 'State x' + sid, box)), 'x' + sid++));
+        if (xs.length > 1 && xs[0][0] === 'i') es.push(T3('e' + c++, xs[0], xs[1]));
+        const ss = xs.filter(x => x[0] !== 'i'); for (let q = Math.floor(rnd() * 4); q > 0 && ss.length > 1; q--) { const a = pick(ss), b = pick(ss.filter(x => x !== a)); es.push(T3('e' + c++, a, b, { ...pick(labs) })); } }
+      return id; };
+    for (let q = 1 + Math.floor(rnd() * 3); q > 0; q--) comp(null, 0, rnd() < 0.6);
+    for (const direction of ['down', 'right']) { const m = { schemaVersion: 2, title: 't', root: 'v', nodes: ns, edges: es, views: views(ns, direction) };
+      check(m, 'v').filter(p => / overlap$| lies over /.test(p.message)).forEach(p => bad.push(`#${it} ${direction}: ${p.message}`)); } }
+  assert.deepEqual(bad, []);
+});
