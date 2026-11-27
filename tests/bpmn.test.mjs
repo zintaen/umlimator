@@ -1068,6 +1068,18 @@ test('audit 55: 150 sequence flows into one gateway lay out in about linear time
   assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 150, 'every flow drawn');
 });
 
+// audit 70: a long process was cubic in its tasks: the repair passes asked routeAudit about one line at a time, and each ask
+// still walked every pair of lines (1,000 tasks 6.6 s, 2,000 47 s). Timed by growth against a quarter, the quarter's best of two
+test('a process of 1,000 tasks in a row lays out in near-quadratic time (audit 70) (timed)', () => {
+  const make = n => { const nodes = [N('p', 'Participant', 'Shop'), N('s', 'StartEvent', 'Start', { parent: 'p' }), N('e', 'EndEvent', 'End', { parent: 'p' })], edges = [];
+    for (let i = 0, prev = 's'; i <= n; prev = 't' + i, i++) { if (i < n) nodes.push(N('t' + i, 'Task', 'Task ' + i, { parent: 'p' })); edges.push({ id: 'f' + i, type: 'bpmn.SequenceFlow', from: prev, to: i < n ? 't' + i : 'e' }); }
+    return one(nodes, edges); };
+  const time = m => { const t = performance.now(), g = layout(m, 'v'); return [performance.now() - t, g]; };
+  const q = Math.min(time(make(250))[0], time(make(250))[0]), [ms, g] = time(make(1000)); // cubic was about 40x a quarter, here about 10x
+  assert.ok(ms < 300 || ms / Math.max(q, 1) < 25, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 1001, 'every flow drawn');
+});
+
 test('a boundary event on an activity one view alone holds lives in that view too; Delete of such an activity deletes its events and says so (audit 58)', () => {
   const E = T.edits, be = T.elements.find(e => e.type === 'bpmn.BoundaryEvent');
   let m = apply(EX, [{ op: 'add', element: N('own-t', 'Task', 'Own task', { parent: 'bp-sales' }), view: VID, in: 'view' }]);

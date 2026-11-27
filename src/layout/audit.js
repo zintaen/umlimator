@@ -29,7 +29,6 @@ const segIn = (a, b, r) => { if (!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], 
   for (const [p, q] of [[-dx, a[0] - r.x], [dx, r.x + r.w - a[0]], [-dy, a[1] - r.y], [dy, r.y + r.h - a[1]]]) { const t = q / p; if (p < 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t); }
   return t0 < t1; };
 function routeAudit(geo, where, only, refs) { // only: a set of edges; counts just the issues that involve one of them
-  const sk = e => only && !only.has(e);
   const issues = [], say = teller(issues, refs);
   // routes: no crossings, no shared runs, no label lying across another route
   const segs = geo.edges.map(e => e.pts.slice(0, -1).map((a, i) => [a, e.pts[i + 1]]));
@@ -46,16 +45,22 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
     const inV = y > Math.min(v[0][1], v[1][1]) + .5 && y < Math.max(v[0][1], v[1][1]) - .5, inH = x > Math.min(hz[0][0], hz[1][0]) + .5 && x < Math.max(hz[0][0], hz[1][0]) - .5;
     return inV && inH ? 'cross' : null;
   };
-  for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
-    if (geo.edges[i].fixed && geo.edges[j].fixed) continue; // one comb: its branches share the trunk by design
-    if (sk(geo.edges[i]) && sk(geo.edges[j])) continue;
+  const pair = (i, j) => {
+    if (geo.edges[i].fixed && geo.edges[j].fixed) return; // one comb: its branches share the trunk by design
     let found = null;
     for (const s1 of segs[i]) { for (const s2 of segs[j]) { found = crossing(s1, s2); if (found) break; } if (found) break; }
     if (found === 'cross') say(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} cross`, geo.edges[i], geo.edges[j]);
     if (found === 'share') say(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} share a line`, geo.edges[i], geo.edges[j]);
-  }
+  };
+  // with `only` (its lines' indexes O, in order), just the pairs with an end in it, each once and in the order the full walk
+  // meets them: O(|only| x lines) a call, not every pair (audit 70: the repair passes ask once a line, so a 1,000-step chain was cubic)
+  const E = segs.length, O = only && geo.edges.flatMap((e, i) => only.has(e) ? [i] : []), inO = O && new Set(O);
+  if (!O) { for (let i = 0; i < E; i++) for (let j = i + 1; j < E; j++) pair(i, j); }
+  else { const ks = new Set(); for (const i of O) for (let j = 0; j < E; j++) if (j !== i) ks.add(i < j ? i * E + j : j * E + i);
+    [...ks].sort((a, b) => a - b).forEach(k => pair(Math.floor(k / E), k % E)); }
   geo.edges.forEach((e, i) => { if (!e.lbl) return; const L = { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 };
-    geo.edges.forEach((o, j) => { if (j !== i && !(sk(e) && sk(o)) && segs[j].some(([a, b]) => segIn(a, b, L))) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`, e, o); }); });
+    const on = j => { if (j !== i && segs[j].some(([a, b]) => segIn(a, b, L))) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(geo.edges[j])}`, e, geo.edges[j]); };
+    if (!O || inO.has(i)) for (let j = 0; j < E; j++) on(j); else O.forEach(on); });
   const segHit = (r, i) => segs[i].some(([a, b]) => segIn(a, b, r));
   if (geo.map) {
     const ex = 12, drawn = new Set(geo.edges.map(e => e.from + '>' + e.to)); // A→B and B→A both drawn: a pair the view keeps apart
