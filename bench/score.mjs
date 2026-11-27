@@ -87,7 +87,7 @@ function editPair(L, p) {
 }
 
 const results = {}, base = {}, problems = [];
-const cols = ['hard', 'cross', 'labels', 'straight', 'reverse', ...(edits ? ['moved'] : [])];
+const cols = ['hard', 'cross', 'through', 'labels', 'straight', 'reverse', ...(edits ? ['moved'] : [])];
 const show = v => v == null ? '-' : String(v);
 const row = (key, r, b) => { if (!secret) console.log(`${key.padEnd(52)} ${String(r.nodes).padStart(3)} ${String(r.edges).padStart(4)} ${cols.map(c => show(r[c]).padStart(6)).join('')} ${r.score.toFixed(2).padStart(10)} ${r.ms.toFixed(1).padStart(8)}`
   + (b ? `   base ${b.score.toFixed(2)} ${b.ms.toFixed(1)} ms` : '')); };
@@ -128,8 +128,8 @@ else for (const [path, stem] of files) {
 const keys = Object.keys(results);
 if (!keys.length) fail(`score.mjs: no view matches ${want.join(',') || 'the corpus'}`);
 const sum = (R, k, ks = keys) => Math.round(ks.reduce((a, x) => a + (R[x][k] || 0), 0) * 100) / 100;
-const total = { views: keys.length, score: sum(results, 'score'), hard: sum(results, 'hard'), cross: sum(results, 'cross'), labels: sum(results, 'labels'), ms: sum(results, 'ms') };
-console.log(`total: ${total.views} ${edits ? 'pairs' : 'views'}, score ${total.score.toFixed(2)}, hard ${total.hard}, cross ${total.cross}, labels ${total.labels}, ${total.ms.toFixed(1)} ms`);
+const total = { views: keys.length, score: sum(results, 'score'), hard: sum(results, 'hard'), cross: sum(results, 'cross'), through: sum(results, 'through'), labels: sum(results, 'labels'), ms: sum(results, 'ms') };
+console.log(`total: ${total.views} ${edits ? 'pairs' : 'views'}, score ${total.score.toFixed(2)}, hard ${total.hard}, cross ${total.cross}, through ${total.through}, labels ${total.labels}, ${total.ms.toFixed(1)} ms`);
 // section 8.4's targets for the edit corpus, reported: moved of untouched cards is 0 in at least 95 percent of pairs, and
 // no pair draws more hard issues than the same edit laid out fresh
 let targets = null;

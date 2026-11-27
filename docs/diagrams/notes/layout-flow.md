@@ -91,13 +91,14 @@ Each is computed per view from the finished geometry `g` (as `buildGeo` returns 
 |---|---|---|
 | `hard` | Lines through cards, lines sharing a line, cards or boxes over each other, a box over a card it does not hold (`throughIssues`, `routeAudit`'s "share a line", `overlapIssues`, `boxClash`) | 0 |
 | `cross` | Pairs of lines that cross (`routeAudit`'s "cross") | low |
+| `through` | On a view whose layout runs the box pass (class, component, deployment, cloud, requirement and C4 views): each line that runs through a box holding neither of its ends (`boxThroughIssues`, what `check()` says with `throughBoxes`); other views: not counted. Weighted as a crossing (decision D17) | 0 |
 | `labels` | Labels on another line, on a box border, with no room, cut to their step, or not drawn | 0 |
 | `straight` | For a view with a main flow: the number of distinct rows its cards use minus one, times 2, plus the corners on main-flow lines (route points past the two ends). Views without one: not counted | 0 |
 | `reverse` | Flow lines (not `dep`, not lines that close a loop) whose route has a stretch more than 8 px against the reading direction (right, or down when turned), plus main-flow cards whose centre is not past the one before | 0 |
 | `moved` | For an edit pair (section 4.3): the share of cards present before and after, and not touched by the edit, whose cell changed; and their mean shift in cells | 0 |
 | `ms` | The layout's median time over 5 runs, as a ratio to the base commit measured in the same job, and its absolute median against the view's budget | at most 1.10, within budget |
 
-The score of a view is one number, lower better: `1000 * hard + 100 * cross + 60 * labels + 40 * reverse + 30 * straight + 200 * moved + scoreGeo's length, corner and area terms`. The weights live in `bench/score-weights.json`, which only the maintainer changes; the tuning loop (section 9) may not. Time is a gate, not a term: a candidate that puts any view over its budget, or the corpus over 1.10 times the base, fails whatever its score. Budgets: the existing `--max-ms` values (m50 within 1000 ms), and 1.5 s for the C4 examples.
+The score of a view is one number, lower better: `1000 * hard + 100 * cross + 100 * through + 60 * labels + 40 * reverse + 30 * straight + 200 * moved + scoreGeo's length, corner and area terms`. The weights live in `bench/score-weights.json`, which only the maintainer changes; the tuning loop (section 9) may not. `through` was added by the maintainer on 27 Nov 2026 (`.evolve/decisions.md` D17), so a layout that routes a line round a box it has no end in is not scored worse for the longer line alone. Time is a gate, not a term: a candidate that puts any view over its budget, or the corpus over 1.10 times the base, fails whatever its score. Budgets: the existing `--max-ms` values (m50 within 1000 ms), and 1.5 s for the C4 examples.
 
 ### 4.2 The bench mode
 

@@ -173,6 +173,13 @@ function boxThroughIssues(geo, where, refs) {
         say(`${where}: edge ${name(e)} runs through box "${nm(f)}", which holds neither of its ends`, e, f); }); });
   return issues;
 }
+// the view types whose layout runs that box pass (dg.shutBoxes: class, component, deployment, cloud, requirement and C4): the
+// layout score's through term (src/layout/score.js, decision D17) and the stability guard count boxThroughIssues on these, read
+// by type and not by SHUT_BOXES, so a geometry laid out by a lib with no such mark (the bench's base) is counted the same
+const BOX_PASS_TYPES = new Set(['uml.class', 'uml.component', 'uml.deployment', 'aws', 'gcp', 'azure', 'sysml.requirement']);
+const boxPassType = d => BOX_PASS_TYPES.has(d) || typeof d === 'string' && d.startsWith('c4.');
+// the lines through a box that hold neither end on a view of such a type (the score's through), else null
+const throughBoxes = (geo, d) => boxPassType(d) && !geo.map ? boxThroughIssues({ ...geo, [SHUT_BOXES]: true }, '').length : null;
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
   // a labelled line, on a map or a typed view, whose label found no spot at all: not drawn, so said (audit 6). A numbered
@@ -224,4 +231,4 @@ function auditSvg(svg, geo, where) {
   return issues;
 }
 
-export { SHUT_BOXES, onBorder, detour, behind, boxClash, boxThroughIssues, routeAudit, overlapIssues, throughIssues, leaveIssues };
+export { SHUT_BOXES, boxPassType, throughBoxes, onBorder, detour, behind, boxClash, boxThroughIssues, routeAudit, overlapIssues, throughIssues, leaveIssues };

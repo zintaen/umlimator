@@ -23,6 +23,23 @@ test('score: two lines that cross count 1 in cross, and nothing else', () => {
   assert.deepEqual([m.hard, m.cross, m.labels, m.reverse, m.straight], [0, 1, 0, 0, null]);
 });
 
+// decision D17: a line through a box that holds neither of its ends counts 1 in through, weighted as a crossing, on a view
+// whose layout runs the box pass (cloud, class, component, deployment, requirement, C4); a box holding an end, and other
+// types, count none (null on a type without the pass)
+test('score: a line through a box holding neither end counts 1 in through, weighted as one crossing (D17)', () => {
+  const lineThrough = (inBox = []) => { const g = geo([card('a', 0, 100), card('b', 400, 100), card('c', 170, 160)], [['a', 'b', [[100, 120], [400, 120]]]]);
+    g.families = [{ id: 'vpc', label: 'vpc', x: 150, y: 60, w: 140, h: 160, nodeIds: ['c', ...inBox] }]; return g; };
+  const aws = { id: 'v', diagram: 'aws' }, m = viewMetrics(lineThrough(), { view: aws });
+  assert.deepEqual([m.hard, m.cross, m.through], [0, 0, 1]);
+  assert.equal(WEIGHTS.through, WEIGHTS.cross);
+  assert.equal(Math.round((scoreView(m) - scoreView({ ...m, through: 0 })) * 100) / 100, WEIGHTS.cross);
+  for (const d of ['uml.class', 'uml.component', 'uml.deployment', 'gcp', 'azure', 'sysml.requirement', 'c4.container']) assert.equal(viewMetrics(lineThrough(), { view: { id: 'v', diagram: d } }).through, 1, d);
+  const held = lineThrough(); held.families[0] = { ...held.families[0], x: -10, w: 300 }; // the box round a too, one of the line's ends
+  assert.equal(viewMetrics(held, { view: aws }).through, 0, 'a box holding an end');
+  for (const d of ['uml.package', 'uml.state-machine', 'bpmn', 'flowchart']) assert.equal(viewMetrics(lineThrough(), { view: { id: 'v', diagram: d } }).through, null, d);
+  assert.equal(viewMetrics({ ...lineThrough(), map: true }, { view: { id: 'v' } }).through, null, 'a map');
+});
+
 test('score: a label set on another line counts 1 in labels', () => {
   const g = geo([card('a', 0, 100), card('b', 300, 100), card('c', 150, 0), card('d', 150, 200)],
     [['a', 'b', [[100, 120], [300, 120]], { label: 'pays', lbl: { x: 230, y: 60, w: 40, h: 20, text: 'pays' } }],
@@ -103,6 +120,6 @@ test('score: bench/score-expected.json covers the fixed corpus with the score.js
   const keys = Object.keys(e.views);
   assert.equal(keys.length, e.total.views);
   assert.ok(keys.includes('b10/overview') && ['examples', 'tests'].every(dir => keys.some(k => k.split('/')[0] === dir)));
-  for (const k of keys) assert.deepEqual(Object.keys(e.views[k]), ['hard', 'cross', 'labels', 'straight', 'reverse', 'score'], k);
+  for (const k of keys) assert.deepEqual(Object.keys(e.views[k]), ['hard', 'cross', 'through', 'labels', 'straight', 'reverse', 'score'], k);
   assert.ok(Math.abs(keys.reduce((a, k) => a + e.views[k].score, 0) - e.total.score) < 0.01 * keys.length);
 });
