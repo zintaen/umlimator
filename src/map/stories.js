@@ -10,8 +10,8 @@ import { arrOf } from './validate.js';
    line into it, rides that line (a tour of the two cards, which the view draws a line between) and says what the line
    does: "2. Charges: Cart charges Payments; reads Orders". A dependency line is no step: the card it joins is named in
    the caption of the step that reads or writes it. A branch (a chain of flow lines off the main flow) is a chapter,
-   offered at the step where it leaves. A sequence view tells its messages in order; a BPMN view its path from the start
-   event (each gateway's or activity's default flow where it names one), a communication view its numbered messages in time order. The lines are read as the view draws them (its
+   offered at the step where it leaves. A sequence view tells its messages in order; a BPMN view its main path, from the start
+   event whose path is longest (a collaboration's main process; each gateway's or activity's default flow where it names one), a communication view its numbered messages in time order. The lines are read as the view draws them (its
    geometry), so every tour rides a drawn line. audience: who it is told to, kept on the story (and its chapters); for
    "business" the captions leave out the stores a step reads or writes. Pure: nothing is saved, the model is not changed. */
 const STORY_ROLES = ['main', 'branch', 'dep'];
@@ -19,6 +19,7 @@ const STORY_START = /StartEvent$/, STORY_SEQ_FLOW = /SequenceFlow$/;
 // storyPlain words from a field's Markdown: its first sentence, with no marks
 const storyPlain = s => { const t = String(s).replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim();
   const m = /^(.+?[.!?])(\s|$)/.exec(t); return (m ? m[1] : t).replace(/[.!?]+$/, ''); };
+const storyA = w => (/^(?!u[sm]|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "an er view", "a uml.class view" (audit 67)
 const storyUpper = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
 /* the view as a story reads it: its lines as drawn, which of them are dependencies and which close a loop, its cards'
@@ -113,25 +114,27 @@ export function storyFromFlow(model, viewId, options = {}) {
     return out;
   }
   let main = null;
-  if (bpmn) { // the path from the start event, each node's default flow out (props.default) else its first, never coming back
+  if (T && TF) { // a typed view: the main flow its type reads (typedMain, which an arranged view's picture draws), each of
+    // its lines the drawn line that stands for it; BPMN's is its type's main path (bzMain: the start event whose path is
+    // longest, a collaboration's main process, not the first-listed pool's; audit 67). A type with no flowRole (a use case,
+    // a class view) reads none
+    const M = TF.main, ks = [];
+    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1];
+      const k = lines.findIndex(e => e.from === a && e.to === b && lid != null && idOf(e) === String(lid)), j = k >= 0 ? k : lines.findIndex(e => e.from === a && e.to === b && !dep(e));
+      ks.push(j); });
+    if (M && M.cards.length && ks.every(k => k >= 0)) main = { cards: M.cards, lines: ks };
+  }
+  if (!main && bpmn) { // no main path its type reads: the path from the start event, each node's default flow out (props.default) else its first, never coming back
     const node = id => ctx.N[id] || {}, start = cards.find(c => STORY_START.test(String(node(c).type || '')));
     const dflt = id => { const p = node(id).props; return p && typeof p === 'object' && typeof p.default === 'string' ? p.default : null; };
     if (start != null) { const flows = lines.map((e, k) => [e, k]).filter(([e, k]) => !back.has(k) && !dep(e) && e.from !== e.to && STORY_SEQ_FLOW.test(String(e.type || '')));
       const seen = new Set([start]), ks = []; let at = start;
       for (;;) { const d = dflt(at), out = flows.filter(([e]) => e.from === at && !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
       if (ks.length) main = { cards: [start, ...ks.map(k => lines[k].to)], lines: ks }; }
-  }
-  if (!main && T) { // a typed view: the main flow its type reads (typedMain, which an arranged view's picture draws), each of
-    // its lines the drawn line that stands for it; a type with no flowRole (a use case, a class view) reads none
-    const M = TF && TF.main, ks = [];
-    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1];
-      const k = lines.findIndex(e => e.from === a && e.to === b && lid != null && idOf(e) === String(lid)), j = k >= 0 ? k : lines.findIndex(e => e.from === a && e.to === b && !dep(e));
-      ks.push(j); });
-    if (M && M.cards.length && ks.every(k => k >= 0)) main = { cards: M.cards, lines: ks };
-  } else if (!main) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
+  } else if (!main && !T) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
     main = mainFlow(lines, { back, dep, cards, run: v.render === 'sequence' });
   }
-  if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: ${T && !TF && !bpmn ? `a ${String(v.diagram)} view reads none` : 'no flow line joins two of its cards'}`);
+  if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: ${T && !TF && !bpmn ? `${storyA(String(v.diagram))} view reads none` : 'no flow line joins two of its cards'}`);
   const onMain = new Set(main.cards), mainKs = new Set(main.lines);
   main.cards.forEach((c, i) => { const e = i ? lines[main.lines[i - 1]] : null; out.steps.push(stepOf(i + 1, c, e, i ? main.cards[i - 1] : null)); });
   // branches: from each main card, each flow line off the main flow to a card off it, followed while it stays off it
