@@ -748,3 +748,14 @@ test('audit 55: a break operand is performed instead of the rest around it, so a
   const r = cmdsOf(sqConnect(m, V(m), 'B', 'A', slot, { type: 'uml.Message', props: { sort: 'reply' } }));
   assert.equal(r[0].element.props.replyTo, 'c');
 });
+
+test('hiding a lifeline takes a reply the view holds with its call, as a delete does (audit 66)', () => {
+  const L = id => ({ id, type: 'uml.Lifeline', label: id });
+  const m = { schemaVersion: 2, nodes: [L('a'), L('b'), L('c')], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a', 'b', 'c'], edges: [{ id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'call' },
+      { id: 'm2', type: 'uml.Message', from: 'c', to: 'a', label: 'back', props: { sort: 'reply', replyTo: 'm1' } }, { id: 'm3', type: 'uml.Message', from: 'a', to: 'c', label: 'other' }] }] };
+  const h = apply(m, [{ op: 'hide', id: 'b', view: 'v' }]);
+  assert.deepEqual(h.views[0].edges.map(e => e.id), ['m3']);
+  assert.deepEqual(h.views[0].edges, apply(m, [{ op: 'delete', id: 'b' }]).views[0].edges);
+  assert.deepEqual(validate(h).filter(p => p.level === 'error'), []);
+});

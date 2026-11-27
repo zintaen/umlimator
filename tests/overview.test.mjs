@@ -429,3 +429,18 @@ test('connect: a control flow that brings an error is refused in its words, and 
   assert.equal(C(e, 'd', 'ref-receipt')[0].element.props, undefined, 'the first exit already else: no second');
   assert.deepEqual(T().edits.connect(EX, VIEW(EX), 'ref-find', 'buy-start', null, T().lines[1]), { error: 'A comment link runs from a comment' }, 'a comment link: commentConnect');
 });
+
+// audit 68: arranged (arrange "flow"), an overview's main flow keeps the middle port of a merge one port high, and the loop-back
+// flow into the merge (a declined payment tried again) takes its side: the main line left by the side and turned back across
+// the loop-back. Every overview view of the fixtures (copies of the buy-book overview example and the integration model)
+// draws no more check() problems arranged than ranked, laid out down and right
+test('an arranged overview draws its loop-back flow round the main flow: no more check() problems than ranked', () => {
+  const views = [];
+  for (const f of ['buy-book-overview.json', 'integration.json']) { const m = JSON.parse(readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8'));
+    m.views.filter(v => v.diagram === 'uml.interaction-overview').forEach(v => views.push([f, m, v.id])); }
+  assert.ok(views.length >= 2);
+  for (const [f, m, id] of views) for (const dir of ['down', 'right']) {
+    const at = arrange => ({ ...m, views: m.views.map(v => v.id === id ? { ...v, direction: dir, ...(arrange ? { arrange } : {}) } : v) });
+    const ranked = check(at(), id).map(p => p.message), arranged = check(at('flow'), id).map(p => p.message);
+    assert.ok(arranged.length <= ranked.length, `${f} ${id} ${dir}: arranged ${JSON.stringify(arranged)}, ranked ${JSON.stringify(ranked)}`); }
+});

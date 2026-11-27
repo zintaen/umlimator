@@ -18,7 +18,7 @@ test('every type, tools/types.json\'s families\' 28, has its model and its entry
   assert.equal(new Set(TYPES).size, 28, 'each type in one family, once');
   assert.ok(!TYPES.includes('map') && !S.types.map, 'the map is no type: its example is an atlas\'s first layer');
   assert.deepEqual(Object.keys(S.types).sort(), [...TYPES].sort(), 'tools/types.json names each type once');
-  assert.deepEqual(readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).sort(), TYPES.map(t => `${t}.json`).sort());
+  assert.deepEqual(readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).sort(), TYPES.map(t => `${t}.json`).sort());
 });
 
 test('each model matches its entry: a name, a text, a title, an intro, a "shows" checklist with no empty item, the main view first and the root, the alternatives views of it', () => {
@@ -59,3 +59,17 @@ test('tools/types.mjs says a name that is no type in one line, with the types, a
   assert.equal(r.stderr.trim(), `tools/types.mjs: no type uml-clas; the types: ${typeIds().join(', ')}`);
   assert.match(r.stdout, /examples\/types\/uml-class\.json: ok/);
 });
+
+// audit 71: an option it does not know was dropped without a word, so a mistyped --no-html rendered every page named
+test('tools/types.mjs refuses an option it does not know with exit 2, before it checks or renders anything', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { existsSync, statSync } = await import('node:fs');
+  const page = new URL('../examples/types/uml-class.html', import.meta.url), was = existsSync(page) && statSync(page).mtimeMs;
+  for (const args of [['--no-htm', 'uml-class'], ['uml-class', '--nohtml'], ['--no-html', '-n', 'uml-class'], ['--html=no', 'uml-class'], ['--']]) {
+    const r = spawnSync(process.execPath, ['tools/types.mjs', ...args], { cwd: new URL('../', import.meta.url), encoding: 'utf8' });
+    const bad = args.find(a => a.startsWith('-') && a !== '--no-html');
+    assert.deepEqual([r.status, r.stdout, r.stderr], [2, '', `tools/types.mjs: unknown option ${bad}; usage: node tools/types.mjs [--no-html] [type ...]\n`], String(args));
+  }
+  assert.equal(existsSync(page) && statSync(page).mtimeMs, was, 'no page was rendered');
+});
+

@@ -13,8 +13,9 @@
    theirs a member, nested by `parent`), tasks (user, service), sub-processes, call activities, start, end, intermediate
    and boundary events with the definitions their kind may take, exclusive and parallel gateways, data object references
    (with their data object) and data store references, text annotations, groups (a category value names its group in
-   `categoryValueRef`), documentation, sequence and message flows, associations and data associations. Weakened, kept
-   under the element's `ext.bpmn`: a sequence flow's condition, a gateway's default, a send or receive task's kind, a
+   `categoryValueRef`), documentation, sequence and message flows, associations and data associations, an exclusive
+   gateway's or an activity's default flow (`props.default`, the flow's id; one that is no sequence flow out of it read is
+   weakened). Weakened, kept under the element's `ext.bpmn`: a sequence flow's condition, a send or receive task's kind, a
    timer's time. A none end or throw event a message flow leaves, or a none start event one arrives at (bpmn-js draws
    them), is read as a message event and reported weakened (audit 44). Anything else (an element, an event definition or
    a marker outside the subset, an extension) is reported `skipped` and kept under the model's `ext.bpmn.skipped` as
@@ -29,7 +30,7 @@
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
    <participant>-process) that holds anything and one for what is in no pool, and one BPMNDiagram per `bpmn` view. Its
    shapes and edges take their bounds and points from `geo` ({ nodes: [{ id, x, y, w, h }], edges: [{ id, pts }] }, the
-   layout of `viewId`), any other on a plain grid. An id that is not an XML name is written escaped (`_` and its code
+   layout of `viewId`), any other on a plain grid. A `props.default` is written as its node's `default`. An id that is not an XML name is written escaped (`_` and its code
    points), the model's id in `umlimator:id`. Not written, and reported: what `ext.bpmn` holds, other diagrams' elements
    and views, a property or field outside row 24 or on a type it is not for, a data association against BPMN's direction
    (§4's data-ends), and whatever a reader would read back otherwise (note §12.5: a cycle of lanes, a lane as the parent
@@ -62,7 +63,8 @@ const BX_DEF_OUT = { message: 'bpmn:MessageEventDefinition', timer: 'bpmn:TimerE
 const BX_SAME = new Set(['Participant', 'SubProcess', 'CallActivity', 'ExclusiveGateway', 'ParallelGateway', 'DataStoreReference',
   'TextAnnotation', 'Group', ...Object.keys(BX_DEFS)]); // bpmn.X is bpmn:X
 const BX_ACTIVITY = new Set(['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity']);
-const BX_PROPS = { 'bpmn.Participant': ['processRef'], 'bpmn.Task': ['taskType'], 'bpmn.CallActivity': ['calledElement'], 'bpmn.Association': ['direction'],
+const BX_PROPS = { 'bpmn.Participant': ['processRef'], 'bpmn.Task': ['taskType', 'default'], 'bpmn.SubProcess': ['default'], 'bpmn.CallActivity': ['calledElement', 'default'],
+  'bpmn.ExclusiveGateway': ['default'], 'bpmn.Association': ['direction'],
   'bpmn.BoundaryEvent': ['definition', 'attachedTo', 'cancelActivity'], 'bpmn.DataStoreReference': ['dataStoreRef'] }; // and documentation on any
 const bxProp = (t, k) => k === 'documentation' || (BX_PROPS[t] || (t.slice(5) in BX_DEFS ? ['definition'] : [])).includes(k)
   || k === 'categoryValueRef' && !['bpmn.Group', 'bpmn.Lane'].includes(t) && !/(Flow|Association)$/.test(t); // a node's groups (row 24)
@@ -88,18 +90,24 @@ const bxDup = e => { try { const m = /\n\s*nested error: duplicate ID <([^>\n]*)
 
 // a moddle element as JSON: its own properties, a reference by its id (or a list of ids), a generic (foreign) element's
 // children and body; cut at BX_DEEP levels. moddle defines a reference as a non-enumerable own property and keeps a generic
-// element's children in $children, so its descriptor's properties are read by name, not by Object.keys (audit 17)
-function bxJson(el, depth = 0) {
+// element's children in $children, so its descriptor's properties are read by name, not by Object.keys (audit 17). An
+// attribute named toString (on the element or a foreign one in it) is no key a model holds (validate() leaves out an object
+// with one), nor is __proto__: each is left out and given to lost(name), for the reader to say (audit 65)
+const BX_NOKEY = new Set(['toString', '__proto__']);
+const bxKeys = (o, lost) => { const out = {}; for (const k of Object.keys(o)) if (BX_NOKEY.has(k)) lost(k); else out[k] = o[k]; return out; };
+function bxJson(el, depth = 0, lost = () => {}) {
   if (!el || typeof el !== 'object') return el;
-  if (Array.isArray(el)) return el.map(x => bxJson(x, depth));
+  if (Array.isArray(el)) return el.map(x => bxJson(x, depth, lost));
   if (depth >= BX_DEEP) return { $type: el.$type, id: el.id, cut: true };
   const d = el.$descriptor || {}, props = d.properties || [], refs = new Set(props.filter(p => p.isReference).map(p => p.name));
   const out = { $type: el.$type }, keys = new Set([...props.map(p => p.name).filter(k => Object.hasOwn(el, k)), ...Object.keys(el), '$attrs', '$body', ...(d.isGeneric ? ['$children'] : [])]);
   for (const k of keys) {
     const v = el[k];
     if (k.startsWith('$') && k !== '$attrs' && k !== '$body' && k !== '$children') continue;
+    if (BX_NOKEY.has(k)) { lost(k); continue; }
     if (v == null || k === '$attrs' && !Object.keys(v).length || Array.isArray(v) && !v.length) continue;
-    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => (x && typeof x === 'object' ? x.id : x)) : typeof v === 'object' ? v.id : v) : k === '$attrs' ? { ...v } : bxJson(v, depth + 1);
+    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => (x && typeof x === 'object' ? x.id : x)) : typeof v === 'object' ? v.id : v) : k === '$attrs' ? bxKeys(v, lost) : bxJson(v, depth + 1, lost);
+    if (k === '$attrs' && !Object.keys(out[k]).length) delete out[k];
   }
   return out;
 }
@@ -179,11 +187,17 @@ async function readBpmnXml(xml, moddle) {
       return id;
     };
     const said = new Set(); // BPMN's own attributes set and not read (startQuantity, isForCompensation, ...): each said once
+    // and, for a line said at a boundary event later dropped (its host not read), the next element read with that attribute
+    // to say it at in its place: a line -> its attribute, an attribute -> [element, id, value] of each element after the first (audit 64)
+    const onceOf = new Map(), later = new Map();
+    const once = k => `the attribute ${k}: not read, here or elsewhere in the file`;
     const foreign = (el, id) => {
       for (const k of Object.keys(el.$attrs || {})) if (!k.startsWith('xmlns') && !(pre && k.startsWith(pre))) say(id, 'skipped', `the attribute ${k}: not read`);
       for (const k of Object.keys(el)) {
         const p = el.$type !== 'bpmn:Definitions' && el.$descriptor?.propertiesByName?.[k];
-        if (p && p.isAttr && !p.isReference && !BX_ATTRS.has(k) && el[k] !== p.default && !said.has(k)) { said.add(k); say(id, 'skipped', `the attribute ${k}="${el[k]}": not read, here or elsewhere in the file`); }
+        if (!p || !p.isAttr || p.isReference || BX_ATTRS.has(k) || el[k] === p.default) continue;
+        if (said.has(k)) { if (!later.has(k)) later.set(k, []); later.get(k).push([el, id, el[k]]); continue; }
+        said.add(k); const r0 = report.length; say(id, 'skipped', once(`${k}="${el[k]}"`)); if (report.length > r0) onceOf.set(report.at(-1), k);
       }
     };
     foreign(defs, '');
@@ -191,8 +205,11 @@ async function readBpmnXml(xml, moddle) {
     const skip = (el, parent, why = 'outside the subset') => {
       const id = el.id || '';
       say(id || parent || '', 'skipped', `${(el.$type || 'an element').replace('bpmn:', '')} ${why}: kept under ext.bpmn, not read`);
-      skipped.push({ ...(parent ? { parent } : {}), element: bxJson(el) });
+      skipped.push({ ...(parent ? { parent } : {}), element: keep(el, id || parent || '') });
     };
+    // an element as JSON for ext.bpmn, an attribute no model key can hold (toString, __proto__) left out of it and said (audit 65)
+    const keep = (el, line) => { const lost = new Set(), j = bxJson(el, 0, k => lost.add(k));
+      for (const k of lost) say(line, 'skipped', `the attribute ${k}, a name no model key holds: not kept`); return j; };
     const ext = (el, parent) => { if (el.extensionElements) skip(el.extensionElements, parent, '(an extension)'); };
     ext(defs, null);
     const add = (el, type, parent, props = {}, label = el.name) => {
@@ -207,6 +224,7 @@ async function readBpmnXml(xml, moddle) {
     };
     const weak = (n, what, key, value) => { (n.ext ??= { bpmn: {} }).bpmn[key] = value; say(n.id, 'weakened', `${what}: kept under ext.bpmn, read as plain`); };
     const pending = []; // [moddle element, model type, from element, to element, parent]
+    const defaults = [], lineOf = new Map(); // [node, its default flow's moddle element]; a sequence flow's moddle element -> its line
     const groups = [], tagged = [], hosts = []; // groups by their category value; elements naming category values; boundary events' hosts
 
     // a process's (a collaboration's, a lane set's) name and documentation the model has no place for (audits 45 and 46)
@@ -285,25 +303,27 @@ async function readBpmnXml(xml, moddle) {
       for (const el of c.flowElements || []) {
         const t = el.$type, kind = t.replace('bpmn:', ''), at = (pool && laneOf.get(el)) || parent;
         let n = null;
+        const r0 = report.length, s0 = skipped.length, p0 = pending.length; // what reading it says, keeps and links: a boundary event's, taken back if it is dropped
         if (t in BX_TASK) {
           n = add(el, 'bpmn.Task', at, { taskType: BX_TASK[t] in BX_TASK_OUT ? BX_TASK[t] : 'none' });
+          if (n && el.default) defaults.push([n, el.default]);
           if (n && !(BX_TASK[t] in BX_TASK_OUT)) weak(n, `a ${BX_TASK[t]} task`, 'task', BX_TASK[t]);
         } else if (t === 'bpmn:SubProcess' && !el.triggeredByEvent) {
           n = add(el, 'bpmn.SubProcess', at);
           if (n) queue.push([el, n.id]);
-        } else if (t === 'bpmn:CallActivity') n = add(el, 'bpmn.CallActivity', at, bxStr(el.calledElement) ? { calledElement: el.calledElement } : {});
+          if (n && el.default) defaults.push([n, el.default]);
+        } else if (t === 'bpmn:CallActivity') { n = add(el, 'bpmn.CallActivity', at, bxStr(el.calledElement) ? { calledElement: el.calledElement } : {}); if (n && el.default) defaults.push([n, el.default]); }
         else if (kind in BX_DEFS) {
           const ds = el.eventDefinitions || [], def = ds.length ? BX_DEF[ds[0].$type] : 'none';
           if (ds.length > 1 || !BX_DEFS[kind].includes(def)) { skip(el, at, `with ${ds.map(d => d.$type.replace('bpmn:', '')).join(', ') || 'no definition'}`); continue; }
           const props = { definition: def };
           if (t === 'bpmn:BoundaryEvent') props.cancelActivity = el.cancelActivity !== false;
           n = add(el, `bpmn.${kind}`, at, props);
-          if (n && el.attachedToRef) hosts.push([n, el.attachedToRef]);
           const time = ds[0] && ['timeDate', 'timeDuration', 'timeCycle'].filter(k => ds[0][k]).map(k => [k, ds[0][k].body ?? '']);
           if (n && time && time.length) weak(n, `a timer's ${time.map(x => x[0]).join(', ')}`, 'timer', Object.fromEntries(time));
         } else if (t === 'bpmn:ExclusiveGateway' || t === 'bpmn:ParallelGateway') {
           n = add(el, `bpmn.${kind}`, at);
-          if (n && el.default) weak(n, 'a gateway\'s default flow', 'default', idOf(el.default));
+          if (n && el.default) defaults.push([n, el.default]); // a parallel gateway has none (moddle reads no default on one)
         } else if (t === 'bpmn:DataObjectReference') {
           n = add(el, 'bpmn.DataObject', parent, {}, bxStr(el.name) || (el.dataObjectRef && el.dataObjectRef.name));
           if (el.dataObjectRef) refd.add(el.dataObjectRef);
@@ -325,10 +345,13 @@ async function readBpmnXml(xml, moddle) {
           pending.push([a, 'bpmn.DataAssociation', (a.sourceRef || [])[0], el, null]);
           if (a.sourceRef?.length > 1) { // a line has one source: the rest are said and kept
             say(a.id || n.id, 'skipped', `its sources after the first (${a.sourceRef.slice(1).map(x => x.id).join(', ')}): kept under ext.bpmn, not read`);
-            skipped.push({ parent: n.id, element: bxJson(a) });
+            skipped.push({ parent: n.id, element: keep(a, a.id || n.id) });
           }
         }
         for (const a of el.dataOutputAssociations || []) pending.push([a, 'bpmn.DataAssociation', el, a.targetRef, null]);
+        // its lines, its kept parts (an output set, a data output, a marker) and its data associations, all inside its own
+        // ext.bpmn entry if it is dropped: the snapshot is taken once they are all read (audit 64)
+        if (t === 'bpmn:BoundaryEvent') hosts.push([n, el.attachedToRef, el, at, report.slice(r0), skipped.slice(s0), pending.slice(p0)]);
       }
       for (const a of c.artifacts || []) {
         if (a.$type === 'bpmn:TextAnnotation') { const n = add(a, 'bpmn.TextAnnotation', parent, {}, a.text); if (n) tagged.push([a, n]); }
@@ -340,10 +363,21 @@ async function readBpmnXml(xml, moddle) {
       }
     }
     for (const [o, parent] of objects) if (!refd.has(o)) add(o, 'bpmn.DataObject', parent);
-    for (const [n, h] of hosts) { // a boundary event's host is an activity read, else it is said
-      const a = elOf.get(h);
-      if (a && BX_ACTIVITY.has(a.type)) n.props.attachedTo = a.id;
-      else say(n.id, 'skipped', `its host ${idOf(h) || '(no id)'} is not read: attachedTo not read`);
+    // a boundary event's host is an activity read; else the event is kept whole under ext.bpmn, as a line to an end not read
+    // is, and its lines go the same way: a boundary event on nothing is no model validate() takes (audit 63)
+    const dropped = new Set(hosts.filter(([n, h]) => { const a = h && elOf.get(h); return !(a && BX_ACTIVITY.has(a.type)); }).map(x => x[2]));
+    for (const [n, h, el, at, lines, kept, links] of hosts) {
+      if (!dropped.has(el)) { n.props.attachedTo = elOf.get(h).id; continue; }
+      nodes.splice(nodes.indexOf(n), 1); byId.delete(n.id); elOf.delete(el); // what was said of it as read goes too
+      for (const x of lines) { const i = report.indexOf(x); if (i < 0) continue;
+        // an attribute said once for the file: said at the next element read with it, in the same place (audit 64)
+        const k = onceOf.get(x), next = k && (later.get(k) || []).find(([e]) => !dropped.has(e));
+        if (next) { const y = { line: next[1], status: 'skipped', message: once(`${k}="${next[2]}"`) }; onceOf.set(y, k); report.splice(i, 1, y); continue; }
+        report.splice(i, 1); if (firstLost && i < firstLost.at) firstLost.at--; }
+      for (const x of kept) skipped.splice(skipped.indexOf(x), 1);
+      for (const x of links) pending.splice(pending.indexOf(x), 1);
+      for (let i = tagged.length; i--;) if (tagged[i][1] === n) tagged.splice(i, 1);
+      skip(el, at, h ? `whose host ${idOf(h) || '(no id)'} is not read` : 'on no host');
     }
     // the groups an element is in: its category values', or for an artifact its umlimator:groups
     const groupOf = new Map(groups);
@@ -352,16 +386,35 @@ async function readBpmnXml(xml, moddle) {
       const ids = [...new Set(vals.map(v => groupOf.get(v)).filter(Boolean))];
       if (ids.length) n.props = { ...n.props, categoryValueRef: ids };
     }
+    // a node's pool and process level as validate() finds them (sequence-scope, message-scope, data-ends): up its parents, a
+    // lane's parent lane, else its pool
+    const laneIn = new Map(); for (const n of nodes) if (n.type === 'bpmn.Participant') for (const m of n.members || []) laneIn.set(m.id, n.id);
+    const upFind = (x, ok) => { for (let p = x, seen = new Set(); p && !seen.has(p); p = byId.get(laneIn.has(p.id) ? p.parent ?? laneIn.get(p.id) : p.parent)) { seen.add(p); if (ok(p)) return p.id; } return null; };
+    const poolOf = x => upFind(x, p => p.type === 'bpmn.Participant'), levelOf = x => upFind(x, p => p !== x && (p.type === 'bpmn.SubProcess' || p.type === 'bpmn.Participant'));
+    const isData = x => x.type === 'bpmn.DataObject' || x.type === 'bpmn.DataStoreReference';
+    // a line no model holds, which BPMN refuses too, as validate() words it: kept whole under ext.bpmn and said, as a line to an end
+    // not read is, so the model read passes validate() (audit 65: a sequence flow across pools, a message flow inside one pool or
+    // to a process in no pool, an association with no text annotation were read and the model failed validate(), nothing said)
+    const outOfScope = (type, from, to) => {
+      if (type === 'bpmn.SequenceFlow' && levelOf(from) !== levelOf(to)) return poolOf(from) !== poolOf(to) ? 'across pools (a message flow joins pools)' : 'across sub-processes';
+      if (type === 'bpmn.MessageFlow') { const p = poolOf(from), q = poolOf(to); if (p == null || q == null) return 'with an end in no pool'; if (p === q) return 'inside one pool (a sequence flow joins it)'; }
+      if (type === 'bpmn.Association' && from.type !== 'bpmn.TextAnnotation' && to.type !== 'bpmn.TextAnnotation') return 'with no text annotation at either end';
+      if (type === 'bpmn.DataAssociation') { const d = isData(from) ? from : to, o = d === from ? to : from, p = poolOf(d), q = poolOf(o);
+        if (p != null && q != null && p !== q) return 'from data of one pool to another pool (data stays in its pool)'; }
+      return null;
+    };
     // lines, once every node is known: an end that is not read is said
     for (const [el, type, a, b, , w] of pending) {
       const id = idOf(el), from = a && elOf.get(a), to = b && elOf.get(b);
       if (!from || !to) { skip(el, null, `whose ${!from ? 'source' : 'target'} is not read`); continue; }
       if (!bxStr(id) || byId.has(id)) { skip(el, null, id ? `has the id ${id}, taken` : 'has no id'); continue; }
+      const why = outOfScope(type, from, to);
+      if (why) { skip(el, null, why); continue; }
       const doc = (el.documentation || []).map(x => x.text).filter(bxStr).join('\n'), props = {};
       if (doc) props.documentation = doc;
       if (type === 'bpmn.Association' && el.associationDirection && el.associationDirection !== 'None') props.direction = el.associationDirection.toLowerCase();
       const e = { id, type, from: from.id, to: to.id, ...(bxStr(el.name) && type.endsWith('Flow') ? { label: el.name } : {}), ...(Object.keys(props).length ? { props } : {}) };
-      edges.push(e); byId.set(id, e); foreign(el, id); ext(el, id);
+      edges.push(e); byId.set(id, e); lineOf.set(el, e); foreign(el, id); ext(el, id);
       if (w) weak(e, w[0], w[1], w[2]);
       // what the diagram keeps and does not draw (notes/milestone-4b.md §8.3): said, never shown as nothing (audit 27)
       const on = x => (x.type === 'bpmn.BoundaryEvent' && x.props && x.props.attachedTo) || null; // a boundary event's activity
@@ -381,6 +434,12 @@ async function readBpmnXml(xml, moddle) {
       const ends = [from.type, to.type];
       if (type === 'bpmn.Association' && (ends.includes('bpmn.Participant') || ends.includes('bpmn.Group'))) say(id, 'weakened', `an association with a ${ends.includes('bpmn.Group') ? 'group' : 'pool'}: kept, not drawn`);
     }
+    // a default flow (an exclusive gateway's or an activity's `default`): props.default, the id of that sequence flow, once
+    // the lines are read; one that is not a sequence flow out of it read is kept under ext.bpmn and said, as validate()'s
+    // default-flow refuses it
+    for (const [n, d] of defaults) { const e = lineOf.get(d);
+      if (e && e.type === 'bpmn.SequenceFlow' && e.from === n.id) n.props = { ...n.props, default: e.id };
+      else weak(n, `a default flow, ${idOf(d) || '(no id)'}, that is no sequence flow out of it read`, 'default', idOf(d)); }
     // views: one per diagram, its shapes in order; what no plane shows goes to the first
     const shown = new Set(), seen = new Set(), first = new Map(); // nodes in a plane; view ids; a node -> the first two views showing it
     let placed = false;
@@ -588,6 +647,13 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       if (e.label != null && (e.type === 'bpmn.Association' || e.type === 'bpmn.DataAssociation')) say(e.id, 'label, which BPMN gives no association');
       lines.set(e, x);
     }
+    // a default flow: the gateway's or activity's `default`, the sequence flow written for its props.default; one that names
+    // no sequence flow out of it written is said (validate()'s default-flow)
+    const flowOf = new Map([...lines].map(([e, x]) => [e.id, [e, x]]));
+    for (const n of nodes) { if (!bxProp(n.type, 'default') || !n.props || n.props.default == null) continue;
+      const d = n.props.default, f = typeof d === 'string' ? flowOf.get(d) : null, A = els.get(n);
+      if (A && f && f[0].type === 'bpmn.SequenceFlow' && f[0].from === n.id) A.default = f[1];
+      else say(n.id, typeof d === 'string' ? `props.default ${d}, which is no sequence flow out of it` : 'props.default, which is not a sequence flow\'s id'); }
     // what a reader derives from the diagrams, against the model: a view's subject (a sub-process), its parent (the first
     // other view showing its subject), a sub-process's opensView (the first view with it as subject), a node in no view
     const sub = v => { const s = byId.get(v.subject); return s && s.type === 'bpmn.SubProcess' && els.get(s) ? s : null; };

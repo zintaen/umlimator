@@ -535,3 +535,44 @@ test('a node of an unknown dfd kind is named Element, as it is keyed (audit 45)'
   assert.equal(DFD_TYPE.word(m, 'e'), 'Element');
   assert.equal(DFD_TYPE.word(m, 'p'), 'Process');
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the DFD's zoneOf and flowRole,
+// read only in an arranged view
+test('zoneOf: an entity that only sends first, one that only receives last, a data store under; flowRole: a flow to or from a store is a dependency', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'dfd.ExternalEntity', label: 'Customer' }, { id: 'b', type: 'dfd.ExternalEntity', label: 'Bank' },
+    { id: 'w', type: 'dfd.ExternalEntity', label: 'Warehouse' }, P('p', 'Take order', '1'), { id: 's', type: 'dfd.DataStore', label: 'Orders', props: { number: 'D1' } }],
+  edges: [{ id: 'f1', type: 'dfd.DataFlow', from: 'c', to: 'p', label: 'order' }, { id: 'f2', type: 'dfd.DataFlow', from: 'p', to: 'b', label: 'charge' },
+    { id: 'f3', type: 'dfd.DataFlow', from: 'p', to: 'w', label: 'pick' }, { id: 'f4', type: 'dfd.DataFlow', from: 'w', to: 'p', label: 'picked' }, { id: 'f5', type: 'dfd.DataFlow', from: 'p', to: 's', label: 'saved' }],
+  views: [{ id: 'v', diagram: 'dfd', arrange: 'flow', nodeIds: ['c', 'b', 'w', 'p', 's'] }] };
+  const V = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['c', 'b', 'w', 'p', 's'].map(id => T.zoneOf(n(id), m, V)), ['first', 'last', null, null, 'under']);
+  assert.deepEqual(m.edges.map(e => T.flowRole(e, m, V)), ['branch', 'branch', 'branch', 'branch', 'dep']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(at('c').col < at('p').col && at('b').col > at('p').col, 'the customer first, the bank last');
+  assert.ok(at('s').row > Math.max(at('c').row, at('p').row, at('b').row), 'the store under every flow row');
+  assert.ok(g.edges.find(e => e.id === 'f5').dep && !g.edges.find(e => e.id === 'f1').dep, 'the store\'s flow is drawn as a dependency line');
+});
+
+// audit 71 finding 1: the processes' reading order (layout's order, describe, the PDF's tables) compared their numbers in the
+// host's default locale, so a Swedish or Danish host put a process numbered "ä" after "z1" and an English one put it after
+// "a". Each order below is taken in a fresh node under the locale given (its own default locale read from LC_ALL), and each is
+// the English one. Then no comparison or Intl object in src reads the host's locale: each names its locale (a fixed collator
+// made once, as structurizr.js's), so the sibling sorts (profile.js's nearest metaclass names) are pinned the same way
+test('a DFD reading order is the same in every host locale; no source reads the host locale', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const script = `import '../src/map/typed.js'; import '../src/dfd/dfd.js'; import { layout } from '../src/map/api.js'; import { describe } from '../src/map/insight.js';
+    const nodes = ['z1', '\\u00e4', 'a', 'Z', 'b'].map((n, i) => ({ id: 'p' + i, type: 'dfd.Process', label: 'Proc ' + i, props: { number: n } }));
+    const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges: [], views: [{ id: 'v', diagram: 'dfd', title: 'v', nodeIds: nodes.map(n => n.id) }] };
+    console.log(JSON.stringify({ host: new Intl.Collator().resolvedOptions().locale, order: layout(m, 'v').order, said: describe(m, 'v').split('\\n').filter(l => /Proc/.test(l)) }));`;
+  const run = loc => { const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: new URL('.', import.meta.url), env: { ...process.env, LC_ALL: loc + '.UTF-8', LANG: loc + '.UTF-8' }, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr); return JSON.parse(r.stdout.trim().split('\n').pop()); };
+  const en = run('en_US'), sv = run('sv_SE'), da = run('da_DK');
+  assert.match(sv.host, /^sv/); assert.match(da.host, /^da/); // the hosts really differ
+  assert.deepEqual(en.order, ['p2', 'p1', 'p4', 'p3', 'p0']); // a, ä, b, Z, z1
+  assert.deepEqual(sv.order, en.order); assert.deepEqual(da.order, en.order);
+  assert.deepEqual(sv.said, en.said); assert.deepEqual(da.said, en.said);
+  const { readdirSync } = await import('node:fs'), src = new URL('../src/', import.meta.url), bare = [];
+  for (const f of readdirSync(src, { recursive: true }).filter(f => f.endsWith('.js'))) readFileSync(new URL(f, src), 'utf8').split('\n').forEach((l, i) => {
+    if (/\.localeCompare\(|\.toLocale(?:Lower|Upper)Case\(\)|\.toLocale(?:Date|Time)?String\(\s*\)|new Intl\.\w+\(\s*(?:undefined|\)|\{|\[\])/.test(l)) bare.push(`${f}:${i + 1}`); });
+  assert.deepEqual(bare, []);
+});

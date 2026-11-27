@@ -1,0 +1,2114 @@
+{
+ "commit": "3da83a99",
+ "corpus": "fixed",
+ "total": {
+  "views": 263,
+  "score": 610660.93
+ },
+ "views": {
+  "a8/dsl-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 601.23
+  },
+  "a8/dsl-containers": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1032.11
+  },
+  "a8/dsl-api-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 842.27
+  },
+  "a8/puml-components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 621.83
+  },
+  "a8/checkout-flowchart": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 303.76
+  },
+  "a8/meals-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "score": 325.61
+  },
+  "a8/compose-services": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 373.67
+  },
+  "a8/k8s-cluster": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 183.93
+  },
+  "b10/overview": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1215.46
+  },
+  "b10/norepair": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1365.59
+  },
+  "b26/overview": {
+   "hard": 2,
+   "cross": 68,
+   "labels": 1,
+   "straight": null,
+   "reverse": 9,
+   "score": 14309.58
+  },
+  "b26/n01": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 324.9
+  },
+  "b69/overview": {
+   "hard": 3,
+   "cross": 238,
+   "labels": 3,
+   "straight": null,
+   "reverse": 12,
+   "score": 42542.54
+  },
+  "b69/front": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 360.9
+  },
+  "b69/back": {
+   "hard": 0,
+   "cross": 8,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "score": 2764.7
+  },
+  "d24/boxed": {
+   "hard": 0,
+   "cross": 7,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "score": 3369.55
+  },
+  "d24/plain": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "score": 2097.59
+  },
+  "f12/order": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "score": 877.73
+  },
+  "f12/signup": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 487.83
+  },
+  "f12/ticket": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 491.17
+  },
+  "f12/pipeline": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 4,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1043.12
+  },
+  "f12/checkout-c4": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 245.41
+  },
+  "f12/orders-dfd": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 323.04
+  },
+  "f12/request-flow": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 270.9
+  },
+  "f12/shop-gcp": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 91.44
+  },
+  "f12/order-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": 0,
+   "reverse": 0,
+   "score": 738.42
+  },
+  "f12/signup-boxed": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": 4,
+   "reverse": 0,
+   "score": 888.29
+  },
+  "f12/ticket-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 544.73
+  },
+  "f12/pipeline-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 3,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1069.31
+  },
+  "f12/onboard": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1002
+  },
+  "f12/onboard-boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": 0,
+   "reverse": 0,
+   "score": 1081.54
+  },
+  "i59/context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 327.12
+  },
+  "i59/system": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 795.62
+  },
+  "i59/trips": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 564.84
+  },
+  "i59/fleet": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 623.67
+  },
+  "i59/ride-end": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 483.86
+  },
+  "i59/overview": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 777.14
+  },
+  "i59/api": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 238.13
+  },
+  "i59/checkout": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 277.49
+  },
+  "i59/dock-feed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 647.13
+  },
+  "i59/demand": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 294.79
+  },
+  "i59/help": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 584.5
+  },
+  "m50/overview": {
+   "hard": 1,
+   "cross": 283,
+   "labels": 0,
+   "straight": null,
+   "reverse": 9,
+   "score": 44865.14
+  },
+  "r15/boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1387.97
+  },
+  "r15/plain": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1072.46
+  },
+  "r19/boxed": {
+   "hard": 1,
+   "cross": 5,
+   "labels": 0,
+   "straight": null,
+   "reverse": 7,
+   "score": 5176.95
+  },
+  "r19/plain": {
+   "hard": 0,
+   "cross": 10,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "score": 3766.59
+  },
+  "s16/site": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 259.55
+  },
+  "s16/job": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 767.14
+  },
+  "s16/pay": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 353.39
+  },
+  "u21/shop": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 729.83
+  },
+  "u21/teams": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 360
+  },
+  "u21/orders": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 447.6
+  },
+  "u21/checkout": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 155.87
+  },
+  "u21/warehouse": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 1,
+   "straight": null,
+   "reverse": 0,
+   "score": 370.59
+  },
+  "u21/catalog": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 109.22
+  },
+  "examples/bookshop-atlas/overview": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 2020.51
+  },
+  "examples/bookshop-atlas/overview-run": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 500.22
+  },
+  "examples/bookshop-atlas/c4-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 668.93
+  },
+  "examples/bookshop-atlas/shopping": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1106.38
+  },
+  "examples/bookshop-atlas/c4-containers": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1793.43
+  },
+  "examples/bookshop-atlas/c4-components": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1387.11
+  },
+  "examples/bookshop-atlas/c4-placing-an-order": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1483.11
+  },
+  "examples/bookshop-atlas/buy-book": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 707.23
+  },
+  "examples/bookshop-atlas/find-book": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 144.68
+  },
+  "examples/bookshop-atlas/buy-checkout": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 144.17
+  },
+  "examples/bookshop-atlas/email-receipt": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 71.81
+  },
+  "examples/bookshop-atlas/queue-order": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 105.71
+  },
+  "examples/bookshop-atlas/components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 566.54
+  },
+  "examples/bookshop-atlas/domain": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 687.14
+  },
+  "examples/bookshop-atlas/payments-only": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 169.85
+  },
+  "examples/bookshop-atlas/order-life": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1820.37
+  },
+  "examples/bookshop-atlas/snapshot": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 260.75
+  },
+  "examples/bookshop-atlas/packages": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 202.74
+  },
+  "examples/bookshop-atlas/profile": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 266.59
+  },
+  "examples/bookshop-atlas/internals": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 451.88
+  },
+  "examples/bookshop-atlas/order-flows": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 687.42
+  },
+  "examples/bookshop-atlas/er-schema": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 459.6
+  },
+  "examples/bookshop-atlas/dfd-level-1": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "score": 1187.27
+  },
+  "examples/bookshop-atlas/dfd-level-2-take-order": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 457.77
+  },
+  "examples/bookshop-atlas/fulfil": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1451.85
+  },
+  "examples/bookshop-atlas/take-payment": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 145.04
+  },
+  "examples/bookshop-atlas/one-charge": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 60.67
+  },
+  "examples/bookshop-atlas/checkout-sequence": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 388.39
+  },
+  "examples/bookshop-atlas/checkout-communication": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 612.72
+  },
+  "examples/bookshop-atlas/order-to-shipment": {
+   "hard": 0,
+   "cross": 4,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "score": 2163.4
+  },
+  "examples/bookshop-atlas/pick-and-pack": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 132.05
+  },
+  "examples/bookshop-atlas/returns": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 721.88
+  },
+  "examples/bookshop-atlas/c4-deployment": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 715.61
+  },
+  "examples/bookshop-atlas/production": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 425.53
+  },
+  "examples/bookshop-atlas/mm-plan": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1.33
+  },
+  "examples/bookshop-atlas/gcp-on-gcp": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 918.6
+  },
+  "examples/bookshop-atlas/az-on-azure": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1098.95
+  },
+  "examples/bookshop-atlas/aws-on-aws": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 1774.33
+  },
+  "examples/bookshop-aws/aws-on-aws": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 1774.33
+  },
+  "examples/bookshop-azure/az-on-azure": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1098.95
+  },
+  "examples/bookshop-c4/c4-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 668.93
+  },
+  "examples/bookshop-c4/c4-containers": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1793.43
+  },
+  "examples/bookshop-c4/c4-components": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1387.11
+  },
+  "examples/bookshop-c4/c4-placing-an-order": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1483.11
+  },
+  "examples/bookshop-c4/c4-deployment": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 715.61
+  },
+  "examples/bookshop-components/components": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 567
+  },
+  "examples/bookshop-data-flow/dfd-level-1": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "score": 1187.27
+  },
+  "examples/bookshop-data-flow/dfd-level-2-take-order": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 457.77
+  },
+  "examples/bookshop-deployment/production": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 391.83
+  },
+  "examples/bookshop-gcp/gcp-on-gcp": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 918.6
+  },
+  "examples/bookshop-opening-plan/mm-plan": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1.33
+  },
+  "examples/bookshop-order-to-shipment/order-to-shipment": {
+   "hard": 0,
+   "cross": 4,
+   "labels": 0,
+   "straight": null,
+   "reverse": 3,
+   "score": 2163.4
+  },
+  "examples/bookshop-order-to-shipment/pick-and-pack": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 132.05
+  },
+  "examples/bookshop-packages/packages": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 202.74
+  },
+  "examples/bookshop-profile/profile": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 266.59
+  },
+  "examples/bookshop-schema/er-schema": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 459.6
+  },
+  "examples/bookshop-timing/one-charge": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 60.67
+  },
+  "examples/buy-book-overview/buy-book": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 707.23
+  },
+  "examples/buy-book-overview/find-book": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 144.68
+  },
+  "examples/buy-book-overview/buy-checkout": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 144.17
+  },
+  "examples/buy-book-overview/email-receipt": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 71.81
+  },
+  "examples/buy-book-overview/queue-order": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 105.71
+  },
+  "examples/checkout-communication/checkout-communication": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 612.72
+  },
+  "examples/checkout-sequence/checkout-sequence": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 388.39
+  },
+  "examples/ebike-blocks/blocks": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 429.05
+  },
+  "examples/ebike-range/range-analysis": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 737.55
+  },
+  "examples/ebike-requirements/requirements": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 970.03
+  },
+  "examples/ebike-structure/inside-ebike": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 480.49
+  },
+  "examples/fulfil-activity/fulfil": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1451.85
+  },
+  "examples/fulfil-activity/take-payment": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 145.04
+  },
+  "examples/monorepo/boxed": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1387.97
+  },
+  "examples/monorepo/plain": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1072.46
+  },
+  "examples/order-information-flow/order-flows": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 687.42
+  },
+  "examples/order-objects/snapshot": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 260.75
+  },
+  "examples/order-service-structure/internals": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 451.88
+  },
+  "examples/order-states/order-life": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1820.37
+  },
+  "examples/returns-flowchart/returns": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 721.88
+  },
+  "examples/sales-classes/domain": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 687.14
+  },
+  "examples/sales-classes/payments-only": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 169.85
+  },
+  "examples/shapes/shapes": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 891.6
+  },
+  "examples/shopping-use-cases/shopping": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1106.38
+  },
+  "examples/umlimator-atlas/overview": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 1546.78
+  },
+  "examples/umlimator-atlas/context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 553.58
+  },
+  "examples/umlimator-atlas/containers": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 1386.63
+  },
+  "examples/umlimator-atlas/layers": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 301.4
+  },
+  "examples/umlimator-atlas/registry": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 774.05
+  },
+  "examples/umlimator-atlas/diff-run": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 388.89
+  },
+  "examples/umlimator-atlas/machines": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 374.65
+  },
+  "examples/umlimator-atlas/navigation": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 340.99
+  },
+  "examples/umlimator-atlas/story": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 308.36
+  },
+  "examples/umlimator-atlas/tour": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 248.59
+  },
+  "examples/umlimator-atlas/keys": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 282.8
+  },
+  "examples/umlimator-atlas/mcp": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 201.46
+  },
+  "tests/activity-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 105.65
+  },
+  "tests/activity-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 1869.03
+  },
+  "tests/activity-stress/ec-take-payment": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 105.66
+  },
+  "tests/activity-stress/all": {
+   "hard": 0,
+   "cross": 6,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 6252.68
+  },
+  "tests/block-definition-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 57.05
+  },
+  "tests/block-definition-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 225.98
+  },
+  "tests/block-definition-stress/all": {
+   "hard": 0,
+   "cross": 48,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 10046.32
+  },
+  "tests/bpmn-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 104.72
+  },
+  "tests/bpmn-stress/edge-cases": {
+   "hard": 0,
+   "cross": 14,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "score": 4416.68
+  },
+  "tests/bpmn-stress/ec-closed": {
+   "hard": 0,
+   "cross": 13,
+   "labels": 0,
+   "straight": null,
+   "reverse": 6,
+   "score": 4163.79
+  },
+  "tests/bpmn-stress/ec-inside": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 104.72
+  },
+  "tests/bpmn-stress/all": {
+   "hard": 0,
+   "cross": 31,
+   "labels": 0,
+   "straight": null,
+   "reverse": 5,
+   "score": 9406.38
+  },
+  "tests/c4-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 55.12
+  },
+  "tests/c4-stress/ec-landscape": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 200.02
+  },
+  "tests/c4-stress/ec-context": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 200.02
+  },
+  "tests/c4-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1161.31
+  },
+  "tests/c4-stress/ec-component": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 74.2
+  },
+  "tests/c4-stress/ec-dynamic": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 629.74
+  },
+  "tests/c4-stress/ec-deployment": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 38.35
+  },
+  "tests/c4-stress/all": {
+   "hard": 0,
+   "cross": 138,
+   "labels": 0,
+   "straight": null,
+   "reverse": 12,
+   "score": 34203.42
+  },
+  "tests/class-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 30.57
+  },
+  "tests/class-stress/all": {
+   "hard": 0,
+   "cross": 18,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 6469.73
+  },
+  "tests/class-stress/edge-cases": {
+   "hard": 0,
+   "cross": 3,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1568.44
+  },
+  "tests/cloud-minimal/gcp": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 0.2
+  },
+  "tests/cloud-minimal/azure": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 0.2
+  },
+  "tests/cloud-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 259.39
+  },
+  "tests/cloud-stress/ec-no-product": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 0.27
+  },
+  "tests/cloud-stress/az-edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 195.3
+  },
+  "tests/cloud-stress/aws-edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 110.99
+  },
+  "tests/cloud-stress/all": {
+   "hard": 0,
+   "cross": 56,
+   "labels": 0,
+   "straight": null,
+   "reverse": 4,
+   "score": 17706.92
+  },
+  "tests/communication-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 111.25
+  },
+  "tests/communication-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 617.34
+  },
+  "tests/communication-stress/all": {
+   "hard": 0,
+   "cross": 13,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 5859.67
+  },
+  "tests/component-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 104.28
+  },
+  "tests/component-stress/edge-cases": {
+   "hard": 15,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 16551.97
+  },
+  "tests/component-stress/all": {
+   "hard": 0,
+   "cross": 114,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 19564.57
+  },
+  "tests/composite-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 53.63
+  },
+  "tests/composite-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 821.46
+  },
+  "tests/composite-stress/all": {
+   "hard": 0,
+   "cross": 19,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 4810.74
+  },
+  "tests/deployment-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 0.34
+  },
+  "tests/deployment-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 662.47
+  },
+  "tests/deployment-stress/all": {
+   "hard": 1,
+   "cross": 23,
+   "labels": 1,
+   "straight": null,
+   "reverse": null,
+   "score": 9507.29
+  },
+  "tests/dfd-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 120.95
+  },
+  "tests/dfd-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 476.38
+  },
+  "tests/dfd-stress/ec-level-2": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 815.61
+  },
+  "tests/dfd-stress/ec-level-2-gs": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": 2,
+   "score": 815.61
+  },
+  "tests/dfd-stress/ec-level-3": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 88.17
+  },
+  "tests/dfd-stress/ec-pay-level": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 95.41
+  },
+  "tests/dfd-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 7533.36
+  },
+  "tests/er-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 55.76
+  },
+  "tests/er-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 784.02
+  },
+  "tests/er-stress/edge-cases-idef1x": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 784.02
+  },
+  "tests/er-stress/all": {
+   "hard": 0,
+   "cross": 17,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 5501.86
+  },
+  "tests/flowchart-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 0,
+   "score": 103.36
+  },
+  "tests/flowchart-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 1175.77
+  },
+  "tests/flowchart-stress/all": {
+   "hard": 0,
+   "cross": 4,
+   "labels": 0,
+   "straight": null,
+   "reverse": 1,
+   "score": 4557.69
+  },
+  "tests/information-flow-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 60.44
+  },
+  "tests/information-flow-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 715.13
+  },
+  "tests/information-flow-stress/all": {
+   "hard": 0,
+   "cross": 149,
+   "labels": 1,
+   "straight": null,
+   "reverse": null,
+   "score": 24899.64
+  },
+  "tests/internal-block-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 27.74
+  },
+  "tests/internal-block-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 594.7
+  },
+  "tests/internal-block-stress/ec-ports-only": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 0.06
+  },
+  "tests/internal-block-stress/all": {
+   "hard": 0,
+   "cross": 5,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 4870.95
+  },
+  "tests/mindmap-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 0.04
+  },
+  "tests/mindmap-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 44.35
+  },
+  "tests/mindmap-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 43.99
+  },
+  "tests/object-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 366.27
+  },
+  "tests/object-stress/all": {
+   "hard": 0,
+   "cross": 42,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 9380.37
+  },
+  "tests/overview-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 105.81
+  },
+  "tests/overview-minimal/find": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 67.4
+  },
+  "tests/overview-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1175.31
+  },
+  "tests/overview-stress/ec-sq-find": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 68.48
+  },
+  "tests/overview-stress/ec-sq-buy": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 401.24
+  },
+  "tests/overview-stress/ec-log": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 34.08
+  },
+  "tests/overview-stress/ec-sq-audit": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 267.49
+  },
+  "tests/overview-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 4177.79
+  },
+  "tests/overview-stress/sq0": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq1": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq2": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq3": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq4": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq5": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq6": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq7": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq8": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/overview-stress/sq9": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 478.54
+  },
+  "tests/package-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 323.9
+  },
+  "tests/package-minimal/payments": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 30.54
+  },
+  "tests/package-minimal/boxes": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 26.48
+  },
+  "tests/package-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 3838.66
+  },
+  "tests/parametric-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 110.48
+  },
+  "tests/parametric-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 542.71
+  },
+  "tests/parametric-stress/ec-constraint-block": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 134.53
+  },
+  "tests/parametric-stress/all": {
+   "hard": 16,
+   "cross": 208,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 44219.37
+  },
+  "tests/profile-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 109.91
+  },
+  "tests/profile-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1426
+  },
+  "tests/profile-stress/all": {
+   "hard": 0,
+   "cross": 31,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 8070.54
+  },
+  "tests/requirement-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 114.74
+  },
+  "tests/requirement-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1097.4
+  },
+  "tests/requirement-stress/ec-package": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 0.28
+  },
+  "tests/requirement-stress/all": {
+   "hard": 1,
+   "cross": 232,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 38269.57
+  },
+  "tests/sequence-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 68.41
+  },
+  "tests/sequence-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 839.1
+  },
+  "tests/sequence-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 17340.68
+  },
+  "tests/state-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 106.72
+  },
+  "tests/state-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1572.5
+  },
+  "tests/state-stress/all": {
+   "hard": 0,
+   "cross": 19,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 8318.63
+  },
+  "tests/timing-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 0.18
+  },
+  "tests/timing-stress/edge-cases": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 251.65
+  },
+  "tests/timing-stress/dense": {
+   "hard": 6,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 6001.44
+  },
+  "tests/timing-stress/all": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 316,
+   "straight": null,
+   "reverse": null,
+   "score": 24480.71
+  },
+  "tests/usecase-minimal/v": {
+   "hard": 0,
+   "cross": 0,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 55.34
+  },
+  "tests/usecase-stress/edge-cases": {
+   "hard": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 1600.29
+  },
+  "tests/usecase-stress/all": {
+   "hard": 0,
+   "cross": 2,
+   "labels": 0,
+   "straight": null,
+   "reverse": null,
+   "score": 5014.44
+  }
+ }
+}

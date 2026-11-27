@@ -20,6 +20,9 @@ import { goneIn, liveLine } from '../typed/draw.js';
 
 const DFD_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), DFD_ARR = x => (Array.isArray(x) ? x : []);
 const DFD_HAS = x => x != null && String(x).trim() !== '';
+// process numbers compared in one fixed locale, made once, as structurizr.js's steps: 2 before 10, and the host's own locale
+// (Swedish puts ä after z) not read (audit 71)
+const DFD_NUM_ORDER = new Intl.Collator('en', { numeric: true }).compare;
 const dfdNum = x => (DFD_OBJ(x && x.props) && DFD_HAS(x.props.number) ? String(x.props.number).trim() : '');
 const dfdPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const DFD_LINES = ['dfd.DataFlow', 'uml.CommentLink'];
@@ -138,7 +141,7 @@ const dfdFlow = e => e.type === 'dfd.DataFlow' || (e.type !== 'uml.CommentLink' 
 const dfdLineName = (I, e) => `${dfdOther(e) ? snKindName(e.type) : e.type === 'uml.CommentLink' ? 'Comment link' : 'Data flow'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
 // reading order: the processes by number, then the stores, the entities and the rest as the view lists them, then the lines
 function dfdOrder(I, ids, lines) {
-  const rank = id => ['dfd.Process', 'dfd.DataStore', 'dfd.ExternalEntity'].indexOf(I.ty(id)) + 1 || 4, byNum = (a, b) => dfdNum(I.at.get(a)).localeCompare(dfdNum(I.at.get(b)), undefined, { numeric: true });
+  const rank = id => ['dfd.Process', 'dfd.DataStore', 'dfd.ExternalEntity'].indexOf(I.ty(id)) + 1 || 4, byNum = (a, b) => DFD_NUM_ORDER(dfdNum(I.at.get(a)), dfdNum(I.at.get(b)));
   return [...[...ids].sort((a, b) => rank(a) - rank(b) || (rank(a) === 1 ? byNum(a, b) : 0)), ...lines.map(e => e.id)];
 }
 
@@ -279,6 +282,23 @@ function dfdKey(model, view, ids, key) {
     : `Made level ${title}, balanced with ${dfdPlural(flows.length, 'flow')}: Enter opens it` };
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a flow into or out of a data store is a dependency (it ranks nothing), as is a comment link; an external
+   entity that only sends goes first, one that only receives last, a data store in the band under the flow. Each by the view's
+   flows (dfdLines), read once a view */
+const dfdTy = (model, id) => { const x = DFD_ARR(model && model.nodes).find(n => DFD_OBJ(n) && n.id === id); return x ? x.type : undefined; };
+const dfdFlowRole = (e, model) => !DFD_OBJ(e) ? null : e.type === 'uml.CommentLink' || [e.from, e.to].some(id => dfdTy(model, id) === 'dfd.DataStore') ? 'dep' : 'branch';
+const DFD_ENDS = new WeakMap();
+function dfdZoneOf(x, model, view) {
+  if (!DFD_OBJ(x) || !DFD_OBJ(view)) return null;
+  if (x.type === 'dfd.DataStore') return 'under';
+  if (x.type !== 'dfd.ExternalEntity') return null;
+  let by = DFD_ENDS.get(view); if (!by || by.model !== model) { by = { model, ends: new Map() }; DFD_ENDS.set(view, by);
+    dfdLines(model, view).filter(e => e.type !== 'uml.CommentLink' && e.from !== e.to).forEach(e => [[e.from, 0], [e.to, 1]].forEach(([id, k]) => { const s = by.ends.get(id) || [0, 0]; s[k]++; by.ends.set(id, s); })); }
+  const [out, inn] = by.ends.get(x.id) || [0, 0];
+  return out && !inn ? 'first' : inn && !out ? 'last' : null;
+}
+
 const DFD_NUMBER = { key: 'number', label: 'Number', kind: 'text' };
 const DFD_TYPE = registerDiagramType('dfd', {
   untypedLine: 'Data flow', // a line of no notation is drawn, named and counted as a data flow (audits 9, 30)
@@ -287,6 +307,8 @@ const DFD_TYPE = registerDiagramType('dfd', {
   lines: [{ type: 'dfd.DataFlow', label: 'Data flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   props: { 'dfd.Process': [DFD_NUMBER], 'dfd.DataStore': [DFD_NUMBER], 'dfd.ExternalEntity': [], 'dfd.DataFlow': [], 'uml.CommentLink': [] },
   layout: dfdGeo,
+  flowRole: dfdFlowRole,
+  zoneOf: dfdZoneOf,
   validate: dfdProblems,
   rules: DFD_RULES,
   describe: dfdDescribe,
@@ -299,4 +321,4 @@ const DFD_TYPE = registerDiagramType('dfd', {
     const v = x.type === 'dfd.Process' && I.views.get(x.opensView); return [...(dfdNum(x) ? [`number ${dfdNum(x)}`] : []), ...(v ? [`opens level ${labelOr(v.title, v.id)}`] : [])]; },
 });
 
-export { DFD_TYPE, DFD_RULES, dfdGeo, dfdProblems, dfdDescribe, dfdAdd, dfdKey };
+export { DFD_TYPE, DFD_RULES, dfdFlowRole, dfdZoneOf, dfdGeo, dfdProblems, dfdDescribe, dfdAdd, dfdKey };

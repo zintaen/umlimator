@@ -1,6 +1,46 @@
 {
- "commit": "1a4bb22c",
+ "commit": "3da83a99",
  "results": {
+  "a8/checkout-flowchart": {
+   "hashes": [
+    "a769dc6"
+   ]
+  },
+  "a8/compose-services": {
+   "hashes": [
+    "dddfcaaa"
+   ]
+  },
+  "a8/dsl-api-components": {
+   "hashes": [
+    "adaa680"
+   ]
+  },
+  "a8/dsl-containers": {
+   "hashes": [
+    "addaf377"
+   ]
+  },
+  "a8/dsl-context": {
+   "hashes": [
+    "6d9de3b8"
+   ]
+  },
+  "a8/k8s-cluster": {
+   "hashes": [
+    "d28975ad"
+   ]
+  },
+  "a8/meals-context": {
+   "hashes": [
+    "4d9783c7"
+   ]
+  },
+  "a8/puml-components": {
+   "hashes": [
+    "255ef07a"
+   ]
+  },
   "b10/norepair": {
    "hashes": [
     "161ed154"
@@ -44,6 +84,56 @@
   "d24/plain": {
    "hashes": [
     "22a8212e"
+   ]
+  },
+  "f12/onboard": {
+   "hashes": [
+    "8ff6f0e9"
+   ]
+  },
+  "f12/onboard-boxed": {
+   "hashes": [
+    "88631c03"
+   ]
+  },
+  "f12/order": {
+   "hashes": [
+    "fb667c73"
+   ]
+  },
+  "f12/order-boxed": {
+   "hashes": [
+    "887a8a1f"
+   ]
+  },
+  "f12/pipeline": {
+   "hashes": [
+    "f51ab290"
+   ]
+  },
+  "f12/pipeline-boxed": {
+   "hashes": [
+    "faae87d"
+   ]
+  },
+  "f12/signup": {
+   "hashes": [
+    "c0690750"
+   ]
+  },
+  "f12/signup-boxed": {
+   "hashes": [
+    "ef669"
+   ]
+  },
+  "f12/ticket": {
+   "hashes": [
+    "ac351ae1"
+   ]
+  },
+  "f12/ticket-boxed": {
+   "hashes": [
+    "8c841b0a"
    ]
   },
   "i59/api": {

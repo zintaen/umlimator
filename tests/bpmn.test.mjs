@@ -19,6 +19,8 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { storyFromFlow } from '../src/map/stories.js';
+import { diff } from '../src/map/diff.js';
 import { tablesOf } from '../src/page/print.js';
 import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners, bzOwner } from '../src/bpmn/process.js';
 
@@ -74,9 +76,12 @@ test('the definition: bpmn with row 24\'s palette, its lines, properties, refs, 
   assert.deepEqual(T.props['bpmn.BoundaryEvent'].map(f => f.key), ['documentation', 'definition', 'categoryValueRef', 'cancelActivity']);
   assert.deepEqual(T.props['bpmn.IntermediateThrowEvent'][1].options, ['none', 'message'], 'decision 21: the none intermediate throw event');
   assert.deepEqual(T.refs['bpmn.BoundaryEvent'], { 'props.categoryValueRef': 'drop', 'props.attachedTo': 'cascade' });
+  // a default flow: an exclusive gateway's or an activity's, never a parallel gateway's; a deleted flow is dropped
+  assert.deepEqual(['bpmn.ExclusiveGateway', 'bpmn.ParallelGateway', 'bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity'].map(t => [T.props[t].some(f => f.key === 'default'), T.refs[t]['props.default']]),
+    [[true, 'drop'], [false, undefined], [true, 'drop'], [true, 'drop'], [true, 'drop']]);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'moveTo', 'owner', 'remove']);
   assert.deepEqual(Object.keys(T.rules), ['sequence-scope', 'sequence-ends', 'message-scope', 'message-ends', 'event-definition', 'boundary-host', 'boundary-out', 'flow-start', 'gateway-flows',
-    'lane-owner', 'in-lane', 'data-ends', 'group-ref', 'opens-view']);
+    'lane-owner', 'in-lane', 'data-ends', 'group-ref', 'opens-view', 'default-flow']);
   for (const k of ['layout', 'draw', 'boxes', 'owners', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
 });
 
@@ -263,6 +268,11 @@ const cases = {
   'data-ends': [[N('d', 'DataObject', 'D', { parent: 'p' }), N('n', 'TextAnnotation', 'Why')], [F('x', 'd', 's', 'DataAssociation'), F('y', 'e', 'd', 'DataAssociation'), F('z', 'a', 'e', 'Association'), F('w', 'd', 'd', 'DataAssociation'), F('ok', 'n', 'a', 'Association')], ['error', 'error', 'error', 'error']],
   'group-ref': [[N('b', 'Task', 'B', { parent: 'l1', props: { categoryValueRef: ['nowhere', 'a'] } })], [F('x', 'a', 'b')], ['warning', 'warning']],
   'opens-view': [[N('S', 'SubProcess', 'S', { parent: 'l1', opensView: 'nowhere' }), N('c', 'CallActivity', 'C', { parent: 'l1', opensView: 'v2' })], [F('x', 'a', 'S'), F('y', 'S', 'c'), F('z', 'c', 'e')], ['warning', 'warning']],
+  // a default that is no flow out of its gateway, on a parallel gateway, naming no line, and one with a condition
+  'default-flow': [[N('g', 'ExclusiveGateway', 'G', { parent: 'l1', props: { default: 'f1' } }), N('h', 'ParallelGateway', null, { parent: 'l1', props: { default: 'u' } }),
+    N('b', 'Task', 'B', { parent: 'l1', props: { default: 'v' } }), N('c', 'Task', 'C', { parent: 'l1', props: { default: 'nowhere' } })],
+  [F('x', 'a', 'g'), F('y', 'g', 'b', 'SequenceFlow', { label: 'yes' }), F('z', 'g', 'h', 'SequenceFlow', { label: 'no' }), F('u', 'h', 'c'), F('t', 'h', 'e'), F('v', 'b', 'e', 'SequenceFlow', { ext: { bpmn: { condition: '${ok}' } } }), F('w', 'c', 'e')],
+  ['error', 'error', 'error', 'warning']],
 };
 test('§4\'s rules: each fails on its case at its level, naming its rule and its elements, and passes on example 24', () => {
   assert.deepEqual(Object.keys(cases), Object.keys(BZ_RULES));
@@ -519,7 +529,7 @@ test('audit 1: deleting a lane keeps its nested lanes in its place', () => {
   assert.equal(lanes(apply(m, bzRemove(m, m.views[0], ['G'], false).commands)), 'A B H');
 });
 
-test('audit 2: a pin far off the grid is held at its edge, laid out at once, and validate() says so', () => {
+test('audit 2: a pin far off the grid is held at its edge, laid out at once, and validate() says so (timed)', () => {
   for (const pin of [[1e308, 0], [0, -1e7]]) { const m = structuredClone(EX); V(m).layout = { ...(V(m).layout || {}), 'order-placed': pin };
     const t = performance.now(); assert.ok(layout(m, VID).byId['order-placed'], 'laid out'); assert.ok(performance.now() - t < 5000, 'quickly');
     assert.ok(validate(m).some(p => p.path === `views[${m.views.indexOf(V(m))}].layout.order-placed` && /off the grid/.test(p.message)), 'warned'); }
@@ -995,6 +1005,33 @@ test('audit 43: the example\'s timer moved to each side by Alt + arrows, laid ou
   }
 });
 
+// 0.45.0's known gap (audit 61 finding 6): Alt + Up on the gallery example's timer put "Payment result" on the Charge request
+// line, as the line was routed again after the label was placed; a line's label on another line now slides along its own line.
+// The models are copies in tests/fixtures/ of the bookshop order-to-shipment example and the gallery BPMN example
+test('known gap of 0.45.0: Alt + each arrow on every boundary event of the BPMN examples, laid out as is, right or down, puts no label on another line', () => {
+  const quiet = f => { const k = console.warn; console.warn = () => {}; try { return f(); } finally { console.warn = k; } };
+  const onLine = (m, vid) => quiet(() => check(m, vid)).map(p => p.message).filter(t => / lies on edge /.test(t));
+  const by = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+  let moves = 0;
+  for (const file of ['./fixtures/bookshop-order-to-shipment.json', './fixtures/bpmn-gallery.json']) {
+    const M = JSON.parse(readFileSync(new URL(file, import.meta.url), 'utf8'));
+    for (const v of M.views.filter(w => w.diagram === 'bpmn')) for (const direction of [null, 'right', 'down']) {
+      const base = structuredClone(M); if (direction) V(base, v.id).direction = direction;
+      const before = new Set(onLine(base, v.id));
+      for (const b of M.nodes.filter(n => n.type === 'bpmn.BoundaryEvent' && v.nodeIds.includes(n.id))) for (const [k, d] of Object.entries(by)) {
+        const c = bzMoveTo(base, V(base, v.id), b.id, { by: d }); if (!Array.isArray(c) || !c.length) continue;
+        moves++; assert.deepEqual(onLine(apply(base, c), v.id).filter(t => !before.has(t)), [], `${file} ${v.id} ${direction || 'as is'}: ${b.id} ${k}`);
+      }
+    }
+  }
+  assert.ok(moves >= 40, `every move tried (${moves})`);
+  // the case of the note: the label is drawn by its own line, clear of the Charge request line
+  const G = JSON.parse(readFileSync(new URL('./fixtures/bpmn-gallery.json', import.meta.url), 'utf8'));
+  const m = apply(G, bzMoveTo(G, V(G), 'payment-timeout', { by: [0, -1] })), g = layout(m, VID), e = g.edges.find(x => x.id === 'm-result');
+  assert.ok(e.lbl && !segs(g.edges.find(x => x.id === 'bp-m-charge').pts).some(s => meets(s, { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 })), 'Payment result off Charge request');
+  assert.ok(segs(e.pts).some(s => meets(s, { x: e.lbl.x - 5, y: e.lbl.y - 5, w: e.lbl.w + 10, h: e.lbl.h + 10 })), 'and by its own line');
+});
+
 // audit 52: Delete of a lane keeps what it held whichever view makes it: another view's own flow node in the lane (or in a
 // nested lane moved up) is moved too, which apply()'s delete would take otherwise; Shift + Delete of a pool counts it
 test('audit 52: Delete of a lane keeps a flow node another view holds as its own in it; a pool\'s Shift + Delete counts it', () => {
@@ -1029,6 +1066,18 @@ test('audit 55: 150 sequence flows into one gateway lay out in about linear time
   const t = performance.now(), g = layout(one(nodes, edges), 'v'), ms = performance.now() - t;
   assert.ok(ms < 4000, `${Math.round(ms)} ms`);
   assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 150, 'every flow drawn');
+});
+
+// audit 70: a long process was cubic in its tasks: the repair passes asked routeAudit about one line at a time, and each ask
+// still walked every pair of lines (1,000 tasks 6.6 s, 2,000 47 s). Timed by growth against a quarter, the quarter's best of two
+test('a process of 1,000 tasks in a row lays out in near-quadratic time (audit 70) (timed)', () => {
+  const make = n => { const nodes = [N('p', 'Participant', 'Shop'), N('s', 'StartEvent', 'Start', { parent: 'p' }), N('e', 'EndEvent', 'End', { parent: 'p' })], edges = [];
+    for (let i = 0, prev = 's'; i <= n; prev = 't' + i, i++) { if (i < n) nodes.push(N('t' + i, 'Task', 'Task ' + i, { parent: 'p' })); edges.push({ id: 'f' + i, type: 'bpmn.SequenceFlow', from: prev, to: i < n ? 't' + i : 'e' }); }
+    return one(nodes, edges); };
+  const time = m => { const t = performance.now(), g = layout(m, 'v'); return [performance.now() - t, g]; };
+  const q = Math.min(time(make(250))[0], time(make(250))[0]), [ms, g] = time(make(1000)); // cubic was about 40x a quarter, here about 10x
+  assert.ok(ms < 300 || ms / Math.max(q, 1) < 25, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 1001, 'every flow drawn');
 });
 
 test('a boundary event on an activity one view alone holds lives in that view too; Delete of such an activity deletes its events and says so (audit 58)', () => {
@@ -1068,4 +1117,128 @@ test('Delete of a view-own activity with the model boundary event on it also sel
   // a model event on a model task, selected with it: still hidden, as before
   const r = E.remove(m, V(m), ['cancel-order', 'payment-timeout'], false);
   assert.ok(r == null || !r.commands.some(c => c.op === 'delete'));
+});
+
+test('layout.keepsRow and keepsRank: Alt + an arrow on an item alone in its lane\'s columns, across, or on data drawn beside its flow node, is refused and said, and only where its pin would move nothing (audit 64)', () => {
+  const V = EX.views.find(v => v.diagram === 'bpmn'), L = diagramOf(V).layout, g = layout(EX, V.id), box = m => JSON.stringify(layout(m, V.id).nodes.map(n => [n.id, n.x, n.y]));
+  assert.equal(L.keepsRow(EX, V, 'pick-pack', g, [0, 1]), 'Pick and pack is the only item of Warehouse here: the Owner field, or a drag into another lane, moves it to another lane');
+  assert.equal(L.keepsRank(EX, V, 'pick-pack', g, [1, 0]), null, 'along the flow: a pin');
+  assert.equal(L.keepsRank(EX, V, 'bp-stock', g, [1, 0]), 'Stock database is drawn beside Pick and pack, the flow node it is associated with');
+  const base = box(EX); let refused = 0;
+  for (const n of g.nodes) for (const d of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    if (!L[d[0] ? 'keepsRank' : 'keepsRow'](EX, V, n.id, g, d) || n.col + d[0] < 0 || n.row + d[1] < 0) continue; refused++;
+    assert.equal(box(apply(EX, [{ op: 'set', view: V.id, path: ['layout', n.id], value: [n.col + d[0], n.row + d[1]] }])), base, `${n.id} ${d}: refused, so its pin moves nothing`);
+  }
+  assert.ok(refused > 10, refused);
+});
+
+// audit 65: Alt + an arrow on the first or last item of a lane's rows, stepped outward, or on one the lane pass settles back,
+// wrote a pin that moved nothing (keepsRow said only an item alone in its lane's columns): asked of the layout, every row step
+// is refused exactly where its pin moves nothing, in the example and the stress model's lane views, laid out right and down; so
+// is a step along the flow
+test('layout.keepsRow and keepsRank: Alt + an arrow that the lane pass settles back (the first or last item of a lane\'s rows stepped outward) is refused and said; every other step pins (audit 65)', () => {
+  const V = EX.views.find(v => v.diagram === 'bpmn'), L = diagramOf(V).layout, g = layout(EX, V.id);
+  assert.equal(g.byId['send-invoice'].row, 2);
+  assert.equal(L.keepsRow(EX, V, 'send-invoice', g, [0, -1]), 'Email invoice keeps its place in Sales: the lane stacks its items in their columns from its first row; the Owner field, or a drag into another lane, moves it to another lane');
+  assert.equal(L.keepsRow(EX, V, 'send-invoice', g, [0, 1]), null, 'toward cancel-order, below it in its lane: a pin');
+  const stress = JSON.parse(readFileSync(new URL('./bpmn-stress.json', import.meta.url), 'utf8'));
+  let refused = 0, pinned = 0;
+  for (const [M, vid] of [[EX, V.id], [stress, 'edge-cases'], [stress, 'ec-closed']]) for (const direction of ['right', 'down']) for (const held of [false, true]) {
+    // held: every third card pinned a row below its cell, as a hand-moved view holds
+    const pins = vid => { if (!held) return {}; const G0 = layout({ ...M, views: M.views.map(v => (v.id === vid ? { ...v, direction } : v)) }, vid);
+      return Object.fromEntries(G0.nodes.filter((n, i) => i % 3 === 0 && Number.isFinite(n.col)).map(n => [n.id, [n.col, n.row + 1]])); };
+    const m = { ...M, views: M.views.map(v => (v.id === vid ? { ...v, direction, ...(held ? { layout: pins(vid) } : {}) } : v)) }, v = m.views.find(x => x.id === vid), G = layout(m, vid);
+    const box = x => JSON.stringify(layout(x, vid).nodes.map(n => [n.id, n.x, n.y])), base = box(m);
+    // each step in cells, whichever way the view runs, as the canvas asks it: [0, s] across the flow (keepsRow), [s, 0] along it
+    // (keepsRank), of a card whose Alt + arrows moveTo leaves to the canvas (a boundary event's set its side; a pool's, a lane's
+    // and a group's are refused there)
+    for (const n of G.nodes) for (const d of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      if (!Number.isFinite(n.col) || !Number.isFinite(n.row) || diagramOf(v).edits.moveTo(m, v, n.id, { by: G.down ? [d[1], d[0]] : d, geo: G }) != null) continue;
+      const why = L[d[0] ? 'keepsRank' : 'keepsRow'](m, v, n.id, G, d), moved = box(apply(m, [{ op: 'set', view: vid, path: ['layout', n.id], value: [n.col + d[0], n.row + d[1]] }])) !== base;
+      // pinned, a refusal moves nothing (where audit 64's "only item" said so of a pin that moved others); a step onto a pin is the canvas's to step past
+      if (held) assert.ok(!(why && moved), `${vid} ${direction} pinned ${n.id} ${d}: ${why}`); else assert.equal(!why, moved, `${vid} ${direction} ${n.id} ${d}: ${why}`); if (why) refused++; else pinned++;
+    }
+  }
+  assert.ok(refused > 20 && pinned > 20, `${refused} ${pinned}`);
+});
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md sections 6.1 and 7.2): BPMN's flowRole and
+// zoneOf, read only in an arranged view. The model has no default-flow field, so a gateway's main flow is its first
+test('flowRole: the main flow runs from the start event along each gateway\'s first flow to an end event; a data association is a dependency. zoneOf: start first, end last, data under', () => {
+  const n = (id, type, more = {}) => ({ id, type: 'bpmn.' + type, label: id, ...more }), sf = (id, from, to) => ({ id, type: 'bpmn.SequenceFlow', from, to });
+  const m = { schemaVersion: 2, nodes: [n('s', 'StartEvent', { props: { definition: 'none' } }), n('g', 'ExclusiveGateway'),
+    n('a', 'Task'), n('b', 'Task'), n('b2', 'Task'), n('e1', 'EndEvent', { props: { definition: 'none' } }), n('e2', 'EndEvent', { props: { definition: 'none' } }), n('d', 'DataObject')],
+  edges: [sf('f1', 's', 'g'), sf('f2', 'g', 'a'), sf('f3', 'a', 'e1'), sf('f4', 'g', 'b'), sf('f5', 'b', 'b2'), sf('f6', 'b2', 'e2'), { id: 'da', type: 'bpmn.DataAssociation', from: 'a', to: 'd' }],
+  views: [{ id: 'v', diagram: 'bpmn', arrange: 'flow', nodeIds: ['s', 'g', 'a', 'b', 'b2', 'e1', 'e2', 'd'] }] };
+  const v = m.views[0], el = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(m.edges.map(e => T.flowRole(e, m, v)), ['main', 'main', 'main', 'branch', 'branch', 'branch', 'dep'], 'the gateway\'s first flow, though the other branch is longer');
+  assert.deepEqual(['s', 'g', 'a', 'e1', 'd'].map(id => T.zoneOf(el(id), m, v)), ['first', null, null, 'last', 'under']);
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.equal(new Set(['s', 'g', 'a', 'e1'].map(id => at(id).row)).size, 1, 'the main flow on one row');
+  assert.ok(at('e1').col > at('b2').col && at('e2').col === at('e1').col, 'the end events after the flow');
+  assert.deepEqual(g.edges.filter(e => e.mainLine).map(e => e.id), ['f1', 'f2', 'f3']);
+  assert.ok(g.edges.find(e => e.id === 'da').dep);
+  assert.ok(g.edges.filter(e => e.mainLine).every(e => e.pts.length === 2), 'each main line one straight segment: in no pool, a column the main flow passes keeps its row free');
+  delete v.arrange; const g0 = layout(m, 'v'); assert.ok(g0.edges.every(e => !e.mainLine && !e.dep), 'without arrange: nothing marked');
+});
+
+// audit 66: an activity's main step is its own flow out, never a boundary event's exception flow, whatever the order of the
+// edges (a .bpmn file may list the exception flow first); flowRole, the rows and storyFromFlow agree
+test('audit 66: the arranged main flow skips a boundary event\'s exception flow in any edge order', () => {
+  const nodes = [N('s', 'StartEvent', 'Order in', { props: { definition: 'none' } }), N('a', 'Task', 'Take payment'),
+    N('t', 'BoundaryEvent', '2 minutes', { props: { definition: 'timer', attachedTo: 'a' } }), N('x', 'Task', 'Cancel order'), N('e2', 'EndEvent', 'Cancelled', { props: { definition: 'none' } }),
+    N('b', 'Task', 'Pack'), N('c', 'Task', 'Ship'), N('e', 'EndEvent', 'Shipped', { props: { definition: 'none' } })];
+  const all = [F('f0', 's', 'a'), F('ft', 't', 'x'), F('fx', 'x', 'e2'), F('f1', 'a', 'b'), F('f2', 'b', 'c'), F('f3', 'c', 'e')];
+  const orders = [all, [all[0], ...all.slice(3), all[1], all[2]], [...all].reverse(), [all[1], all[3], all[0], all[5], all[2], all[4]]];
+  for (const def of ['timer', 'message']) for (const edges of orders) {
+    const m = one(structuredClone(nodes), structuredClone(edges), { arrange: 'flow' }); m.nodes[2].props.definition = def;
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+    const v = m.views[0], main = m.edges.filter(e => T.flowRole(e, m, v) === 'main').map(e => e.id).sort();
+    assert.deepEqual(main, ['f0', 'f1', 'f2', 'f3'], `${def}, ${edges.map(e => e.id)}`);
+    assert.deepEqual(storyFromFlow(m, 'v').steps.map(x => x.select), ['s', 'a', 'b', 'c', 'e'], 'the story tells the same path');
+    const g = layout(m, 'v'); assert.equal(new Set(['s', 'a', 'b', 'c', 'e'].map(id => g.byId[id].row)).size, 1, 'the normal path on one row');
+    assert.ok(!['x', 'e2'].some(id => g.byId[id].row === g.byId.a.row), 'the exception path off the main row');
+  }
+  // an activity whose only flow out is its boundary event's: the main flow ends there (the exception path stays a branch)
+  const only = one(structuredClone(nodes.slice(0, 5)), [F('f0', 's', 'a'), F('ft', 't', 'x'), F('fx', 'x', 'e2')], { arrange: 'flow' });
+  assert.deepEqual(only.edges.map(e => T.flowRole(e, only, only.views[0])), ['main', 'branch', 'branch']);
+});
+
+/* ---- a default flow (props.default): an exclusive gateway's or an activity's, the way taken when no condition holds. The
+   view draws it with a slash near its source and names it; the main flow (an arranged view's), describe() and storyFromFlow
+   follow it, not the first flow out; deleting the flow drops it; diff() says the gateway changed ---- */
+test('a gateway\'s default flow: a slash near its source, named; the main flow and storyFromFlow take it; a delete drops it; diff() says it', () => {
+  const m = one([N('s', 'StartEvent', 'Go', { props: { definition: 'none' } }), N('g', 'ExclusiveGateway', 'Big?', { props: { default: 'g-b' } }), N('a', 'Task', 'Ask'), N('b', 'Task', 'Book'),
+    N('e', 'EndEvent', 'Done', { props: { definition: 'none' } })], [F('s-g', 's', 'g'), F('g-a', 'g', 'a', 'SequenceFlow', { label: 'yes' }), F('g-b', 'g', 'b', 'SequenceFlow', { label: 'no' }), F('a-e', 'a', 'e'), F('b-e', 'b', 'e')], { arrange: 'flow' });
+  assert.deepEqual(validate(m), []);
+  const g = layout(m, 'v'), by = Object.fromEntries(g.edges.map(e => [e.id, e]));
+  assert.deepEqual(g.edges.filter(e => e.end.from === 'slash').map(e => e.id), ['g-b']);
+  assert.equal(by['g-b'].aria, 'Sequence flow from Big? to Book, named no, the default flow');
+  assert.match(svgOf(g), /<marker id="[^"]*-slash-[^"]*"[^>]*><path d="M-14 1L-8 11"/, 'the slash marker is drawn');
+  assert.match(g.legend.join(''), /<b>Default flow<\/b>/);
+  assert.match(describe(m, 'v'), /^Exclusive gateway Big\?; then Ask \(yes\); then Book \(no\) by default\.$/m);
+  // the main flow takes the default, not the first flow out; without one, the first
+  const role = (x, id) => T.flowRole(x.edges.find(e => e.id === id), x, x.views[0]);
+  assert.deepEqual(['g-a', 'g-b'].map(id => role(m, id)), ['branch', 'main']);
+  assert.deepEqual(storyFromFlow(m, 'v').steps.map(x => x.select), ['s', 'g', 'b', 'e']);
+  const plain = structuredClone(m); delete plain.nodes[1].props;
+  assert.deepEqual(['g-a', 'g-b'].map(id => role(plain, id)), ['main', 'branch']);
+  assert.deepEqual(storyFromFlow(plain, 'v').steps.map(x => x.select), ['s', 'g', 'a', 'e']);
+  assert.ok(layout(plain, 'v').edges.every(e => e.end.from === 'none'), 'no default: no slash');
+  // the flow deleted: the gateway names none (refs: drop), and the model stays valid
+  const cut = apply(m, [{ op: 'delete', id: 'g-b' }]);
+  assert.deepEqual(cut.nodes.find(n => n.id === 'g').props, {});
+  assert.deepEqual(validate(cut).filter(p => p.rule === 'default-flow'), []);
+  // diff(): another default is a change of the gateway, drawn on the diff page
+  const moved = structuredClone(m); moved.nodes[1].props.default = 'g-a';
+  const d = diff(m, moved);
+  assert.deepEqual(d.summary, ['changes Big? (props)']);
+  assert.equal(d.model.nodes.find(n => n.id === 'g').change, 'changed');
+  // an activity's default flow, out of a task with two flows out
+  const t = one([N('s', 'StartEvent', 'Go', { props: { definition: 'none' } }), N('a', 'Task', 'Ask', { props: { default: 'a-e2' } }), N('e', 'EndEvent', 'Done', { props: { definition: 'none' } }), N('e2', 'EndEvent', 'Other', { props: { definition: 'none' } })],
+    [F('s-a', 's', 'a'), F('a-e', 'a', 'e'), F('a-e2', 'a', 'e2')]);
+  assert.deepEqual(validate(t), []);
+  assert.deepEqual(layout(t, 'v').edges.filter(e => e.end.from === 'slash').map(e => e.id), ['a-e2']);
+  assert.deepEqual(storyFromFlow(t, 'v').steps.map(x => x.select), ['s', 'a', 'e2']);
 });

@@ -103,6 +103,32 @@ test('a trace goes through its numbered view; overlapping calls are said in the 
   assert.ok(!view(sequenceFromSpans(m, S.slice(0, 3)).model, 'trace').caption.includes('overlapped'), 'a call inside another: no overlap');
 });
 
+// audit 65: the overlap count tested every pair of calls and walked up the parents for each, so a deep chain of nested calls
+// across two services (every pair overlaps and is related) took n³: 1,200 spans 29 s. Timed by growth against a quarter
+test('overlapping calls are counted in near-linear time on deep, wide and looping traces, and as a pairwise count would (audit 65) (timed)', () => {
+  const m = { nodes: [{ id: 'A' }, { id: 'B' }, { id: 'C' }], views: [{ id: 'v', nodeIds: ['A', 'B', 'C'] }] };
+  const said = S => { const r = /(\d+) calls overlapped/.exec(view(sequenceFromSpans(m, S).model, 'trace').caption || ''); return r ? +r[1] : 0; };
+  const shapes = {
+    deep: n => Array.from({ length: n }, (_, i) => ({ id: String(i), ...(i ? { parent: String(i - 1) } : {}), service: 'AB'[i % 2], start: i, end: 2 * n - i })),
+    // a deep chain under one span, the chain's calls overlapping a call outside it, and parents in a loop
+    side: n => [...Array.from({ length: n }, (_, i) => ({ id: String(i), parent: String(i ? i - 1 : n - 1), service: 'AB'[i % 2], start: i, end: 2 * n - i })),
+      { id: 'x', service: 'C', start: 0, end: 1 }, { id: 'y', parent: 'x', service: 'A', start: n, end: n + 1 }],
+    wide: n => [{ id: 'r', service: 'A', start: 0, end: 2 * n }, ...Array.from({ length: n }, (_, i) => ({ id: String(i), parent: 'r', service: 'BC'[i % 2], start: i, end: i + n }))],
+  };
+  for (const [name, make] of Object.entries(shapes)) {
+    const time = n => { const S = make(n), t = performance.now(); said(S); return performance.now() - t; };
+    const q = time(300), ms = time(1200); // cubic was 0.1 s and 25 s here, about 70x a quarter
+    assert.ok(ms < 250 || (ms < 3000 && ms / Math.max(q, 1) < 8), `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  }
+  assert.equal(said(shapes.deep(50)), 0, 'a chain of calls each inside the one before: none overlaps');
+  assert.equal(said(shapes.side(50)), 51, 'every call of the looping chain overlaps y, which is no relative of theirs, and y overlaps them');
+  assert.equal(said(shapes.wide(50)), 50, 'siblings overlap each other');
+  // as the pairwise count reads them: a span with no relative overlapping, a parent that comes after its child, a loop of two
+  const S = [{ id: '1', service: 'A', start: 0, end: 100 }, { id: '2', parent: '1', service: 'B', start: 5, end: 50 }, { id: '3', parent: '1', service: 'C', start: 40, end: 60 },
+    { id: '4', parent: '5', service: 'A', start: 45, end: 47 }, { id: '5', parent: '4', service: 'B', start: 46, end: 48 }, { id: '6', parent: '2', service: 'A', start: 200, end: 300 }];
+  assert.equal(said(S), 4); // 2 and 3 overlap; 4 and 5 are each above the other, both overlap 2 and 3; 6 overlaps none
+});
+
 test('running a helper again with the same options.view replaces that view and the lifelines only it listed', () => {
   const m = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }],
     views: [{ id: 'one', render: 'sequence', nodeIds: ['a', 'b'] }, { id: 'two', render: 'sequence', nodeIds: ['b', 'c'] }] };

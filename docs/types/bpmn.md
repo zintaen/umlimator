@@ -72,7 +72,7 @@ The view's `diagram`, the types its elements, members and lines may have, and it
 | `BpmnElementType` | `bpmn.Participant`, `bpmn.Task`, `bpmn.SubProcess`, `bpmn.CallActivity`, `bpmn.StartEvent`, `bpmn.EndEvent`, `bpmn.IntermediateCatchEvent`, `bpmn.IntermediateThrowEvent`, `bpmn.BoundaryEvent`, `bpmn.ExclusiveGateway`, `bpmn.ParallelGateway`, `bpmn.DataObject`, `bpmn.DataStoreReference`, `bpmn.TextAnnotation`, `bpmn.Group` |
 | `BpmnMemberType` | `bpmn.Lane` |
 | `BpmnLineType` | `bpmn.SequenceFlow`, `bpmn.MessageFlow`, `bpmn.Association`, `bpmn.DataAssociation` |
-| `BpmnElementProps` | `documentation`, `processRef`, `taskType` (`none`, `user`, `service`), `definition` (`none`, `message`, `timer`, `terminate`), `attachedTo`, `cancelActivity`, `calledElement`, `dataStoreRef`, `categoryValueRef` |
+| `BpmnElementProps` | `documentation`, `processRef`, `taskType` (`none`, `user`, `service`), `definition` (`none`, `message`, `timer`, `terminate`), `attachedTo`, `cancelActivity`, `calledElement`, `dataStoreRef`, `categoryValueRef`, `default` (an exclusive gateway's or an activity's default flow: the id of one of its sequence flows out) |
 | `BpmnLineProps` | `documentation`, `direction` (`none`, `one`, `both`: an association's arrowheads) |
 
 ## What is drawn and left out {#conformance}
@@ -133,14 +133,16 @@ The six extras, each with its test on the same view:
 | Timer Boundary Event (interrupting, non-interrupting) | `bpmn.BoundaryEvent`, `definition: "timer"` | the same with a clock |
 | None Intermediate Throw Event (decision 21) | `bpmn.IntermediateThrowEvent`, `definition: "none"` | a double ring with no marker |
 
+A default flow (Table 2.2's default sequence flow, outside the claim above, tested in `tests/bpmn.test.mjs` and `tests/bpmn-xml.test.mjs`): an exclusive gateway's or an activity's `props.default`, the id of one of its sequence flows out, the one taken when no condition on the others holds, as BPMN's `default` attribute. It is drawn as its sequence flow with a slash across the line near its source and keyed "Default flow" in the legend; its accessible name ends "the default flow" and `describe()` says it "by default". An arranged view's main flow and `storyFromFlow()` take a node's default flow before its first one. Deleting the flow drops the field. The BPMN XML reader reads a gateway's or activity's `default` into it and the writer writes it back; a `default` that is no sequence flow out of its node read is kept under `ext.bpmn` and said.
+
 Rules (`src/bpmn/process.js`, the note's §4), each with a passing and a failing case in `tests/bpmn.test.mjs`: errors
 `sequence-scope`, `sequence-ends`, `message-scope`, `message-ends`, `event-definition`, `boundary-host`, `lane-owner`,
-`data-ends`; warnings `boundary-host` (a boundary event in another lane than its activity), `boundary-out`, `flow-start`,
-`gateway-flows`, `in-lane`, `group-ref`, `opens-view`. A line's kind is picked by its ends when it is drawn (no picker):
+`data-ends`, `default-flow` (a default flow on a parallel gateway or an event, or one that is no sequence flow out of its node); warnings `boundary-host` (a boundary event in another lane than its activity), `boundary-out`, `flow-start`,
+`gateway-flows`, `in-lane`, `group-ref`, `opens-view`, `default-flow` (a default flow with a condition, `ext.bpmn.condition`). A line's kind is picked by its ends when it is drawn (no picker):
 a sequence flow in one pool and one level, a message flow between two pools, a data association with data at one end and
 an activity or event of its pool, or of any pool for data in none (`data-ends` is an error for one that joins two pools,
 audit 19; connect and a move keep the same rule, audit 20), an
-association with an annotation at one end; anything else is refused with the rule's words.
+association with an annotation at one end; anything else is refused with the rule's words. The BPMN XML reader keeps a line these rules refuse for its scope (`sequence-scope`, `message-scope`, `data-ends`) whole under `ext.bpmn.skipped` and says so, so the model it reads passes `validate()` (audit 65).
 
 **Departures** (2.2.3 allows a tool's own sizes, colours, line styles and text positions; none changes a shape): the name
 of an event, a gateway, a data object or a data store is drawn outside, under the shape, moved aside where a line or a
@@ -150,7 +152,7 @@ hand-written linear reader (a departure from `risks.md` R2, with the note's §12
 
 ### Left out
 
-The note's §16: Table 2.2 beyond the five rows above (conditional and default flows, send and receive tasks, loop and
+The note's §16: Table 2.2 beyond the five rows and the default flow above (conditional flows, send and receive tasks, loop and
 multi-instance markers, inclusive and event-based gateways, link, signal, error, escalation and conditional events);
 conversations, choreographies, event sub-processes, transactions, ad hoc sub-processes, compensation; messages as
 elements, data inputs and outputs, the collection marker; positions, sizes, colours and label bounds from a file's
@@ -183,7 +185,7 @@ by `tests/import.py` and `tests/bpmn-xml.test.mjs`.
 | Accessible names | Each node's `aria-label` kept; the lines' `<title>` removed | None | None | None |
 | Tables | None | None | "Elements": each element's word (Service task, Timer boundary event, Exclusive gateway, Pool) and its rows (its lane or pool, the activity a boundary event is on, its documentation). Lanes are in their pool's row, after its documentation, each with its own. "Lines": each flow's ends, name (with its documentation) and kind (Sequence flow, Message flow, Association, Data association) | None |
 | Label bounds | | | | Not written |
-| Under `ext.bpmn` | | | | Not written back: what the reader skipped, and the conditions, defaults, task kinds and timer values it weakened; the export says so on stderr, one line each |
+| Under `ext.bpmn` | | | | Not written back: what the reader skipped, and the conditions, task kinds and timer values it weakened (a default flow is `props.default`, written back as `default`); the export says so on stderr, one line each |
 | An id that is not an XML name | | | | Escaped (`_` and the code points), the model's id in `umlimator:id` |
 
 ### Accessibility

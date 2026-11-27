@@ -20,7 +20,9 @@ The same viewer is `mountPage(container, model)` in the module, built on `render
 | Budgets and what-if | ⏱ and ¤ light the slowest or costliest path from a card; ⊘ lights what loses its way if the card goes down |
 | Stories and lenses | the Stories and Lenses menus, when the model has any ([Stories, lenses and live data](../maps/stories-lenses-live.md)) |
 | Light and dark | the ◐ toggle |
+| Motion speed | the speed button on the map's controls (`1×`) steps through 0.5x, 1x, 1.5x and 2x for tours, story steps and the flow along lines; the page remembers it per reader ([Stories](../maps/stories-lenses-live.md#stories)) |
 | Export | SVG · this view, PNG · this view (2×), Copy link to view, Map model (JSON), and Record a story… |
+| Back to Docs | a link at the header's end to the docs page the page belongs to, when it was rendered with `umlimator.py render --docs HREF` (the site's example pages link their type or atlas page); a Tab stop, in both themes, shown as Docs on a phone and left out in a frame, a still, a PDF and a check |
 
 ## Links
 
@@ -31,6 +33,7 @@ A view, a selected card, a story step or a lens can be linked to. A selected lin
 | `#view=<id>&node=<id>` | a view, with a card selected |
 | `#story=<id>&step=<n>` | a story at a step (1-based), shown but not playing on |
 | `#lens=<id>` | the page with a lens on |
+| `#speed=<n>` | the map at a motion speed from 0.25 to 4 (the author's default; a reader's own choice on the speed button outranks it) |
 
 ## Keyboard and screen readers
 

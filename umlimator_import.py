@@ -23,7 +23,7 @@ BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
 """
-import itertools, json, math, re, sys
+import itertools, json, math, re, sys, unicodedata
 from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
@@ -478,6 +478,17 @@ def legal(d, say):
     return top[0]
 
 
+def natural(s):
+    """A sort key that orders a text's digit runs as numbers (web2 before web10) and never raises: a run is compared by its
+    length and then its digits, with no int(), so a run longer than int()'s 4300 digits sorts, and only the runs of \\d
+    (what isdecimal() takes, any script's 0 to 9) count, not a superscript ² or circled ① that isdigit() takes (audit 70)."""
+    def run(t):
+        t = t if t.isascii() else "".join(str(unicodedata.decimal(c)) for c in t)
+        t = t.lstrip("0")
+        return len(t), t
+    return [run(t) if i % 2 else t for i, t in enumerate(re.split(r"(\d+)", s))]
+
+
 def read(fmt, text, name):
     if len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
         m = Model(name)
@@ -491,7 +502,7 @@ def read(fmt, text, name):
             text = scrub(text, lambda no, msg: said.append((no, msg)))
             m = {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
         m.unread += said
-    return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
+    return m.model(), sorted(m.unread, key=lambda u: natural(str(u[0])))
 
 
 # ---------- Structurizr DSL ----------
@@ -677,10 +688,11 @@ def structurizr(text, name):
         return (ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)
     lines = []
     for r in rels:
-        if r["src"] is None:  # this -> x with no element around it, in the model or a group there (audit 25)
-            m.say(r["line"], f"this -> {r['dst']}: this names no element here")
+        if r["src"] is None or r["dst"] is None:  # this -> x or x -> this with no element around it, in the model or a group there (audits 25, 68)
+            m.say(r["line"], f"{r['src'] or 'this'} -> {r['dst'] or 'this'}: this names no element here")
             continue
-        a, b = r["src"] if r.get("this") else find(r["src"], r["scope"]), find(r["dst"], r["scope"])
+        a = r["src"] if r.get("this") else find(r["src"], r["scope"])
+        b = r["dst"] if r.get("this_dst") else find(r["dst"], r["scope"])
         if not (a and b):
             t = r["src"] if not a else r["dst"]
             m.say(r["line"], f"{r['src']} -> {r['dst']}: " + (f"{t} names {clip(', '.join(twice(t)), 80)}: write the one it means" if twice(t) else f"{t} is not an element"))
@@ -726,13 +738,16 @@ def relationship(toks, this):
     if len(toks) > 3 and toks[1] == "=":
         toks = toks[2:]
     if toks[:1] == ["->"] and this and len(toks) > 1:
-        src, dst, a = this, toks[1], toks[2:]
+        mine, dst, a = True, toks[1], toks[2:]
     elif len(toks) > 2 and toks[1] == "->":
-        src, dst, a = (this if toks[0] == "this" else toks[0]), toks[2], toks[3:]
+        mine, dst, a = toks[0] == "this", toks[2], toks[3:]
     else:
         return None
+    src = this if mine else toks[0]
+    to_this = dst == "this"  # `this` names the element it is written in on either side: x -> this too (audit 68)
+    dst = this if to_this else dst
     return {"src": src, "dst": dst, "desc": (a + [""])[0], "tech": (a + ["", ""])[1], "tags": [t.strip() for t in (a + ["", "", ""])[2].split(",") if t.strip()],
-            "this": src is not None and src == this and (toks[:1] == ["->"] or toks[0] == "this")}
+            "this": mine and src is not None, "this_dst": to_this and dst is not None}
 
 
 def prop(x, kw, args):
@@ -1555,10 +1570,16 @@ def kubernetes(d, name):
             hosts = len({word(x.get("host")) for x in rules}) > 1
             routes = [(((word(r.get("host")) or "") if hosts else "") + (word(p.get("path")) or "/"), obj(p.get("backend")))
                       for r in rules for p in objs_in(obj(r.get("http")).get("paths"))]
-            for label, b in routes + ([("default", obj(spec["defaultBackend"]))] if spec.get("defaultBackend") else []):
+            dflt = spec.get("defaultBackend") or spec.get("backend")  # networking.k8s.io/v1, or the older v1beta1 (audit 63)
+            for label, b in routes + ([("default", obj(dflt))] if dflt else []):
                 to = obj(b.get("service")).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
+                res = obj(b.get("resource"))  # a resource backend (a bucket, say): no Service, said as what it is (audit 63)
                 if isinstance(to, str) and (ns, to) in svc:
                     m.line(cid, svc[(ns, to)], label)
+                elif to is None and res:
+                    m.say(at(i), f"Ingress {nm} routes {label} to {word(res.get('kind')) or 'a resource'} {word(res.get('name')) or spell(res.get('name'))} (a resource backend), which is not imported")
+                elif to is None:
+                    m.say(at(i), f"Ingress {nm}: route {label} names no Service: not imported")
                 else:
                     m.say(at(i), f"Ingress {nm} routes to Service {to if isinstance(to, str) else spell(to)}, which is not here")
         elif kind not in ("Service", "Ingress"):  # an env value that names a Service: its host, as name, name.namespace or name.namespace.svc...

@@ -118,6 +118,18 @@
     "$ref": "#/$defs/lens"
    },
    "description": "Saved ways to look at the map: handle.lens(id), the page's Lenses menu and #lens=<id>. A lens lights what it picks and dims the rest; it never lays the view out again."
+  },
+  "motion": {
+   "type": "object",
+   "properties": {
+    "speed": {
+     "type": "number",
+     "minimum": 0.25,
+     "maximum": 4,
+     "description": "The author's motion speed: a multiplier on a tour's dot, a story step's time and the flow along lines (default 1). A reader's own choice on the page's speed button, a host's speed option and the page's #speed= link outrank it; reduced motion still stops all motion."
+    }
+   },
+   "description": "How the map moves when it is played."
   }
  },
  "$defs": {
@@ -394,6 +406,15 @@
      "type": "string",
      "description": "Where an external skill comes from."
     },
+    "zone": {
+     "enum": [
+      "first",
+      "flow",
+      "last",
+      "under"
+     ],
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): where the card sits in a view with arrange: flow, a column before the flow (first), in it (flow), a column after it (last) or a band of rows under it (under). Absent: the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes into first, an external card last, a database, file or board card under). Map views read it, and typed views whose type gives zoneOf or flowRole; a pin beats it. validate() checks it and diff() reports a change of it."
+    },
     "credits": {
      "type": "array",
      "items": {
@@ -528,6 +549,10 @@
         },
         "stereotypes": {
          "description": "Any UML element: names drawn «in guillemets», as text (['entity']). From 0.23.0, a name a profile applied to one of the element's packages defines is that profile's stereotype, checked against it; Profile::name picks one of two applied profiles that define a name; outside every applied profile a name is a keyword, as before."
+        },
+        "associationClass": {
+         "description": "uml.Class (after 0.45.0): the id of the uml.Association it is the association class of (UML 2.5.1 11.5.4); a class view that draws both draws the class joined to the middle of the association's line by a dashed line. Rule association-class: an association has one such class, the class is at neither of its ends, and a class view shows the two together.",
+         "type": "string"
         },
         "classifier": {
          "description": "uml.InstanceSpecification: the name (or qualified name, sales::Order) of the classifier it is an instance of, as text; drawn name : Classifier, underlined."
@@ -737,6 +762,10 @@
           "type": "string"
          },
          "description": "A bpmn flow node, data object or annotation (0.27.0): the ids of the groups (bpmn.Group) it is in; a deleted group is dropped."
+        },
+        "default": {
+         "type": "string",
+         "description": "bpmn.ExclusiveGateway, bpmn.Task, bpmn.SubProcess, bpmn.CallActivity (after 0.45.0): the id of its default flow, one of its sequence flows out, the one taken when no condition on the others holds (BPMN's default attribute); drawn with a slash near its source, and the main flow and storyFromFlow follow it. A declared reference: a deleted flow is dropped. Rule default-flow: it is one of the node's own sequence flows out, with no condition (ext.bpmn.condition), and a parallel gateway or an event has none."
         }
        }
       },
@@ -991,6 +1020,15 @@
      "type": "string",
      "description": "Where an external skill comes from."
     },
+    "zone": {
+     "enum": [
+      "first",
+      "flow",
+      "last",
+      "under"
+     ],
+     "description": "The card's zone in this view, as a card's zone (layout by business flow)."
+    },
     "credits": {
      "type": "array",
      "items": {
@@ -1135,6 +1173,14 @@
     "loop": {
      "type": "boolean",
      "description": "The view's loop back, whatever the cards' order."
+    },
+    "flow": {
+     "enum": [
+      "main",
+      "branch",
+      "dep"
+     ],
+     "description": "Layout by business flow (docs/diagrams/notes/layout-flow.md): the line's part in a view with arrange: flow, on the main flow (main), a flow line off it (branch), or a dependency line that ranks nothing (dep). Absent: from the line's kind. With no main line, the main flow is the stepped lines chained in step order, else the longest path of flow lines. validate() warns when an arranged view's main lines are not one path, or its steps break into chains. Read on map views so far; diff() reports a change of it."
     },
     "what": {
      "type": "string",
@@ -1645,6 +1691,16 @@
      "type": "boolean",
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
+    "arrange": {
+     "enum": [
+      "flow"
+     ],
+     "description": "flow: the view is laid out by business flow (docs/diagrams/notes/layout-flow.md): dependency lines rank nothing, the main flow on one row, cards in zones. Absent: the view lays out as always. Read on map views so far: dependency lines, and the main flow on one straight row, across boxes too, and zones. validate() checks it (a sequence, timing or mindmap view does not rank, and it warns there) and diff() reports a change of it."
+    },
+    "zones": {
+     "type": "boolean",
+     "description": "false: no default zones in a view with arrange: flow; a card's own zone still holds. Default true."
+    },
     "diagram": {
      "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); sysml.requirement, sysml.block-definition, sysml.internal-block and sysml.parametric SysML v1.7's four diagrams, each in a frame (0.25.0); mindmap a mindmap, and gcp, azure and aws Google Cloud, Azure and AWS architecture diagrams (0.26.0); bpmn a BPMN diagram (0.27.0); a type this release does not draw is drawn as plain cards, with a warning.",
      "examples": [
@@ -2047,6 +2103,11 @@
      "type": "string",
      "description": "The story's name, in the Stories menu and over its captions."
     },
+    "audience": {
+     "type": "string",
+     "minLength": 1,
+     "description": "Who the story is told to (\"business\", \"engineering\", ...): the standalone page's Stories menu groups the stories by it."
+    },
     "steps": {
      "type": "array",
      "minItems": 1,
@@ -2054,6 +2115,49 @@
       "$ref": "#/$defs/storyStep"
      },
      "description": "What the story shows, in order."
+    },
+    "chapters": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/storyChapter"
+     },
+     "description": "Stories of their own, each offered in the caption bar while the story shows its step `at`; a chapter ends back at that step."
+    }
+   }
+  },
+  "storyChapter": {
+   "type": "object",
+   "required": [
+    "id",
+    "at",
+    "steps"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique among the story's chapters."
+    },
+    "title": {
+     "type": "string",
+     "description": "The chapter's name, on its button in the caption bar."
+    },
+    "audience": {
+     "type": "string",
+     "minLength": 1,
+     "description": "Who the chapter is told to, as a story's."
+    },
+    "at": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "The step of the story (0-based) the chapter is offered at, and returns to."
+    },
+    "steps": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "$ref": "#/$defs/storyStep"
+     },
+     "description": "What the chapter shows, in order."
     }
    }
   },

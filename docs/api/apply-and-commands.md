@@ -37,7 +37,7 @@ command that cannot run throws, and none of the transaction is applied. The mode
 
 Returns the next model. Undo is the model before: keep it with [`history()`](#history).
 
-`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see [`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of one view, with everything the view says of it. It refuses the view's `subject`, or an element that holds the subject as a member, and says why: change the view's subject with `set`, or delete the element from the model. It also refuses an element that lives only in that view (the view's own node or line, from `add` with `in: 'view'`), since hiding it would delete it: use `delete`. A member is shown with its owner, so `hide` of one is refused too: collapse its compartment with `set` of `present`, or delete it.
+`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see [`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of one view, with everything the view says of it: the lines to it, and a reply (`props.replyTo`) with its call, whether the view holds that line or lists a model line by id. It refuses the view's `subject`, or an element that holds the subject as a member, and says why: change the view's subject with `set`, or delete the element from the model. It also refuses an element that lives only in that view (the view's own node or line, from `add` with `in: 'view'`), since hiding it would delete it: use `delete`. A member is shown with its owner, so `hide` of one is refused too: collapse its compartment with `set` of `present`, or delete it.
 
 ```js
 import { apply } from 'umlimator';
@@ -103,8 +103,7 @@ const next = apply(classModel, [
 function history(model: MapModel, limit?: number): History;
 ```
 
-Undo and redo for a host. Push each model you apply, and hand what `undo()` and `redo()` return to
-[`handle.update()`](./render.md#update). `limit` caps how many models it keeps (default 100).
+Undo and redo for a host. Push each model you apply, and hand what `undo()` and `redo()` return to [`handle.update()`](./render.md#update). `limit` caps how many steps back it keeps (default 100): `history(model, 2)` allows two undos.
 
 ## History
 
@@ -219,7 +218,7 @@ cycle, the boxes) it is about, as [`Ref`](./model-and-schema.md#ref)s to pass to
 ## diff
 
 ```ts
-function diff(before: MapModel | null, after: MapModel | null): DiffResult;
+function diff(before: MapModel | null, after: MapModel | null, options?: { stable?: boolean }): DiffResult;
 ```
 
 What changed from one model to the next, as one model to draw: `after`, with each card marked added, changed or
@@ -239,12 +238,19 @@ A member drawn as its own shape (a part, a port, a lane) that was renamed or ret
 
 Only what changed is marked. A mark the model carries of its own, such as a card's `change: "new"` or `"removed"`, a line's `edited` dot or its `added` or `removed` style, or a `change` on a box, a member or a view's `nodeOverrides`, is dropped from `model` where the change leaves that element as it was, so the page draws nothing as new or removed that the summary does not say. A `planned` mark stays, since it draws as itself and `diff()` never writes it. A mark the change itself adds or takes off is a change of that element: "changes Shop app (change)", marked changed.
 
-`umlimator.py diff` and the GitHub Action draw the same result for a pull request.
+The result also holds `stableFrom`, the model before, to draw `model` with: `render(el, d.model, { stableFrom: d.stableFrom })` (or `layout()` and `check()` with the same option) keeps each card the change left alone at the cell it had before, and draws a removed card back where it was. It is there by default since 0.46.0 (before, only with `{ stable: true }`); with `{ stable: false }` the result has none, and `model` is drawn fresh.
+
+```js
+const d = diff(before, after);
+render(el, d.model, { view: d.views[0], stableFrom: d.stableFrom });
+```
+
+`umlimator.py diff` and the GitHub Action draw the same result for a pull request, stable unless told `--no-stable` (the Action's `stable: "false"`).
 
 ## DiffResult
 
 ```ts
-interface DiffResult { model: MapModel; summary: string[]; views: string[] }
+interface DiffResult { model: MapModel; summary: string[]; views: string[]; stableFrom?: MapModel }
 ```
 
 | Field | What it is |
@@ -252,6 +258,7 @@ interface DiffResult { model: MapModel; summary: string[]; views: string[] }
 | `model` | `after` with the change marks, and none of its own but `planned` on what the change leaves as it was: a card's `change` (a NEW or CHANGED tab; REMOVED is faded, dashed and struck through), a line's `style` (`added` or `removed`) or `edited`, and `nodeOverrides` for a card put into or taken out of one view. The marks are the model's own fields, so a page or still the CLI makes shows them. |
 | `summary` | What changed, in words and in model order ("adds Readers, from umlimator.py"). |
 | `views` | The views that show a change. |
+| `stableFrom` | The model before (a copy), for `render()`, `layout()` or `check()` to draw `model` with, so the cards the change left alone keep their cells. Left out with `{ stable: false }`. |
 
 ## drift
 
@@ -367,6 +374,42 @@ no line leads there.
 const slow = critical(model, 'system', { by: 'latency' });
 slow.total;              // 45
 map.highlight(slow.refs);
+```
+
+## storyFromFlow
+
+```ts
+function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean; audience?: string }): FlowStory;
+```
+
+A story told from a view's main flow ([layout by business flow](../diagrams/notes/layout-flow.md), section 10), as a [`Story`](./model-and-schema.md#story) that `validate()` accepts: one step per card on the main flow, in order. Each step selects its card, highlights it and the main line into it, rides that line (a `tour` of the two cards, which the view draws a line between), and says what the line does: its `what`, else its label, as in `"4. Charges: Cart charges Payments; reads Orders."`. A dependency line (`flow: "dep"`, on a map a `state` or `guard` line, on a typed view a line its type's `flowRole` calls a dependency, such as a DFD flow to or from a data store or a comment link) is no step: the card it joins is named in the caption of the step that reads or writes it. The main flow is the one the layout reads (`flow: "main"`, else steps, else the longest path of flow lines), on any view, arranged or not; on a typed view it is the one its type reads, which an arranged view's picture draws as its main row (lines into a first card, out of a last one or to an under card are no part of it), and a typed view whose type reads no flow (a use case, class or state machine view, among others) has none; an interaction overview reads its control flows as the activity does. A flowchart's story runs from its start terminal to an end terminal: the main flow its picture draws, carried back to the start and on to the end along its flows, across the data symbols' band and through an on-page connector pair (`"5. A: the flow carries on from A."`). A card the view draws as a box (an expanded sub-process) is a step like any other. A card with no name is named by the kind its picture says (`"the initial node"`, `"the merge"`), and a comment or annotation linked to a step is said as a note (`"; note: ..."`). A line's label on a map, or on a relationship, is a verb (`"Cart charges Payments"`); a flow's, a path's, a data flow's, a message's and every cloud line's (AWS, Azure and Google Cloud alike) names what goes along it, so the step says `"4. Order queue: Shop API to Order queue (paid order)."`. The time grows about in step with the view's own layout, which the story reads to ride its drawn lines.
+
+`FlowStory` adds `chapters`: each branch off the main flow (a chain of flow lines from a main card to cards off it) as a story of its own, with `at`, the step of the main story where the branch leaves (0-based). `chapters: false` leaves them out. The page offers each chapter in the caption bar at its step ([`play()`](./render.md#play)). A sequence view tells its messages in the order the view lists them; a BPMN view its main path, the one an arranged view's picture draws: from the start event whose path is longest (in a collaboration, the main process, not the first-listed pool's), taking each node's default flow out (`props.default`), else its first sequence flow out; a communication view its numbered messages in time order, each step selecting the message, lighting it and the two lifelines and riding the connector between them (`"1.1. place(order): storefront calls api."`, a reply `"payments replies to api"`).
+
+`audience` is kept on the story and its chapters (the standalone page's Stories menu groups by it). For `"business"` (any case) the captions leave out the stores a step reads or writes (`"5. Ships: Payments ships Shipping."`); any other audience changes no caption. `id` defaults to `flow-<viewId>`, `title` to the view's title and "the main flow". Throws when the view has no main flow. The model is not changed: play the story with [`play(story)`](./render.md#play), or add it to the model's `stories`.
+
+```js
+const s = storyFromFlow(model, 'order');
+s.steps.length;            // 6: one per card on the main flow
+s.steps[3].caption;        // "4. Charges: Cart charges Payments."
+s.chapters[0].at;          // 3: a branch leaves at Payments, the fourth step
+map.play(s);
+```
+
+## storyFromDiff
+
+```ts
+function storyFromDiff(before: MapModel, after: MapModel, viewId: string, options?: { id?: string; title?: string; audience?: string; on?: 'after' | 'diff' }): Story;
+```
+
+A story of what changed on a view from `before` to `after`, such as a pull request's base and head: a step per card and line that [`diff()`](#diff) marks added, changed or removed and the view draws. The steps follow the view's main flow as it was and is (a card by its place on it, a card off it after the main card its lines reach first, a line just before the later of its two cards, so a removed line keeps its place), else the view's order. Each caption says what happened: `"1. Added: Cart asks Fraud check."`, `"2. Changed: Shipping svc, renamed from Shipping."` (with the other fields that changed in brackets), `"3. Removed: Payments ships Shipping."`. An added or changed card or line is selected and lit, and an added or changed line is ridden by a tour of its two cards.
+
+`on: 'after'` (the default) tells the story on the model after, which `validate()` accepts there: a removed card or line is selected by no step, and the cards it was joined to are lit (`"Removed: Ledger, which was joined to Refunds."`). `on: 'diff'` tells it on `diff(before, after).model`, which draws the removed cards and lines too, and selects them; `umlimator.py diff --story` puts that story on the diff's page. `id` defaults to `diff-<viewId>`, `title` to the view's title and "what changed"; `audience` is kept on the story. Throws when the view shows no change, or (on `'after'`) is not in the model after.
+
+```js
+const s = storyFromDiff(base, head, 'order');
+s.steps.map(x => x.caption);   // ["1. Added: Cart asks Fraud check.", "2. Added: Fraud check.", ...]
+map.play(s);                    // on the map of the model after
 ```
 
 ## whatIf

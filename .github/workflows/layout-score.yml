@@ -1,0 +1,88 @@
+name: layout-score
+
+# The layout quality score (docs/diagrams/notes/layout-flow.md sections 4.2 and 9.4) on the code that changes it:
+#   score    the fixed corpus against its expect file and the base commit's lib/ in the same job (time is a gate there,
+#            never a term), and the edit corpus against its expect file. No secret.
+#   heldout  the held-out corpus, built by bench/gen.py from the secret LAYOUT_HELDOUT_SEED and the ISO week into the
+#            runner's temporary folder, never into the checkout; totals only. It runs on pushes to audit-loop and by hand,
+#            never on a pull request (whose code could print the maps); without the secret, as on a fork, it says so and
+#            passes. The weekly layout loop starts this workflow on its pull request's branch with heldout=false (its
+#            pull request, opened with the workflow's token, starts no workflow), so only the score job runs there.
+on:
+  pull_request:
+    paths: ["src/layout/**", "src/map/**", "lib/**", "bench/**", "tools/evolve/tune-loop.mjs", ".github/workflows/layout-score.yml"]
+  push:
+    branches: [audit-loop]
+    paths: ["src/layout/**", "src/map/**", "lib/**", "bench/**"]
+  workflow_dispatch:
+    inputs:
+      heldout:
+        description: Also measure the held-out corpus (needs the secret LAYOUT_HELDOUT_SEED)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: layout-score-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The edit corpus is what its generator writes
+        run: node bench/gen-edits.mjs --check
+
+      - name: The fixed corpus scores no worse than bench/score-expected.json and the base commit
+        run: python3 bench/bench.py --score --expect bench/score-expected.json --base "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'HEAD^1' }}"
+
+      - name: The edit corpus scores no worse than bench/score-expected-edits.json (section 8.4's targets reported; one run a pair, so no time gate)
+        run: python3 bench/bench.py --score --corpus edits --runs 1 --expect bench/score-expected-edits.json
+
+  heldout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_SEED: ${{ (github.event_name == 'push' || inputs.heldout == true) && secrets.LAYOUT_HELDOUT_SEED != '' }}
+    steps:
+      - name: Without the seed (a pull request, or a fork), the held-out corpus is not built
+        if: env.HAS_SEED != 'true'
+        run: echo "::notice::The held-out corpus is not measured here. It needs the repository secret LAYOUT_HELDOUT_SEED, which only pushes to audit-loop and runs by hand (unless started with heldout=false) receive, never a pull request or a fork."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_SEED == 'true'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        if: env.HAS_SEED == 'true'
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_SEED == 'true'
+        with:
+          node-version: 24
+
+      - name: The held-out corpus, totals only, against the commit before
+        if: env.HAS_SEED == 'true'
+        env:
+          LAYOUT_HELDOUT_SEED: ${{ secrets.LAYOUT_HELDOUT_SEED }}
+        run: python3 bench/bench.py --score --corpus heldout --week "$(date -u +%G-W%V)" --base HEAD^1

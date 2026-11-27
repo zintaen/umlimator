@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
@@ -14,7 +14,8 @@ import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '..
    comments; realizations, component realizations, usages (a socket at a ball, else «use»), assembly and delegation
    connectors (a delegation from a box's port inward is an inner line, §5), dependencies, manifestations and comment links.
    Laid out by layoutTyped from the type's own ranking (cpPlace), a usage of a ball turned so the ball comes before its requirers: gap 48, labelGaps
-   and cut 280 (§8), a box with ports 48 px of padding (§7), repair and reroute off (§14). Every port is a node of the
+   and cut 280 (§8), a box with ports 48 px of padding (§7), repair and reroute off (§14), the class view's box pass on (shutBoxes 2: a line through a box
+   holding neither end weighs more than a crossing, audit 70). Every port is a node of the
    picture, with its owner's id (owner), which the layout check passes half inside it (decision 22). Ships in
    lib/umlimator-all.js only. */
 
@@ -98,10 +99,10 @@ const cpEnd = (pic, id) => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of $
 function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
   if (!x) return String(id);
-  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to)));
+  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to))).filter((n, i, a) => a.indexOf(n) === i);
     return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, stereotypes: cpStereo(x), provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
-  const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
+  const st = cpStereo(x), owners = k => [...new Set(of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from))))]; // each once: a component's port and the component realizing one interface (audit 64)
   // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
   if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
@@ -141,20 +142,41 @@ function cpRank(items, links) {
   for (let it = 0, more = true; more && it <= items.length; it++) { more = false; fwd.forEach(([a, b]) => { if (rank[b] < rank[a] + 1) { rank[b] = rank[a] + 1; more = true; } }); }
   return { rank, fwd };
 }
-function cpPlace(pic, lines, pins) {
-  const links = lines.filter(l => !l.inner).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
+/* o (layout-flow.md sections 5.3, 6.3 and 7.3, section 12 step 10), from a type whose arranged view reads the flow: role(line)
+   'dep' ranks nothing; anchor, the main flow's items, each the first of its column held at the main row (rowsFor's and
+   untangle's anchors); zone, id -> 'first' or 'last', an item in a column before its block's flow or after it; under, id ->
+   ids, an item no ranked line reaches, under the items its dependency lines join it to */
+function cpPlace(pic, lines, pins, o = {}) {
+  const links = lines.filter(l => !l.inner && !(o.role && o.role(l) === 'dep')).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
   const itemIn = (x, g) => { for (let k = 0; x != null && k <= seq.size; k++, x = pic.owner(x)) if (pic.owner(x) === g) return x; };
   const done = new Map(), seq = new Set([null]); for (const g of seq) pic.holds(g).forEach(x => pic.open.has(x) && seq.add(x)); // top down; laid out bottom up: no recursion, boxes nested to any depth
   const block = g => { const items = pic.holds(g), size = Object.create(null), pos = Object.create(null);
     items.forEach(x => { size[x] = pic.open.has(x) ? done.get(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
     const L = links.map(([a, b]) => [itemIn(a, g), itemIn(b, g)]).filter(([a, b]) => a !== undefined && b !== undefined && a !== b), lined = new Set(L.flat());
-    const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h;
+    const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h, Z = o.zone || {};
+    const zoned = items.filter(x => lined.has(x) && (Z[x] === 'first' || Z[x] === 'last')), rest = items.filter(x => lined.has(x) && !zoned.includes(x));
+    if (zoned.length && rest.length) { const f = zoned.some(x => Z[x] === 'first') && rest.some(x => rank[x] === 0) ? 1 : 0;
+      rest.forEach(x => { rank[x] += f; }); const last = Math.max(...rest.map(x => rank[x])) + 1; zoned.forEach(x => { rank[x] = Z[x] === 'first' ? 0 : last; }); }
     items.filter(x => lined.has(x)).forEach(x => (cols[rank[x]] ||= []).push(x));
-    untangle(cols, fwd, hh); const row = rowsFor(cols, fwd, hh);
+    if (zoned.length) cols.splice(0, cols.length, ...cols.filter(c => c && c.length)); // a column zones emptied: none
+    let anchor = null; const holds = []; if (o.anchor) { const taken = new Set(); items.filter(x => lined.has(x) && o.anchor.has(x)).forEach(x => { if (taken.has(rank[x])) return; taken.add(rank[x]); (anchor ||= Object.create(null))[x] = 0; });
+      // a column between two main items with none of its own holds its place on the main row (the main line runs through it)
+      if (anchor) { const rs = [...taken], lo = Math.min(...rs), hi = Math.max(...rs); for (let k = lo + 1; k < hi; k++) if (!taken.has(k) && cols[k]) { const id = '\u0003' + k; holds.push(id); size[id] = { w: 1, h: 1, pos: {} }; anchor[id] = 0; cols[k].push(id); } } }
+    untangle(cols, fwd, hh, undefined, anchor || undefined);
+    if (holds.length) cols.forEach(c => { const k = c.findIndex(x => holds.includes(x)); if (k > 0) c.unshift(...c.splice(k, 1)); }); // a held column's branch items under the main row
+    const row = rowsFor(cols, fwd, hh, undefined, anchor || undefined);
+    if (holds.length) cols.forEach((c, k) => { cols[k] = c.filter(x => !holds.includes(x)); });
+    if (anchor) { const low = Math.min(0, ...Object.values(row)); if (low < 0) Object.keys(row).forEach(x => { row[x] -= low; }); } // a branch above: the main row moves down
     let c0 = 0, h = 0; cols.forEach(list => { let r0 = 0, w = 0;
       list.forEach(x => { r0 = Math.max(r0, row[x] ?? 0); Object.entries(size[x].pos).forEach(([id, [c, r]]) => { pos[id] = [c0 + c, r0 + r]; }); r0 += size[x].h; w = Math.max(w, size[x].w); });
       c0 += w; h = Math.max(h, r0); });
-    const loose = items.filter(x => !lined.has(x)), per = Math.max(2, c0);
+    // an under item (o.under: id -> the items its dependency lines join it to) in a band under the lined columns, in the column of
+    // the median of those placed here (the later of two middles), stacked when two share one
+    const near = x => (o.under && o.under[x] || []).filter(y => pos[y]).map(y => pos[y][0]).sort((a, b) => a - b);
+    const band = items.filter(x => !lined.has(x) && size[x].w === 1 && size[x].h === 1 && near(x).length), at = Object.create(null);
+    band.forEach(x => { const cs = near(x), k = cs[cs.length >> 1]; pos[x] = [k, h + (at[k] = (at[k] ?? -1) + 1)]; });
+    if (band.length) h += Math.max(...Object.values(at)) + 1;
+    const loose = items.filter(x => !lined.has(x) && !band.includes(x)), per = Math.max(2, c0);
     let c = 0, r = h, rh = 0; // packed by size in rows under the lined columns, a row as tall as its tallest
     loose.forEach(x => { if (c && c + size[x].w > per) { r += rh; c = 0; rh = 0; }
       Object.entries(size[x].pos).forEach(([id, [a, b]]) => { pos[id] = [c + a, r + b]; }); c += size[x].w; rh = Math.max(rh, size[x].h); c0 = Math.max(c0, c); });
@@ -210,7 +232,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
     return { id: l.e.id, _id: l.e.id, type: l.e.type, from: l.f.at, to: l.t.at, ...end(l, 'from'), ...end(l, 'to'), ...(l.inner ? { inner: l.inner } : {}),
       ...(l.f.port || l.t.port ? { portRank: l.f.port && l.t.port ? r : r[l.f.port ? 0 : 1] } : {}), label: label || undefined, ...(label ? { cut: 280 } : {}),
       end: CP_LOOK[l.kind][0], aria: cpLineName(pic, l), ...(CP_OBJ(l.e.style) || typeof l.e.style === 'string' ? { style: l.e.style } : {}) }; });
-  const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
+  const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo));
   // on a copy (stage 4 §2.4): every port as a node, and its name; a node that could not hold a port with no line grows and is laid
   // out once more while one is still held (portRoom, audit 52; portsHeld, audit 53). ponytail: that view lays out more than once each time, as its memo holds the last layout's key
   const ports = shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) }));
@@ -233,6 +255,7 @@ const CP_RULES = {
   'component-owner': 'a component\'s owner is a component or a package',
   multiplicity: RULES.multiplicity, // an interface box's attribute's, as the class view's (audit 45)
   'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
+  'comment-link': 'a comment link the view draws has a comment at one end',
 };
 function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -268,7 +291,9 @@ function cpProblems(model, view) {
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`);
     // a value the view reads only as written, misspelled or in another case: ignored, so said (audit 47)
     const as = CP_OWN(p, 'as'); if (as != null && as !== 'ball') say('warning', 'present-values', `views[${vi}].present.${id}.as`, [id], `${q(id)}'s as ${jsonText(as)} is not ball: ignored`);
-    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } }); }
+    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } });
+    // a comment link with no comment at either end, of the lines this view draws (connect refuses one), a warning (audit 64)
+    const drawn = new Set(pic.lines.map(l => l.e)); out.push(...commentLinkProblems(viewLines(model, view).filter(([e]) => drawn.has(e)), I.ty, q)); }
   return out;
 }
 
@@ -308,14 +333,15 @@ function cpConnect(model, view, from, to, at, line) {
   if (kind === 'delegation' && !I.P.has(within(to, from) ? from : to)) return { error: 'Delegate from a port of the box' }; // drawn only from its port (cpPic)
   return [{ op: 'add', element: { id: cpNewId(model, 'connector'), type: 'uml.Connector', from, to, props: { kind } }, view: view.id }];
 }
-// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); along its own side, nothing, as said
+// a port dropped, or Alt + arrows on it: its side, as present.<port>.side (§4.5); an arrow names the side it goes to, so every
+// side a drag reaches is reached by keyboard (audit 64: Alt + Up or Down on a left port was refused); the side it is on, said
 function cpMoveTo(model, view, id, at) {
   const I = cpIndex(model); if (!I.P.has(id) || !CP_OBJ(at)) return null;
   const g = CP_OBJ(at.geo) ? at.geo : {}, me = CP_OWN(g.byId, id), o = CP_OWN(g.byId, I.P.get(id).owner) || CP_ARR(g.families).find(f => f.id === I.P.get(id).owner);
   let s = null;
-  if (Array.isArray(at.by)) { const [dx, dy] = at.by, v = me && (me.side === 'L' || me.side === 'R');
-    if (me && (v ? dy && !dx : dx && !dy)) return { commands: [], say: 'A port\'s order along its side follows its lines: Alt + arrows across it moves it to another side' };
-    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null; }
+  if (Array.isArray(at.by)) { const [dx, dy] = at.by;
+    s = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : dy > 0 ? 'B' : null;
+    if (me && s && s === me.side) return { commands: [], say: `The port is on its owner's ${CP_SIDE[s]} side already: its order along the side follows its lines` }; }
   else if (Array.isArray(at.pt) && o) { const [x, y] = at.pt, d = { L: Math.abs(x - o.x), R: Math.abs(x - o.x - o.w), T: Math.abs(y - o.y), B: Math.abs(y - o.y - o.h) };
     s = Object.keys(d).reduce((a, b) => (d[b] < d[a] ? b : a)); }
   return s ? [{ op: 'set', view: view.id, path: ['present', id, 'side'], value: CP_SIDE[s] }] : null;
@@ -414,7 +440,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
     const ports = () => cpPortsOf(x).filter(p => (pic.I.P.get(p.id) || {}).owner === id).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
     if (x.type === 'uml.Component' || !x.type) return ports(); // no type: drawn as a component, with its ports (audit 29)
     // an interface: the operations and attributes its box draws, none as a ball (audit 29)
-    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
+    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(rowMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
     return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });

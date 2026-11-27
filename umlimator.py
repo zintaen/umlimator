@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """umlimator: layered, animated architecture maps, built on super-board's /visual renderer (MIT).
 
-  umlimator.py render MODEL.json --out PAGE.html [--no-check]   # interactive drill-down page (one self-contained file)
+  umlimator.py render MODEL.json --out PAGE.html [--no-check] [--docs HREF]   # interactive drill-down page (one self-contained file);
+                                                       # --docs: a "Back to Docs" link in its header to HREF
   umlimator.py stills PAGE.html --out DIR [--views a,b] [--scale 2] [--theme light|dark] [--reader]   # each view as DIR/<view>.svg and .png;
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
   umlimator.py check PAGE.html [--views a,pic-*] [--expand] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only;
                                                        # it exits 1 on a rule the model breaks (rules)
-  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]   # what changed, marked on one map, and in words
-  umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
+  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR] [--no-stable]   # what changed, marked on one map, and in words
+  umlimator.py diff --base REF --out DIR [--models 'docs/*.json'] [--no-stable]   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T] [--diagram uml.sequence]   # a trace (OTLP JSON) kept as a numbered view, or as a UML sequence diagram
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 30]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
-  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes|structurizr-json|dbml|bpmn] [--typed] [--moddle DIR]   # a diagram you have, as a model
+  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes|structurizr-json|dbml|bpmn] [--typed] [--moddle DIR] [--arrange]   # a diagram you have, as a model
   umlimator.py export MODEL.json --out FILE.bpmn [--view ID] [--format bpmn] [--moddle DIR]   # a model's BPMN, as BPMN XML
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark] [--paper a4|letter]   # one PDF: a cover with the contents,
                                                        # each view with its legend and tables of its cards, lines and boxes, the rules
@@ -61,12 +62,14 @@ class Terminal:
         return getattr(self.to, name)
 
 
-def visual_cmd(tmp, *args):
+def visual_cmd(tmp, *args, docs=None):
     """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator-all.js inlined: one
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
-    pointed at that page, written into the directory `tmp`."""
+    pointed at that page, written into the directory `tmp`. docs: the href of render's "Back to Docs" link, or None."""
     page = Path(tmp) / "template.html"
     html = PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
+    if docs is not None:
+        html = html.replace("/*__UMLIMATOR_DOCS__*/null", script_json(docs), 1)
     page.write_text(html.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
     run = ("import importlib.util, pathlib, sys\n"
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
@@ -827,9 +830,14 @@ def bpmn(fn, a, *args):
     return json.loads(r.stdout)
 
 
+DOCS_HREF = re.compile(r"(?:https?://|[./]|[A-Za-z0-9_-])[^\s<>\"'`]*")  # a web address or a relative path: never javascript: or data:
+
+
 def cmd_render(a):
     if not Path(a.model).is_file():
         sys.exit(f"no model at {a.model}")
+    if a.docs is not None and (not DOCS_HREF.fullmatch(a.docs) or re.match(r"(?i)[a-z][a-z0-9+.-]*:", a.docs) and not re.match(r"(?i)https?://", a.docs)):
+        sys.exit(f"render: --docs {a.docs!r} is not a web address (http:// or https://) or a relative path")
     model = page_model(a.model, a.out)
     try:
         render(a, model)
@@ -847,7 +855,8 @@ def render(a, model, show=print):
     if all(isinstance(v, dict) and v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
-        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp])))
+        docs = getattr(a, "docs", None)  # passed only when given: a test's stand-in for visual_cmd takes (tmp, *args)
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})))
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
@@ -876,18 +885,37 @@ def quiet(*a, **k):
     pass
 
 
-def render_model(m, near, out):
+def render_model(m, near, out, base=None):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
-    the render, so it is drawn as that file would be."""
+    the render, so it is drawn as that file would be. base: the model before an edit, which the page draws it against
+    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8)."""
     tmp = temp_json(m, near, ".change.json")
     try:
         model = page_model(tmp, out, source=near)
         try:
-            return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
+            rep = render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
         finally:
             untemp(model)
     finally:
         untemp(tmp)
+    if isinstance(base, dict):
+        with_base(Path(rep["out"]), base)
+    return rep
+
+
+def with_base(page, base):
+    """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
+    script (every '<' in it escaped by script_json, as the page's own data block is, so no text in the model, such as '<!--'
+    then '<script', ends the script or opens a state its </script> no longer closes: audit 8, audit 66). The base goes through own_media as every page
+    model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
+    the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
+    base = json.loads(json.dumps(base))
+    with contextlib.redirect_stderr(io.StringIO()):
+        own_media(base, page.parent, "base")
+    text = page.read_text(encoding="utf-8")
+    tag = '<script id="umlimator-base" type="application/json">' + script_json(base) + "</script>\n"
+    at = text.find('<script id="visual-data"')
+    page.write_text(text[:at] + tag + text[at:] if at >= 0 else text, encoding="utf-8")
 
 
 def shots(page, out, views):
@@ -922,23 +950,42 @@ def cmd_diff(a):
     before, after = map(read_model, a.files)
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
-    r = diff_page(before, after, a.files[1], a.out, a.stills)
+    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
-    leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent)."""
-    d = js("diff", before, after)
+    leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
+    stable (the default, layout-flow.md section 12 step 14): the page draws the model after against the model before, so the
+    cards the change left alone keep their cells; False draws it fresh.
+    story: each view that shows a change gets a story of it (storyFromDiff, told on the diff's model), in the page's Stories
+    menu, and the answer names them."""
+    d = js("diff", before, after, {"stable": bool(stable)})
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
+    told = []
+    if story:  # a story of each view's change, on the page's own model (which draws the removed cards and lines too)
+        mine = {s.get("id") for s in m.get("stories") or [] if isinstance(s, dict)}
+        for v in d["views"]:
+            sid = f"diff-{v}"
+            while sid in mine:
+                sid += "-2"
+            try:
+                told.append(js("storyFromDiff", before, after, v, {"on": "diff", "id": sid}))
+                mine.add(sid)
+            except SystemExit:  # a view whose change draws nothing the story can name (a moved view): no story
+                pass
+        if told:
+            m["stories"] = [*(m.get("stories") if isinstance(m.get("stories"), list) else []), *told]
     m["title"] = f"{title_of(m, near)}: what changed"
-    rep = render_model(m, near, out)
+    rep = render_model(m, near, out, d.get("stableFrom") if stable else None)
     pngs, failed = shots(out, stills, d["views"])
-    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
+    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], **({"stories": [s["id"] for s in told]} if story else {}),
+            "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
 
 
 def model_of(text, where=None):
@@ -957,6 +1004,15 @@ def model_of(text, where=None):
 def diff_since(a):
     no_git("diff --base")
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
+    # --base is a ref, never an option: a value starting with '-' (--output=FILE) went to git diff as its own option and
+    # wrote a file (audit 67). It is refused, and the ref is resolved once, after --end-of-options, to the object id each
+    # git call below reads, so no call is given the text itself
+    if a.base.startswith("-"):
+        sys.exit(f"diff --base: {a.base!r} is not a git ref (a ref never starts with '-')")
+    rev = git("rev-parse", "--verify", "--quiet", "--end-of-options", a.base)
+    if rev.returncode or not rev.stdout.strip():
+        sys.exit(f"diff --base: git knows no ref {a.base!r} here" + (f" ({rev.stderr.strip()})" if rev.stderr.strip() else ""))
+    base = rev.stdout.strip()
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
     top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
@@ -974,13 +1030,13 @@ def diff_since(a):
             env = env if added.returncode == 0 else None
         # renames found (audit 24): a model only moved or renamed is its old version against its new, not one map removed
         # and one added; an R row is its status, the old path and the new
-        changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]), env=env)
+        changed = git("diff", "--name-status", "-z", "-M", base, "--", *(a.models or ["*.json"]), env=env)
         if changed.returncode and env:
-            env, changed = None, git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
+            env, changed = None, git("diff", "--name-status", "-z", "-M", base, "--", *(a.models or ["*.json"]))
         # git pairs a rename only when both paths are in the pathspec: a model moved into --models' folder from outside it
         # read as one added (audit 30). The renames of a diff of every path pair those, each kept when its new path is one
         # the pathspec takes in (a model moved out of the folder stays one removed from it)
-        every = git("diff", "--name-status", "-z", "-M", a.base, env=env) if a.models and changed.returncode == 0 else None
+        every = git("diff", "--name-status", "-z", "-M", base, env=env) if a.models and changed.returncode == 0 else None
     if changed.returncode:
         sys.exit(changed.stderr.strip())
 
@@ -1045,7 +1101,7 @@ def diff_since(a):
         was = moved.get(name, name)
         # bytes: a file need not be UTF-8. cat-file, as git show reads a rev:path it cannot find as a pathspec, so a new
         # model named a*.json was its version at --base, empty, and no JSON (audit 25)
-        old = subprocess.run(["git", "cat-file", "blob", f"{a.base}:{was}"], capture_output=True)
+        old = subprocess.run(["git", "cat-file", "blob", f"{base}:{was}"], capture_output=True)
         # the file's name in the summary: a code span of its own, and the one it moved from
         span = lambda x: "`" + flat(x.replace("`", "'"), code=True) + "`"
         fname = span(name) + (f" (moved from {span(was)})" if was != name else "")
@@ -1110,7 +1166,7 @@ def diff_since(a):
             # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
             # symbolic link, so a deleted model never writes outside it (audit 19)
             near = top / name if after or inside(top / name, folder=True) else out / f"{stem}.json"
-            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False)
+            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False, stable=a.stable, story=a.story)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
@@ -1395,8 +1451,16 @@ def size(s):
 
 def port(s):
     """--port, 0 to 65535 (0: any free one)."""
-    if not (s.isdigit() and int(s) <= 65535):
+    if not (s.isascii() and s.isdigit() and int(s) <= 65535):  # ASCII: isdigit() takes ², which int() does not (audit 70)
         raise argparse.ArgumentTypeError(f"{s!r} is not a port, 0 to 65535")
+    return int(s)
+
+
+def seconds(s):
+    """check --timeout: whole seconds, 1 to 86400 (a day). A larger number overflowed the wait (OverflowError), and 0 or
+    less said Chrome did not finish though it never started (audit 71)."""
+    if not (s.isascii() and s.isdigit() and 1 <= int(s) <= 86400):
+        raise argparse.ArgumentTypeError(f"{s!r} is not a number of seconds, 1 to 86400")
     return int(s)
 
 
@@ -1410,7 +1474,7 @@ def at_least_1(s):
 # one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it. Each
 # is read from the start of what follows "view <id>: ", where its own words begin (audit 31: a card labelled "Red cross"
 # ended a label-on-line message in " cross", which read as a crossing)
-KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs right-to-left$",
+KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs (?:right-to-left|left-to-right|bottom-to-top)$",
          "detours": r"edge .+ takes a detour \(\d+px for \d+px\)$", "shortLine": r'label ".*" leaves its line \d+ px \(.*\)$',
          "roundEnd": r'edge .+ runs round its own end ".*"$', "nearNode": r'edge .+ passes within [\d.]+px of node ".*"$',
          "onMark": r'text ".*" touches the mark on node ".*"$', "labelOnBorder": r'label ".*" sits on the border of family ".*"$',
@@ -1786,6 +1850,25 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+# The views import --arrange lays out by business flow (arrange "flow", docs/diagrams/notes/layout-flow.md section 12 step 14):
+# a map view, and a view of a type that reads the flow (its registry entry gives flowRole or zoneOf; tests/flow-defaults.test.mjs
+# holds this list to the registry). Any other type takes no arrange, as it would change nothing (validate() warns of it on a
+# type that does not rank). Opt-in: on the import fixtures the arranged layout scores worse than the ranked one today
+# (.evolve/decisions.md D13), so a default import lays out as before
+FLOW_TYPES = ("map", "c4.context", "c4.container", "c4.component", "c4.dynamic", "c4.landscape", "flowchart", "dfd", "uml.activity",
+              "uml.interaction-overview", "uml.use-case", "bpmn", "aws", "azure", "gcp")
+
+
+def arranged(m):
+    """Each view of m that FLOW_TYPES names, and that says nothing of arrange, set to arrange "flow"; the views it set."""
+    done = []
+    for v in m.get("views") or []:
+        if isinstance(v, dict) and "arrange" not in v and (v.get("diagram") if v.get("diagram") is not None else "map") in FLOW_TYPES:
+            v["arrange"] = "flow"
+            done.append(v.get("id"))
+    return done
+
+
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
     compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram,
@@ -1882,13 +1965,14 @@ def cmd_import(a):
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
         sys.exit(f"import: {a.file} has nothing to import as {fmt}")
+    flowed = arranged(m) if a.arrange else []
     out = json.dumps(m, indent=2, ensure_ascii=False) + "\n"
     if (fixed := re.sub("[\ud800-\udfff]", "\ufffd", out)) != out:  # a lone surrogate (an entity or escape gave it) has no UTF-8
         print(f"{a.file}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: written as U+FFFD", file=sys.stderr)
     write(a.out, fixed)
     inline = sum(isinstance(e, dict) for v in m["views"] for e in v.get("edges") or [])  # a sequence view's messages
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
-                      "views": [v["id"] for v in m["views"]], "unread": len(unread),
+                      "views": [v["id"] for v in m["views"]], "arranged": flowed, "unread": len(unread),
                       "notImported": [{"where": w, "message": msg} for w, msg in unread]}, indent=1))
 
 
@@ -1926,7 +2010,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
-    r.add_argument("--no-check", action="store_true"); r.set_defaults(f=cmd_render)
+    r.add_argument("--no-check", action="store_true")
+    r.add_argument("--docs", metavar="HREF", help="a Back to Docs link in the page's header to HREF (a relative path or an http(s) address)")
+    r.set_defaults(f=cmd_render)
     s = sub.add_parser("stills"); s.add_argument("page"); s.add_argument("--out", required=True)
     s.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); s.add_argument("--scale", type=above_0, default=2.0); s.add_argument("--theme", default="light", choices=["light", "dark"])
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
@@ -1947,7 +2033,7 @@ def main():
     pf.add_argument("--accept-terms", metavar="PACK@LABEL", help="with no terminal: the user's yes to the terms printed, for this pack and pin only")
     pk.set_defaults(f=lambda a: packs().main(a))
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
-    c.add_argument("--timeout", type=int, default=600)
+    c.add_argument("--timeout", type=seconds, default=600, help="how long Chrome may take, in seconds, 1 to 86400 (default 600)")
     c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
     c.add_argument("--ignore", help=f"kinds left out of the report: right-to-left, {', '.join(k for k in KINDS if k not in ('rules', 'rightToLeft'))} (comma list)")
     c.set_defaults(f=cmd_check)
@@ -1955,6 +2041,9 @@ def main():
     d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
     d.add_argument("--stills", help="a folder for stills of the views that show a change"); d.add_argument("--base", help="a git ref: diff the working tree's models against it")
     d.add_argument("--models", nargs="*", help="with --base, git pathspecs of the model files (default: every .json that is a map model)")
+    d.add_argument("--stable", action=argparse.BooleanOptionalAction, default=True,
+                   help="draw the model after against the model before, so the cards the change left alone keep their places (the default); --no-stable draws it fresh")
+    d.add_argument("--story", action="store_true", help="a story of each changed view (what was added, changed or removed, along its main flow) in the page's Stories menu")
     d.set_defaults(f=cmd_diff)
     dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
     dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")
@@ -1971,6 +2060,7 @@ def main():
     im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml", "bpmn"], help="default: read from the content, then the extension")
     im.add_argument("--typed", action="store_true", help="a Mermaid flowchart as a typed flowchart view (needs Node), not a map")
     im.add_argument("--moddle", help="BPMN: the folder bpmn-moddle is installed in (default: UMLIMATOR_BPMN_MODDLE, else the working folder)")
+    im.add_argument("--arrange", action="store_true", help='lay the model\'s map views, and its typed views of a type that reads the flow, out by business flow (arrange "flow"); without it each lays out by rank')
     im.set_defaults(f=cmd_import)
     ex = sub.add_parser("export", help="a model's BPMN as BPMN XML, through bpmn-moddle"); ex.add_argument("model")
     ex.add_argument("--out", required=True, help="the file, .bpmn"); ex.add_argument("--view", help="the bpmn view whose layout it carries (default: the first)")

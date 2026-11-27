@@ -29,7 +29,6 @@ const segIn = (a, b, r) => { if (!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], 
   for (const [p, q] of [[-dx, a[0] - r.x], [dx, r.x + r.w - a[0]], [-dy, a[1] - r.y], [dy, r.y + r.h - a[1]]]) { const t = q / p; if (p < 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t); }
   return t0 < t1; };
 function routeAudit(geo, where, only, refs) { // only: a set of edges; counts just the issues that involve one of them
-  const sk = e => only && !only.has(e);
   const issues = [], say = teller(issues, refs);
   // routes: no crossings, no shared runs, no label lying across another route
   const segs = geo.edges.map(e => e.pts.slice(0, -1).map((a, i) => [a, e.pts[i + 1]]));
@@ -46,16 +45,22 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
     const inV = y > Math.min(v[0][1], v[1][1]) + .5 && y < Math.max(v[0][1], v[1][1]) - .5, inH = x > Math.min(hz[0][0], hz[1][0]) + .5 && x < Math.max(hz[0][0], hz[1][0]) - .5;
     return inV && inH ? 'cross' : null;
   };
-  for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
-    if (geo.edges[i].fixed && geo.edges[j].fixed) continue; // one comb: its branches share the trunk by design
-    if (sk(geo.edges[i]) && sk(geo.edges[j])) continue;
+  const pair = (i, j) => {
+    if (geo.edges[i].fixed && geo.edges[j].fixed) return; // one comb: its branches share the trunk by design
     let found = null;
     for (const s1 of segs[i]) { for (const s2 of segs[j]) { found = crossing(s1, s2); if (found) break; } if (found) break; }
     if (found === 'cross') say(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} cross`, geo.edges[i], geo.edges[j]);
     if (found === 'share') say(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} share a line`, geo.edges[i], geo.edges[j]);
-  }
+  };
+  // with `only` (its lines' indexes O, in order), just the pairs with an end in it, each once and in the order the full walk
+  // meets them: O(|only| x lines) a call, not every pair (audit 70: the repair passes ask once a line, so a 1,000-step chain was cubic)
+  const E = segs.length, O = only && geo.edges.flatMap((e, i) => only.has(e) ? [i] : []), inO = O && new Set(O);
+  if (!O) { for (let i = 0; i < E; i++) for (let j = i + 1; j < E; j++) pair(i, j); }
+  else { const ks = new Set(); for (const i of O) for (let j = 0; j < E; j++) if (j !== i) ks.add(i < j ? i * E + j : j * E + i);
+    [...ks].sort((a, b) => a - b).forEach(k => pair(Math.floor(k / E), k % E)); }
   geo.edges.forEach((e, i) => { if (!e.lbl) return; const L = { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 };
-    geo.edges.forEach((o, j) => { if (j !== i && !(sk(e) && sk(o)) && segs[j].some(([a, b]) => segIn(a, b, L))) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`, e, o); }); });
+    const on = j => { if (j !== i && segs[j].some(([a, b]) => segIn(a, b, L))) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(geo.edges[j])}`, e, geo.edges[j]); };
+    if (!O || inO.has(i)) for (let j = 0; j < E; j++) on(j); else O.forEach(on); });
   const segHit = (r, i) => segs[i].some(([a, b]) => segIn(a, b, r));
   if (geo.map) {
     const ex = 12, drawn = new Set(geo.edges.map(e => e.from + '>' + e.to)); // A→B and B→A both drawn: a pair the view keeps apart
@@ -65,8 +70,12 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
         if (segHit({ x: n.x - ex + .5, y: n.y - ex + .5, w: n.w + 2 * ex - 1, h: n.h + 2 * ex - 1 }, i)) say(`${where}: edge ${name(e)} passes within ${ex}px of node "${nm(n)}"`, e, n); });
       const dt = detour(e.pts); if (dt) say(`${where}: edge ${name(e)} takes a detour (${Math.round(dt[0])}px for ${Math.round(dt[1])}px)`, e);
       const r = roundEnd(e); if (r) say(`${where}: edge ${name(e)} runs round its own end "${nm(r[0])}"`, e, r[0].box ? (geo.families || []).find(f => f.id === r[0].id) : r[0]);
-      // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs)
-      if (!e.back && !e.both && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
+      // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs), or a
+      // dependency line of an arranged view (layout-flow.md section 5.2), which may run either way. A snake's line (section
+      // 14.2) reads its run's way: dir "left" right to left, "down" (a turn line) top to bottom
+      if (!e.back && !e.both && !e.dep && !drawn.has(e.to + '>' + e.from)) {
+        if (e.dir === 'left' ? e.t.x + e.t.w / 2 >= e.s.x + e.s.w / 2 : e.dir === 'down' ? e.t.y + e.t.h / 2 <= e.s.y + e.s.h / 2 : e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2)
+          say(`${where}: edge ${name(e)} runs ${e.dir === 'left' ? 'left-to-right' : e.dir === 'down' ? 'bottom-to-top' : 'right-to-left'}`, e); }
     });
     if (geo.hub) { // hub views: one visible line into each callee
       const into = Object.create(null); geo.edges.forEach(e => { (into[e.to] ||= []).push(e); });

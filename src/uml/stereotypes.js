@@ -157,7 +157,8 @@ function styIndex(model) {
   const taken = new Set([...STY_ARR(model.nodes), ...STY_ARR(model.edges)].filter(STY_OBJ).map(x => x.id)), own = [];
   STY_ARR(model.views).forEach(v => STY_OBJ(v) && STY_ARR(v.edges).forEach(e => { if (STY_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); own.push(e); } }));
   [...STY_ARR(model.edges), ...own].forEach(e => { if (!STY_OBJ(e)) return;
-    if (e.type === 'uml.ProfileApplication' && isT(e.to, 'uml.Profile') && at.has(e.from)) add(I.applied, e.from, e.to);
+    // a second application of one profile to one package (two lines) applies it once: no stereotype of it is ambiguous with itself (audit 68)
+    if (e.type === 'uml.ProfileApplication' && isT(e.to, 'uml.Profile') && at.has(e.from) && !(I.applied.get(e.from) || []).includes(e.to)) add(I.applied, e.from, e.to);
     if (e.type === 'uml.Generalization' && isT(e.from, 'uml.Stereotype') && isT(e.to, 'uml.Stereotype')) add(I.gens, e.from, e.to);
     if (e.type === 'uml.Extension' && isT(e.from, 'uml.Stereotype') && isT(e.to, 'uml.MetaclassReference')) { const meta = styName(at.get(e.to)); add(I.ext, e.from, meta);
       const p = at.get(e.from).parent; if (STY_OBJ(e.props) && e.props.isRequired === true && I.byProfile.has(p)) add(I.req, p, { st: at.get(e.from), meta }); } });

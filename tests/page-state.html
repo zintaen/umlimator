@@ -228,6 +228,15 @@ try {
   check('the views list, open on a wide window, closes when the window narrows to a phone\'s (it would cover the map)', open0 && await until(() => !wide.contentDocument.body.classList.contains('tree-open')));
   wide.remove();
 
+  /* ---------- the standalone page umlimator.py writes: #speed= in its link starts the map at that speed ---------- */
+  { try { localStorage.removeItem('visual-speed'); } catch (_) {}
+    const fs = document.createElement('iframe'); fs.style.cssText = 'width:900px;height:600px;border:0'; fs.src = 'fixtures/integration.html#view=overview&speed=1.5'; document.body.appendChild(fs);
+    const um = await until(() => fs.contentWindow && fs.contentWindow.umlimatorMap && fs.contentWindow.umlimatorMap.view, 8000) && fs.contentWindow.umlimatorMap;
+    const sb = um && fs.contentDocument.querySelector('#m-canvas .umlimator').shadowRoot.querySelector('.ctl [data-z="speed"]');
+    const got = [um && um.speed, sb && sb.textContent, new URLSearchParams(fs.contentWindow.location.hash.slice(1)).get('speed')];
+    check('the standalone page opened with #speed=1.5 plays at 1.5×: its speed button says so and the link keeps it', got.join() === '1.5,1.5×,1.5', got);
+    fs.remove(); }
+
   /* ---------- one-shot modes: #still for a view the model lacks, and check's report ---------- */
   const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = 'fixtures/integration.html#still=nope'; document.body.appendChild(f1);
   const still = await until(() => f1.contentDocument && f1.contentDocument.documentElement.getAttribute('data-still'), 6000);

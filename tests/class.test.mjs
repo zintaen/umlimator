@@ -28,7 +28,7 @@ test('the definition: uml.class is registered with its palette, its lines, a pro
   assert.deepEqual(T.props['uml.Association'].filter(f => f.path).map(f => f.path.join('.')), ['ends.from.role', 'ends.from.multiplicity', 'ends.from.aggregation', 'ends.from.navigable',
     'ends.to.role', 'ends.to.multiplicity', 'ends.to.aggregation', 'ends.to.navigable']);
   for (const k of ['layout', 'validate', 'describe', 'rankFlip', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
-  assert.equal(Object.keys(T.rules).length, 13, 'its ten, and owner-kinds, line-inside and own-boxes, since a class view draws packages as boxes (2.2)');
+  assert.equal(Object.keys(T.rules).length, 14, 'its ten, association-class, and owner-kinds, line-inside and own-boxes, since a class view draws packages as boxes (2.2)');
 });
 
 // ---- the member micro-syntax (risks.md E3, E4)
@@ -125,6 +125,7 @@ const breaks = {
   'owner-kinds': m => { m.nodes[3].parent = 'a'; return ['i', 'a']; },
   'line-inside': m => { m.edges.push({ id: 'pa', type: 'uml.Dependency', from: 'pkg', to: 'a' }); return ['pa', 'pkg', 'a']; },
   'own-boxes': m => { m.views[0].containers = [{ id: 'k', label: 'K', nodeIds: ['i'] }]; return ['v']; },
+  'association-class': m => { m.nodes[7].props = { associationClass: 'ad' }; return ['a2', 'ad']; }, // a dependency is no association
 };
 const WARNS = ['owner-kinds', 'line-inside', 'own-boxes']; // a class view's rules about owners and boxes (2.2) are warnings
 test('validators: the base model breaks no rule, and validate() reports no error in it', () => {
@@ -748,4 +749,46 @@ test('audit 62: a line from a member 12000 deep is drawn to its owner on the cla
     views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['C', 'B'] }, { id: 'u', diagram: 'acme.unknown', nodeIds: ['C', 'B'] }] };
   validate(m);
   assert.deepEqual(layout(m, 'u').edges.map(e => [e.from, e.to]), [['C', 'B']]);
+});
+
+// audit 64 lane (0.45.0's known gap): linked classes in packages, every one pinned to one cell, were settled pin by pin round
+// that cell (settlePins) into a picture of crossing lines that routed in a second a layout, and pinsClear laid it out some 20
+// times: 80 classes in 10 packages took 26 s, a chain of 120 about 28 s (20: 0.4 s). Three or more pins on one cell are a pile
+// (unpile, layered.js): the first keeps the cell, the others are dropped, so their cards take a slot as with no pin. A view
+// that ranks its own cards (requirement: pinCells) drops them the same way
+test('a pile of pins on one cell lays out in about the time the view takes with none: 80 and 120 linked classes in 10 packages (timed)', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const pile = (n, diagram = 'uml.class', nt = 'uml.Class', et = 'uml.Association', pinned = true) => {
+    const pk = Array.from({ length: 10 }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'P' + i }));
+    const cs = Array.from({ length: n }, (_, i) => ({ id: 'c' + i, type: nt, label: 'C' + i, parent: 'p' + (i % 10) }));
+    return { schemaVersion: 2, nodes: [...pk, ...cs], edges: cs.slice(1).map((c, i) => ({ id: 'e' + i, type: et, from: cs[i].id, to: c.id })),
+      views: [{ id: 'v', diagram, nodeIds: [...pk, ...cs].map(x => x.id), ...(pinned ? { layout: Object.fromEntries(cs.map(c => [c.id, [0, 0]])) } : {}) }] };
+  };
+  const time = m => { let best = Infinity, g; for (let k = 0; k < 2; k++) { const t = performance.now(); g = U.layout(structuredClone(m), 'v'); best = Math.min(best, performance.now() - t); } return [best, g]; };
+  const [t20] = time(pile(20));
+  for (const n of [80, 120]) { const m = pile(n), [t, g] = time(m), cards = g.nodes.filter(x => /^c/.test(x.id));
+    // the layout is linear in the cards or near it: before, 80 took 65 times what 20 took, 120 some 70 times
+    assert.ok(t < (n / 20) ** 2 * t20 + 300, `${n} classes piled on one cell: ${Math.round(t)} ms, 20 of them ${Math.round(t20)} ms`);
+    assert.equal(new Set(cards.map(x => x.col + ',' + x.row)).size, n, `${n}: no two classes on one cell`);
+    assert.deepEqual([g.byId.c0.col, g.byId.c0.row], [0, 0], `${n}: the pile's first pin keeps its cell`);
+    assert.deepEqual(U.check(m, 'v').map(p => p.message), [], `${n}: nothing over anything, no line shared`); }
+  // a requirement view settles its pins among its ranked cards (pinCells): the pile drawn as the view with none, but the first pin
+  const req = p => pile(40, 'sysml.requirement', 'sysml.Requirement', 'sysml.DeriveReqt', p);
+  assert.ok(U.check(req(true), 'v').length <= U.check(req(false), 'v').length, 'requirements piled on one cell: no more said of them than of the view with no pins');
+});
+
+test('audit 64: the PDF Members column prints an operation as its box draws it, a parameter\'s in (UML\'s default) left out, on the class, object, component and block views', async () => {
+  await Promise.all(['../src/uml/object.js', '../src/uml/component.js', '../src/sysml/blocks.js'].map(f => import(f)));
+  const { svgOf } = await import('../src/draw/svg.js');
+  const op = (id, ps) => ({ id, type: 'uml.Operation', label: 'pay', props: { visibility: 'public', parameters: ps, returnType: 'R' } });
+  const ps = [{ name: 'q', valueType: 'Int', direction: 'in' }, { name: 'w', direction: 'out' }];
+  for (const [diagram, type] of [['uml.class', 'uml.Class'], ['uml.object', 'uml.Class'], ['uml.component', 'uml.Interface'], ['sysml.block-definition', 'sysml.Block']]) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'o', type, label: 'Order', members: [op('o.pay', ps)] }], edges: [], views: [{ id: 'v', diagram, nodeIds: ['o'] }] };
+    const ctx = mapContext(m), geo = ctx.buildGeo('v'), drawn = [...String(svgOf(geo)).matchAll(/class="c-row"[^>]*>([^<]*pay[^<]*)</g)].map(x => x[1]);
+    assert.deepEqual(drawn, ['+ pay(q: Int, out w): R'], `${diagram}: the box draws no in`);
+    const rows = diagramOf({ diagram }).rows(m, m.views[0], 'o');
+    assert.deepEqual(rows.map(r => r.replace(/^operations: /, '')), drawn, `${diagram}: the PDF row is the drawn row`);
+    assert.match(tablesOf(ctx, ctx.V.v, geo)[0].rows[0], /<p>(?:operations: )?\+ pay\(q: Int, out w\): R<\/p>/, diagram);
+  }
+  assert.equal(printMember(op('x', ps)), '+ pay(in q: Int, out w): R', 'the edit text keeps the stored in, so it parses back the same');
 });

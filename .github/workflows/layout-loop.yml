@@ -1,0 +1,139 @@
+name: layout-loop
+
+# The weekly propose-measure-keep loop for the layout's tuning constants (docs/diagrams/notes/layout-flow.md section 9,
+# tools/evolve/tune-loop.mjs): one change to one value of src/layout/tune.js, measured on the fixed, edit and held-out
+# corpora against audit-loop as it is, and opened as a pull request against audit-loop only when every rule of section 9.2
+# holds. It never merges: the maintainer approves or closes.
+#
+# Off unless the repository variable LAYOUT_LOOP_ENABLED is "true" (the loop runs in maintenance mode only, the strategy's
+# A6), and keeps nothing unless the secret LAYOUT_HELDOUT_SEED is set (without it the held-out corpus cannot be built,
+# and the run says so and stops). Two jobs, each on a fresh runner:
+#   measure  a read-only token (and reading this workflow's earlier records); the seed goes to the one step that measures,
+#            which prints and records the held-out corpus's totals only. Its record and candidate go on as an artifact.
+#   publish  contents, pull-requests and actions write, no secret; checks the candidate again (one value, in range),
+#            rebuilds lib/, moves the value's pin in bench/tune-pins.json, pushes one new branch layout-tune/<week>, opens
+#            the pull request, and starts check.yml and layout-score.yml (heldout=false) on the branch: a pull request
+#            opened with the workflow's token starts no workflow, but a workflow_dispatch does, and its checks show on the
+#            pull request's head commit.
+# Schedule: Sunday 03:00 in the maintainer's time (UTC+7), Saturday 20:00 UTC: clear of the nightly fuzz (02:00), the
+# weekly audit (Monday 03:00) and the digest (Monday 09:00), all UTC+7 (.evolve/decisions.md, D1).
+on:
+  schedule:
+    - cron: "0 20 * * 6"
+  workflow_dispatch:
+    inputs:
+      restart:
+        description: Run again after two weeks with nothing kept stopped the loop (section 9.3)
+        type: boolean
+        default: false
+
+permissions: {}
+
+# one loop at a time, never cancelled mid-push
+concurrency:
+  group: layout-loop
+  cancel-in-progress: false
+
+env:
+  BASE: audit-loop
+
+jobs:
+  measure:
+    if: vars.LAYOUT_LOOP_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read   # the checkout
+      actions: read    # the earlier weeks' records (this workflow's artifacts)
+    outputs:
+      kept: ${{ steps.loop.outputs.kept }}
+    env:
+      HAS_SEED: ${{ secrets.LAYOUT_HELDOUT_SEED != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The kill switch (.evolve/STOP on main) stops the run
+        run: |
+          git fetch -q origin main
+          node tools/evolve/killswitch.mjs --ref origin/main
+
+      - name: The earlier weeks' records, for the guards of section 9.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/history"
+          for id in $(gh run list --repo "$GITHUB_REPOSITORY" --workflow layout-loop.yml --limit 8 --json databaseId,conclusion --jq '.[] | select(.conclusion == "success") | .databaseId'); do
+            gh run download "$id" --repo "$GITHUB_REPOSITORY" -n tune-record -D "$RUNNER_TEMP/history/$id" 2>/dev/null || true
+          done
+
+      - id: loop
+        name: Propose one change, measure it on the three corpora, keep it or not
+        env:
+          LAYOUT_HELDOUT_SEED: ${{ secrets.LAYOUT_HELDOUT_SEED }}
+          EVOLVE_LEASE: ${{ runner.temp }}/lease.json
+          RESTART: ${{ inputs.restart && '--restart' || '' }}
+        run: |
+          out="$RUNNER_TEMP/out"; mkdir -p "$out"
+          if [ "$HAS_SEED" != true ]; then
+            echo "::notice::LAYOUT_HELDOUT_SEED is not set, so the held-out corpus cannot be built and nothing could be kept: the loop does not run. The maintainer adds the secret to turn it on."
+            echo "kept=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          set +e
+          node tools/evolve/tune-loop.mjs run --owner "layout-loop-$GITHUB_RUN_ID" --history "$RUNNER_TEMP/history" \
+            --record "$out/tune-$(date -u +%G-W%V).json" --candidate-out "$out/tune.js" $RESTART
+          code=$?
+          set -e
+          [ "$code" -le 1 ] || exit "$code"
+          if [ -f "$out/tune.js" ]; then echo "kept=true" >> "$GITHUB_OUTPUT"; else echo "kept=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tune-record
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 90
+
+  publish:
+    needs: measure
+    if: needs.measure.outputs.kept == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write        # one new branch, layout-tune/<week>; nothing else is pushed
+      pull-requests: write   # the pull request against audit-loop
+      actions: write         # gh workflow run check.yml and layout-score.yml on that branch, the pull request's CI
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: true   # the one push, of the new branch
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tune-record
+          path: ${{ runner.temp }}/out
+
+      - name: A pull request against audit-loop (never merged here)
+        run: |
+          out="$RUNNER_TEMP/out"
+          node tools/evolve/tune-loop.mjs publish --record "$(ls "$out"/tune-*.json | head -n 1)" --candidate "$out/tune.js" --base "$BASE"

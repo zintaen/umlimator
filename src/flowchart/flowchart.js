@@ -117,7 +117,7 @@ function fcIndex(model, view) {
   const gone = goneIn(view, id => N.get(id)), liveIn = new Map(), liveOut = new Map();
   flows.forEach(e => { if (liveLine(e, gone)) { add(liveIn, e.to, e); add(liveOut, e.from, e); } });
   const said = id => (gone(id) ? { i: inBy, o: outBy } : { i: liveIn, o: liveOut });
-  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, said };
+  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, said, pair, carry };
 }
 const fcName = elName;
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
@@ -238,6 +238,33 @@ function fcMoveTo(model, view, id) {
   return [...FC_ARR(model && model.edges), ...FC_ARR(FC_OBJ(view) && view.edges)].some(e => FC_OBJ(e) && e.id === id) ? { error: 'A flow follows its nodes: move a node instead' } : null;
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a flow is a flow line and a comment link a dependency; the start terminal (one no flow comes into) first,
+   an end terminal (one no flow leaves) last, a data or document symbol (input/output, document, database) in the band under
+   the flow. Each by the view's flows, read once a view */
+const fcFlowRole = e => (FC_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch');
+const FC_UNDER = ['flow.InputOutput', 'flow.Document', 'flow.Database'], FC_ENDS = new WeakMap();
+function fcZoneOf(x, model, view) {
+  if (!FC_OBJ(x) || !FC_OBJ(view)) return null;
+  if (FC_UNDER.includes(x.type)) return 'under';
+  if (x.type !== 'flow.Terminator') return null;
+  let by = FC_ENDS.get(view); if (!by || by.model !== model) { by = { model, ends: new Map() }; FC_ENDS.set(view, by);
+    fcIndex(model, view).flows.filter(e => e.from !== e.to).forEach(e => [[e.from, 0], [e.to, 1]].forEach(([id, k]) => { const s = by.ends.get(id) || [0, 0]; s[k]++; by.ends.set(id, s); })); }
+  const [out, inn] = by.ends.get(x.id) || [0, 0];
+  return out && !inn ? 'first' : inn && !out ? 'last' : null;
+}
+
+/* A story's reading of the view (storyFromFlow, audit 68): its start and end terminals, which the story is told from and to
+   (the main flow the arranged picture draws, carried back to its start and on to its end, a data symbol's band and all), and
+   each on-page connector pair as a link from the connector with no flow out to each of its label with no flow in, as fcIndex's
+   walk and the reachable rule follow it: one group a label ({ from, to }), never a pair for each two of them, which grew as
+   the square of the connectors of one label (audit 69) */
+function fcStoryOn(model, view) {
+  const I = fcIndex(model, view), from = new Map();
+  I.ids.forEach(id => { const k = I.pair(id); if (k && !I.outs(id).length) { const l = from.get(k); if (l) l.push(id); else from.set(k, [id]); } });
+  return { starts: I.starts, ends: I.ends, carry: [...from].filter(([k]) => I.carry.has(k)).map(([k, f]) => ({ from: f, to: I.carry.get(k) })) };
+}
+
 /* ---- the type ---- */
 const FC_TYPE = registerDiagramType('flowchart', {
   untyped: 'Node', // an element of no type (or ""): a node, as named (audit 30)
@@ -245,6 +272,9 @@ const FC_TYPE = registerDiagramType('flowchart', {
   elements: [...FC_NODES, 'uml.Comment'].map(type => ({ type, label: FC_LOOK[type][1] })),
   lines: [{ type: 'flow.Flow', label: 'Flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   layout: fcGeo,
+  flowRole: fcFlowRole,
+  zoneOf: fcZoneOf,
+  storyOn: fcStoryOn,
   validate: fcProblems,
   rules: FC_RULES,
   describe: fcDescribe,
@@ -256,4 +286,4 @@ const FC_TYPE = registerDiagramType('flowchart', {
     return e && !FC_TXT(e.label) && d && d.type === 'flow.Decision' ? `an exit of ${fcCalled(d)} with no label` : null; },
 });
 
-export { FC_TYPE, FC_RULES, FC_LOOK, fcGeo, fcProblems, fcDescribe, fcConnect, fcMoveTo };
+export { FC_TYPE, FC_RULES, fcFlowRole, fcZoneOf, FC_LOOK, fcGeo, fcProblems, fcDescribe, fcConnect, fcMoveTo };

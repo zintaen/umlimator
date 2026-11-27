@@ -455,3 +455,46 @@ test('audit 43: the legend keys the process rectangle a node of no type or of an
     assert.deepEqual(keys(x), ['Flow', 'Terminator', 'Process'], JSON.stringify(x));
   assert.deepEqual(keys(N('x', 'Decision', 'Ok?')), ['Flow', 'Terminator', 'Decision'], 'a symbol of its own: no Process key');
 });
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the flowchart's zoneOf and
+// flowRole, read only in an arranged view
+test('zoneOf: the start terminal first, an end terminal last, a data or document symbol under; flowRole: a flow flows, a comment link is a dependency', () => {
+  const m = one([N('s', 'Terminator', 'Start'), N('p', 'Process', 'Do'), N('io', 'InputOutput', 'Read'), N('doc', 'Document', 'Report'), N('db', 'Database', 'Save'), N('e', 'Terminator', 'End'), N('t', 'Terminator', 'Alone')],
+    [F('f1', 's', 'p'), F('f2', 'p', 'e'), F('f3', 'p', 'db'), F('f4', 'p', 'doc')], { arrange: 'flow' });
+  const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['s', 'p', 'io', 'doc', 'db', 'e', 't'].map(id => T.zoneOf(n(id), m, V0)), ['first', null, 'under', 'under', 'under', 'last', null]);
+  assert.deepEqual([F('x', 'p', 'e'), { id: 'c', type: 'uml.CommentLink', from: 'p', to: 'e' }].map(e => T.flowRole(e, m, V0)), ['branch', 'dep']);
+  // arranged, the two stores under the flow drew Do→Save across Do→Report, which ranked does not: the view is kept ranked
+  // (audit 71), and draws nothing check() names
+  assert.deepEqual(check(m, 'v').map(p => p.message), []);
+  // with one store, arranged draws no worse and keeps its zones: the store in the band beside the flow
+  const m1 = one(m.nodes, m.edges.filter(e => e.id !== 'f4'), { arrange: 'flow' }), g = layout(m1, 'v'), at = id => g.byId[id];
+  assert.deepEqual(check(m1, 'v').map(p => p.message), []);
+  assert.ok(at('db').row > at('p').row && at('s').row === at('p').row, 'the store in the band beside the flow, the start on the main row');
+});
+
+// audit 70: a long chain was cubic in its steps: the repair passes asked routeAudit about one line at a time, and each ask still
+// walked every pair of lines (1,000 steps 8 s, 14 s arranged flow). Timed by growth against a quarter, the quarter's best of two
+const fcView = (nodes, edges, more) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'flowchart', nodeIds: nodes.map(n => n.id), ...more }] });
+const fcGrowth = (make, n) => { const time = m => { const t = performance.now(), g = layout(m, 'v'); return [performance.now() - t, g]; };
+  const q = Math.min(time(make(n / 4))[0], time(make(n / 4))[0]), [ms, g] = time(make(n)); return [ms, q, g]; };
+test('a long flowchart chain, plain and arranged flow, lays out in near-quadratic time (audit 70) (timed)', () => {
+  const chain = (n, more) => { const nodes = [{ id: 's', type: 'flow.Terminator', label: 'Start' }], edges = [];
+    for (let i = 0; i < n; i++) { nodes.push({ id: 'p' + i, type: 'flow.Process', label: 'Step ' + i }); edges.push({ id: 'f' + i, type: 'flow.Flow', from: i ? 'p' + (i - 1) : 's', to: 'p' + i }); }
+    nodes.push({ id: 'e', type: 'flow.Terminator', label: 'End' }); edges.push({ id: 'fe', type: 'flow.Flow', from: 'p' + (n - 1), to: 'e' }); return fcView(nodes, edges, more); };
+  for (const [name, more] of [['plain', {}], ['arranged flow', { arrange: 'flow' }]]) { // cubic was about 43x a quarter, here about 13x
+    const [ms, q, g] = fcGrowth(n => chain(n, more), 1000);
+    assert.ok(ms < 300 || ms / Math.max(q, 1) < 25, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+    assert.ok(g.edges.length === 1001 && g.edges.every(e => e.pts && e.pts.length >= 2), `${name}: every line drawn`);
+  }
+});
+
+// audit 70: a decision's labelled exits were cubic in their number: each spot of each label tested every card, label and line,
+// and a label near another tried each of that one's spots (400 exits 52 s)
+test('a decision with many labelled exits lays out in near-quadratic time, every exit labelled (audit 70) (timed)', () => {
+  const fan = n => { const nodes = [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'd', type: 'flow.Decision', label: 'Which?' }], edges = [{ id: 'f0', type: 'flow.Flow', from: 's', to: 'd' }];
+    for (let i = 0; i < n; i++) { nodes.push({ id: 'c' + i, type: 'flow.Connector', label: 'C' + i }); edges.push({ id: 'x' + i, type: 'flow.Flow', from: 'd', to: 'c' + i, label: 'k' + i }); } return fcView(nodes, edges); };
+  const [ms, q, g] = fcGrowth(fan, 200); // cubic was about 22x a quarter, here about 11x
+  assert.ok(ms < 300 || ms / Math.max(q, 1) < 16, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  assert.ok(g.edges.filter(e => e.label).every(e => e.lbl && e.pts.length >= 2), 'every exit drawn and labelled');
+});

@@ -40,7 +40,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends'].sort());
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends', 'comment-link'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -195,11 +195,14 @@ test('connect: a connector to something inside the other\'s owner is a delegatio
   assert.equal(T.edits.connect(CM, v, 'shop-api.orders', 'checkout-component', null, C)[0].element.props.kind, 'delegation', 'a box\'s port to what it holds');
 });
 
-test('moveTo: a port\'s side by Alt + arrows across it or a drop by a border; along its side nothing, as said; anything else the default', () => {
+test('moveTo: a port\'s side by Alt + an arrow, which names the side, or a drop by a border; its own side nothing, as said; anything else the default', () => {
   const v = CM.views[0], geo = layout(CM, V), side = geo.byId['payment-provider-component.charges'].side;
   assert.equal(side, 'L');
   assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [1, 0], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider-component.charges', 'side'], value: 'right' }]);
-  const r = T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, 1], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /order along its side follows its lines/);
+  // audit 64: Alt + Down or Up on a left port goes to the bottom or top, as a drag does (it was refused, "along its side")
+  assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, 1], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider-component.charges', 'side'], value: 'bottom' }]);
+  assert.equal(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, -1], geo })[0].value, 'top');
+  const r = T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [-1, 0], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /left side already: its order along the side follows its lines/);
   const o = geo.byId['payment-provider-component'];
   assert.equal(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { pt: [o.x + o.w / 2, o.y + o.h + 3], geo })[0].value, 'bottom');
   assert.equal(T.edits.moveTo(CM, v, 'storefront-component', { by: [1, 0], geo }), null);
@@ -328,7 +331,7 @@ test('a component\'s operation or attribute row is edited as a member, not as a 
   assert.deepEqual(T.edits.member(m, m.views[0], 'shop', 'shop.api', 'web : Http')[1], { op: 'set', id: 'shop.api', path: 'props.valueType', value: 'Http' });
 });
 
-test('layout() of components nested 1,500 deep marks the padded boxes in one pass up (audit 3)', () => {
+test('layout() of components nested 1,500 deep marks the padded boxes in one pass up (audit 3) (timed)', () => {
   const N = 1500, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.Component', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
   nodes.push({ id: 'c', type: 'uml.Component', label: 'C', parent: 'p' + (N - 1) }, { id: 'd', type: 'uml.Component', label: 'D' });
   const t = performance.now(), g = layout({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(n => n.id) }] }, 'v');
@@ -701,4 +704,71 @@ test('a pin with no clean cell near goes in a fresh row under its box (audit 59)
   // the gallery's accounts package pinned far right drew its box over Sign in
   const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url))), gv = g.views.find(v => (v.nodeIds || []).includes('accounts'));
   for (const col of [21, 28, 40]) { gv.layout = { ...gv.layout, accounts: [col, 2.5] }; assert.deepEqual(bad(g, gv.id), [], 'accounts pinned at column ' + col); }
+});
+
+test('audit 64: a comment link with no comment at either end is warned comment-link by the object, component, deployment and composite structure views that draw it', async () => {
+  await Promise.all(['object', 'deployment', 'composite'].map(f => import(`../src/uml/${f}.js`)));
+  const kinds = { 'uml.object': 'uml.InstanceSpecification', 'uml.component': 'uml.Component', 'uml.deployment': 'uml.Node', 'uml.composite-structure': 'uml.Class' };
+  for (const [diagram, type] of Object.entries(kinds)) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type, label: 'A' }, { id: 'b', type, label: 'B' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
+      edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'a', to: 'b' }, { id: 'ok', type: 'uml.CommentLink', from: 'n', to: 'a' }], views: [{ id: 'v', diagram, nodeIds: ['a', 'b', 'n'] }] };
+    assert.ok(layout(m, 'v').edges.some(e => e._id === 'cl'), diagram);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'comment-link').map(p => [p.level, p.path, p.ids, p.message]), [['warning', 'edges[0]', ['cl', 'a', 'b'], 'comment-link: cl joins "A" and "B", neither a comment']], diagram);
+    assert.ok(Object.hasOwn(diagramOf({ diagram }).rules, 'comment-link'), diagram);
+    // a view that does not show both ends does not draw it, and says nothing
+    m.views[0].nodeIds = ['a', 'n']; assert.deepEqual(validate(m).filter(p => p.rule === 'comment-link'), [], diagram); }
+});
+
+test('audit 64: an interface realized by a component and by its port names the component once, in the component view and the class view', () => {
+  const m = { schemaVersion: 2, root: 'c', nodes: [{ id: 'api', type: 'uml.Component', label: 'Api', members: [{ id: 'api.p', type: 'uml.Port', label: 'p' }] }, { id: 'i', type: 'uml.Interface', label: 'Orders' }, { id: 'k', type: 'uml.Class', label: 'K', members: [{ id: 'k.q', type: 'uml.Port', label: 'q' }] }],
+    edges: [E('r1', 'InterfaceRealization', 'api.p', 'i'), E('r2', 'InterfaceRealization', 'k.q', 'i'), E('r3', 'InterfaceRealization', 'api', 'i')],
+    views: [{ id: 'c', diagram: 'uml.component', nodeIds: ['api', 'i', 'k'] }, { id: 'v', diagram: 'uml.class', nodeIds: ['api', 'i', 'k'] }] };
+  assert.equal(layout(m, 'c').byId.i.aria, 'Interface Orders, provided by Api, K');
+  assert.ok(describe(m, 'c').split('\n').includes('Interface Orders, provided by Api, K.'));
+  assert.ok(describe(m, 'v').split('\n').includes('Component Api, 0 attributes, 0 operations; realizes Orders.'));
+  // each line is still drawn and listed
+  assert.deepEqual(layout(m, 'c').edges.map(e => e._id).sort(), ['r1', 'r2', 'r3']);
+});
+
+// audit 70: a line between two cards outside a component box ran through the box and over its port (Shop holds Cart; Gate's
+// port pay requires the Payments ball that Catalog's port provides). The class view's box pass (shutBoxes) now runs here too,
+// for a line that ends on a port as well, and a port with no line keeps off where a line crosses its box's border
+const A70 = { schemaVersion: 2, nodes: [
+  { id: 'shop', type: 'uml.Component', label: 'Shop', members: [{ id: 'shop.in', type: 'uml.Port', label: 'in' }, { id: 'shop.admin', type: 'uml.Port', label: 'admin' }] },
+  { id: 'web', type: 'uml.Component', label: 'Web', members: [{ id: 'web.p', type: 'uml.Port', label: 'p' }] },
+  { id: 'cart', type: 'uml.Component', label: 'Cart', parent: 'shop', members: [{ id: 'cart.a', type: 'uml.Port', label: 'a' }, { id: 'cart.b', type: 'uml.Port', label: 'b' }] },
+  { id: 'gate', type: 'uml.Component', label: 'Gate', members: [{ id: 'gate.in', type: 'uml.Port', label: 'in' }, { id: 'gate.pay', type: 'uml.Port', label: 'pay' }] },
+  { id: 'bank', type: 'uml.Component', label: 'Bank', members: [{ id: 'bank.p', type: 'uml.Port', label: 'p' }] },
+  { id: 'tax', type: 'uml.Component', label: 'Tax', members: [{ id: 'tax.p', type: 'uml.Port', label: 'p' }] },
+  { id: 'ui', type: 'uml.Component', label: 'Ui', members: [] },
+  { id: 'cat', type: 'uml.Component', label: 'Catalog', members: [{ id: 'cat.p', type: 'uml.Port', label: 'p' }, { id: 'cat.q', type: 'uml.Port', label: 'q' }] },
+  { id: 'orders', type: 'uml.Interface', label: 'Orders' }, { id: 'payments', type: 'uml.Interface', label: 'Payments' }],
+edges: [{ id: 'r0', type: 'uml.InterfaceRealization', from: 'tax.p', to: 'orders' }, { id: 'r1', type: 'uml.InterfaceRealization', from: 'cat.q', to: 'payments' },
+  { id: 'u1', type: 'uml.Usage', from: 'gate.pay', to: 'payments' }, { id: 'a0', type: 'uml.Connector', from: 'shop', to: 'gate.in', props: { kind: 'assembly' } },
+  { id: 'a1', type: 'uml.Connector', from: 'web', to: 'gate.pay', props: { kind: 'assembly' }, label: 'calls' }, { id: 'a2', type: 'uml.Connector', from: 'ui', to: 'shop', props: { kind: 'assembly' }, label: 'calls' }],
+views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'web', 'cart', 'gate', 'bank', 'tax', 'ui', 'cat', 'orders', 'payments'], present: { orders: { as: 'ball' }, payments: { as: 'ball' } } }] };
+// small component views (the audit's sweep): components, some nested, ports, interfaces as balls or boxes, realizations, usages, assemblies
+function a70View(seed) {
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648), pick = a => a[Math.floor(rnd() * a.length)];
+  const n = 3 + Math.floor(rnd() * 6), nodes = [], edges = [], present = {};
+  for (let i = 0; i < n; i++) nodes.push({ id: 'c' + i, type: 'uml.Component', label: 'Comp' + i, ...(i > 1 && rnd() < .3 ? { parent: 'c' + Math.floor(rnd() * i) } : {}),
+    members: Array.from({ length: Math.floor(rnd() * 3) }, (_, j) => ({ id: `c${i}.p${j}`, type: 'uml.Port', label: 'p' + j })) });
+  const fi = 1 + Math.floor(rnd() * 3); for (let i = 0; i < fi; i++) { nodes.push({ id: 'i' + i, type: 'uml.Interface', label: 'Api' + i }); if (rnd() < .5) present['i' + i] = { as: 'ball' }; }
+  const ends = nodes.filter(x => x.type === 'uml.Component').flatMap(c => [c.id, ...c.members.map(m => m.id)]);
+  for (let i = 0; i < fi; i++) { edges.push({ id: 'r' + i, type: 'uml.InterfaceRealization', from: pick(ends), to: 'i' + i }); if (rnd() < .8) edges.push({ id: 'u' + i, type: 'uml.Usage', from: pick(ends), to: 'i' + i }); }
+  const top = id => id.split('.')[0], chain = id => { const o = []; for (let p = nodes.find(x => x.id === id).parent; p; p = nodes.find(x => x.id === p).parent) o.push(p); return o; };
+  for (let j = 0; j < 3; j++) { const a = pick(ends), b = pick(ends); if (top(a) === top(b) || chain(top(a)).includes(top(b)) || chain(top(b)).includes(top(a))) continue;
+    edges.push({ id: 'a' + j, type: 'uml.Connector', from: a, to: b, props: { kind: 'assembly' }, ...(rnd() < .4 ? { label: 'calls' } : {}) }); }
+  return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(x => x.id), present, ...(rnd() < .3 ? { direction: 'down' } : {}) }] };
+}
+test('audit 70: no line runs through a component box that holds neither of its ends, nor over a port', () => {
+  assert.deepEqual(validate(A70).filter(p => p.level === 'error'), []);
+  const g = layout(A70, 'v'), b = g.families.find(f => f.id === 'shop'), u = g.edges.find(e => e._id === 'u1');
+  const inside = u.pts.slice(1).some((q, i) => { const p = u.pts[i]; return Math.max(p[0], q[0]) > b.x + 1 && Math.min(p[0], q[0]) < b.x + b.w - 1 && Math.max(p[1], q[1]) > b.y + 1 && Math.min(p[1], q[1]) < b.y + b.h - 1; });
+  assert.ok(!inside, `the usage Gate.pay -> Payments runs inside Shop: ${JSON.stringify(u.pts)}`);
+  assert.deepEqual(check(A70, 'v').map(p => p.message).filter(s => / passes through /.test(s)), []);
+  // views the sweep drew so: two lines through a box over its port, the rest a line from inside a box over the box's port with no line
+  for (const seed of [1291083776, 1240753920, 854915328, 913975296, 1191617280, 2116634624, 1418468352, 1146348544, 380326144, 644896000]) {
+    const m = a70View(seed); assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], String(seed));
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => / passes through | overlap/.test(s)), [], String(seed)); }
 });

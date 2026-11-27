@@ -3,6 +3,7 @@ import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
+import { mainFlow } from '../layout/layered.js';
 import { boxHolds, mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
 
@@ -38,6 +39,60 @@ function fieldTextProblems(m, v, T, memos = new Map()) {
   return out;
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 3): a view's arrange and zones, a line's flow, a card's zone,
+   on maps and typed views alike. Each is checked here, an arranged view's main-flow lines for one path and its steps, when
+   no line is marked main, for one chain (section 6.1). Warnings only: the model draws as it does without them */
+const FLOW_ROLES = ['main', 'branch', 'dep'], FLOW_ZONES = ['first', 'flow', 'last', 'under'];
+function arrangeProblems(m, views, warn) {
+  const arr = x => (Array.isArray(x) ? x : []), obj = x => x && typeof x === 'object' && !Array.isArray(x), say = ok => ok.map(s => `"${s}"`).join(', ').replace(/, ([^,]*)$/, ' or $1');
+  const flowIs = (e, at) => { if (obj(e) && e.flow !== undefined && !FLOW_ROLES.includes(e.flow)) warn(at + '.flow', `flow ${jsonText(e.flow)} is not ${say(FLOW_ROLES)}: read as not given, so the line's kind decides its part`); };
+  const zoneIs = (n, at) => { if (obj(n) && n.zone !== undefined && !FLOW_ZONES.includes(n.zone)) warn(at + '.zone', `zone ${jsonText(n.zone)} is not ${say(FLOW_ZONES)}: read as not given, so the type's default holds`); };
+  arr(m.nodes).forEach((n, i) => zoneIs(n, `nodes[${i}]`));
+  arr(m.edges).forEach((e, i) => flowIs(e, `edges[${i}]`));
+  const edgeAt = new Map(), byId = new Map(arr(m.edges).filter(obj).filter(e => e.id != null).map(e => [e.id, e]));
+  const card = new Map(arr(m.nodes).filter(obj).map(n => [n.id, n]));
+  arr(m.edges).forEach((e, i) => { if (obj(e)) edgeAt.set(e, `edges[${i}]`); }); // forEach: a hole in a list is no line (audit 57)
+  views.forEach(v => { const i = arr(m.views).indexOf(v), at = `views[${i}]`;
+    arr(v.nodes).forEach((n, j) => zoneIs(n, `${at}.nodes[${j}]`));
+    if (obj(v.nodeOverrides)) Object.entries(v.nodeOverrides).forEach(([id, o]) => zoneIs(o, `${at}.nodeOverrides.${id}`));
+    arr(v.edges).forEach((e, j) => { flowIs(e, `${at}.edges[${j}]`); if (obj(e)) edgeAt.set(e, `${at}.edges[${j}]`); });
+    if (v.arrange !== undefined && v.arrange !== 'flow') warn(at + '.arrange', `arrange ${jsonText(v.arrange)} is not "flow": the view lays out as without it`);
+    if (v.zones !== undefined && typeof v.zones !== 'boolean') warn(at + '.zones', `zones ${jsonText(v.zones)} is not false (or true, the default): ignored`);
+    if (v.arrange !== 'flow') return;
+    const T = m.schemaVersion === 2 && v.diagram != null && v.diagram !== 'map' && diagramOf(v), L = T && T.layout;
+    if (L && typeof L === 'object' && L.pins === false) return warn(at + '.arrange', `a ${v.diagram} view lays out on its own axis and does not rank its elements: arrange "flow" changes nothing`);
+    // a type with neither flowRole nor zoneOf (class, ER, component and the other structure types, layout-flow.md section 5.1)
+    // reads no main flow and no zone: the view lays out as without arrange (audit 66). A state machine and a communication
+    // view draw behaviour (their type says behaviour: true), yet read no main flow either: the warning says that, not structure (audit 68)
+    if (T && typeof T.flowRole !== 'function' && typeof T.zoneOf !== 'function') return warn(at + '.arrange', T.behaviour
+      ? `${v.diagram} draws behaviour with no main flow to read: arrange "flow" changes nothing` : `${v.diagram} draws structure, not a flow: arrange "flow" changes nothing`);
+    // the lines the view draws, as the layout reads them (context.js viewEdges): its list, else every model line between its cards and boxes
+    const ids = new Set([...arr(v.nodeIds), ...arr(v.containers).map(c => c && c.id)]), once = new Set();
+    const lines = (Array.isArray(v.edges) ? v.edges.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? byId.get(e) : e) : arr(m.edges))
+      .filter(e => obj(e) && ids.has(e.from) && ids.has(e.to));
+    // the lines that close a loop, as loopsOf (context.js) finds them: marked loop: true, else depth-first in run order from the cards no line comes into
+    const back = new Set(), st = new Map(), cards = arr(v.nodeIds).filter(id => typeof id === 'string');
+    lines.forEach((e, k) => { if (e.loop) back.add(k); });
+    const dfs = u => { const fr = [[u, 0]]; st.set(u, 1);
+      while (fr.length) { const f = fr[fr.length - 1]; if (f[1] === lines.length) { fr.pop(); st.set(f[0], 2); continue; }
+        const k = f[1]++, e = lines[k]; if (e.from !== f[0] || e.from === e.to || e.loop) continue; if (st.get(e.to) === 1) back.add(k); else if (!st.get(e.to)) { st.set(e.to, 1); fr.push([e.to, 0]); } } };
+    [...cards.filter(c => !lines.some(e => e.to === c && e.from !== c && !e.loop)), ...cards].forEach(c => { if (!st.get(c)) dfs(c); });
+    if (v.render === 'sequence') { const first = new Map(); lines.forEach((e, k) => { if (!first.has(e.from) && !lines.some((x, j) => j < k && x.to === e.from)) first.set(e.from, -1); if (!first.has(e.to)) first.set(e.to, k); });
+      lines.forEach((e, k) => { if (first.get(e.to) < k && (card.get(e.to) || {}).kind !== 'board' && e.from !== e.to) back.add(k); }); }
+    const main = lines.map((e, k) => [e, k]).filter(([e]) => e.flow === 'main'), name = id => String(labelOr((card.get(id) || {}).label, id));
+    main.forEach(([e, k]) => { if (back.has(k)) warn(edgeAt.get(e) || at, `a main-flow line from "${name(e.from)}" to "${name(e.to)}" closes a loop (the line back ranks nothing): a main flow is one path, never a cycle, so it ends before this line`); });
+    for (const end of ['from', 'to']) { const seen = new Map(); main.filter(([, k]) => !back.has(k)).forEach(([e]) => seen.set(e[end], (seen.get(e[end]) || 0) + 1));
+      seen.forEach((n, id) => { if (n > 1) warn(at, `"${name(id)}" has ${n} main-flow lines ${end === 'from' ? 'out' : 'in'} (flow: "main"): a main flow is one path, so the longest path among them is taken`); }); }
+    // with no line marked main, a main flow from steps (section 6.1): each step should start where the one before it ends
+    // a dependency line as the layout reads one (context.js depRule, wireKind): its flow, else its kind, else a hook's or a board's line
+    const kindOfCard = id => (card.get(id) || {}).kind, dep = e => FLOW_ROLES.includes(e.flow) ? e.flow === 'dep' : WIRE_KINDS.includes(e.kind) ? ['state', 'guard'].includes(e.kind)
+      : kindOfCard(e.from) === 'hook' || [e.from, e.to].some(id => kindOfCard(id) === 'board');
+    const M = !main.length && mainFlow(lines, { back, dep, cards });
+    if (M && M.by === 'step') M.breaks.forEach(([k, j]) => { const e = lines[k], p = lines[j];
+      warn(edgeAt.get(e) || at, `step ${jsonText(e.step)} starts at "${name(e.from)}", not at "${name(p.to)}" where step ${jsonText(p.step)} ends: the steps break into chains here, and the longest chain (${M.lines.length} lines, from "${name(M.cards[0])}") is the main flow`); });
+  });
+}
+
 /** A model's own problems, before anything is drawn: errors draw as holes or not at all (ids that are missing,
  *  repeated or name nothing, boxes inside themselves); warnings draw other than they say (an unknown kind or weight,
  *  a side that is not one, a view opened before the host has loaded it, a line to itself, which is not drawn). Each says where: `views[2].nodeIds[4]`. */
@@ -69,7 +124,8 @@ export function validate(model) {
   };
   const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
   // a field that must be a list and is not: drawn as if missing (a view's cards: none)
-  const list = (x, at, k, box) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k != 'nodeIds' ? 'ignored' : box ? 'the box holds no cards' : 'the view draws no cards'}`); };
+  // a view's edges that is not a list is read as none named: every line between its cards drawn, not the ones it names (audit 65)
+  const list = (x, at, k, box) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' || k == 'edges' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k == 'edges' ? 'read as not given, so the view draws the lines between its cards' : k != 'nodeIds' ? 'ignored' : box ? 'the box holds no cards' : 'the view draws no cards'}`); };
   const gone = (x, at) => { if (x && x.shapes !== undefined) warn(at + 'shapes', 'shapes is no longer read: maps draw in one style'); }; // the box/c4/uml choice, removed in 0.21.0
   gone(m, '');
   if (m.meta && m.meta.root != null && typeof m.meta.root !== 'string') warn('meta.root', 'meta.root is a path: drawn as written');
@@ -86,7 +142,7 @@ export function validate(model) {
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
-  views.forEach((v, i) => { gone(v, `views[${i}].`); ['nodeIds', 'containers', 'intake', 'stepIds', 'tour', 'browserOrder'].forEach(k => list(v, `views[${i}]`, k)); });
+  views.forEach((v, i) => { gone(v, `views[${i}].`); ['nodeIds', 'edges', 'containers', 'intake', 'stepIds', 'tour', 'browserOrder'].forEach(k => list(v, `views[${i}]`, k)); });
   // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0); not said of a card
   // only typed views hold, which keep their own notation (0.21.0)
   const typedOnly = id => { const vs = views.filter(v => arr(v.nodeIds).includes(id)); return vs.length && vs.every(v => typedView(v) && diagramOf(v)); };
@@ -153,6 +209,7 @@ export function validate(model) {
     Object.keys(v.layout || {}).forEach(id => { if (!mine.has(id)) warn(`${at}.layout.${id}`, `"${id}" is not one of the view's cards: its place is ignored`); });
     if (Array.isArray(v.lanes)) v.lanes.forEach((l, j) => arr(l && l.nodeIds).forEach((id, k) => { if (!mine.has(id)) warn(`${at}.lanes[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards: left out of the lane`); }));
   });
+  arrangeProblems(m, views, warn);
   // rules (#70): an id, and from, to or noCycles; a selector that names nothing picks nothing, and a misspelt kind picks script cards
   if (m.rules != null && !Array.isArray(m.rules)) err('rules', 'rules is a list');
   const ruleIds = new Set(), allBoxes = new Set(anyBox), each = (x, at, f) => (Array.isArray(x) ? x : [x]).forEach((y, j) => { if (y != null) f(y, Array.isArray(x) ? `${at}[${j}]` : at); });
@@ -188,6 +245,10 @@ export function validate(model) {
     pick(l.pick, at + '.pick', true);
     if (l.color != null && l.color !== 'owner') warn(at + '.color', `color ${jsonText(l.color)} is not "owner": ignored`);
   });
+  // motion: the author's speed for tours, story steps and the flow, which a reader's own choice and a host's option outrank
+  if (m.motion != null && (typeof m.motion !== 'object' || Array.isArray(m.motion))) warn('motion', 'motion is an object, { speed }: ignored');
+  else if (m.motion && m.motion.speed != null && !(typeof m.motion.speed === 'number' && m.motion.speed >= 0.25 && m.motion.speed <= 4))
+    warn('motion.speed', `speed ${jsonText(m.motion.speed)} is not a number from 0.25 to 4: ignored`);
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
   const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));
@@ -201,7 +262,22 @@ export function validate(model) {
     if (!s || typeof s.id !== 'string' || !s.id) return err(at + '.id', 'a story needs an id');
     if (sids.has(s.id)) err(at + '.id', `story id "${s.id}" is used twice`); sids.add(s.id);
     if (!arr(s.steps).length) err(at + '.steps', 'a story needs steps');
-    arr(s.steps).forEach((st, j) => {
+    // audience: who the story is told to (the page's Stories menu groups by it), a name
+    if (s.audience != null && !(typeof s.audience === 'string' && s.audience.trim())) warn(at + '.audience', `audience ${jsonText(s.audience)} is not a name: the story is listed with those that name none`);
+    checkSteps(s.steps, at);
+    // chapters: stories of their own, each offered while the story shows its step `at` (0-based)
+    if (s.chapters != null && !Array.isArray(s.chapters)) err(at + '.chapters', 'chapters is a list of stories, each with an id, steps and at');
+    const cids = new Set();
+    arr(s.chapters).forEach((c, k) => { const ca = `${at}.chapters[${k}]`;
+      if (c && typeof c === 'object') titled(c, ca);
+      if (!c || typeof c.id !== 'string' || !c.id) return err(ca + '.id', 'a chapter needs an id');
+      if (cids.has(c.id)) err(ca + '.id', `chapter id "${c.id}" is used twice in story "${s.id}"`); cids.add(c.id);
+      if (!arr(c.steps).length) err(ca + '.steps', 'a chapter needs steps');
+      if (!(Number.isInteger(c.at) && c.at >= 0 && c.at < arr(s.steps).length)) warn(ca + '.at', `at ${jsonText(c.at)} is not one of the story's steps (0 to ${arr(s.steps).length - 1}): the chapter is offered at none`);
+      checkSteps(c.steps, ca); });
+  });
+  function checkSteps(steps, at) {
+    arr(steps).forEach((st, j) => {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
@@ -242,7 +318,7 @@ export function validate(model) {
       else if (c != null && c !== 'fit' && !(c && Number.isFinite(c.x) && Number.isFinite(c.y))) warn(p + '.camera', `the camera is "fit", { x, y, zoom } or { card, zoom }${fit}`);
       if (st.duration != null && !(st.duration > 0)) warn(p + '.duration', `duration ${jsonText(st.duration)} is not a number of ms: 4000`);
     });
-  });
+  }
   if (typed) {
     const said = new Set(out.map(p => p.path)); // a duplicate id both checks find is said once
     out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));

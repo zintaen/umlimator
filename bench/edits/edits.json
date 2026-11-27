@@ -1,0 +1,5404 @@
+{
+ "about": "The edit corpus of docs/diagrams/notes/layout-flow.md section 4.3, written by bench/gen-edits.mjs (do not edit by hand): each pair is a bench model and the apply() commands of one edit; touched lists the cards the edit changes.",
+ "seed": "layout-flow edits 1",
+ "pairs": [
+  {
+   "id": "a8/dsl-context/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "dsl-context",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-context-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "dsl-context"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-context-card-line",
+      "from": "dsl-van",
+      "to": "zz-dsl-context-card",
+      "label": "adds"
+     },
+     "view": "dsl-context"
+    }
+   ],
+   "touched": [
+    "zz-dsl-context-card",
+    "dsl-van"
+   ]
+  },
+  {
+   "id": "a8/dsl-context/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-context",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "dsl-mopedshare-mail"
+    }
+   ],
+   "touched": [
+    "dsl-mopedshare",
+    "dsl-mail"
+   ]
+  },
+  {
+   "id": "a8/dsl-context/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "dsl-context",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "dsl-mopedshare",
+     "path": "label",
+     "value": "Moped share (renamed)"
+    }
+   ],
+   "touched": [
+    "dsl-mopedshare"
+   ]
+  },
+  {
+   "id": "a8/dsl-context/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-context",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-context-line1",
+      "from": "dsl-staff",
+      "to": "dsl-mail",
+      "label": "adds"
+     },
+     "view": "dsl-context"
+    }
+   ],
+   "touched": [
+    "dsl-staff",
+    "dsl-mail"
+   ]
+  },
+  {
+   "id": "a8/dsl-context/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "dsl-context",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "dsl-context",
+     "path": "containers",
+     "value": [
+      {
+       "id": "dsl-field-crews",
+       "label": "Field crews",
+       "nodeIds": [
+        "dsl-staff",
+        "dsl-mail"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "dsl-mail"
+   ]
+  },
+  {
+   "id": "a8/dsl-containers/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "dsl-containers",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-containers-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "dsl-containers"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-containers-card-line",
+      "from": "dsl-worker",
+      "to": "zz-dsl-containers-card",
+      "label": "adds"
+     },
+     "view": "dsl-containers"
+    }
+   ],
+   "touched": [
+    "zz-dsl-containers-card",
+    "dsl-worker"
+   ]
+  },
+  {
+   "id": "a8/dsl-containers/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-containers",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "dsl-api-queue"
+    }
+   ],
+   "touched": [
+    "dsl-api",
+    "dsl-queue"
+   ]
+  },
+  {
+   "id": "a8/dsl-containers/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "dsl-containers",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "dsl-staff",
+     "path": "label",
+     "value": "Operations staff (renamed)"
+    }
+   ],
+   "touched": [
+    "dsl-staff"
+   ]
+  },
+  {
+   "id": "a8/dsl-containers/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-containers",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-containers-line1",
+      "from": "dsl-rider",
+      "to": "dsl-van",
+      "label": "adds"
+     },
+     "view": "dsl-containers"
+    }
+   ],
+   "touched": [
+    "dsl-rider",
+    "dsl-van"
+   ]
+  },
+  {
+   "id": "a8/dsl-containers/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "dsl-containers",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "dsl-containers",
+     "path": "containers",
+     "value": [
+      {
+       "id": "dsl-mopedshare",
+       "label": "Moped share",
+       "nodeIds": [
+        "dsl-app",
+        "dsl-api",
+        "dsl-worker",
+        "dsl-db",
+        "dsl-queue"
+       ]
+      },
+      {
+       "id": "dsl-field-crews",
+       "label": "Field crews",
+       "nodeIds": [
+        "dsl-staff",
+        "dsl-mail"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "dsl-mail"
+   ]
+  },
+  {
+   "id": "a8/dsl-api-components/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "dsl-api-components",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-api-components-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "dsl-api-components"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-api-components-card-line",
+      "from": "dsl-accounts",
+      "to": "zz-dsl-api-components-card",
+      "label": "adds"
+     },
+     "view": "dsl-api-components"
+    }
+   ],
+   "touched": [
+    "zz-dsl-api-components-card",
+    "dsl-accounts"
+   ]
+  },
+  {
+   "id": "a8/dsl-api-components/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-api-components",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "dsl-hire-payment-client"
+    }
+   ],
+   "touched": [
+    "dsl-hire",
+    "dsl-payment-client"
+   ]
+  },
+  {
+   "id": "a8/dsl-api-components/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "dsl-api-components",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "dsl-queue",
+     "path": "label",
+     "value": "Ride queue (renamed)"
+    }
+   ],
+   "touched": [
+    "dsl-queue"
+   ]
+  },
+  {
+   "id": "a8/dsl-api-components/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "dsl-api-components",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dsl-api-components-line1",
+      "from": "dsl-finder",
+      "to": "dsl-queue",
+      "label": "adds"
+     },
+     "view": "dsl-api-components"
+    }
+   ],
+   "touched": [
+    "dsl-finder",
+    "dsl-queue"
+   ]
+  },
+  {
+   "id": "a8/dsl-api-components/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "dsl-api-components",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "dsl-api-components",
+     "path": "containers",
+     "value": [
+      {
+       "id": "dsl-api",
+       "label": "Trip API",
+       "nodeIds": [
+        "dsl-finder",
+        "dsl-hire",
+        "dsl-accounts",
+        "dsl-payment-client",
+        "dsl-ride-store",
+        "dsl-db"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "dsl-db"
+   ]
+  },
+  {
+   "id": "a8/puml-components/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "puml-components",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-puml-components-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "puml-components"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-puml-components-card-line",
+      "from": "puml-tracker",
+      "to": "zz-puml-components-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-puml-components-card",
+    "puml-tracker"
+   ]
+  },
+  {
+   "id": "a8/puml-components/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "puml-components",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "puml-web-routes"
+    }
+   ],
+   "touched": [
+    "puml-web",
+    "puml-routes"
+   ]
+  },
+  {
+   "id": "a8/puml-components/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "puml-components",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "puml-shipper",
+     "path": "label",
+     "value": "Shipper (renamed)"
+    }
+   ],
+   "touched": [
+    "puml-shipper"
+   ]
+  },
+  {
+   "id": "a8/puml-components/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "puml-components",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-puml-components-line1",
+      "from": "puml-web",
+      "to": "puml-db",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "puml-web",
+    "puml-db"
+   ]
+  },
+  {
+   "id": "a8/puml-components/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "puml-components",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "puml-components",
+     "path": "containers",
+     "value": [
+      {
+       "id": "puml-tracking",
+       "label": "Parcel tracking",
+       "nodeIds": [
+        "puml-web",
+        "puml-handset",
+        "puml-scans",
+        "puml-db"
+       ]
+      },
+      {
+       "id": "puml-api",
+       "label": "Tracking API",
+       "nodeIds": [
+        "puml-routes",
+        "puml-tracker",
+        "puml-billing"
+       ],
+       "parent": "puml-tracking"
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "puml-billing"
+   ]
+  },
+  {
+   "id": "a8/checkout-flowchart/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "checkout-flowchart",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-flowchart-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "checkout-flowchart"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-flowchart-card-line",
+      "from": "checkout-bus",
+      "to": "zz-checkout-flowchart-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-checkout-flowchart-card",
+    "checkout-bus"
+   ]
+  },
+  {
+   "id": "a8/checkout-flowchart/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "checkout-flowchart",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "checkout-bus-stock"
+    }
+   ],
+   "touched": [
+    "checkout-bus",
+    "checkout-stock"
+   ]
+  },
+  {
+   "id": "a8/checkout-flowchart/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "checkout-flowchart",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "checkout-orders",
+     "path": "label",
+     "value": "Orders DB (renamed)"
+    }
+   ],
+   "touched": [
+    "checkout-orders"
+   ]
+  },
+  {
+   "id": "a8/checkout-flowchart/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "checkout-flowchart",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-flowchart-line1",
+      "from": "checkout-web",
+      "to": "checkout-orders",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "checkout-web",
+    "checkout-orders"
+   ]
+  },
+  {
+   "id": "a8/checkout-flowchart/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "checkout-flowchart",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "checkout-flowchart",
+     "path": "containers",
+     "value": [
+      {
+       "id": "checkout-core",
+       "label": "Order core",
+       "nodeIds": [
+        "checkout-api",
+        "checkout-orders"
+       ]
+      },
+      {
+       "id": "checkout-after",
+       "label": "After the order",
+       "nodeIds": [
+        "checkout-mailer",
+        "checkout-stock",
+        "checkout-shopper"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "checkout-shopper"
+   ]
+  },
+  {
+   "id": "a8/meals-context/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "meals-context",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-meals-context-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "meals-context"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-meals-context-card-line",
+      "from": "meals-guest",
+      "to": "zz-meals-context-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-meals-context-card",
+    "meals-guest"
+   ]
+  },
+  {
+   "id": "a8/meals-context/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "meals-context",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "meals-cook-planner"
+    }
+   ],
+   "touched": [
+    "meals-cook",
+    "meals-planner"
+   ]
+  },
+  {
+   "id": "a8/meals-context/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "meals-context",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "meals-cook",
+     "path": "label",
+     "value": "Home cook (renamed)"
+    }
+   ],
+   "touched": [
+    "meals-cook"
+   ]
+  },
+  {
+   "id": "a8/meals-context/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "meals-context",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-meals-context-line1",
+      "from": "meals-guest",
+      "to": "meals-recipes",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "meals-guest",
+    "meals-recipes"
+   ]
+  },
+  {
+   "id": "a8/meals-context/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "meals-context",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "meals-context",
+     "path": "containers",
+     "value": [
+      {
+       "id": "meals-company",
+       "label": "Meal planner company",
+       "nodeIds": [
+        "meals-planner",
+        "meals-recipes",
+        "meals-mail"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "meals-mail"
+   ]
+  },
+  {
+   "id": "a8/compose-services/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "compose-services",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-compose-services-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "compose-services"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-compose-services-card-line",
+      "from": "compose-db",
+      "to": "zz-compose-services-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-compose-services-card",
+    "compose-db"
+   ]
+  },
+  {
+   "id": "a8/compose-services/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "compose-services",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "compose-worker-queue"
+    }
+   ],
+   "touched": [
+    "compose-worker",
+    "compose-queue"
+   ]
+  },
+  {
+   "id": "a8/compose-services/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "compose-services",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "compose-mailer",
+     "path": "label",
+     "value": "mailer (renamed)"
+    }
+   ],
+   "touched": [
+    "compose-mailer"
+   ]
+  },
+  {
+   "id": "a8/compose-services/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "compose-services",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-compose-services-line1",
+      "from": "compose-db",
+      "to": "compose-worker",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "compose-db",
+    "compose-worker"
+   ]
+  },
+  {
+   "id": "a8/compose-services/5-move-into-box",
+   "model": "bench/models/a8.json",
+   "view": "compose-services",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "compose-services",
+     "path": "containers",
+     "value": [
+      {
+       "id": "compose-network-data",
+       "label": "data",
+       "nodeIds": [
+        "compose-cache",
+        "compose-db",
+        "compose-mailer",
+        "compose-queue",
+        "compose-worker",
+        "compose-api"
+       ]
+      },
+      {
+       "id": "compose-network-edge",
+       "label": "edge",
+       "nodeIds": [
+        "compose-proxy",
+        "compose-web"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "compose-api"
+   ]
+  },
+  {
+   "id": "a8/k8s-cluster/1-add-card",
+   "model": "bench/models/a8.json",
+   "view": "k8s-cluster",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-k8s-cluster-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "k8s-cluster"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-k8s-cluster-card-line",
+      "from": "k8s-deploy-api",
+      "to": "zz-k8s-cluster-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-k8s-cluster-card",
+    "k8s-deploy-api"
+   ]
+  },
+  {
+   "id": "a8/k8s-cluster/2-remove-line",
+   "model": "bench/models/a8.json",
+   "view": "k8s-cluster",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "k8s-deploy-web-svc-api"
+    }
+   ],
+   "touched": [
+    "k8s-deploy-web",
+    "k8s-svc-api"
+   ]
+  },
+  {
+   "id": "a8/k8s-cluster/3-rename",
+   "model": "bench/models/a8.json",
+   "view": "k8s-cluster",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "k8s-svc-api",
+     "path": "label",
+     "value": "api (renamed)"
+    }
+   ],
+   "touched": [
+    "k8s-svc-api"
+   ]
+  },
+  {
+   "id": "a8/k8s-cluster/4-add-line",
+   "model": "bench/models/a8.json",
+   "view": "k8s-cluster",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-k8s-cluster-line1",
+      "from": "k8s-svc-web",
+      "to": "k8s-svc-api",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "k8s-svc-web",
+    "k8s-svc-api"
+   ]
+  },
+  {
+   "id": "a8/k8s-cluster/5-add-line",
+   "model": "bench/models/a8.json",
+   "view": "k8s-cluster",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-k8s-cluster-line2",
+      "from": "k8s-sts-postgres",
+      "to": "k8s-ing-tea",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "k8s-sts-postgres",
+    "k8s-ing-tea"
+   ]
+  },
+  {
+   "id": "b10/overview/1-add-card",
+   "model": "bench/models/b10.json",
+   "view": "overview",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "overview"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card-line",
+      "from": "n01",
+      "to": "zz-overview-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-overview-card",
+    "n01"
+   ]
+  },
+  {
+   "id": "b10/overview/2-remove-line",
+   "model": "bench/models/b10.json",
+   "view": "overview",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e003"
+    }
+   ],
+   "touched": [
+    "n02",
+    "n06"
+   ]
+  },
+  {
+   "id": "b10/overview/3-rename",
+   "model": "bench/models/b10.json",
+   "view": "overview",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n04",
+     "path": "label",
+     "value": "Auth 4 (renamed)"
+    }
+   ],
+   "touched": [
+    "n04"
+   ]
+  },
+  {
+   "id": "b10/overview/4-add-line",
+   "model": "bench/models/b10.json",
+   "view": "overview",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-line1",
+      "from": "n00",
+      "to": "n01",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n00",
+    "n01"
+   ]
+  },
+  {
+   "id": "b10/overview/5-add-line",
+   "model": "bench/models/b10.json",
+   "view": "overview",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-line2",
+      "from": "n01",
+      "to": "n08",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n01",
+    "n08"
+   ]
+  },
+  {
+   "id": "b10/norepair/1-add-card",
+   "model": "bench/models/b10.json",
+   "view": "norepair",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-norepair-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "norepair"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-norepair-card-line",
+      "from": "n05",
+      "to": "zz-norepair-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-norepair-card",
+    "n05"
+   ]
+  },
+  {
+   "id": "b10/norepair/2-remove-line",
+   "model": "bench/models/b10.json",
+   "view": "norepair",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e013"
+    }
+   ],
+   "touched": [
+    "n06",
+    "n08"
+   ]
+  },
+  {
+   "id": "b10/norepair/3-rename",
+   "model": "bench/models/b10.json",
+   "view": "norepair",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n02",
+     "path": "label",
+     "value": "Catalog 2 (renamed)"
+    }
+   ],
+   "touched": [
+    "n02"
+   ]
+  },
+  {
+   "id": "b10/norepair/4-add-line",
+   "model": "bench/models/b10.json",
+   "view": "norepair",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-norepair-line1",
+      "from": "n00",
+      "to": "n01",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n00",
+    "n01"
+   ]
+  },
+  {
+   "id": "b10/norepair/5-add-line",
+   "model": "bench/models/b10.json",
+   "view": "norepair",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-norepair-line2",
+      "from": "n00",
+      "to": "n07",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n00",
+    "n07"
+   ]
+  },
+  {
+   "id": "b26/overview/1-add-card",
+   "model": "bench/models/b26.json",
+   "view": "overview",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "overview"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card-line",
+      "from": "n10",
+      "to": "zz-overview-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-overview-card",
+    "n10"
+   ]
+  },
+  {
+   "id": "b26/overview/2-remove-line",
+   "model": "bench/models/b26.json",
+   "view": "overview",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e039"
+    }
+   ],
+   "touched": [
+    "n17",
+    "n24"
+   ]
+  },
+  {
+   "id": "b26/overview/3-rename",
+   "model": "bench/models/b26.json",
+   "view": "overview",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n06",
+     "path": "label",
+     "value": "Notify 6 (renamed)"
+    }
+   ],
+   "touched": [
+    "n06"
+   ]
+  },
+  {
+   "id": "b26/overview/4-add-line",
+   "model": "bench/models/b26.json",
+   "view": "overview",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-line1",
+      "from": "n07",
+      "to": "n21",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n07",
+    "n21"
+   ]
+  },
+  {
+   "id": "b26/overview/5-move-into-box",
+   "model": "bench/models/b26.json",
+   "view": "overview",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "overview",
+     "path": "containers",
+     "value": [
+      {
+       "id": "core",
+       "label": "Core",
+       "nodeIds": [
+        "n04",
+        "n05",
+        "n06",
+        "n07",
+        "n08",
+        "n09",
+        "n10",
+        "n11"
+       ]
+      },
+      {
+       "id": "data",
+       "label": "Data",
+       "nodeIds": [
+        "n16",
+        "n17",
+        "n18",
+        "n19",
+        "n20",
+        "n21",
+        "n12"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "n12"
+   ]
+  },
+  {
+   "id": "b26/n01/1-add-card",
+   "model": "bench/models/b26.json",
+   "view": "n01",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-n01-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "n01"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-n01-card-line",
+      "from": "n05",
+      "to": "zz-n01-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-n01-card",
+    "n05"
+   ]
+  },
+  {
+   "id": "b26/n01/2-remove-line",
+   "model": "bench/models/b26.json",
+   "view": "n01",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e006"
+    }
+   ],
+   "touched": [
+    "n01",
+    "n09"
+   ]
+  },
+  {
+   "id": "b26/n01/3-rename",
+   "model": "bench/models/b26.json",
+   "view": "n01",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n13",
+     "path": "label",
+     "value": "Export 13 (renamed)"
+    }
+   ],
+   "touched": [
+    "n13"
+   ]
+  },
+  {
+   "id": "b26/n01/4-add-line",
+   "model": "bench/models/b26.json",
+   "view": "n01",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-n01-line1",
+      "from": "n09",
+      "to": "n05",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n09",
+    "n05"
+   ]
+  },
+  {
+   "id": "b26/n01/5-add-line",
+   "model": "bench/models/b26.json",
+   "view": "n01",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-n01-line2",
+      "from": "n13",
+      "to": "n05",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n13",
+    "n05"
+   ]
+  },
+  {
+   "id": "b69/front/1-add-card",
+   "model": "bench/models/b69.json",
+   "view": "front",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-front-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "front"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-front-card-line",
+      "from": "n01",
+      "to": "zz-front-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-front-card",
+    "n01"
+   ]
+  },
+  {
+   "id": "b69/front/2-remove-line",
+   "model": "bench/models/b69.json",
+   "view": "front",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e030"
+    }
+   ],
+   "touched": [
+    "n01",
+    "n12"
+   ]
+  },
+  {
+   "id": "b69/front/3-rename",
+   "model": "bench/models/b69.json",
+   "view": "front",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n06",
+     "path": "label",
+     "value": "Notify 6 (renamed)"
+    }
+   ],
+   "touched": [
+    "n06"
+   ]
+  },
+  {
+   "id": "b69/front/4-add-line",
+   "model": "bench/models/b69.json",
+   "view": "front",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-front-line1",
+      "from": "n08",
+      "to": "n12",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n08",
+    "n12"
+   ]
+  },
+  {
+   "id": "b69/front/5-add-line",
+   "model": "bench/models/b69.json",
+   "view": "front",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-front-line2",
+      "from": "n11",
+      "to": "n14",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n11",
+    "n14"
+   ]
+  },
+  {
+   "id": "b69/back/1-add-card",
+   "model": "bench/models/b69.json",
+   "view": "back",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-back-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "back"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-back-card-line",
+      "from": "n63",
+      "to": "zz-back-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-back-card",
+    "n63"
+   ]
+  },
+  {
+   "id": "b69/back/2-remove-line",
+   "model": "bench/models/b69.json",
+   "view": "back",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e041"
+    }
+   ],
+   "touched": [
+    "n52",
+    "n65"
+   ]
+  },
+  {
+   "id": "b69/back/3-rename",
+   "model": "bench/models/b69.json",
+   "view": "back",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n66",
+     "path": "label",
+     "value": "Notify 66 (renamed)"
+    }
+   ],
+   "touched": [
+    "n66"
+   ]
+  },
+  {
+   "id": "b69/back/4-add-line",
+   "model": "bench/models/b69.json",
+   "view": "back",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-back-line1",
+      "from": "n56",
+      "to": "n61",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n56",
+    "n61"
+   ]
+  },
+  {
+   "id": "b69/back/5-add-line",
+   "model": "bench/models/b69.json",
+   "view": "back",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-back-line2",
+      "from": "n54",
+      "to": "n58",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n54",
+    "n58"
+   ]
+  },
+  {
+   "id": "d24/boxed/1-add-card",
+   "model": "bench/models/d24.json",
+   "view": "boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card-line",
+      "from": "shell",
+      "to": "zz-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-boxed-card",
+    "shell"
+   ]
+  },
+  {
+   "id": "d24/boxed/2-remove-line",
+   "model": "bench/models/d24.json",
+   "view": "boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "api-m12"
+    }
+   ],
+   "touched": [
+    "api",
+    "m12"
+   ]
+  },
+  {
+   "id": "d24/boxed/3-rename",
+   "model": "bench/models/d24.json",
+   "view": "boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "api",
+     "path": "label",
+     "value": "API (renamed)"
+    }
+   ],
+   "touched": [
+    "api"
+   ]
+  },
+  {
+   "id": "d24/boxed/4-add-line",
+   "model": "bench/models/d24.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line1",
+      "from": "m01",
+      "to": "m08",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "m01",
+    "m08"
+   ]
+  },
+  {
+   "id": "d24/boxed/5-add-line",
+   "model": "bench/models/d24.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line2",
+      "from": "m11",
+      "to": "m12",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "m11",
+    "m12"
+   ]
+  },
+  {
+   "id": "d24/plain/1-add-card",
+   "model": "bench/models/d24.json",
+   "view": "plain",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "plain"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card-line",
+      "from": "m00",
+      "to": "zz-plain-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-plain-card",
+    "m00"
+   ]
+  },
+  {
+   "id": "d24/plain/2-remove-line",
+   "model": "bench/models/d24.json",
+   "view": "plain",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "api-m06"
+    }
+   ],
+   "touched": [
+    "api",
+    "m06"
+   ]
+  },
+  {
+   "id": "d24/plain/3-rename",
+   "model": "bench/models/d24.json",
+   "view": "plain",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "m08",
+     "path": "label",
+     "value": "Gateway (renamed)"
+    }
+   ],
+   "touched": [
+    "m08"
+   ]
+  },
+  {
+   "id": "d24/plain/4-add-line",
+   "model": "bench/models/d24.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line1",
+      "from": "m09",
+      "to": "m14",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "m09",
+    "m14"
+   ]
+  },
+  {
+   "id": "d24/plain/5-add-line",
+   "model": "bench/models/d24.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line2",
+      "from": "m07",
+      "to": "m13",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "m07",
+    "m13"
+   ]
+  },
+  {
+   "id": "f12/order/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "order",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "order"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-card-line",
+      "from": "o-ship",
+      "to": "zz-order-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-order-card",
+    "o-ship"
+   ]
+  },
+  {
+   "id": "f12/order/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "order",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "o-b3"
+    }
+   ],
+   "touched": [
+    "o-refund",
+    "o-mail"
+   ]
+  },
+  {
+   "id": "f12/order/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "order",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "o-ledger",
+     "path": "label",
+     "value": "Ledger (renamed)"
+    }
+   ],
+   "touched": [
+    "o-ledger"
+   ]
+  },
+  {
+   "id": "f12/order/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "order",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-line1",
+      "from": "o-api",
+      "to": "o-pay",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "o-api",
+    "o-pay"
+   ]
+  },
+  {
+   "id": "f12/order/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "order",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-line2",
+      "from": "o-ship",
+      "to": "o-ledger",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "o-ship",
+    "o-ledger"
+   ]
+  },
+  {
+   "id": "f12/signup/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "signup",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "signup"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-card-line",
+      "from": "s-active",
+      "to": "zz-signup-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-signup-card",
+    "s-active"
+   ]
+  },
+  {
+   "id": "f12/signup/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "signup",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s-b1"
+    }
+   ],
+   "touched": [
+    "s-check",
+    "s-review"
+   ]
+  },
+  {
+   "id": "f12/signup/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "signup",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "s-welcome",
+     "path": "label",
+     "value": "Welcome mail (renamed)"
+    }
+   ],
+   "touched": [
+    "s-welcome"
+   ]
+  },
+  {
+   "id": "f12/signup/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "signup",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-line1",
+      "from": "s-check",
+      "to": "s-welcome",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "s-check",
+    "s-welcome"
+   ]
+  },
+  {
+   "id": "f12/signup/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "signup",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-line2",
+      "from": "s-staff",
+      "to": "s-active",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "s-staff",
+    "s-active"
+   ]
+  },
+  {
+   "id": "f12/ticket/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "ticket",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "ticket"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-card-line",
+      "from": "t-fix",
+      "to": "zz-ticket-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-ticket-card",
+    "t-fix"
+   ]
+  },
+  {
+   "id": "f12/ticket/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "ticket",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "t-m1"
+    }
+   ],
+   "touched": [
+    "t-desk",
+    "t-triage"
+   ]
+  },
+  {
+   "id": "f12/ticket/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "ticket",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "t-cust",
+     "path": "label",
+     "value": "Customer (renamed)"
+    }
+   ],
+   "touched": [
+    "t-cust"
+   ]
+  },
+  {
+   "id": "f12/ticket/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "ticket",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-line1",
+      "from": "t-cust",
+      "to": "t-triage",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "t-cust",
+    "t-triage"
+   ]
+  },
+  {
+   "id": "f12/ticket/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "ticket",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-line2",
+      "from": "t-cust",
+      "to": "t-kb",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "t-cust",
+    "t-kb"
+   ]
+  },
+  {
+   "id": "f12/pipeline/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "pipeline",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "pipeline"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-card-line",
+      "from": "p-enrich",
+      "to": "zz-pipeline-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-pipeline-card",
+    "p-enrich"
+   ]
+  },
+  {
+   "id": "f12/pipeline/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "pipeline",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "p-m2"
+    }
+   ],
+   "touched": [
+    "p-clean",
+    "p-enrich"
+   ]
+  },
+  {
+   "id": "f12/pipeline/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "pipeline",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "p-src",
+     "path": "label",
+     "value": "Event source (renamed)"
+    }
+   ],
+   "touched": [
+    "p-src"
+   ]
+  },
+  {
+   "id": "f12/pipeline/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "pipeline",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-line1",
+      "from": "p-src",
+      "to": "p-load",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "p-src",
+    "p-load"
+   ]
+  },
+  {
+   "id": "f12/pipeline/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "pipeline",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-line2",
+      "from": "p-ingest",
+      "to": "p-stage",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "p-ingest",
+    "p-stage"
+   ]
+  },
+  {
+   "id": "f12/order-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "order-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "order-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-boxed-card-line",
+      "from": "o-pay",
+      "to": "zz-order-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-order-boxed-card",
+    "o-pay"
+   ]
+  },
+  {
+   "id": "f12/order-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "order-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "o-b2"
+    }
+   ],
+   "touched": [
+    "o-pay",
+    "o-refund"
+   ]
+  },
+  {
+   "id": "f12/order-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "order-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "o-web",
+     "path": "label",
+     "value": "Storefront (renamed)"
+    }
+   ],
+   "touched": [
+    "o-web"
+   ]
+  },
+  {
+   "id": "f12/order-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "order-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-order-boxed-line1",
+      "from": "o-web",
+      "to": "o-mail",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "o-web",
+    "o-mail"
+   ]
+  },
+  {
+   "id": "f12/order-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "order-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "order-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "ob-front",
+       "label": "Front",
+       "nodeIds": [
+        "o-web",
+        "o-api",
+        "o-cart"
+       ]
+      },
+      {
+       "id": "ob-money",
+       "label": "Money",
+       "nodeIds": [
+        "o-pay",
+        "o-refund",
+        "o-ledger",
+        "o-db"
+       ]
+      },
+      {
+       "id": "ob-ship",
+       "label": "Fulfilment",
+       "nodeIds": [
+        "o-ship",
+        "o-mail"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "o-db"
+   ]
+  },
+  {
+   "id": "f12/signup-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "signup-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "signup-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-boxed-card-line",
+      "from": "s-active",
+      "to": "zz-signup-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-signup-boxed-card",
+    "s-active"
+   ]
+  },
+  {
+   "id": "f12/signup-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "signup-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s-b2"
+    }
+   ],
+   "touched": [
+    "s-staff",
+    "s-review"
+   ]
+  },
+  {
+   "id": "f12/signup-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "signup-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "s-active",
+     "path": "label",
+     "value": "Activate (renamed)"
+    }
+   ],
+   "touched": [
+    "s-active"
+   ]
+  },
+  {
+   "id": "f12/signup-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "signup-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-signup-boxed-line1",
+      "from": "s-form",
+      "to": "s-staff",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "s-form",
+    "s-staff"
+   ]
+  },
+  {
+   "id": "f12/signup-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "signup-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "signup-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "sb-app",
+       "label": "App",
+       "nodeIds": [
+        "s-form",
+        "s-acct",
+        "s-active",
+        "s-welcome",
+        "s-user"
+       ]
+      },
+      {
+       "id": "sb-risk",
+       "label": "Risk",
+       "nodeIds": [
+        "s-check",
+        "s-review"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "s-user"
+   ]
+  },
+  {
+   "id": "f12/ticket-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "ticket-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "ticket-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-boxed-card-line",
+      "from": "t-verify",
+      "to": "zz-ticket-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-ticket-boxed-card",
+    "t-verify"
+   ]
+  },
+  {
+   "id": "f12/ticket-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "ticket-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "t-b2"
+    }
+   ],
+   "touched": [
+    "t-kb",
+    "t-close"
+   ]
+  },
+  {
+   "id": "f12/ticket-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "ticket-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "t-close",
+     "path": "label",
+     "value": "Close (renamed)"
+    }
+   ],
+   "touched": [
+    "t-close"
+   ]
+  },
+  {
+   "id": "f12/ticket-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "ticket-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ticket-boxed-line1",
+      "from": "t-cust",
+      "to": "t-close",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "t-cust",
+    "t-close"
+   ]
+  },
+  {
+   "id": "f12/ticket-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "ticket-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "ticket-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "tb-l1",
+       "label": "First line",
+       "nodeIds": [
+        "t-desk",
+        "t-triage",
+        "t-kb"
+       ]
+      },
+      {
+       "id": "tb-l2",
+       "label": "Engineering",
+       "nodeIds": [
+        "t-fix",
+        "t-verify",
+        "t-cust"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "t-cust"
+   ]
+  },
+  {
+   "id": "f12/pipeline-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "pipeline-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "pipeline-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-boxed-card-line",
+      "from": "p-raw",
+      "to": "zz-pipeline-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-pipeline-boxed-card",
+    "p-raw"
+   ]
+  },
+  {
+   "id": "f12/pipeline-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "pipeline-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "p-m4"
+    }
+   ],
+   "touched": [
+    "p-load",
+    "p-report"
+   ]
+  },
+  {
+   "id": "f12/pipeline-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "pipeline-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "p-wh",
+     "path": "label",
+     "value": "Warehouse (renamed)"
+    }
+   ],
+   "touched": [
+    "p-wh"
+   ]
+  },
+  {
+   "id": "f12/pipeline-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "pipeline-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pipeline-boxed-line1",
+      "from": "p-stage",
+      "to": "p-log",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "p-stage",
+    "p-log"
+   ]
+  },
+  {
+   "id": "f12/pipeline-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "pipeline-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "pipeline-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "pb-in",
+       "label": "Ingest",
+       "nodeIds": [
+        "p-ingest",
+        "p-raw"
+       ]
+      },
+      {
+       "id": "pb-tr",
+       "label": "Transform",
+       "nodeIds": [
+        "p-clean",
+        "p-enrich",
+        "p-stage"
+       ]
+      },
+      {
+       "id": "pb-out",
+       "label": "Serve",
+       "nodeIds": [
+        "p-load",
+        "p-wh",
+        "p-report",
+        "p-log"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "p-log"
+   ]
+  },
+  {
+   "id": "f12/onboard/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "onboard"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-card-line",
+      "from": "n-kyc",
+      "to": "zz-onboard-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-onboard-card",
+    "n-kyc"
+   ]
+  },
+  {
+   "id": "f12/onboard/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "n-m12"
+    }
+   ],
+   "touched": [
+    "n-project",
+    "n-hooks"
+   ]
+  },
+  {
+   "id": "f12/onboard/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n-live",
+     "path": "label",
+     "value": "Go live (renamed)"
+    }
+   ],
+   "touched": [
+    "n-live"
+   ]
+  },
+  {
+   "id": "f12/onboard/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-line1",
+      "from": "n-project",
+      "to": "n-declined",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-project",
+    "n-declined"
+   ]
+  },
+  {
+   "id": "f12/onboard/5-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-line2",
+      "from": "n-visit",
+      "to": "n-team",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-visit",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/1-add-card",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "onboard-boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-card-line",
+      "from": "n-live",
+      "to": "zz-onboard-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-onboard-boxed-card",
+    "n-live"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/2-remove-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "n-m7"
+    }
+   ],
+   "touched": [
+    "n-receipt",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/3-rename",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "n-plan",
+     "path": "label",
+     "value": "Choose plan (renamed)"
+    }
+   ],
+   "touched": [
+    "n-plan"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/4-add-line",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-onboard-boxed-line1",
+      "from": "n-verify",
+      "to": "n-team",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "n-verify",
+    "n-team"
+   ]
+  },
+  {
+   "id": "f12/onboard-boxed/5-move-into-box",
+   "model": "bench/models/f12.json",
+   "view": "onboard-boxed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "onboard-boxed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "nb-signup",
+       "label": "Sign-up",
+       "nodeIds": [
+        "n-visit",
+        "n-form",
+        "n-verify",
+        "n-profile"
+       ]
+      },
+      {
+       "id": "nb-billing",
+       "label": "Billing",
+       "nodeIds": [
+        "n-plan",
+        "n-pay",
+        "n-kyc",
+        "n-receipt",
+        "n-declined"
+       ]
+      },
+      {
+       "id": "nb-setup",
+       "label": "Setup",
+       "nodeIds": [
+        "n-team",
+        "n-import",
+        "n-setup",
+        "n-tour",
+        "n-mapping"
+       ]
+      },
+      {
+       "id": "nb-launch",
+       "label": "Launch",
+       "nodeIds": [
+        "n-project",
+        "n-hooks",
+        "n-health",
+        "n-live",
+        "n-accounts"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "n-accounts"
+   ]
+  },
+  {
+   "id": "i59/context/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "context",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-context-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "context"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-context-card-line",
+      "from": "riders",
+      "to": "zz-context-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-context-card",
+    "riders"
+   ]
+  },
+  {
+   "id": "i59/context/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "context",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "c1"
+    }
+   ],
+   "touched": [
+    "riders",
+    "mopedshare"
+   ]
+  },
+  {
+   "id": "i59/context/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "context",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "city",
+     "path": "label",
+     "value": "City data portal (renamed)"
+    }
+   ],
+   "touched": [
+    "city"
+   ]
+  },
+  {
+   "id": "i59/context/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "context",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-context-line1",
+      "from": "payments",
+      "to": "maps",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "payments",
+    "maps"
+   ]
+  },
+  {
+   "id": "i59/context/5-add-line",
+   "model": "bench/models/i59.json",
+   "view": "context",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-context-line2",
+      "from": "ops",
+      "to": "payments",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "ops",
+    "payments"
+   ]
+  },
+  {
+   "id": "i59/system/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "system",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-system-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "system"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-system-card-line",
+      "from": "ops",
+      "to": "zz-system-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-system-card",
+    "ops"
+   ]
+  },
+  {
+   "id": "i59/system/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "system",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s1"
+    }
+   ],
+   "touched": [
+    "riders",
+    "rider-app"
+   ]
+  },
+  {
+   "id": "i59/system/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "system",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "ops-console",
+     "path": "label",
+     "value": "Ops console (renamed)"
+    }
+   ],
+   "touched": [
+    "ops-console"
+   ]
+  },
+  {
+   "id": "i59/system/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "system",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-system-line1",
+      "from": "tripsdb",
+      "to": "ops",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "tripsdb",
+    "ops"
+   ]
+  },
+  {
+   "id": "i59/system/5-move-into-box",
+   "model": "bench/models/i59.json",
+   "view": "system",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "system",
+     "path": "containers",
+     "value": [
+      {
+       "id": "apps",
+       "label": "Apps",
+       "nodeIds": [
+        "rider-app",
+        "ops-console",
+        "payments"
+       ],
+       "badges": [
+        "iOS · Android · web"
+       ]
+      },
+      {
+       "id": "rides",
+       "label": "Rides",
+       "nodeIds": [
+        "accounts",
+        "trips",
+        "pricing",
+        "tripsdb"
+       ],
+       "badges": [
+        {
+         "text": "team Rides",
+         "tone": "accent"
+        }
+       ]
+      },
+      {
+       "id": "fleet-box",
+       "label": "Fleet",
+       "nodeIds": [
+        "telemetry",
+        "fleet",
+        "charging",
+        "warehouse"
+       ],
+       "badges": [
+        {
+         "text": "team Fleet",
+         "tone": "violet"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "payments"
+   ]
+  },
+  {
+   "id": "i59/trips/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "trips",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-trips-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "trips"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-trips-card-line",
+      "from": "lifecycle",
+      "to": "zz-trips-card",
+      "label": "adds"
+     },
+     "view": "trips"
+    }
+   ],
+   "touched": [
+    "zz-trips-card",
+    "lifecycle"
+   ]
+  },
+  {
+   "id": "i59/trips/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "trips",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "t8"
+    }
+   ],
+   "touched": [
+    "trip-repo",
+    "tripsdb"
+   ]
+  },
+  {
+   "id": "i59/trips/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "trips",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "trip-repo",
+     "path": "label",
+     "value": "Trip repository (renamed)"
+    }
+   ],
+   "touched": [
+    "trip-repo"
+   ]
+  },
+  {
+   "id": "i59/trips/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "trips",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-trips-line1",
+      "from": "payments",
+      "to": "trip-repo",
+      "label": "adds"
+     },
+     "view": "trips"
+    }
+   ],
+   "touched": [
+    "payments",
+    "trip-repo"
+   ]
+  },
+  {
+   "id": "i59/trips/5-add-line",
+   "model": "bench/models/i59.json",
+   "view": "trips",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-trips-line2",
+      "from": "stations",
+      "to": "trip-repo",
+      "label": "adds"
+     },
+     "view": "trips"
+    }
+   ],
+   "touched": [
+    "stations",
+    "trip-repo"
+   ]
+  },
+  {
+   "id": "i59/fleet/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "fleet",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-fleet-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "fleet"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-fleet-card-line",
+      "from": "warehouse",
+      "to": "zz-fleet-card",
+      "label": "adds"
+     },
+     "view": "fleet"
+    }
+   ],
+   "touched": [
+    "zz-fleet-card",
+    "warehouse"
+   ]
+  },
+  {
+   "id": "i59/fleet/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "fleet",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "f1"
+    }
+   ],
+   "touched": [
+    "telemetry",
+    "dock-listener"
+   ]
+  },
+  {
+   "id": "i59/fleet/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "fleet",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "planner",
+     "path": "label",
+     "value": "Rebalance planner (renamed)"
+    }
+   ],
+   "touched": [
+    "planner"
+   ]
+  },
+  {
+   "id": "i59/fleet/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "fleet",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-fleet-line1",
+      "from": "battery-service",
+      "to": "warehouse",
+      "label": "adds"
+     },
+     "view": "fleet"
+    }
+   ],
+   "touched": [
+    "battery-service",
+    "warehouse"
+   ]
+  },
+  {
+   "id": "i59/fleet/5-add-line",
+   "model": "bench/models/i59.json",
+   "view": "fleet",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-fleet-line2",
+      "from": "telemetry",
+      "to": "fleet-api",
+      "label": "adds"
+     },
+     "view": "fleet"
+    }
+   ],
+   "touched": [
+    "telemetry",
+    "fleet-api"
+   ]
+  },
+  {
+   "id": "i59/ride-end/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "ride-end",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ride-end-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "ride-end"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ride-end-card-line",
+      "from": "trip-api",
+      "to": "zz-ride-end-card",
+      "label": "adds"
+     },
+     "view": "ride-end"
+    }
+   ],
+   "touched": [
+    "zz-ride-end-card",
+    "trip-api"
+   ]
+  },
+  {
+   "id": "i59/ride-end/2-rename",
+   "model": "bench/models/i59.json",
+   "view": "ride-end",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "lifecycle",
+     "path": "label",
+     "value": "Trip lifecycle (renamed)"
+    }
+   ],
+   "touched": [
+    "lifecycle"
+   ]
+  },
+  {
+   "id": "i59/ride-end/3-add-line",
+   "model": "bench/models/i59.json",
+   "view": "ride-end",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ride-end-line1",
+      "from": "fare",
+      "to": "pricing",
+      "label": "adds"
+     },
+     "view": "ride-end"
+    }
+   ],
+   "touched": [
+    "fare",
+    "pricing"
+   ]
+  },
+  {
+   "id": "i59/ride-end/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "ride-end",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-ride-end-line2",
+      "from": "rider-app",
+      "to": "trip-events",
+      "label": "adds"
+     },
+     "view": "ride-end"
+    }
+   ],
+   "touched": [
+    "rider-app",
+    "trip-events"
+   ]
+  },
+  {
+   "id": "i59/overview/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "overview",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "overview"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-card-line",
+      "from": "api",
+      "to": "zz-overview-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-overview-card",
+    "api"
+   ]
+  },
+  {
+   "id": "i59/overview/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "overview",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e3"
+    }
+   ],
+   "touched": [
+    "edge",
+    "api"
+   ]
+  },
+  {
+   "id": "i59/overview/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "overview",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "hosts",
+     "path": "label",
+     "value": "Hosts (renamed)"
+    }
+   ],
+   "touched": [
+    "hosts"
+   ]
+  },
+  {
+   "id": "i59/overview/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "overview",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-line1",
+      "from": "storefront",
+      "to": "shop-payments",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "storefront",
+    "shop-payments"
+   ]
+  },
+  {
+   "id": "i59/overview/5-add-line",
+   "model": "bench/models/i59.json",
+   "view": "overview",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-overview-line2",
+      "from": "hosts",
+      "to": "grafana",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "hosts",
+    "grafana"
+   ]
+  },
+  {
+   "id": "i59/api/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "api",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-api-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "api"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-api-card-line",
+      "from": "shop-payments",
+      "to": "zz-api-card",
+      "label": "adds"
+     },
+     "view": "api"
+    }
+   ],
+   "touched": [
+    "zz-api-card",
+    "shop-payments"
+   ]
+  },
+  {
+   "id": "i59/api/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "api",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "e9"
+    }
+   ],
+   "touched": [
+    "worker",
+    "mail"
+   ]
+  },
+  {
+   "id": "i59/api/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "api",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "shoppers",
+     "path": "label",
+     "value": "Shoppers (renamed)"
+    }
+   ],
+   "touched": [
+    "shoppers"
+   ]
+  },
+  {
+   "id": "i59/api/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "api",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-api-line1",
+      "from": "shoppers",
+      "to": "api",
+      "label": "adds"
+     },
+     "view": "api"
+    }
+   ],
+   "touched": [
+    "shoppers",
+    "api"
+   ]
+  },
+  {
+   "id": "i59/api/5-add-line",
+   "model": "bench/models/i59.json",
+   "view": "api",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-api-line2",
+      "from": "shoppers",
+      "to": "queue",
+      "label": "adds"
+     },
+     "view": "api"
+    }
+   ],
+   "touched": [
+    "shoppers",
+    "queue"
+   ]
+  },
+  {
+   "id": "i59/checkout/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "checkout",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "checkout"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-card-line",
+      "from": "mail",
+      "to": "zz-checkout-card",
+      "label": "adds"
+     },
+     "view": "checkout"
+    }
+   ],
+   "touched": [
+    "zz-checkout-card",
+    "mail"
+   ]
+  },
+  {
+   "id": "i59/checkout/2-rename",
+   "model": "bench/models/i59.json",
+   "view": "checkout",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "shoppers",
+     "path": "label",
+     "value": "Shoppers (renamed)"
+    }
+   ],
+   "touched": [
+    "shoppers"
+   ]
+  },
+  {
+   "id": "i59/checkout/3-add-line",
+   "model": "bench/models/i59.json",
+   "view": "checkout",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-line1",
+      "from": "shoppers",
+      "to": "storefront",
+      "label": "adds"
+     },
+     "view": "checkout"
+    }
+   ],
+   "touched": [
+    "shoppers",
+    "storefront"
+   ]
+  },
+  {
+   "id": "i59/checkout/4-move-into-box",
+   "model": "bench/models/i59.json",
+   "view": "checkout",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "checkout",
+     "path": "containers",
+     "value": [
+      {
+       "id": "web",
+       "label": "Web",
+       "tone": "cyan",
+       "nodeIds": [
+        "storefront",
+        "api"
+       ]
+      },
+      {
+       "id": "orders",
+       "label": "Orders",
+       "tone": "orange",
+       "nodeIds": [
+        "queue",
+        "worker",
+        "shoppers"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "shoppers"
+   ]
+  },
+  {
+   "id": "i59/dock-feed/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "dock-feed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dock-feed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "dock-feed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dock-feed-card-line",
+      "from": "telemetry-store",
+      "to": "zz-dock-feed-card",
+      "label": "adds"
+     },
+     "view": "dock-feed"
+    }
+   ],
+   "touched": [
+    "zz-dock-feed-card",
+    "telemetry-store"
+   ]
+  },
+  {
+   "id": "i59/dock-feed/2-remove-line",
+   "model": "bench/models/i59.json",
+   "view": "dock-feed",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "df7"
+    }
+   ],
+   "touched": [
+    "jump-check",
+    "telemetry-store"
+   ]
+  },
+  {
+   "id": "i59/dock-feed/3-rename",
+   "model": "bench/models/i59.json",
+   "view": "dock-feed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "dock-gateway",
+     "path": "label",
+     "value": "Dock gateway (renamed)"
+    }
+   ],
+   "touched": [
+    "dock-gateway"
+   ]
+  },
+  {
+   "id": "i59/dock-feed/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "dock-feed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-dock-feed-line1",
+      "from": "dock-gateway",
+      "to": "jump-check",
+      "label": "adds"
+     },
+     "view": "dock-feed"
+    }
+   ],
+   "touched": [
+    "dock-gateway",
+    "jump-check"
+   ]
+  },
+  {
+   "id": "i59/dock-feed/5-move-into-box",
+   "model": "bench/models/i59.json",
+   "view": "dock-feed",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "dock-feed",
+     "path": "containers",
+     "value": [
+      {
+       "id": "dock-checker",
+       "label": "Check service",
+       "nodeIds": [
+        "dock-quarantine",
+        "stations"
+       ],
+       "badges": [
+        {
+         "text": "on call",
+         "tone": "green"
+        }
+       ]
+      },
+      {
+       "id": "dock-checks",
+       "label": "Checks",
+       "parent": "dock-checker",
+       "nodeIds": [
+        "range-check",
+        "jump-check"
+       ],
+       "badges": [
+        "in order"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "stations"
+   ]
+  },
+  {
+   "id": "i59/demand/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "demand",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-demand-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "demand"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-demand-card-line",
+      "from": "warehouse",
+      "to": "zz-demand-card",
+      "label": "adds"
+     },
+     "view": "demand"
+    }
+   ],
+   "touched": [
+    "zz-demand-card",
+    "warehouse"
+   ]
+  },
+  {
+   "id": "i59/demand/2-rename",
+   "model": "bench/models/i59.json",
+   "view": "demand",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "weather-feed",
+     "path": "label",
+     "value": "Weather feed (renamed)"
+    }
+   ],
+   "touched": [
+    "weather-feed"
+   ]
+  },
+  {
+   "id": "i59/demand/3-add-line",
+   "model": "bench/models/i59.json",
+   "view": "demand",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-demand-line1",
+      "from": "weather-feed",
+      "to": "ops-console",
+      "label": "adds"
+     },
+     "view": "demand"
+    }
+   ],
+   "touched": [
+    "weather-feed",
+    "ops-console"
+   ]
+  },
+  {
+   "id": "i59/demand/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "demand",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-demand-line2",
+      "from": "forecast",
+      "to": "weather-feed",
+      "label": "adds"
+     },
+     "view": "demand"
+    }
+   ],
+   "touched": [
+    "forecast",
+    "weather-feed"
+   ]
+  },
+  {
+   "id": "i59/help/1-add-card",
+   "model": "bench/models/i59.json",
+   "view": "help",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-help-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "help"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-help-card-line",
+      "from": "help-review",
+      "to": "zz-help-card",
+      "label": "adds"
+     },
+     "view": "help"
+    }
+   ],
+   "touched": [
+    "zz-help-card",
+    "help-review"
+   ]
+  },
+  {
+   "id": "i59/help/2-rename",
+   "model": "bench/models/i59.json",
+   "view": "help",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "help-thread",
+     "path": "label",
+     "value": "Help thread (renamed)"
+    }
+   ],
+   "touched": [
+    "help-thread"
+   ]
+  },
+  {
+   "id": "i59/help/3-add-line",
+   "model": "bench/models/i59.json",
+   "view": "help",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-help-line1",
+      "from": "help-llm",
+      "to": "help-redact",
+      "label": "adds"
+     },
+     "view": "help"
+    }
+   ],
+   "touched": [
+    "help-llm",
+    "help-redact"
+   ]
+  },
+  {
+   "id": "i59/help/4-add-line",
+   "model": "bench/models/i59.json",
+   "view": "help",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-help-line2",
+      "from": "help-review",
+      "to": "help-thread",
+      "label": "adds"
+     },
+     "view": "help"
+    }
+   ],
+   "touched": [
+    "help-review",
+    "help-thread"
+   ]
+  },
+  {
+   "id": "r15/boxed/1-add-card",
+   "model": "bench/models/r15.json",
+   "view": "boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card-line",
+      "from": "packages/ui/tokens",
+      "to": "zz-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-boxed-card",
+    "packages/ui/tokens"
+   ]
+  },
+  {
+   "id": "r15/boxed/2-rename",
+   "model": "bench/models/r15.json",
+   "view": "boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "tools/release",
+     "path": "label",
+     "value": "release (renamed)"
+    }
+   ],
+   "touched": [
+    "tools/release"
+   ]
+  },
+  {
+   "id": "r15/boxed/3-add-line",
+   "model": "bench/models/r15.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line1",
+      "from": "apps/admin",
+      "to": "services/api",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "apps/admin",
+    "services/api"
+   ]
+  },
+  {
+   "id": "r15/boxed/4-add-line",
+   "model": "bench/models/r15.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line2",
+      "from": "apps/mobile",
+      "to": "packages/server/auth",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "apps/mobile",
+    "packages/server/auth"
+   ]
+  },
+  {
+   "id": "r15/plain/1-add-card",
+   "model": "bench/models/r15.json",
+   "view": "plain",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "plain"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card-line",
+      "from": "packages/server/mailer",
+      "to": "zz-plain-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-plain-card",
+    "packages/server/mailer"
+   ]
+  },
+  {
+   "id": "r15/plain/2-rename",
+   "model": "bench/models/r15.json",
+   "view": "plain",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "tools/release",
+     "path": "label",
+     "value": "release (renamed)"
+    }
+   ],
+   "touched": [
+    "tools/release"
+   ]
+  },
+  {
+   "id": "r15/plain/3-add-line",
+   "model": "bench/models/r15.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line1",
+      "from": "packages/server/db",
+      "to": "tools/release",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "packages/server/db",
+    "tools/release"
+   ]
+  },
+  {
+   "id": "r15/plain/4-add-line",
+   "model": "bench/models/r15.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line2",
+      "from": "packages/ui/kit",
+      "to": "packages/shared/api-client",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "packages/ui/kit",
+    "packages/shared/api-client"
+   ]
+  },
+  {
+   "id": "r19/boxed/1-add-card",
+   "model": "bench/models/r19.json",
+   "view": "boxed",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "boxed"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-card-line",
+      "from": "packages/shared/logger",
+      "to": "zz-boxed-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-boxed-card",
+    "packages/shared/logger"
+   ]
+  },
+  {
+   "id": "r19/boxed/2-rename",
+   "model": "bench/models/r19.json",
+   "view": "boxed",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "packages/shared/schemas",
+     "path": "label",
+     "value": "schemas (renamed)"
+    }
+   ],
+   "touched": [
+    "packages/shared/schemas"
+   ]
+  },
+  {
+   "id": "r19/boxed/3-add-line",
+   "model": "bench/models/r19.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line1",
+      "from": "services/api",
+      "to": "packages/server/mailer",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "services/api",
+    "packages/server/mailer"
+   ]
+  },
+  {
+   "id": "r19/boxed/4-add-line",
+   "model": "bench/models/r19.json",
+   "view": "boxed",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-boxed-line2",
+      "from": "packages/ui/charts",
+      "to": "packages/server/db",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "packages/ui/charts",
+    "packages/server/db"
+   ]
+  },
+  {
+   "id": "r19/plain/1-add-card",
+   "model": "bench/models/r19.json",
+   "view": "plain",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "plain"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-card-line",
+      "from": "packages/ui/tokens",
+      "to": "zz-plain-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-plain-card",
+    "packages/ui/tokens"
+   ]
+  },
+  {
+   "id": "r19/plain/2-rename",
+   "model": "bench/models/r19.json",
+   "view": "plain",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "packages/shared/i18n",
+     "path": "label",
+     "value": "i18n (renamed)"
+    }
+   ],
+   "touched": [
+    "packages/shared/i18n"
+   ]
+  },
+  {
+   "id": "r19/plain/3-add-line",
+   "model": "bench/models/r19.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line1",
+      "from": "packages/shared/api-client",
+      "to": "packages/server/queue",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "packages/shared/api-client",
+    "packages/server/queue"
+   ]
+  },
+  {
+   "id": "r19/plain/4-add-line",
+   "model": "bench/models/r19.json",
+   "view": "plain",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-plain-line2",
+      "from": "packages/server/db",
+      "to": "packages/server/queue",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "packages/server/db",
+    "packages/server/queue"
+   ]
+  },
+  {
+   "id": "s16/site/1-add-card",
+   "model": "bench/models/s16.json",
+   "view": "site",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-site-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "site"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-site-card-line",
+      "from": "web",
+      "to": "zz-site-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-site-card",
+    "web"
+   ]
+  },
+  {
+   "id": "s16/site/2-remove-line",
+   "model": "bench/models/s16.json",
+   "view": "site",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s2"
+    }
+   ],
+   "touched": [
+    "web",
+    "job"
+   ]
+  },
+  {
+   "id": "s16/site/3-rename",
+   "model": "bench/models/s16.json",
+   "view": "site",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "bank",
+     "path": "label",
+     "value": "Card bank (renamed)"
+    }
+   ],
+   "touched": [
+    "bank"
+   ]
+  },
+  {
+   "id": "s16/site/4-add-line",
+   "model": "bench/models/s16.json",
+   "view": "site",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-site-line1",
+      "from": "store",
+      "to": "courier",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "store",
+    "courier"
+   ]
+  },
+  {
+   "id": "s16/site/5-add-line",
+   "model": "bench/models/s16.json",
+   "view": "site",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-site-line2",
+      "from": "web",
+      "to": "store",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "web",
+    "store"
+   ]
+  },
+  {
+   "id": "s16/job/1-add-card",
+   "model": "bench/models/s16.json",
+   "view": "job",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-job-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "job"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-job-card-line",
+      "from": "printer",
+      "to": "zz-job-card",
+      "label": "adds"
+     },
+     "view": "job"
+    }
+   ],
+   "touched": [
+    "zz-job-card",
+    "printer"
+   ]
+  },
+  {
+   "id": "s16/job/2-rename",
+   "model": "bench/models/s16.json",
+   "view": "job",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "crop",
+     "path": "label",
+     "value": "Crop (renamed)"
+    }
+   ],
+   "touched": [
+    "crop"
+   ]
+  },
+  {
+   "id": "s16/job/3-add-line",
+   "model": "bench/models/s16.json",
+   "view": "job",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-job-line1",
+      "from": "crop",
+      "to": "pay",
+      "label": "adds"
+     },
+     "view": "job"
+    }
+   ],
+   "touched": [
+    "crop",
+    "pay"
+   ]
+  },
+  {
+   "id": "s16/job/4-add-line",
+   "model": "bench/models/s16.json",
+   "view": "job",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-job-line2",
+      "from": "printer",
+      "to": "qa",
+      "label": "adds"
+     },
+     "view": "job"
+    }
+   ],
+   "touched": [
+    "printer",
+    "qa"
+   ]
+  },
+  {
+   "id": "s16/pay/1-add-card",
+   "model": "bench/models/s16.json",
+   "view": "pay",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pay-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "pay"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pay-card-line",
+      "from": "p-check",
+      "to": "zz-pay-card",
+      "label": "adds"
+     },
+     "view": "pay"
+    }
+   ],
+   "touched": [
+    "zz-pay-card",
+    "p-check"
+   ]
+  },
+  {
+   "id": "s16/pay/2-rename",
+   "model": "bench/models/s16.json",
+   "view": "pay",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "p-charge",
+     "path": "label",
+     "value": "Charge (renamed)"
+    }
+   ],
+   "touched": [
+    "p-charge"
+   ]
+  },
+  {
+   "id": "s16/pay/3-add-line",
+   "model": "bench/models/s16.json",
+   "view": "pay",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pay-line1",
+      "from": "p-charge",
+      "to": "bank",
+      "label": "adds"
+     },
+     "view": "pay"
+    }
+   ],
+   "touched": [
+    "p-charge",
+    "bank"
+   ]
+  },
+  {
+   "id": "s16/pay/4-add-line",
+   "model": "bench/models/s16.json",
+   "view": "pay",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-pay-line2",
+      "from": "p-retry",
+      "to": "p-ledger",
+      "label": "adds"
+     },
+     "view": "pay"
+    }
+   ],
+   "touched": [
+    "p-retry",
+    "p-ledger"
+   ]
+  },
+  {
+   "id": "u21/shop/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "shop",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-shop-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "shop"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-shop-card-line",
+      "from": "orders",
+      "to": "zz-shop-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-shop-card",
+    "orders"
+   ]
+  },
+  {
+   "id": "u21/shop/2-remove-line",
+   "model": "bench/models/u21.json",
+   "view": "shop",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s6"
+    }
+   ],
+   "touched": [
+    "warehouse",
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/shop/3-rename",
+   "model": "bench/models/u21.json",
+   "view": "shop",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "payments",
+     "path": "label",
+     "value": "Card payments (renamed)"
+    }
+   ],
+   "touched": [
+    "payments"
+   ]
+  },
+  {
+   "id": "u21/shop/4-add-line",
+   "model": "bench/models/u21.json",
+   "view": "shop",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-shop-line1",
+      "from": "buyers",
+      "to": "orders",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "buyers",
+    "orders"
+   ]
+  },
+  {
+   "id": "u21/shop/5-add-line",
+   "model": "bench/models/u21.json",
+   "view": "shop",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-shop-line2",
+      "from": "web",
+      "to": "warehouse",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "web",
+    "warehouse"
+   ]
+  },
+  {
+   "id": "u21/teams/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "teams",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-teams-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "teams"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-teams-card-line",
+      "from": "payments",
+      "to": "zz-teams-card",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "zz-teams-card",
+    "payments"
+   ]
+  },
+  {
+   "id": "u21/teams/2-remove-line",
+   "model": "bench/models/u21.json",
+   "view": "teams",
+   "kind": "remove-line",
+   "commands": [
+    {
+     "op": "delete",
+     "id": "s7"
+    }
+   ],
+   "touched": [
+    "ops",
+    "warehouse"
+   ]
+  },
+  {
+   "id": "u21/teams/3-rename",
+   "model": "bench/models/u21.json",
+   "view": "teams",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "ops",
+     "path": "label",
+     "value": "Ops console (renamed)"
+    }
+   ],
+   "touched": [
+    "ops"
+   ]
+  },
+  {
+   "id": "u21/teams/4-add-line",
+   "model": "bench/models/u21.json",
+   "view": "teams",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-teams-line1",
+      "from": "web",
+      "to": "stock",
+      "label": "adds"
+     }
+    }
+   ],
+   "touched": [
+    "web",
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/teams/5-move-into-box",
+   "model": "bench/models/u21.json",
+   "view": "teams",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "teams",
+     "path": "containers",
+     "value": [
+      {
+       "id": "sales",
+       "label": "Sales team",
+       "nodeIds": [
+        "web",
+        "orders"
+       ]
+      },
+      {
+       "id": "floor",
+       "label": "Floor team",
+       "nodeIds": [
+        "ops",
+        "warehouse",
+        "stock"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/orders/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "orders",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-orders-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "orders"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-orders-card-line",
+      "from": "stock",
+      "to": "zz-orders-card",
+      "label": "adds"
+     },
+     "view": "orders"
+    }
+   ],
+   "touched": [
+    "zz-orders-card",
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/orders/2-rename",
+   "model": "bench/models/u21.json",
+   "view": "orders",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "o-cart",
+     "path": "label",
+     "value": "Carts (renamed)"
+    }
+   ],
+   "touched": [
+    "o-cart"
+   ]
+  },
+  {
+   "id": "u21/orders/3-add-line",
+   "model": "bench/models/u21.json",
+   "view": "orders",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-orders-line1",
+      "from": "o-api",
+      "to": "stock",
+      "label": "adds"
+     },
+     "view": "orders"
+    }
+   ],
+   "touched": [
+    "o-api",
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/orders/4-move-into-box",
+   "model": "bench/models/u21.json",
+   "view": "orders",
+   "kind": "move-into-box",
+   "commands": [
+    {
+     "op": "set",
+     "view": "orders",
+     "path": "containers",
+     "value": [
+      {
+       "id": "o-core",
+       "label": "Core",
+       "nodeIds": [
+        "o-cart",
+        "o-checkout",
+        "o-api"
+       ]
+      }
+     ]
+    }
+   ],
+   "touched": [
+    "o-api"
+   ]
+  },
+  {
+   "id": "u21/checkout/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "checkout",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "checkout"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-card-line",
+      "from": "o-repo",
+      "to": "zz-checkout-card",
+      "label": "adds"
+     },
+     "view": "checkout"
+    }
+   ],
+   "touched": [
+    "zz-checkout-card",
+    "o-repo"
+   ]
+  },
+  {
+   "id": "u21/checkout/2-rename",
+   "model": "bench/models/u21.json",
+   "view": "checkout",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "payments",
+     "path": "label",
+     "value": "Card payments (renamed)"
+    }
+   ],
+   "touched": [
+    "payments"
+   ]
+  },
+  {
+   "id": "u21/checkout/3-add-line",
+   "model": "bench/models/u21.json",
+   "view": "checkout",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-line1",
+      "from": "c-tax",
+      "to": "payments",
+      "label": "adds"
+     },
+     "view": "checkout"
+    }
+   ],
+   "touched": [
+    "c-tax",
+    "payments"
+   ]
+  },
+  {
+   "id": "u21/checkout/4-add-line",
+   "model": "bench/models/u21.json",
+   "view": "checkout",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-checkout-line2",
+      "from": "payments",
+      "to": "o-repo",
+      "label": "adds"
+     },
+     "view": "checkout"
+    }
+   ],
+   "touched": [
+    "payments",
+    "o-repo"
+   ]
+  },
+  {
+   "id": "u21/warehouse/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "warehouse",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-warehouse-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "warehouse"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-warehouse-card-line",
+      "from": "stock",
+      "to": "zz-warehouse-card",
+      "label": "adds"
+     },
+     "view": "warehouse"
+    }
+   ],
+   "touched": [
+    "zz-warehouse-card",
+    "stock"
+   ]
+  },
+  {
+   "id": "u21/warehouse/2-rename",
+   "model": "bench/models/u21.json",
+   "view": "warehouse",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "w-pick",
+     "path": "label",
+     "value": "Picking (renamed)"
+    }
+   ],
+   "touched": [
+    "w-pick"
+   ]
+  },
+  {
+   "id": "u21/warehouse/3-add-line",
+   "model": "bench/models/u21.json",
+   "view": "warehouse",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-warehouse-line1",
+      "from": "ops",
+      "to": "w-api",
+      "label": "adds"
+     },
+     "view": "warehouse"
+    }
+   ],
+   "touched": [
+    "ops",
+    "w-api"
+   ]
+  },
+  {
+   "id": "u21/warehouse/4-add-line",
+   "model": "bench/models/u21.json",
+   "view": "warehouse",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-warehouse-line2",
+      "from": "orders",
+      "to": "w-alerts",
+      "label": "adds"
+     },
+     "view": "warehouse"
+    }
+   ],
+   "touched": [
+    "orders",
+    "w-alerts"
+   ]
+  },
+  {
+   "id": "u21/catalog/1-add-card",
+   "model": "bench/models/u21.json",
+   "view": "catalog",
+   "kind": "add-card",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-catalog-card",
+      "label": "New step",
+      "kind": "backend"
+     },
+     "view": "catalog"
+    },
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-catalog-card-line",
+      "from": "web",
+      "to": "zz-catalog-card",
+      "label": "adds"
+     },
+     "view": "catalog"
+    }
+   ],
+   "touched": [
+    "zz-catalog-card",
+    "web"
+   ]
+  },
+  {
+   "id": "u21/catalog/2-rename",
+   "model": "bench/models/u21.json",
+   "view": "catalog",
+   "kind": "rename",
+   "commands": [
+    {
+     "op": "set",
+     "id": "k-import",
+     "path": "label",
+     "value": "Feed import (renamed)"
+    }
+   ],
+   "touched": [
+    "k-import"
+   ]
+  },
+  {
+   "id": "u21/catalog/3-add-line",
+   "model": "bench/models/u21.json",
+   "view": "catalog",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-catalog-line1",
+      "from": "k-import",
+      "to": "k-index",
+      "label": "adds"
+     },
+     "view": "catalog"
+    }
+   ],
+   "touched": [
+    "k-import",
+    "k-index"
+   ]
+  },
+  {
+   "id": "u21/catalog/4-add-line",
+   "model": "bench/models/u21.json",
+   "view": "catalog",
+   "kind": "add-line",
+   "commands": [
+    {
+     "op": "add",
+     "element": {
+      "id": "zz-catalog-line2",
+      "from": "k-import",
+      "to": "web",
+      "label": "adds"
+     },
+     "view": "catalog"
+    }
+   ],
+   "touched": [
+    "k-import",
+    "web"
+   ]
+  }
+ ]
+}

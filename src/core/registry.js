@@ -22,6 +22,8 @@ function registerDiagramType(name, def = {}) {
    a model node never has a parent other views lack */
 const R_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), R_ARR = x => (Array.isArray(x) ? x : []);
 function ownMerge(model, views) {
+  // no view with own nodes: the model as it is, read in no time, as a type's hook asks it once a line (audit 69)
+  if (!views.some(v => R_ARR(R_OBJ(v) ? v.nodes : null).length)) return { model, at: [], k: R_ARR(R_OBJ(model) ? model.nodes : null).length };
   const base = R_ARR(R_OBJ(model) ? model.nodes : null), ids = new Set(base.filter(R_OBJ).map(n => n.id)), add = [], at = [], all = R_ARR(R_OBJ(model) ? model.views : null);
   views.forEach(v => { const vi = all.indexOf(v); R_ARR(R_OBJ(v) ? v.nodes : null).forEach((n, j) => { if (R_OBJ(n) && typeof n.id === 'string' && !ids.has(n.id)) { ids.add(n.id); add.push(n); at.push([vi, j]); } }); });
   return { model: add.length ? { ...model, nodes: [...base, ...add] } : model, at, k: base.length };
@@ -82,9 +84,13 @@ function withOwnNodes(def) {
   const typed = model => views(model).filter(v => R_OBJ(v) && v.diagram != null && v.diagram !== 'map'), all = model => ownMerge(model, typed(model));
   const said = (o, ps) => (!o.at.length || !Array.isArray(ps) ? ps : ps.map(p => { const r = /^nodes\[(\d+)\]/.exec(String((R_OBJ(p) ? p.path : '') ?? '')), i = r ? Number(r[1]) - o.k : -1;
     return i >= 0 && i < o.at.length ? { ...p, path: `views[${o.at[i][0]}].nodes[${o.at[i][1]}]` + p.path.slice(r[0].length) } : p; }));
-  if (typeof L === 'function') out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
+  if (typeof L === 'function') { out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
+    // layout.keepsRank and keepsRow(model, view, id, geo, by): the view's own nodes too, as the layout sees them (src/canvas/edit.js asks them)
+    ['keepsRank', 'keepsRow'].forEach(k => { if (typeof L[k] === 'function') out.layout[k] = ownWrap(k, L[k], f => (model, view, id, geo, by) => { const v = R_OBJ(view) ? view : viewOf(model, view); return v ? f(M(model, v), v, id, geo, by) : null; }); }); }
   else if (R_OBJ(L) && typeof L.run === 'function') out.layout = { ...L, run: ownWrap('run', L.run, f => (model, view, o) => f(M(model, view), view, o)) };
-  ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
+  // flowRole(line, model, view) and zoneOf(node, model, view): the view's own nodes too (layout-flow.md section 3)
+  ['flowRole', 'zoneOf'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap(k, def[k], f => (x, model, view) => f(x, R_OBJ(view) && R_OBJ(model) ? M(model, view) : model, view)); });
+  ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys', 'storyOn'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
   if (typeof def.word === 'function') out.word = ownWrap('word', def.word, f => (model, id, view) => f(view ? M(model, view) : all(model).model, id));
   // the Owner field: a view's own owners too, for what one view alone holds; never for a model element (ownGuard's rule)
@@ -119,6 +125,10 @@ function withOwnNodes(def) {
      holds are left out; its owner is added when not offered).
      None, or not a list: no Owner field.
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
+     layout.keepsRank(model, view, id): a card the layout keeps in its rank whatever its pin says, by a text the canvas says
+     when Alt + an arrow would step it along the rank axis, which then emits nothing (the use case's actors, audit 63).
+     layout.keepsRow(model, view, id, geo, by): the same across the rank axis, geo the canvas's and by the step [col, row]
+     (a node with no node of its lane on that side in its column: the activity's partitions and BPMN's lanes, audit 64).
      layout.direction 'down' or 'right': the type draws every view that way and warns of another direction itself (audit 52).
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).
    Stage 4's (notes/stage-4.md §12.1, §15): edits.rename(model, view, id, text); a hook's { pick, then }; name: false and
@@ -129,7 +139,16 @@ function withOwnNodes(def) {
    whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field.
    Audit 40's: touches(model, view) -> ids, the elements and lines outside the view's own whose change changes its picture (a
    required stereotype's extension, an identifying relationship that makes a shown entity dependent): diff() lists the view
-   when one of them, in the model before or after, is marked; with drawn (the model lines the view draws, an implied line's too). */
+   when one of them, in the model before or after, is marked; with drawn (the model lines the view draws, an implied line's too).
+   Layout by business flow's (docs/diagrams/notes/layout-flow.md sections 3 and 7.2, section 12 step 10), read only in a view
+   with arrange "flow": flowRole(line, model, view) -> 'main', 'branch', 'dep' or null (a flow line), a line's part where it
+   has no flow field; zoneOf(node, model, view) -> 'first', 'last', 'under' or null, a node's zone where it has no zone
+   field and the view does not say zones: false. rankFlip(line, model, view): the model and view are passed too. Audit 68's:
+   storyOn(model, view) -> { starts, ends, carry }, the cards a story from the main flow is told from and to (storyFromFlow
+   carries the main flow back to a start and on to an end along the view's flow lines) and links it may walk that no line
+   draws ([from, to], or { from, to }: each card of from to each of to but itself, a flowchart's on-page connectors of one
+   label, audit 69). Audit 69's: storyNouns true, a type whose line labels name what goes along a line, never a verb (the cloud
+   family's): a story from the main flow says "A to B (label)" for each. */
 
 /* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
    first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26
@@ -165,7 +184,8 @@ const TYPED = {};
 
 // an id-keyed table with no prototype: an id named constructor, toString or __proto__ is an own key like any other
 const idTable = (o = {}) => Object.assign(Object.create(null), o);
-// a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
-const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
+// a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21); no type
+// is '' (the class view's untyped class names its association, audit 65)
+const propRefs = type0 => { const type = type0 ?? ''; return typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type])); };
 
 export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, everyOwn, heldBy, ownGuard };

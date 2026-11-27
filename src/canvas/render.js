@@ -21,6 +21,11 @@ const h = (html) => { const t = document.createElement('template'); t.innerHTML 
 
 // the reader's setting; a handle drawn instant (the page's #check, #still and #shot hooks) is still on top of it, on its own
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// motion speed: one multiplier on a tour's dot, a story step's time and the flow along lines, from 0.25 to 4 (a number, or
+// its text as a link or saved choice gives it); anything else is none (null), and the next source is read. The speed button (1×) steps
+// through SPEEDS. Reduced motion still wins: nothing rides or flows under it, whatever the speed
+const speedOf = v => { const n = typeof v === 'number' || (typeof v === 'string' && v.trim() !== '') ? +v : NaN; return n >= 0.25 && n <= 4 ? n : null; };
+const SPEEDS = [0.5, 1, 1.5, 2];
 let SHEET = null;
 const sheet = () => { if (!SHEET) { SHEET = new CSSStyleSheet(); SHEET.replaceSync(STYLES); } return SHEET; };
 const INNER = Symbol('umlimator.inner'); // what mountPage needs from render() beyond the public handle
@@ -51,7 +56,8 @@ export function render(container, model, options = {}) {
   const O = o => Object.assign(Object.create(null), o); // by-id maps with no prototype: a card or view named toString or __proto__ is a key like any other (M3, audit 8)
   const expanded = O(); // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
   const asked = O(); // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
-  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded }); // kinds: the standalone page guesses line kinds from label words, for its legend
+  // stableFrom: the model before an edit, whose cells the cards it left alone keep in the first picture (layout-flow.md section 8)
+  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
   const root = host.attachShadow({ mode: 'open', delegatesFocus: true }); // host.focus() lands in the map (on the selected card)
   root.adoptedStyleSheets = [sheet()];
   // the standalone page's pieces a host asks for (#99), in a frame around the canvas: the views list left of the map (after
@@ -63,7 +69,7 @@ export function render(container, model, options = {}) {
         <div class="ctl">
           <button data-z="up" title="Up one level (Esc)" aria-label="Up one level">↑</button><span class="sep"></span>
           <button data-z="out" title="Zoom out (−)" aria-label="Zoom out">−</button><button data-z="fit" class="pct" title="Fit to screen (0)">100%</button><button data-z="in" title="Zoom in (+)" aria-label="Zoom in">+</button><span class="sep"></span>
-          <button data-z="one" title="Actual size (1)">1:1</button><button data-z="flow" title="Animate flow direction (F)" aria-label="Animate flow">≋</button>${E && E.add ? '<span class="sep"></span><button data-z="add" title="Add a card (N, or Alt + double-click)" aria-label="Add a card">＋</button>' : ''}<span class="depth" title="Reading depth follows zoom">READ</span>
+          <button data-z="one" title="Actual size (1)">1:1</button><button data-z="flow" title="Animate flow direction (F)" aria-label="Animate flow">≋</button><button data-z="speed" title="Motion speed: tours, story steps and flow" aria-label="Motion speed 1×">1×</button>${E && E.add ? '<span class="sep"></span><button data-z="add" title="Add a card (N, or Alt + double-click)" aria-label="Add a card">＋</button>' : ''}<span class="depth" title="Reading depth follows zoom">READ</span>
         </div>`}</div></div>${!framed ? '' : (options.legend ? '<div class="m-legend"></div>' : '') + (options.hints ? `<div class="hint">${hintHTML('', ctrlWheel)}</div>` : '') + '</div>'
           + (options.details ? '<aside class="panel" aria-label="Node details" hidden></aside>' : '') + '</div>'
           + (options.nav ? '<button class="ibtn um-navbtn" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button><aside class="outline" aria-label="Views"></aside>' : '') + '</div>'}`;
@@ -746,9 +752,28 @@ export function render(container, model, options = {}) {
     if (k) { const g = svg.querySelector(`.edge-g[data-i="${k.dataset.i}"]`); if (g) g.classList.add('key-on'); } };
   stage.addEventListener('focusin', keyOn); stage.addEventListener('focusout', keyOn);
   const ctl = q('.ctl');
-  if (ctl) ctl.addEventListener('click', e => { const z = e.target.closest('button')?.dataset.z; if (!z) return; readerMoved(); // a press by key too: a story playing waits
-    if (z === 'in') cam.zoomAt(1.4, null, null, true); else if (z === 'out') cam.zoomAt(1 / 1.4, null, null, true); else if (z === 'fit') cam.fit(); else if (z === 'one') cam.actual(); else if (z === 'up') up(); else if (z === 'flow') setFlow(!stage.classList.contains('flowing')); else if (z === 'add') addAt(cam.s.cx, cam.s.cy); });
+  if (ctl) ctl.addEventListener('click', e => { const z = e.target.closest('button')?.dataset.z; if (!z) return; if (z !== 'speed') readerMoved(); // a press by key too: a story playing waits (not for its speed)
+    if (z === 'speed') { const s = speedNow(); setSpeed(SPEEDS.find(x => x > s + 1e-9) ?? SPEEDS[0]); } else if (z === 'in') cam.zoomAt(1.4, null, null, true); else if (z === 'out') cam.zoomAt(1 / 1.4, null, null, true); else if (z === 'fit') cam.fit(); else if (z === 'one') cam.actual(); else if (z === 'up') up(); else if (z === 'flow') setFlow(!stage.classList.contains('flowing')); else if (z === 'add') addAt(cam.s.cx, cam.s.cy); });
   setFlow(options.flow ?? !reducedMotion(), false); // the default, or the host's: not saved as the page reader's choice
+  /* motion speed: the host's or the reader's choice (options.speed, handle.speed, the speed button), else the model's motion.speed, else 1.
+     It scales a tour's dot as it rides, the time of a story step armed from now on, and the flow (--um-speed on the stage,
+     which the sheet's flow animations divide by, and a line mark's own speed) */
+  let speedSet = speedOf(options.speed);
+  const speedNow = () => { const mo = current && typeof current === 'object' ? current.motion : null;
+    return speedSet ?? speedOf(mo && typeof mo === 'object' ? mo.speed : null) ?? 1; };
+  function showSpeed() {
+    const s = speedNow(); if (s === 1) stage.style.removeProperty('--um-speed'); else stage.style.setProperty('--um-speed', String(s));
+    const b = q('[data-z="speed"]'); if (b) { b.textContent = s + '×'; b.setAttribute('aria-label', `Motion speed ${s}×`); }
+  }
+  function setSpeed(v, save = true) { // save: the reader's (the speed button), which the page keeps and the live region says; else the host's (null: the model's again)
+    const was = speedNow(); speedSet = v == null ? null : speedOf(v) ?? speedSet; showSpeed();
+    if (save) say(`Motion speed ${speedNow()}×`);
+    if (speedNow() === was) return;
+    if (layers.size) drawMarks(); // a line mark's flow speed is drawn with the map's
+    if (save && P.onSpeed) P.onSpeed(speedNow());
+    touch();
+  }
+  showSpeed();
 
   // the stage changes size with its container: keep the zoom, refit only an untouched view (no ResizeObserver, as in
   // jsdom: the view is fitted once)
@@ -942,7 +967,7 @@ export function render(container, model, options = {}) {
       if (m.level < 1) [eg, s.querySelector(`.e-lab[data-i="${i}"]`)].forEach(x => x && x.setAttribute('opacity', m.level));
       if (m.tone || m.pulse) path.insertAdjacentHTML('beforebegin', `<path d="${path.getAttribute('d')}" class="um-glow${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/>`);
       if (m.dash) path.setAttribute('style', 'stroke-dasharray: 7 5');
-      if (m.speed != null) flows.forEach(flow => flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed).toFixed(2)}s` : 'animation: none; opacity: 0'));
+      if (m.speed != null) flows.forEach(flow => flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed / speedNow()).toFixed(2)}s` : 'animation: none; opacity: 0'));
       if (m.label == null || m.label === '') return;
       // the pill takes the first place that covers no card, box title or tab, line label or pill before it (#81): under the
       // line's own label (else on its longest run), then a few places along the line. The view is not laid out again for
@@ -1045,7 +1070,7 @@ export function render(container, model, options = {}) {
       legs.push({ pts, to: ids[k + 1], len: lenOf(pts), skip: through.length ? lenOf([...through, r.pts[0]]) : 0, from: ids[k], i: r.i }); }
     if (legs.length && still() && P.tourAt == null) atRest(legs, quiet);
     if (!legs.length || (still() && P.tourAt == null)) return Promise.resolve(legs.length > 0);
-    const speed = Math.max(20, +o.speed || 240); // map units a second
+    const ups = Math.max(20, +o.speed || 240); // map units a second at 1×: the map's speed scales it frame by frame, so a change mid-ride goes on from where the dot is
     const g = tripLayer(); g.insertAdjacentHTML('beforeend', '<circle r="5.5" class="tour-dot"/>');
     const dot = g.firstElementChild; let leg = 0, base = 0;
     if (P.tourAt != null) { // the page's #shot=1&at=<0 to 1>: the dot held that far along the ride, a frame for umlimator.py record (#83)
@@ -1055,7 +1080,8 @@ export function render(container, model, options = {}) {
       const [x, y] = along(legs[leg].pts, legs[leg].skip + d); dot.setAttribute('cx', x); dot.setAttribute('cy', y);
       trip = { raf: 0, dot: g, end() {} }; return Promise.resolve(true);
     }
-    return new Promise(res => { startTrip(ms => { const d = ms * speed / 1000;
+    let d = 0, then = 0;
+    return new Promise(res => { startTrip(ms => { d += (ms - then) * ups * speedNow() / 1000; then = ms;
       while (leg < legs.length && d - base >= legs[leg].len) { base += legs[leg].len; flash(legs[leg].to); leg++; }
       if (leg >= legs.length) return false;
       const [x, y] = along(legs[leg].pts, d - base); dot.setAttribute('cx', x); dot.setAttribute('cy', y); return true; }, res); trip.dot = g; trip.kind = 'tour'; trip.story = quiet; touch(); });
@@ -1110,11 +1136,19 @@ export function render(container, model, options = {}) {
      PageDown, Esc) step through and stop it. One story at a time.
      The player's state (0.14.0): entering a step (its view, camera, selection and highlight on their way), then playing or
      paused on it, until ended or stopped. A story event comes on each of these changes. The reader taking the map (a press,
-     a key, a view or a selection the story didn't make) pauses it; a step lights its own layer, 'story'. */
-  let story = null;
+     a key, a view or a selection the story didn't make) pauses it; a step lights its own layer, 'story'.
+     The bar's scrubber goes to any step (by pointer, or its own keys: arrows, Page Up and Down, Home and End). A story's
+     chapters (a branch storyFromFlow() tells, or the model's own) are offered in the bar at their step `at`: entering one
+     tells its steps, and its end, ‹ on its first step or ↩ return to the main story at that step. */
+  let story = null, tickIds = 0;
   const stepsOf = s => s && Array.isArray(s.steps) ? s.steps.filter(x => x && typeof x === 'object') : [];
+  // a story's chapters: those with an id, steps and a step `at` of the main story to be offered at (validate() says the rest)
+  const chaptersOf = (s, n) => (s && Array.isArray(s.chapters) ? s.chapters : []).filter(c => c && typeof c === 'object' && typeof c.id === 'string' && c.id
+    && stepsOf(c).length && Number.isInteger(c.at) && c.at >= 0 && c.at < n);
+  // in a chapter: its id, and the main story's step it was entered from (at); none on the main story, as before chapters
+  const chapterOf = st => st.ch ? { chapter: st.ch.c.id, at: st.ch.at } : {};
   // the story event, on every change: a step entered, a pause or a resume (playing), the end (step null), destroy() too
-  const storyEvent = st => emit('story', { story: st.s.id, step: story === st ? st.at : null, steps: st.steps.length, playing: story === st && !!st.auto }, dead);
+  const storyEvent = st => emit('story', { story: st.s.id, step: story === st ? st.at : null, steps: st.steps.length, playing: story === st && !!st.auto, ...(story === st ? chapterOf(st) : {}) }, dead);
   // a step's card or line: a string names a card of the view, else a line by its id (the drawn line that has it); an
   // object is a Ref already
   const stepRef = x => typeof x !== 'string' ? (x && typeof x === 'object' ? x : null) : geo.byId[x] ? nodeRef(x)
@@ -1127,17 +1161,34 @@ export function render(container, model, options = {}) {
   function storyBar(st) {
     let bar = stage.querySelector('.um-story');
     if (!bar) {
-      stage.insertAdjacentHTML('beforeend', `<div class="um-story" role="group"><div class="um-cap"><span class="um-st"></span><p></p></div><div class="um-sb">
+      stage.insertAdjacentHTML('beforeend', `<div class="um-story" role="group"><div class="um-cap"><span class="um-st"></span><p></p>
+        <input class="um-scrub" type="range" min="1" step="1" aria-label="Story step"><datalist class="um-ticks"></datalist><div class="um-ch"></div></div><div class="um-sb">
         <button data-s="prev" title="Previous step (←)" aria-label="Previous step">‹</button><button data-s="play"></button><button data-s="next" title="Next step (→)"></button><button data-s="stop" title="Close (Esc)" aria-label="Close the story">✕</button></div></div>`);
       bar = stage.lastElementChild; clear = null; // the fit keeps the cards off the bar as it does off the controls
+      bar.querySelector('.um-ticks').id = 'um-ticks-' + (++tickIds); bar.querySelector('.um-scrub').setAttribute('list', bar.querySelector('.um-ticks').id); // the chapters' steps, ticked on the scrubber
       bar.addEventListener('dblclick', e => e.stopPropagation()); // two quick clicks on › are two steps, not a zoom
       bar.addEventListener('click', e => { e.stopPropagation(); const s = story, b = e.target.closest('button'); if (!s || !b) return;
-        ({ prev: () => stepStory(-1), next: () => stepStory(1), stop: () => stopStory(), play: () => s.auto ? s.ctl.pause() : s.ctl.resume() })[b.dataset.s](); });
+        if (b.dataset.ch != null) return enterChapter(s, b.dataset.ch);
+        ({ prev: () => stepStory(-1), next: () => stepStory(1), stop: () => stopStory(), back: () => leaveChapter(s), play: () => s.auto ? s.ctl.pause() : s.ctl.resume() })[b.dataset.s](); });
+      // the scrubber: its own keys and a drag move it, and each step it comes to is shown (playing goes on from there, as ‹ and › do)
+      bar.addEventListener('input', e => { const s = story; if (!s || !e.target.classList.contains('um-scrub')) return;
+        const k = Math.max(0, Math.min(s.steps.length - 1, Math.round(+e.target.value) - 1)); if (k !== s.at) showStep(s, k); });
+      bar.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.classList.contains('um-scrub')) { e.preventDefault(); stopStory(); } }); // the map's keys leave a field alone
     }
-    const k = st.at, n = st.steps.length, b = s => bar.querySelector(`[data-s="${s}"]`);
-    bar.setAttribute('aria-label', 'Story: ' + labelOr(st.s.title, st.s.id));
-    bar.querySelector('.um-st').textContent = `${labelOr(st.s.title, st.s.id)} · ${k + 1} / ${n}`;
+    const k = st.at, n = st.steps.length, b = s => bar.querySelector(`[data-s="${s}"]`), main = labelOr(st.s.title, st.s.id);
+    bar.setAttribute('aria-label', 'Story: ' + main);
+    bar.querySelector('.um-st').textContent = `${main}${st.ch ? ' › ' + labelOr(st.ch.c.title, st.ch.c.id) : ''} · ${k + 1} / ${n}`;
     bar.querySelector('p').textContent = (st.steps[k] || {}).caption || '';
+    const sc = bar.querySelector('.um-scrub'); sc.hidden = n < 2; sc.max = String(n); sc.value = String(k + 1);
+    sc.setAttribute('aria-valuetext', `Step ${k + 1} of ${n}${st.ch ? ', in the chapter ' + labelOr(st.ch.c.title, st.ch.c.id) : ''}`);
+    const chs = st.ch ? [] : chaptersOf(st.s, n), ticks = bar.querySelector('.um-ticks'), row = bar.querySelector('.um-ch');
+    ticks.replaceChildren(...[...new Set(chs.map(c => c.at))].map(at => Object.assign(stage.ownerDocument.createElement('option'), { value: String(at + 1) })));
+    const here = chs.filter(c => c.at === k), btn = (text, label, set) => { const x = stage.ownerDocument.createElement('button'); x.type = 'button'; x.textContent = text; x.setAttribute('aria-label', label); x.title = label; set(x); return x; };
+    const root = stage.getRootNode(), held = !!root.activeElement && row.contains(root.activeElement); // a chapter's or the back button pressed by key: the focus stays in the bar
+    row.replaceChildren(...(st.ch ? [btn(`↩ ${main}`, 'Back to the main story, at step ' + (st.ch.at + 1), x => { x.dataset.s = 'back'; })]
+      : here.map(c => btn(`⤷ ${labelOr(c.title, c.id)}`, 'Chapter: ' + labelOr(c.title, c.id), x => { x.dataset.ch = c.id; }))));
+    row.hidden = !row.childElementCount;
+    if (held) (row.firstElementChild || (sc.hidden ? b('play') : sc)).focus({ preventScroll: true });
     if (k <= 0) b('prev').setAttribute('aria-disabled', 'true'); else b('prev').removeAttribute('aria-disabled'); // off, and focusable still: a focused ‹ keeps the focus
     b('play').textContent = st.auto ? '❚❚' : '▶'; b('play').setAttribute('aria-label', st.auto ? 'Pause' : 'Play'); b('play').title = st.auto ? 'Pause' : 'Play';
     b('next').textContent = k + 1 < n ? '›' : '✓'; b('next').setAttribute('aria-label', k + 1 < n ? 'Next step' : 'Finish the story');
@@ -1169,7 +1220,7 @@ export function render(container, model, options = {}) {
   function arm(st) { // playing: the next step once this one's duration is up and its tour has reached its end
     clearTimeout(st.timer);
     if (!st.auto || story !== st || st.phase !== 'shown' || paused) return; // entering: it arms once shown; the page's Pause: once it ends
-    const seq = st.seq, dur = Math.max(500, +(st.steps[st.at] || {}).duration || 4000); // reading time: not cut by reduced motion
+    const seq = st.seq, dur = Math.max(500, +(st.steps[st.at] || {}).duration || 4000) / speedNow(); // reading time: not cut by reduced motion; the map's speed scales it
     Promise.all([st.toured, new Promise(r => { st.timer = later(r, dur); })]).then(() => { if (story === st && st.seq === seq && st.auto && !paused) stepStory(1); });
   }
   function pauseStory(st) { st.auto = false; st.held = true; clearTimeout(st.timer); storyBar(st); storyEvent(st); touch(); } // held: its step's tour waits too (startTrip)
@@ -1179,18 +1230,35 @@ export function render(container, model, options = {}) {
   stage.addEventListener('wheel', e => { if (!ctrlWheel || e.ctrlKey || e.metaKey || stage.classList.contains('full')) readerMoved(); }, { capture: true, passive: true }); // a wheel that zooms (wheel: 'ctrl' leaves the rest to the page)
   function restory() { // update(): the story shown takes the model's steps, at the step it is on, or stops when the model has it no more
     const st = story; if (!st) return;
-    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
-    if (!steps.length) return stopStory();
-    const was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
-    st.s = s; st.steps = steps;
+    if (st.own) { if (st.main.some(x => !ctx.V[x.view]) || st.steps.some(x => !ctx.V[x.view])) stopStory(); else storyBar(st); return; } // a story played as given keeps its steps while their views last
+    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), main = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
+    if (!main.length) return stopStory();
+    // in a chapter: the model's chapter of that id, at a step it still has; else back to the main story, at the chapter's step
+    const c = st.ch && chaptersOf(s, main.length).find(x => x.id === st.ch.c.id);
+    if (st.ch && !c) { const at = Math.min(st.ch.at, main.length - 1); st.s = s; st.main = st.steps = main; st.ch = null; return showStep(st, at); }
+    if (c) st.ch = { c, at: c.at };
+    const steps = c ? stepsOf(c) : main, was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
+    st.s = s; st.main = main; st.steps = steps;
     if (st.phase !== 'left' && (k !== st.at || JSON.stringify(steps[k]) !== was)) showStep(st, k); // its step changed: shown again, as it is now
     else { st.at = k; storyBar(st); touch(); } // the same step (or one the reader left: the bar keeps within the model's steps)
   }
   function stepStory(d) {
     const st = story; if (!st) return;
     const k = st.at + d;
+    if (st.ch && (k < 0 || k >= st.steps.length)) return leaveChapter(st); // a chapter told, or ‹ on its first step: back to the main story
     if (k >= st.steps.length) return stopStory(true); // past the last step: the story has been told
     if (k >= 0) showStep(st, k);
+  }
+  function enterChapter(st, id) { // a chapter of the main story, from its first step; the main story keeps its place, `at`
+    if (story !== st) return false;
+    const c = chaptersOf(st.s, st.main.length).find(x => x.id === id); if (!c) return false;
+    st.ch = { c, at: c.at }; st.steps = stepsOf(c); say('Chapter: ' + labelOr(c.title, c.id));
+    showStep(st, 0); return true;
+  }
+  function leaveChapter(st) { // back to the main story, at the step the chapter is offered at
+    if (story !== st || !st.ch) return false;
+    const at = st.ch.at; st.ch = null; st.steps = st.main;
+    showStep(st, Math.min(at, st.steps.length - 1)); return true;
   }
   function stopStory(told = false) {
     const st = story; if (!st) return;
@@ -1211,14 +1279,18 @@ export function render(container, model, options = {}) {
   }
   function play(id, o = {}) {
     if (id == null) { stopStory(); return null; } // play(null): the story shown stops
-    const s = ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
-    if (dead || !geo || !steps.length) return null; // a story the model lacks: the one shown plays on
+    // a Story object plays as given (storyFromFlow()'s, an assistant's): not added to the model, and not in the page's link
+    const own = typeof id === 'object' && !Array.isArray(id), s = own ? id : ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
+    if (dead || !geo || !steps.length || own && typeof s.id !== 'string') return null; // a story the model lacks: the one shown plays on
     stopStory();
-    let end; const st = { s, steps, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
+    let end; const st = { s, steps, main: steps, ch: null, own, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
     st.end = end;
     st.ctl = { get story() { return st.s.id; }, get step() { return st.at; }, get steps() { return st.steps.length; }, get playing() { return st.auto && story === st; },
       get state() { return story !== st ? (st.told ? 'ended' : 'stopped') : st.phase === 'entering' ? 'entering' : st.auto ? 'playing' : 'paused'; },
       next() { if (story === st) stepStory(1); }, prev() { if (story === st) stepStory(-1); }, stop() { if (story === st) stopStory(); },
+      go(k) { if (story === st && Number.isInteger(k) && k >= 0 && k < st.steps.length) showStep(st, k); }, // a step of the story (or the chapter) shown, as the scrubber goes
+      get chapter() { return st.ch ? st.ch.c.id : null; }, get chapters() { return chaptersOf(st.s, st.main.length).map(c => ({ id: c.id, title: c.title == null ? null : labelOr(c.title, c.id), at: c.at })); },
+      enter(id) { return enterChapter(st, id); }, back() { return leaveChapter(st); },
       pause() { if (story === st && st.auto) pauseStory(st); },
       resume() { if (story !== st || st.auto) return; st.auto = true; st.held = false; storyBar(st); storyEvent(st); touch(); if (st.phase === 'left') showStep(st, st.at); else arm(st); }, done: st.done };
     story = st;
@@ -1244,6 +1316,7 @@ export function render(container, model, options = {}) {
 
   // model: the host's, as given to render() or update(), which the page exports; ctx's D is the map's working copy (audit 29)
   const inner = { ctx: () => ctx, model: () => current, geo: () => geo, geoOf: vid => pic(vid).g, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
+    storyNow: () => story ? story.s : null, storyOwn: () => !!(story && story.own), // the story shown, as played: the model's, or one played as given
     select, boxHere, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
     highlight, overlay, focus: focusMap, editable: !!E }; // a story's pointer is the pieces' own, from the story event (0.14.0)
 
@@ -1261,8 +1334,8 @@ export function render(container, model, options = {}) {
   function snapshot(event = false) { // MapState: built fresh on every read, frozen all the way down, plain JSON; event: the camera at rest
     const deep = o => { Object.values(o).forEach(v => v && typeof v === 'object' && deep(v)); return Object.freeze(o); }, st = story, t = trip;
     return deep({ view: cur, navigating: nav ? nav.to : null, selection: picked(), expanded: [...(expanded[cur] || [])], lens: lensId, overlays: [...layers.keys()],
-      story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
-      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), gesture: gestureNow(), destroyed: dead });
+      story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto, ...chapterOf(st) } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
+      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), speed: speedNow(), gesture: gestureNow(), destroyed: dead });
   }
   const first = () => {
     if (dead) return;
@@ -1280,7 +1353,7 @@ export function render(container, model, options = {}) {
   if (measure && !own && document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (dead || !current || typeof current !== 'object') return; measure = hostMeasure(host); update(current, true); });
 
   return {
-    update: m => { update(m); if (tx && !dead) tx.refresh(); },
+    update: m => { update(m); if (!dead) showSpeed(); if (tx && !dead) tx.refresh(); }, // the model's motion.speed, when no one chose one
     setView: id => go(id), // a Promise<boolean>: true once the view shows; false for a view the model lacks, a later request, or destroy()
     select: ref => { if (!dead) select(ref); },
     fit: () => { if (cam && !dead) { readerMoved(); cam.fit(); } }, // the host takes the camera: a story playing waits
@@ -1301,6 +1374,8 @@ export function render(container, model, options = {}) {
     get destroyed() { return dead; },
     get flow() { return stage.classList.contains('flowing'); }, // the animated flow along lines (≋, F)
     set flow(on) { if (!dead) setFlow(!!on, false); }, // a host's choice, not the reader's: the page saves only ≋ and F
+    get speed() { return speedNow(); }, // the motion speed: the host's, the reader's (the speed button), else the model's motion.speed, else 1
+    set speed(v) { if (!dead) setSpeed(v, false); }, // a host's choice, not the reader's: the page saves only the speed button's; null goes back to the model's
     get motion() { return motionOf(); }, // 'instant' (the page's #check, #still, #shot), 'reduced' (the reader's setting), else 'full'
     get story() { return story ? story.ctl : null; }, // the player of the story shown (play()'s, the page menu's or a link's), else null
     overlay: (name, layer) => overlay(name, layer),
@@ -1314,4 +1389,4 @@ export function render(container, model, options = {}) {
   };
 }
 
-export { h, reducedMotion, pngOf };
+export { h, reducedMotion, pngOf, speedOf };

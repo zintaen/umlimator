@@ -21,6 +21,7 @@ python3 umlimator.py render examples/sales-classes.json --out classes.html   # a
 ```
 
 - `render` writes [the standalone page](./standalone-page.md), then runs the layout check on it.
+- `render --docs HREF` puts a Back to Docs link to HREF (a relative path or an http(s) address) at the end of the page's header; the site's example pages link their type page or atlas page this way (`node tools/gallery.mjs --docs-of MODEL.json` prints the href).
 - `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view), and exits 1,
   saying why, when a view can't be exported.
 - In `stills`, `check` and `pdf`, `--views` takes view ids, and a trailing `*` is a prefix; a name that matches no view
@@ -62,6 +63,8 @@ ffmpeg -f apng -i pr.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420
 ```bash
 python3 umlimator.py diff before.json after.json --out diff.html --stills diff/   # what changed, marked and in words
 python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
+python3 umlimator.py diff --base origin/main --out diff/ --no-stable  # each drawn fresh (by default each is drawn against the model before: untouched cards keep their places)
+python3 umlimator.py diff before.json after.json --out diff.html --story   # and a story of each changed view in the page's Stories menu
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the latest 30 versions in git history (--limit N), on a slider
 ```

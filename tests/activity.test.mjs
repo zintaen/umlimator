@@ -14,6 +14,7 @@ import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
 import { SHAPE, drawnPts } from '../src/draw/shapes.js';
 import '../src/map/typed.js';
+import '../src/uml/overview.js'; // the interaction overview, for audit 69's generated views
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
@@ -95,7 +96,7 @@ test('shapes: send, accept and the object node have outlines a slid end lies on;
 
 test('example 9: it validates and lays out clean down and right: lanes as bands, every node in its own, no line along a divider for over 24 px', () => {
   assert.deepEqual(validate(EX), []);
-  for (const [d, crossings] of [['down', 2], ['right', 0]]) {
+  for (const [d, crossings] of [['down', 1], ['right', 0]]) { // down 2 before audit 70: the decision's two lines out swap their ports
     const m = dir(EX, d), r = clean(m, 'fulfil');
     assert.deepEqual(r.bad, [], d); assert.deepEqual(r.others, [], `${d}: check() finds nothing but crossings`); assert.deepEqual(r.along, [], d);
     console.log(`# example 9, ${d}: ${r.g.nodes.length} nodes, ${r.g.edges.length} flows, ${r.crossings.length} crossings`);
@@ -369,7 +370,7 @@ test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full la
   for (const k of Object.keys(edits)) console.log(`# P1 target 100 ms: ` + best(k) + ' ' + `${k}: ${best(k)} ms`);
 });
 
-test('partitions nested 3,000 deep: describe() and layout() in time near linear, and no recursion (audit 3)', () => {
+test('partitions nested 3,000 deep: describe() and layout() in time near linear, and no recursion (audit 3) (timed)', () => {
   const N = 3000, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.ActivityPartition', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
   nodes.push({ id: 'i', type: 'uml.InitialNode', parent: 'p' + (N - 1) }, { id: 'a', type: 'uml.Action', label: 'Do', parent: 'p' + (N - 1) });
   const m = { schemaVersion: 2, nodes, edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'i', to: 'a' }], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: nodes.map(n => n.id) }] };
@@ -580,7 +581,7 @@ test('audit 39: every word an activity node draws is in its accessible name, an 
     .map(([from, to], i) => ({ id: 'l' + i, type: 'uml.ControlFlow', from, to })),
   views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'm<img src=https://e.example/t.png>', 'd', 'q', 'j', 'f', 'e'] }] };
   const models = [['odd', odd], ['integration.json', JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8'))],
-    ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
+    ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
   let diamonds = 0;
   for (const [name, m] of models) for (const v of (m.views || []).filter(v => v && v.diagram === 'uml.activity')) {
     const g = layout(m, v.id), d = describe(m, v.id);
@@ -622,4 +623,128 @@ test('audit 54: an action named with a run of 200,000 dashes is added in linear 
   assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
   assert.equal(c.element.id, `a${d}b`);
   assert.equal(actAdd(m, m.views[0], { type: 'uml.Action' }, '--Pick, pack--', null)[0].element.id, 'pick-pack');
+});
+
+test('layout.keepsRow: Alt + an arrow across the lanes on a node with no node of its lane on that side in its column is refused and said, and only where its pin would move nothing (audit 64)', () => {
+  const V = EX.views[0], L = diagramOf(V).layout, g = layout(EX, V.id), box = m => JSON.stringify(layout(m, V.id).nodes.map(n => [n.id, n.x, n.y]));
+  assert.equal(V.direction, 'down');
+  // laid out down, Alt + → is the step [0, 1] across the lanes (src/canvas/edit.js turns the arrow)
+  assert.equal(L.keepsRow(EX, V, 'check-stock', g, [0, 1]), 'Check the stock of each book is the only node of Warehouse here: the Owner field moves it to another partition');
+  assert.match(L.keepsRow(EX, V, 'packed-and-paid', g, [0, -1]), /^.+ is the first node of Warehouse here/);
+  assert.equal(L.keepsRow(EX, V, 'packed-and-paid', g, [0, 1]), null, 'toward a node of its lane in its column: a pin');
+  const base = box(EX); let refused = 0;
+  for (const n of g.nodes) for (const s of [-1, 1]) {
+    if (!L.keepsRow(EX, V, n.id, g, [0, s]) || n.row + s < 0) continue; refused++;
+    assert.equal(box(apply(EX, [{ op: 'set', view: V.id, path: ['layout', n.id], value: [n.col, n.row + s] }])), base, `${n.id} ${s}: refused, so its pin moves nothing`);
+  }
+  assert.ok(refused > 10, refused);
+});
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): the activity's zoneOf and
+// flowRole, read only in an arranged view
+test('zoneOf: the initial node first, a final node last, an object node only one action reads or writes under; flowRole: a comment link is a dependency', () => {
+  const nd = (id, t) => ({ id, type: 'uml.' + t, label: id }), fl = (id, from, to, t = 'ControlFlow') => ({ id, type: 'uml.' + t, from, to });
+  const m = { schemaVersion: 2, nodes: [nd('i', 'InitialNode'), nd('a', 'Action'), nd('b', 'Action'), nd('o', 'ObjectNode'), nd('log', 'DataStoreNode'), nd('f', 'ActivityFinalNode'), nd('ff', 'FlowFinalNode')],
+    edges: [fl('c1', 'i', 'a'), fl('c2', 'a', 'o', 'ObjectFlow'), fl('c3', 'o', 'b', 'ObjectFlow'), fl('c4', 'b', 'f'), fl('c5', 'b', 'log', 'ObjectFlow'), fl('c6', 'a', 'ff')],
+    views: [{ id: 'v', diagram: 'uml.activity', arrange: 'flow', nodeIds: ['i', 'a', 'b', 'o', 'log', 'f', 'ff'] }] };
+  const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id);
+  assert.deepEqual(['i', 'a', 'o', 'log', 'f', 'ff'].map(id => T.zoneOf(n(id), m, V0)), ['first', null, null, 'under', 'last', 'last'], 'o is read and written by two actions: in the flow');
+  assert.deepEqual([fl('x', 'a', 'b'), fl('y', 'a', 'o', 'ObjectFlow'), { id: 'z', type: 'uml.CommentLink', from: 'a', to: 'b' }].map(e => T.flowRole(e, m, V0)), ['branch', 'branch', 'dep']);
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(at('log').row > at('b').row && at('i').col < at('a').col, 'the store under the flow, the initial node first');
+});
+
+// audit 66: arranged, the example's 17 nodes snaked, and its lanes, which set each node's row, ran the second run back up
+// them: 0 layout check problems ranked and 3 arranged laid out right, 2 and 5 down. bestTyped keeps the snake only where it
+// draws no more problems, as bestFlow keeps a map's default zones (the stress view's 'all' laid out down still draws one more
+// than ranked, 15 against 14, with no snake: 40 before)
+test('arranged, the example and the stress view laid out right draw no more layout check problems than ranked', () => {
+  const STRESS = JSON.parse(readFileSync(new URL('./activity-stress.json', import.meta.url), 'utf8'));
+  for (const [m, id, direction] of [[EX, 'fulfil', 'down'], [EX, 'fulfil', 'right'], [STRESS, 'all', 'right']]) {
+    const at = arrange => { const c = structuredClone(m), v = V(c, id); v.direction = direction; if (arrange) v.arrange = 'flow'; return check(c, id).length; };
+    assert.ok(at(true) <= at(false), `${id} ${direction}: ${at(true)} arranged, ${at(false)} ranked`); }
+});
+
+// audit 69: arranged, a fork nested in another fork drew both branches below the main row, the outer branch's line to its join
+// across the inner branch's lines (two crossings, labels as here; none ranked). bestTyped also tries each branch's side chosen
+// by its span (sidesOf), and keeps the view ranked when every arranged way draws more problems than that
+const nestedFork = direction => { const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) }), fl = (f, t) => ({ id: f + t, type: 'uml.ControlFlow', from: f, to: t });
+  const nodes = [n('s', 'InitialNode'), n('r', 'CallBehaviorAction', 'Receive order'), n('f1', 'ForkNode'), n('a', 'Action', 'Pack the books'), n('f2', 'ForkNode'), n('b', 'SendSignalAction', 'Email the receipt'),
+    n('c', 'SendSignalAction', 'Notify the warehouse'), n('j2', 'JoinNode'), n('j1', 'JoinNode'), n('e', 'ActivityFinalNode')];
+  const edges = [fl('s', 'r'), fl('r', 'f1'), fl('f1', 'a'), fl('f1', 'f2'), fl('f2', 'b'), fl('f2', 'c'), fl('b', 'j2'), fl('c', 'j2'), fl('a', 'j1'), fl('j2', 'j1'), fl('j1', 'e')];
+  return { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, arrange: 'flow' }] }; };
+test('audit 69: arranged, a fork nested in a fork draws no crossing, its main row kept, laid out right and down', () => {
+  for (const direction of ['right', 'down']) { const m = nestedFork(direction);
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], direction);
+    const g = layout(m, 'v'), at = id => g.byId[id];
+    assert.ok(['r', 'f1', 'f2', 'j2', 'j1'].every(id => at(id).row === at('s').row), `${direction}: the main flow keeps one row`);
+    assert.ok((at('a').row - at('s').row) * (at('c').row - at('s').row) < 0, `${direction}: the outer branch and the inner one on opposite sides of the main row`); }
+});
+
+// random activities and interaction overviews (sequences, decisions, forks and loops nested two deep, as the audit's generator
+// makes them; on 7108d2b5 six of these 75 drew one or two crossings more arranged): arranged, none draws more layout check
+// problems than ranked, laid out right or (audit 71: the ranked layout is one of bestTyped's ways) down
+test('audit 69: arranged, no generated activity or interaction overview draws more layout check problems than ranked', () => {
+  const worse = [];
+  for (const [TYPE, seed0] of [['activity', 2], ['activity', 6], ['activity', 10], ['overview', 4], ['overview', 22]]) {
+    let seed = seed0; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, pick = a => a[Math.floor(rnd() * a.length)];
+    for (let it = 0; it < 15; it++) {
+      const nodes = [], edges = []; let c = 0; const id = p => p + c++;
+      const add = (type, label) => { const i = id('n'); nodes.push({ id: i, type, label }); return i; };
+      const flow = (a, b, label) => edges.push({ id: id('e'), type: 'uml.ControlFlow', from: a, to: b, ...(label && { label }) });
+      const act = TYPE === 'overview' ? () => add('uml.InteractionUse', 'Use ' + c) : () => add(pick(['uml.Action', 'uml.CallBehaviorAction', 'uml.SendSignalAction']), 'Do thing ' + c);
+      const block = depth => { const k = Math.floor(rnd() * 2) + 1; let first, last;
+        for (let i = 0; i < k; i++) { const t = depth < 2 ? pick(['a', 'a', 'if', 'par', 'loop']) : 'a'; let e, x;
+          if (t === 'a') e = x = act();
+          else if (t === 'if') { const d = add('uml.DecisionNode', 'ok' + c + '?'), m = add('uml.MergeNode'), [a, b] = block(depth + 1); flow(d, a, '[yes]'); flow(b, m);
+            if (rnd() < 0.7) { const [a2, b2] = block(depth + 1); flow(d, a2, '[no]'); flow(b2, m); } else flow(d, m, '[no]'); e = d; x = m; }
+          else if (t === 'par') { const f = add('uml.ForkNode'), j = add('uml.JoinNode'); for (let q = 0; q < 2; q++) { const [a, b] = block(depth + 1); flow(f, a); flow(b, j); } e = f; x = j; }
+          else { const m = add('uml.MergeNode'), d = add('uml.DecisionNode', 'again' + c + '?'), [a, b] = block(depth + 1); flow(m, a); flow(b, d); flow(d, m, '[retry]'); e = m; x = d; }
+          if (first == null) first = e; else flow(last, e); last = x; }
+        return [first, last]; };
+      const st = add('uml.InitialNode'), [a, b] = block(0), en = add('uml.ActivityFinalNode'); flow(st, a); flow(b, en);
+      for (const direction of ['right', 'down']) {
+        const said = arrange => check({ schemaVersion: 2, title: 't', root: 'v', nodes: structuredClone(nodes), edges: structuredClone(edges),
+          views: [{ id: 'v', diagram: TYPE === 'overview' ? 'uml.interaction-overview' : 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, ...(arrange && { arrange }) }] }, 'v').length;
+        const r = said(false), f = said('flow'); if (f > r) worse.push(`${TYPE} ${seed0}#${it} ${direction}: ${f} arranged, ${r} ranked`); } } }
+  assert.deepEqual(worse, []);
+});
+
+// audit 70: laid out down, a do-while loop's back line from the decision left its top beside the line in and turned over it
+// (merge, action, decision back to the merge, for decision names of 9 to 24 characters). Two lines that cross after leaving or
+// entering one side of a card side by side swap their ports there (dg.sideSwap), in the activity and the interaction overview
+test('audit 70: a do-while loop draws no crossing at its decision for any name length, laid out down or right, in an activity and an overview', () => {
+  const n = (id, type, label) => ({ id, type: 'uml.' + type, ...(label ? { label } : {}) }), f = (a, b, g) => ({ id: a + '-' + b, type: 'uml.ControlFlow', from: a, to: b, ...(g ? { props: { guard: g } } : {}) });
+  const words = 'Is there any other book left on the list to pick'.split(' '), bad = [];
+  for (const [diagram, T] of [['uml.activity', 'Action'], ['uml.interaction-overview', 'InteractionUse']]) for (const direction of ['down', 'right'])
+    for (const act of ['Go', 'Pack', 'Pick a book', 'Pick the next book from the shelf']) for (const two of [false, true]) for (let k = 0; k <= words.length; k++) {
+      const lab = k ? words.slice(0, k).join(' ') + '?' : '', last = two ? 'pick2' : 'pick';
+      const nodes = [n('start', 'InitialNode'), n('m', 'MergeNode'), n('pick', T, act), ...(two ? [n('pick2', T, 'Note it')] : []), n('d', 'DecisionNode', lab), n('end', 'ActivityFinalNode')];
+      const edges = [f('start', 'm'), f('m', 'pick'), ...(two ? [f('pick', 'pick2')] : []), f(last, 'd'), f('d', 'm', 'yes'), f('d', 'end', 'no')];
+      const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram, title: 'Loop', nodeIds: nodes.map(x => x.id), direction }] };
+      const g = layout(m, 'v'), into = g.edges.find(e => e._id === last + '-d'), back = g.edges.find(e => e._id === 'd-m');
+      const segs = e => e.pts.slice(1).map((q, i) => [e.pts[i], q]), hit = ([a, b], [c, d]) => { const h = a[1] === b[1], v = c[0] === d[0];
+        if (h === (c[1] === d[1])) return false; const [H, V] = h && v ? [[a, b], [c, d]] : [[c, d], [a, b]], x = V[0][0], y = H[0][1];
+        return x > Math.min(H[0][0], H[1][0]) && x < Math.max(H[0][0], H[1][0]) && y > Math.min(V[0][1], V[1][1]) && y < Math.max(V[0][1], V[1][1]); };
+      if (segs(into).some(s => segs(back).some(t => hit(s, t)))) bad.push(`${diagram} ${direction} ${JSON.stringify(act)}${two ? ' + Note it' : ''} ${JSON.stringify(lab)}`);
+      // a loop of one step draws nothing check() names
+      if (!two && check(m, 'v').length) bad.push(`${diagram} ${direction} ${JSON.stringify(act)} ${JSON.stringify(lab)}: ${check(m, 'v').map(p => p.message)}`); }
+  assert.deepEqual(bad, []);
+});
+
+// audit 71: the side swap (dg.sideSwap, audit 70) judged a swap by its two lines, and a do-while loop among 25 other cards,
+// laid out down, kept one after which the loop's back line crossed the line into its decision (check(): 0 before the swap, 1
+// after). A layout that kept a side swap is laid out without them too (layoutTyped), and keeps the swap only where check()
+// says no more of it
+test('audit 71: a side swap never draws a view with more layout check problems: a do-while loop among other cards, laid out down', () => {
+  const kinds = { I: 'InitialNode', S: 'SendSignalAction', A: 'Action', F: 'ForkNode', J: 'JoinNode', C: 'CallBehaviorAction', M: 'MergeNode', D: 'DecisionNode' };
+  const nodes = ('n0 I,n1 S Do thing 1 xxxxxxx,n2 A Do thing 2 xxxxxxxxxxxxx,n4 F,n5 J,n6 C Do thing 6 x,n7 F,n8 J,n9 M,n10 D ,n11 S Do thing 11 xxxxxxxxxxxxxxxxxx,'
+    + 'n12 A Do thing 12 xxx,n14 C Do thing 14 xxxxxxxxxxxx,n21 M,n22 D ,n23 C Do thing 23 xxxxxxxxxxxxxxxxxxx,n24 C Do thing 24 xxxxxxxx,n29 C Do thing 29 xxxxxxxxxxxx,'
+    + 'n31 A Do thing 31 xxxxx,n36 D ok36?,n37 M,n38 M,n39 D again39?,n40 S Do thing 40 xxxxxxxxxxxxxxxx,n46 F,n47 J,n48 A Do thing 48 ,n49 C Do thing 49 xxxxxxxxxxxxxxxxxxx,'
+    + 'n53 S Do thing 53 xxxxxxxxxxxxxxxxxxx,n56 A Do thing 56 ,n58 M').split(',').map(s => { const [id, k, ...l] = s.split(' ');
+    return { id, type: 'uml.' + kinds[k], ...(k === 'D' || l.length ? { label: l.join(' ') } : {}) }; });
+  const edges = [['e41', 'n38', 'n40'], ['e42', 'n40', 'n39'], ['e43', 'n39', 'n38', '[retry]'], ['e44', 'n36', 'n38', '[yes]'], ['e51', 'n46', 'n48'], ['e54', 'n46', 'n53'], ['e67', 'n36', 'n46', '[no]']]
+    .map(([id, from, to, label]) => ({ id, type: 'uml.ControlFlow', from, to, ...(label && { label }) }));
+  const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction: 'down' }] };
+  assert.deepEqual(check(m, 'v').map(p => p.message), []);
 });

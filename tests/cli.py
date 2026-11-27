@@ -35,14 +35,14 @@ TYPED_EXAMPLES = ("sales-classes", "order-objects", "bookshop-packages", "checko
                   "bookshop-azure", "bookshop-order-to-shipment")  # the typed examples the map-repo and schema version 2 loops below take, each a part
 SLOW = {"bookshop-c4": 18, "buy-book-overview": 16, "checkout-sequence": 14, "sales-classes": 13, "fulfil-activity": 12, "order-states": 10, "bookshop-gcp": 10}
 part = shards.Parts(__file__, {
-    "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 38,
+    "the summary's text and the icon cache": 3, "diff and drift": 14, "trace": 15, "timelapse": 10, "stills file names": 38,
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
     "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "audit 25 diff": 4, "diff Action 2.6": 6, "diff Action stage 4": 26,
     "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -241,6 +241,28 @@ with tempfile.TemporaryDirectory() as tmp:
         page = (t / "diff.html").read_text(encoding="utf-8") if (t / "diff.html").is_file() else ""
         ok("diff · the page draws the marks", all(s in page for s in ['"change": "added"', '"change": "removed"', '"style": "added"', '"style": "removed"', ": what changed"]))
         ok("diff · leaves no copy of the model next to it", not [p.name for p in t.iterdir() if p.name.startswith(".")], [p.name for p in t.iterdir()])
+        # stable (layout-flow.md section 8, on by default since section 12 step 14): the page holds the model before, which it
+        # draws the model after against; --stable says the default; --no-stable holds none, each view drawn fresh
+        r2 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-stable.html"), "--stable") or {}
+        page2 = (t / "diff-stable.html").read_text(encoding="utf-8") if (t / "diff-stable.html").is_file() else ""
+        base = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page2, re.S)
+        base0 = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page, re.S)
+        ok("diff · stable by default: the page holds the model before for the layout to keep its cards' places, and --stable says the same",
+           r2.get("summary") == SAID and base is not None and json.loads(base.group(1)) == fixture
+           and base0 is not None and json.loads(base0.group(1)) == fixture, r2)
+        r4 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-fresh.html"), "--no-stable") or {}
+        page4 = (t / "diff-fresh.html").read_text(encoding="utf-8") if (t / "diff-fresh.html").is_file() else ""
+        ok("diff --no-stable · the same summary, and the page holds no model before: each view is drawn fresh",
+           r4.get("summary") == SAID and ": what changed" in page4 and 'id="umlimator-base"' not in page4, r4)
+
+        # --story (product item 4): a story of each changed view, on the page's model (diff()'s, which draws the removed too), in
+        # its Stories menu; the JSON names them. Without it the page has none of its own, as before
+        r3 = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff-story.html"), "--story") or {}
+        page3 = (t / "diff-story.html").read_text(encoding="utf-8") if (t / "diff-story.html").is_file() else ""
+        told3 = re.findall(r'"id": "diff-system"', page3)
+        ok("diff --story · the same summary, a story of each changed view on the page (its Stories menu), named in the JSON; none without it",
+           r3.get("summary") == SAID and r3.get("stories") == ["diff-system"] and told3 and '"caption": "1. ' in page3
+           and "Removed: " in page3 and "diff-system" not in page and "stories" not in r, (r3, len(told3)))
 
         (t / "seen.json").write_text(json.dumps({"data": [{"parent": "ops-console", "child": "trips-db", "callCount": 1500}, {"parent": "rider-app", "child": "trips", "callCount": 9}]}))
         (t / "match.json").write_text(json.dumps({"trips-db": "tripsdb"}))
@@ -363,6 +385,15 @@ with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "notes.txt")], capture_output=True, text=True, cwd=g)
         ok("diff --base · --out naming a file is said in one line, not a traceback (audit 14)", r.returncode == 1 and "is a file" in r.stderr and "Traceback" not in r.stderr
            and (t / "notes.txt").read_text() == "hi", r.stderr[-300:])
+        # audit 67: a --base starting with '-' went to git diff as its own option: --base=--output=FILE emptied FILE
+        (t / "victim.txt").write_text("precious")
+        for base in (f"--output={t / 'victim.txt'}", f"-o{t / 'victim.txt'}", "--no-index", "-R"):
+            r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", f"--base={base}", "--out", str(t / "pr67")], capture_output=True, text=True, cwd=g)
+            ok(f"diff --base · a value starting with '-' ({base[:9]}) is refused in one line, never read by git as an option, and writes nothing (audit 67)",
+               r.returncode == 1 and "is not a git ref" in r.stderr and "Traceback" not in r.stderr and (t / "victim.txt").read_text() == "precious"
+               and not (t / "pr67").exists(), (r.returncode, r.stderr[-300:]))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "no-such-ref", "--out", str(t / "pr67")], capture_output=True, text=True, cwd=g)
+        ok("diff --base · a ref git does not know is said in one line (audit 67)", r.returncode == 1 and "git knows no ref 'no-such-ref'" in r.stderr and "Traceback" not in r.stderr, r.stderr[-300:])
 
     if part("stills file names"):
         # a view id is the model's, not a path: ../x is a still inside --out
@@ -561,6 +592,21 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render · a label holding <!-- and <script is data: the page's data block holds no '<' and reads back the same (audit 8)",
            blk and "<" not in blk.group(1) and json.loads(blk.group(1))["nodes"][0]["what"] == "Renders <!-- old <script> tags"
            and json.loads(u.script_json("<!--<script")) == "<!--<script" and "<" not in u.script_json("<!--<script"))
+        # audit 66: the stable diff page's #umlimator-base block (with_base) escaped only '</', so '<!--' then '<script' in the
+        # model before swallowed the rest of the page and nothing was drawn: it is escaped as the page's own data block is
+        lb = {"title": "t", "nodes": [{"id": "a", "label": "A <!--<script>", "what": "x <!-- y <SCRIPT z </script> w"}, {"id": "b", "label": "B"}],
+              "edges": [{"from": "a", "to": "b", "label": "<!--"}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+        la = json.loads(json.dumps(lb)); la["nodes"][0]["label"] = "A"; la["nodes"].append({"id": "c", "label": "C"}); la["views"][0]["nodeIds"].append("c")
+        (t / "lt-before.json").write_text(json.dumps(lb)); (t / "lt-after.json").write_text(json.dumps(la))
+        rl = plain("diff", str(t / "lt-before.json"), str(t / "lt-after.json"), "--out", str(t / "lt-diff.html"))
+        pl = (t / "lt-diff.html").read_text(encoding="utf-8") if (t / "lt-diff.html").is_file() else ""
+        tl = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', pl, re.S)
+        bl = json.loads(tl.group(1)) if tl else {}
+        ok("diff · '<!--' then '<script' in the model before is data: the #umlimator-base block holds no '<', reads back the same, and the page's data block follows it (audit 66)",
+           rl.returncode == 0 and tl and "<" not in tl.group(1) and bl.get("nodes", [{}])[0].get("label") == "A <!--<script>"
+           and bl["nodes"][0].get("what") == "x <!-- y <SCRIPT z </script> w" and pl.count('<script id="visual-data"') == 1
+           and pl.find('<script id="visual-data"') > tl.end() and u.DATA.search(pl) and "<" not in u.DATA.search(pl).group(1),
+           (rl.stderr[-300:], tl.group(1)[:200] if tl else "no #umlimator-base"))
         # audit 8: diff and drift name the user's file, not the hidden copy rendered beside it
         (t / "badid.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": ["b"]}], "views": [{"id": "main", "nodeIds": ["a"]}]}))
         b = plain("diff", str(t / "vicon.json"), str(t / "badid.json"), "--out", str(t / "badid.html"))
@@ -1570,7 +1616,8 @@ if part("mcp"):
     found = rpc("server/discover", NEW).get("result", {})
     ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
     listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
-    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state"], listed)
+    ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "story_from_flow", "story_from_diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state",
+                                  "add_card", "connect", "rename", "move_to_box", "remove", "set_field", "pin", "preview", "apply", "undo", "redo"], listed)
     ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
        "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
        and rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "1900-01-01"}}).get("error", {}).get("code") == -32022)
@@ -1699,6 +1746,17 @@ if part("mcp"):
     said, err = tool("page_state")
     ok("mcp · a request with no Fetch Metadata and no Origin, from another site, needs the run's token: without it, it gets nothing and is no page (audit 24)",
        set(fetched.values()) == {403} and "old-browser" not in said and token not in said and len(token) >= 32, (fetched, said))
+    # audit 71: a Content-Length that is no number got no reply, and a traceback in the server's log
+    lengths = {}
+    for length in ("abc", "-5", "+2", "1e3", " 2x", "\u00b2", "9" * 5000, "0", "99999999", "2"):
+        c = web()
+        try:
+            c.request("POST", "/state", "{}", {"Content-Type": "application/json", "X-Umlimator-Token": token, "Content-Length": length}); lengths[length[:12]] = c.getresponse().status
+        except (OSError, http.client.HTTPException) as e:
+            lengths[length[:12]] = type(e).__name__
+        c.close()
+    ok("mcp · a post whose Content-Length is no number gets 400, one too large or 0 gets 413 (audit 71)",
+       lengths == {"abc": 400, "-5": 400, "+2": 400, "1e3": 400, " 2x": 400, "\u00b2": 400, "9" * 12: 413, "0": 413, "99999999": 413, "2": 400}, lengths)
     mcp.stdin.close()
     ok("mcp · exits when its input closes", mcp.wait(timeout=30) == 0)
 
@@ -2101,6 +2159,24 @@ if part("audit 33"):
         ok("render, diff, drift, timelapse and the MCP page · a model's files, hunks, areas, fileNotes and stats reach no page (audit 33)",
            all(r.returncode == 0 for r in rs.values()) and all(p and "SECRET" not in p and "hunter2" not in p for p in pages.values()),
            ({k: r.stderr[-300:] for k, r in rs.items() if r.returncode}, [k for k, p in pages.items() if not p or "SECRET" in p]))
+        # the stable diff page (the default since step 14) embeds the model before whole in <script id="umlimator-base">
+        # (with_base), and that copy skipped own_media: its ENGINE_ONLY keys and any address a browser would fetch (an
+        # author's avatar, an intake logo, the model's icons table, an example's images) reached the page. The base script
+        # itself is read here, so a page that drops it or moves its keys elsewhere is no pass
+        far = "https://far.example.invalid/"
+        hostile = {**good, "nodes": [{"id": "a", "label": "A", "examples": [{"title": "x", "thumb": far + "thumb.png", "full": far + "full.png"}]}],
+                   "edges": [], "authors": {"octo": {"name": "Octo", "avatar": far + "avatar.png"}}, "icons": {"far": {"src": far + "icon.svg"}},
+                   "views": [{"id": "v", "nodeIds": ["a"], "intake": [{"label": "in", "logo": far + "logo.svg"}]}], **eng}
+        (g / "before-far.json").write_text(json.dumps(hostile))
+        rb = run("diff", "before-far.json", "m.json", "--out", "base.html", cwd=g)
+        page = (g / "base.html").read_text(encoding="utf-8") if (g / "base.html").is_file() else ""
+        tag = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page, re.S)
+        base = json.loads(tag.group(1).replace("<\\/", "</")) if tag else None
+        ok("diff's stable page: the base model in #umlimator-base has no files, hunks, areas, fileNotes or stats, and no avatar, logo, icons table or example image address; nor has the page",
+           rb.returncode == 0 and isinstance(base, dict) and not any(k in base for k in ("files", "hunks", "areas", "fileNotes", "stats"))
+           and "icons" not in base and "avatar" not in base.get("authors", {}).get("octo", {}) and far not in tag.group(1)
+           and "SECRET" not in page and "hunter2" not in page and far not in page,
+           (rb.stderr[-300:], sorted(base) if isinstance(base, dict) else "no #umlimator-base script", [m.start() for m in re.finditer(re.escape(far), page)][:5]))
 if part("audit 34"):
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
@@ -2579,5 +2655,26 @@ if part("bench views"):
     ok("bench · a version-2 model's map views and their benchViews are timed, its typed views not; a version-1 model's every view; a benchViews entry naming no view stops it",
        bench.bench_views(v2) == ["m", "d", "m+x"] and bench.bench_views(v1) == ["m", "c", "c+y"] and stopped == "gone+x: benchViews names no view",
        (bench.bench_views(v2), bench.bench_views(v1), stopped))
+if part("bench score"):
+    # bench.py --score (docs/diagrams/notes/layout-flow.md section 4.4): the score table for one view in Node, with no browser;
+    # it passes against bench/score-expected.json and fails against an expect file whose score for that view is lower
+    go = lambda *x: subprocess.run([sys.executable, str(ROOT / "bench" / "bench.py"), "--score", "--views", "b10/overview", "--runs", "1", *x],
+                                   capture_output=True, text=True, cwd=ROOT)
+    r = go("--expect", str(ROOT / "bench" / "score-expected.json"))
+    ok("bench --score · prints the view's row and the total, and passes against bench/score-expected.json",
+       r.returncode == 0 and re.search(r"^b10/overview +10 +14 ", r.stdout, re.M) is not None and "total: 1 views" in r.stdout, (r.stdout[-800:], r.stderr[-800:]))
+    exp = json.loads((ROOT / "bench" / "score-expected.json").read_text())
+    exp["views"]["b10/overview"]["score"] = round(exp["views"]["b10/overview"]["score"] * 0.9, 2)
+    with tempfile.TemporaryDirectory() as t:
+        lower = Path(t) / "lower.json"; lower.write_text(json.dumps(exp))
+        r = go("--expect", str(lower))
+    ok("bench --score · exits 1 against an expect file whose score is lower, and says which view",
+       r.returncode == 1 and "b10/overview: score" in r.stdout and "FAILED" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-800:]))
+    r = go("--corpus", "nope")
+    ok("bench --score · a corpus that is not fixed, edits or heldout is refused in one line",
+       r.returncode == 2 and "--corpus is fixed, edits or heldout" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr[-400:]))
+    r = go("--corpus", "edits", "--expect", str(ROOT / "bench" / "score-expected-edits.json"))
+    ok("bench --score --corpus edits · the view's five edit pairs, laid out against the model before, pass bench/score-expected-edits.json and report section 8.4",
+       r.returncode == 0 and "total: 5 pairs" in r.stdout and "section 8.4: untouched cards kept their cells in" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)

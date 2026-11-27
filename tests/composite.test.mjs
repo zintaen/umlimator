@@ -60,7 +60,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'present-values', 'own-boxes', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'comment-link', 'present-values', 'own-boxes', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -201,12 +201,13 @@ const RULE_CASES = {
   'binding-role': m => { m.edges.find(e => e.id === 'checkout-is-publisher').label = 'nobody'; },
   'collaboration-named': m => { node(m, 'order-events').props.collaboration = 'Gone'; },
   'present-values': m => { m.views[0].present = { ...m.views[0].present, 'order-service.api': { side: 'Top' } }; }, // audit 47
+  'comment-link': m => { m.edges.push({ id: 'cl', type: 'uml.CommentLink', from: 'order-service.checkout', to: 'order-service.payments' }); }, // audit 64
   'port-owner': m => { node(m, 'publish-subscribe').members.push(port('publish-subscribe.p')); },
 };
 test('validators: each rule passes the example and fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   const base = validate(CS).map(p => p.rule);
   assert.deepEqual(base, ['part-type', 'part-type'], 'the example\'s two parts typed by classes it does not hold');
-  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning', 'present-values': 'warning' };
+  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning', 'present-values': 'warning', 'comment-link': 'warning' };
   for (const [rule, breakIt] of Object.entries(RULE_CASES)) { const m = structuredClone(CS); breakIt(m);
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);
@@ -243,13 +244,15 @@ test('connect: a connector from a port on a part keeps the part (ends.<end>.part
   assert.ok(T.edits.connect(CS, V, 'order-service.checkout->checkout-class.quotes', 'order-events', null, { type: 'uml.CommentLink', label: 'Comment link' }).error);
 });
 
-test('moveTo: a port dropped goes to the side nearest the drop, Alt + an arrow across its side moves it; along its side, said; a part, or a panel row\'s ↑ ↓, the default', () => {
+test('moveTo: a port dropped goes to the side nearest the drop, Alt + an arrow to the side it names; its own side, said; a part, or a panel row\'s ↑ ↓, the default', () => {
   const geo = layout(CS, 'internals'), p = geo.byId['order-service.checkout->checkout-class.quotes'], o = geo.byId['order-service.checkout'];
   assert.deepEqual(T.edits.moveTo(CS, V, p.id, { pt: [o.x + o.w / 2, o.y - 2], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout-class.quotes', 'side'], value: 'top' }]);
   const s = geo.byId['order-service.api'];
-  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [0, 1], geo }), { error: 'A port\'s place along its side follows its lines and is not stored: Alt + an arrow across the side moves it to another side' });
+  // audit 64: Alt + Down or Up on a left port goes to the bottom or top, as a drag does (it was refused, "along its side")
+  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [0, 1], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'bottom' }]);
+  assert.equal(T.edits.moveTo(CS, V, s.id, { by: [0, -1], geo })[0].value, 'top');
   assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [1, 0], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'right' }]);
-  assert.ok(T.edits.moveTo(CS, V, s.id, { by: [-1, 0], geo }).error, 'on that side already');
+  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [-1, 0], geo }), { error: 'The port is on its owner\'s left side already: its place along the side follows its lines and is not stored' }, 'on that side already');
   assert.equal(T.edits.moveTo(CS, V, s.id, { by: [0, 1] }), null, 'the member list\'s own move');
   assert.equal(T.edits.moveTo(CS, V, 'order-service.orders', { pt: [0, 0], geo }), null);
   // applied, the port is drawn on that side
@@ -1005,7 +1008,7 @@ test('connect: a comment link drawn to a comment is added from it on the other U
   assert.deepEqual(c('order-service.checkout', 'order-service.pricing'), { error: 'A comment link runs from a comment' });
 });
 
-test('audit 50: a part\'s text parses in linear time, a run of spaces too (as the timing view\'s F2), and as before', () => {
+test('audit 50: a part\'s text parses in linear time, a run of spaces too (as the timing view\'s F2), and as before (timed)', () => {
   const sp = ' '.repeat(64000);
   for (const s of ['a' + sp + 'x', 'a' + sp + ': T' + sp + 'x', 'a : T' + sp + '[1' + sp + 'x]', 'a' + sp + '[1]']) {
     const t = performance.now(); csParse(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); }
@@ -1045,4 +1048,28 @@ test('audit 54: a part named with a run of 200,000 dashes is added in linear tim
   const d = '-'.repeat(200000), t = performance.now(), r = T.edits.add(CS, V, { type: 'uml.Property' }, `a${d}b- : T`, { sel: [] });
   assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
   assert.match(r[0].element.id, new RegExp(`\\.a-{200000}b$`));
+});
+
+test('audit 64: a connector from a collaboration use to a collaboration is refused by connect and said connector-scope by the view that draws it', () => {
+  const m = JSON.parse(readFileSync(new URL('./fixtures/uml-composite-structure.json', import.meta.url))), v = m.views.find(x => x.id === 'inside');
+  for (const [a, b] of [['order-events', 'publish-subscribe'], ['publish-subscribe', 'order-events']]) {
+    assert.deepEqual(T.edits.connect(m, v, a, b, null, { type: 'uml.Connector', label: 'Connector' }), { error: 'A connector\'s ends lie in one structure: the subject\'s ports and parts, or one collaboration\'s roles' });
+    const m1 = apply(m, [{ op: 'add', element: { id: 'zz9', type: 'uml.Connector', from: a, to: b }, view: 'inside' }]);
+    assert.ok(layout(m1, 'inside').edges.some(e => e._id === 'zz9'));
+    const [n1, n2] = [a, b].map(id => JSON.stringify(m.nodes.find(n => n.id === id).label));
+    assert.deepEqual(diagramOf(v).validate(m1, m1.views.find(x => x.id === 'inside')).filter(p => p.ids.includes('zz9')).map(p => [p.level, p.rule, p.message]),
+      [['error', 'connector-scope', `connector-scope: zz9 joins ${n1} and ${n2}, which lie in no structure of this view: its ends are the subject's ports and parts, or one collaboration's roles`]]); }
+});
+
+test('connect refuses a connector across two structures in a view that lists its lines, as in one that does not (audit 67)', () => {
+  const m = JSON.parse(readFileSync(new URL('./composite-stress.json', import.meta.url), 'utf8')), line = T.lines.find(l => l.type === 'uml.Connector');
+  const v = m.views.find(x => x.id === 'edge-cases'), bare = { ...v }; delete bare.edges;
+  assert.ok(Array.isArray(v.edges));
+  for (const [a, b] of [['ec-use1', 'ec-use2'], ['ec-use2', 'ec-use1']]) {
+    const listed = T.edits.connect(m, v, a, b, null, line), all = T.edits.connect(m, bare, a, b, null, line);
+    assert.match(String(listed?.error), /lie in one structure/, `${a} -> ${b}: ${JSON.stringify(listed)}`);
+    assert.deepEqual(listed, all);
+  }
+  // the view's list is left as it was
+  assert.ok(!v.edges.some(id => /^connector/.test(id)));
 });

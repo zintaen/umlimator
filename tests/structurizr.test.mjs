@@ -359,6 +359,30 @@ test('a relationship between an element and its own owner, or its owner\'s owner
   assert.deepEqual(check(r.model).filter(p => p.level === 'error'), []);
 });
 
+test('audit 69: a relationship between a static element and a deployment one is reported and not read, so validate() takes the import', async () => {
+  const { validate } = await import('../lib/umlimator-all.js');
+  const ws = { model: {
+    people: [{ id: '1', name: 'Robot', relationships: [{ id: 'r1', sourceId: '1', destinationId: '7', description: 'to node' }, { id: 'r2', sourceId: '1', destinationId: '3', description: 'kept' }] }],
+    softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'API', relationships: [{ id: 'r3', sourceId: '3', destinationId: '8', description: 'to instance' }] },
+      { id: '4', name: 'DB' }] }],
+    deploymentNodes: [{ id: '7', name: 'Cloud', relationships: [{ id: 'r4', sourceId: '7', destinationId: '2', description: 'to system' }], containerInstances: [
+      { id: '8', containerId: '3', instanceId: '1', relationships: [{ id: 'r5', sourceId: '8', destinationId: '1', description: 'to person' }, { id: 'r6', sourceId: '8', destinationId: '9', description: 'instances' }] },
+      { id: '9', containerId: '4', instanceId: '1' }] },
+    { id: '10', name: 'Edge', relationships: [{ id: 'r7', sourceId: '10', destinationId: '7', description: 'nodes' }] }] } };
+  const { model, report } = read(ws);
+  assert.deepEqual(model.edges.map(e => [e.from, e.to, e.label]), [['robot', 'api', 'kept'], ['api-1', 'db-1', 'instances'], ['edge', 'cloud', 'nodes']]);
+  assert.deepEqual(report.filter(x => /static element/.test(x.message)).map(x => [x.path, x.status, x.message]), [
+    ['model.people[0].relationships[0]', 'skipped', 'a relationship between Robot, a static element, and Cloud, a deployment element: a relationship joins two static elements or two deployment elements: not read'],
+    ['model.softwareSystems[0].containers[0].relationships[0]', 'skipped', 'a relationship between API, a static element, and API, a deployment element: a relationship joins two static elements or two deployment elements: not read'],
+    ['model.deploymentNodes[0].relationships[0]', 'skipped', 'a relationship between Cloud, a deployment element, and Shop, a static element: a relationship joins two static elements or two deployment elements: not read'],
+    ['model.deploymentNodes[0].containerInstances[0].relationships[0]', 'skipped', 'a relationship between API, a deployment element, and Robot, a static element: a relationship joins two static elements or two deployment elements: not read']]);
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  // the audit's input: tests/import/structurizr.json's every workspace, relationship 32 moved onto a deployment node
+  const every = structuredClone(both.every), rel = every.model.people.flatMap(p => p.relationships || []).concat(every.model.softwareSystems.flatMap(s => s.relationships || [])).find(x => x.id === '32');
+  rel.destinationId = '24';
+  assert.deepEqual(validate(read(every).model).filter(p => p.level === 'error'), []);
+});
+
 test('audit 56: an element of a level the view does not draw is left out of it and said, so validate() takes the import', async () => {
   const { validate } = await import('../lib/umlimator-all.js');
   const ws = { model: { people: [{ id: '1', name: 'Shopper' }], softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'API', components: [{ id: '4', name: 'Cart' }] }] },

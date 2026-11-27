@@ -159,6 +159,19 @@ const acOther = e => !AC_LINES.includes(e.type);
 const acLegend = (types, edges) => [...AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says))),
   ...(edges.some(acOther) ? [acKey('<path d="M2 8H26"/>', 'Line', LINE_SAYS)] : [])];
 
+/* A node's row across the flow is an order among its lane's nodes in its column (laneRows): one with no node of its lane
+   on that side in its column keeps its row whatever its pin says, so the canvas's Alt + an arrow across the lanes writes no
+   pin there and says this (audit 64: each press was an undo step that moved nothing) */
+function actKeeps(model, view, id, geo, by) {
+  const I = actIndex(model, view), by0 = AC_OBJ(geo) && AC_OBJ(geo.byId) ? geo.byId : {}, at = x => (Object.hasOwn(by0, x) ? by0[x] : null), n = at(id);
+  if (!by || !I.lanes.length || !I.drawn.includes(id) || !n || !Number.isFinite(n.col) || !Number.isFinite(n.row)) return null;
+  const s = Math.sign(by[1]), l = I.laneOf(id);
+  if (!s || I.drawn.some(x => x !== id && I.laneOf(x) === l && at(x) && at(x).col === n.col && Math.sign(at(x).row - n.row) === s)) return null;
+  const who = acName(I.N.get(id)), alone = !I.drawn.some(x => x !== id && I.laneOf(x) === l && at(x) && at(x).col === n.col);
+  return `${who} is ${alone ? 'the only node' : `the ${s < 0 ? 'first' : 'last'} node`} ${l == null ? 'outside the partitions' : `of ${acName(I.N.get(l))}`} here: `
+    + (l == null ? 'the Owner field puts it in a partition' : 'the Owner field moves it to another partition');
+}
+
 /* ---- the view laid out: { model, view, pos, memo } (§9.1, §5) ---- */
 function actGeo({ model, view, pos, memo }) {
   const I = actIndex(model, view), down = view.direction === 'down';
@@ -178,7 +191,7 @@ function actGeo({ model, view, pos, memo }) {
   // widest label and 40 px for its stubs laid out right, as the class type does, and by 48 px laid out down, where a label
   // lies across its line. ponytail: one gap for every column; a gap per column needs labelRoom for typed views (the core's)
   const wide = edges.some(e => e.label) ? (down ? 48 : Math.ceil(Math.max(...edges.filter(e => e.label).map(labelW))) + 40) : 0;
-  const g = layoutTyped({ nodes, edges, ...(I.boxes.length ? { containers: I.boxes } : {}), direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false }, memo);
+  const g = layoutTyped({ nodes, edges, ...(I.boxes.length ? { containers: I.boxes } : {}), direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false, sideSwap: true }, memo); // sideSwap: layered.js, audit 70
   return acFinish(model, g, I, down);
 }
 
@@ -350,6 +363,24 @@ function actOwners(model, x) {
   return [...N.values()].filter(n => n.type === 'uml.ActivityPartition').map(n => ({ id: n.id, label: full(n.id) }));
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": a control or object flow is a flow line and a comment link a dependency; the initial node first, a final
+   node last, an object node (or data store) that only one action reads or writes in the band under the flow. Each by the
+   view's flows, read once a view */
+const actFlowRole = e => (AC_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch');
+const AC_ACTIONS = ['uml.Action', 'uml.CallBehaviorAction', 'uml.SendSignalAction', 'uml.AcceptEventAction'], AC_NEAR = new WeakMap();
+function actZoneOf(x, model, view) {
+  if (!AC_OBJ(x) || !AC_OBJ(view)) return null;
+  if (x.type === 'uml.InitialNode') return 'first';
+  if (x.type === 'uml.ActivityFinalNode' || x.type === 'uml.FlowFinalNode') return 'last';
+  if (!AC_OBJECTS.includes(x.type)) return null;
+  let by = AC_NEAR.get(view); if (!by || by.model !== model) { const I = actIndex(model, view); by = { model, near: new Map() }; AC_NEAR.set(view, by);
+    I.lines.filter(e => AC_FLOWS.includes(e.type) && e.from !== e.to).forEach(e => [[e.from, e.to], [e.to, e.from]].forEach(([a, b]) => { const y = I.N.get(b);
+      if (y && AC_ACTIONS.includes(y.type)) { const s = by.near.get(a) || new Set(); s.add(b); by.near.set(a, s); } })); }
+  const near = by.near.get(x.id);
+  return near && near.size === 1 ? 'under' : null;
+}
+
 /* ---- the type ---- */
 const AC_ST = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }, AC_GUARD = { key: 'guard', label: 'Guard', kind: 'text' };
 const ACT_TYPE = registerDiagramType('uml.activity', {
@@ -361,7 +392,9 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   lines: [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.ObjectFlow', label: 'Object flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
   props: { ...Object.fromEntries(Object.keys(AC_LOOK).map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(AC_LOOK[t][0]) ? [] : [AC_ST]])), 'uml.Comment': [], 'uml.ControlFlow': [AC_GUARD, AC_ST], 'uml.ObjectFlow': [AC_GUARD, AC_ST], 'uml.CommentLink': [] },
-  layout: actGeo,
+  layout: Object.assign(actGeo, { keepsRow: actKeeps }), // the canvas's Alt + an arrow writes no row the lanes override
+  flowRole: actFlowRole,
+  zoneOf: actZoneOf,
   draw: actDraw,
   owners: actOwners,
   member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
@@ -376,4 +409,4 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
 });
 
-export { ACT_TYPE, ACT_RULES, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };
+export { ACT_TYPE, ACT_RULES, actFlowRole, actZoneOf, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };

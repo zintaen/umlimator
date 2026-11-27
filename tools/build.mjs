@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 const ORDER = [
   'core/model', 'core/registry', 'core/warn', 'core/text', 'core/history', 'core/apply',
   'draw/shapes', 'draw/lines', 'draw/svg',
-  'layout/layered', 'layout/audit',
-  'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
+  'layout/tune', 'layout/layered', 'layout/audit',
+  'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/stories', 'map/lens',
   'canvas/styles', 'canvas/camera', 'canvas/edit', 'canvas/render', 'canvas/pieces',
   'page/page', 'page/print',
 ];
@@ -59,7 +59,10 @@ const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'typed/edit', 'uml/owners',
   'layout/tree', 'mindmap/mindmap', 'readers/mermaid-mindmap', 'cloud/cloud'];
 
 // every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
-const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
+// sources no host loads, imported by the bench and the tests only and never built into lib/: the layout quality score
+// (docs/diagrams/notes/layout-flow.md section 4.1, bench/score.mjs)
+const UNBUILT = ['layout/score'];
+const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).filter(f => !UNBUILT.includes(f)).sort();
 if (found.join() !== [...ALL].sort().join()) throw new Error(`tools/build.mjs: ORDER and ALL list ${[...ALL].sort().join(', ')}; src/ has ${found.join(', ')}`);
 for (const [name, list, what] of [['umlimator.js', ORDER, ''], ['umlimator-all.js', ALL, ' This file adds every diagram family to umlimator.js.']]) {
   const out = new URL('lib/' + name, root);

@@ -127,6 +127,28 @@ ok("compose · two keys that differ only in a character XML cannot hold are kept
    [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
    and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
    and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
+# the report's order reads digit runs as numbers, and a name with a character isdigit() takes but int() does not (², ①),
+# other scripts' digits or a run longer than int() reads is still imported, its report in order (audit 70)
+names = ["web1\u00b2", "web2\u2460", "db\u00b3", "q\u0661\u0662", "q\u0663", "x\u0967", "s10", "s9", "n" + "7" * 5000, "n8"]
+m, un = imp.read("compose", json.dumps({"services": {k: {"depends_on": ["gone"]} for k in names}}), "x")
+ok("compose · service names holding superscript or circled digits, other scripts' digits or 5000 digits import, the report in numeric order (audit 70)",
+   len(m["nodes"]) == len(names)
+   and [w for w, _ in un] == [f"services.{k}" for k in ["db\u00b3", "n8", "n" + "7" * 5000, "q\u0663", "q\u0661\u0662", "s9", "s10", "web1\u00b2", "web2\u2460", "x\u0967"]],
+   [w[:40] for w, _ in un])
+ok("natural() · digit runs as numbers, leading zeros alike, and no int() on what is not \\d (audit 70)",
+   sorted(["a10", "a9", "a09b", "a\u00b2", "a1\u00b2", "a\u0662", "b"], key=imp.natural) == ["a1\u00b2", "a\u0662", "a9", "a09b", "a10", "a\u00b2", "b"],
+   sorted(["a10", "a9", "a09b", "a\u00b2", "a1\u00b2", "a\u0662", "b"], key=imp.natural))
+for bad in ("\u00b2", "8\u00b2", "\u0668\u0660"):
+    try:
+        u.port(bad); said = "accepted"
+    except Exception as e:  # argparse's own type error, not int()'s ValueError
+        said = type(e).__name__
+    ok(f"--port {bad!r} is not a port, said as a usage error (audit 70)", said == "ArgumentTypeError", said)
+for bad in ("99999999999", "9" * 400, "0", "-1", "86401", "1.5", "abc", "\u00b2", ""):  # a huge number overflowed the wait (audit 71)
+    r = run("check", "no-such-page.html", f"--timeout={bad}")
+    ok(f"check --timeout {bad[:20]!r} is one usage line before Chrome starts (audit 71)",
+       r.returncode == 2 and r.stderr.rstrip().endswith(f"argument --timeout: {bad!r} is not a number of seconds, 1 to 86400") and "Traceback" not in r.stderr, r.stderr[-300:])
+ok("check --timeout 1 and 86400 are taken (audit 71)", [u.seconds("1"), u.seconds("86400"), u.seconds("600")] == [1, 86400, 600])
 m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["web\\u0002"]}, "web\\u0002": {"image": "y", "depends_on": {"web\\u0001": {"condition": "service_started"}}}, "db": {"image": "z", "depends_on": ["web\\u0002"]}}}', "x")
 k8s = {"kind": "List", "items": [
     {"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": {"k\u0002": "b"}}},
@@ -518,6 +540,15 @@ m, un, _ = quick("kubernetes", json.dumps([W(0, {"app": "a", "tier": "web"}), W(
 ok("kubernetes · a Service selects every workload whose labels hold all of its selector, by its rarest label, in file order",
    [(e["from"], e["to"]) for e in m["edges"]] == [("svc-s0", "deploy-d0"), ("svc-s1", "deploy-d0"), ("svc-s1", "deploy-d2"),
                                                 ("svc-s2", "deploy-d0"), ("svc-s2", "deploy-d1")] and un == [], (m["edges"], un))
+# audit 63: a resource backend was said as "Service null", and a v1beta1 spec.backend was dropped with nothing said
+m, un = imp.read("kubernetes", json.dumps({"kind": "List", "items": [
+    {"kind": "Service", "metadata": {"name": "api"}, "spec": {"selector": {"app": "api"}}},
+    {"kind": "Ingress", "metadata": {"name": "ing"}, "spec": {"defaultBackend": {"resource": {"apiGroup": "k8s.example.com", "kind": "StorageBucket", "name": "static"}},
+                                                         "rules": [{"http": {"paths": [{"path": "/x", "backend": {}}]}}]}},
+    {"kind": "Ingress", "apiVersion": "extensions/v1beta1", "metadata": {"name": "old"}, "spec": {"backend": {"serviceName": "api", "servicePort": 80}}}]}), "x")
+ok("kubernetes · an Ingress resource backend is said as one, a backend naming nothing as naming no Service, a v1beta1 spec.backend read as the default route",
+   ends(m) == [("ing-old", "svc-api", "default")] and un == [("items[1]", "Ingress ing: route /x names no Service: not imported"),
+                                                            ("items[1]", "Ingress ing routes default to StorageBucket static (a resource backend), which is not imported")], (ends(m), un))
 m, _, dt = quick("compose", json.dumps({"services": {f"s{i}": {"networks": [f"n{i % 2}" if i < 4 else f"n{i}"]} for i in range(20000)}}))
 ok("hostile · 20000 compose services on their own networks read in linear time", dt < 3 and m["views"][0]["containers"][0]["nodeIds"] == ["s0", "s2"], dt)
 m, un, _ = quick("compose", json.dumps({"services": {}, "x": " " * imp.LIMIT}))
@@ -722,6 +753,17 @@ for where, dsl in [("the model", 'workspace {\nmodel {\na = softwareSystem "A"\n
         m, un = {"edges": []}, [repr(e)]
     ok(f"structurizr · this -> x in {where}, where this names no element, is said and skipped; the rest is read (audit 25)",
        [(e["from"], e["to"]) for e in m["edges"]] == [("a", "b")] and un == [(4 if where == "the model" else 5, "this -> a: this names no element here")], (m["edges"], un))
+# audit 68: `x -> this` (this as the destination) said "this is not an element" and dropped the line; inside an element
+# this names it on either side, and outside one it names none and is said
+dsl = ('workspace {\n!identifiers hierarchical\nmodel {\nuser = person "User"\ns = softwareSystem "S" {\nweb = container "Web" {\nuser -> this "Uses"\n'
+       'this -> this "Polls"\n}\ncontainer "Database" {\nweb -> this "Reads" "SQL"\n}\n}\nthis -> user "x"\nuser -> this "y"\ngroup "G" {\nuser -> this "z"\n}\n'
+       'user -> s.web "Visits"\n}\n}')
+m, un = imp.read("structurizr", dsl, "x")
+want = {("user", "web", "Uses"), ("web", "Database", "Reads"), ("user", "web", "Visits")}
+ok("structurizr · x -> this inside an element draws x to it; this -> this is the element to itself; x -> this outside one is said and skipped (audit 68)",
+   want <= {(e["from"], e["to"], e.get("label")) for e in m["edges"]}
+   and (8, "web -> web: a line from a card to itself is not drawn") in un and [u for u in un if "this" in u[1]] == [(14, "this -> user: this names no element here"), (15, "user -> this: this names no element here"), (17, "user -> this: this names no element here")],
+   (m["edges"], un))
 # audit 25: a block-scalar title (title: > or |) was the title '>' or '|', and a plain title over two lines lost its second,
 # with no word; read as js-yaml reads them, as the typed readers' mermaidFrontTitle() does
 fms = ["title: >\n  Orders and\n  payments", "title: |-\n  Orders", "title: Orders\n  and payments", "title: |\n  a\n  b\n", "title: >\n  a\n\n  b\n    deep\n  c",
@@ -879,6 +921,20 @@ with tempfile.TemporaryDirectory() as tmp:
         c = run("check", str(page)) if r.returncode == 0 else r
         rep = json.loads(c.stdout[c.stdout.find("{"):]) if c.returncode == 0 and "{" in c.stdout else {}
         ok(f"{name} · renders, and its layout check is clean", rep.get("checked") and not rep.get("problems") and not rep.get("errors"), rep or c.stderr[-1500:])
+    # arrange "flow" (layout-flow.md section 12 step 14, .evolve/decisions.md D13): opt-in with --arrange, on map views and the
+    # typed views whose type reads the flow; a default import writes none, so its views lay out by rank as before
+    for name, typed in (("tests/fixtures/integration.dsl", []), ("tests/import/checkout.mmd", []), ("tests/import/flowchart.mmd", ["--typed"]),
+                        ("tests/import/classes.mmd", [])):
+        outs = {f: t / f"arr-{Path(name).stem}{f}.json" for f in ("", "--arrange")}
+        rs = {f: run("import", str(ROOT / name), *typed, *([f] if f else []), "--out", str(o)) for f, o in outs.items()}
+        ms = {f: json.loads(o.read_text(encoding="utf-8")) if o.is_file() else {"views": []} for f, o in outs.items()}
+        flows = [v["id"] for v in ms["--arrange"]["views"] if v.get("arrange") == "flow"]
+        reads = [v["id"] for v in ms[""]["views"] if (v.get("diagram") or "map") in ("map", "flowchart", "c4.container")]
+        ok(f"{name}{''.join(' ' + x for x in typed)} · --arrange sets arrange \"flow\" on each view of a type that reads the flow, and says which; without it none",
+           all(r.returncode == 0 for r in rs.values()) and flows == reads == json.loads(rs["--arrange"].stdout)["arranged"]
+           and json.loads(rs[""].stdout)["arranged"] == [] and not any("arrange" in v for v in ms[""]["views"])
+           and [{k: x for k, x in v.items() if k != "arrange"} for v in ms["--arrange"]["views"]] == ms[""]["views"]
+           and (name != "tests/import/classes.mmd" or flows == []), (flows, reads, [r.stderr[-300:] for r in rs.values()]))
     shutil.copy(ROOT / "tests" / "fixtures" / "integration.dsl", t / "integration.txt")
     r = run("import", str(t / "integration.txt"), "--out", str(t / "txt.json"))
     ok("knows a format by its content, whatever the extension", r.returncode == 0 and json.loads(r.stdout).get("format") == "structurizr", r.stderr)

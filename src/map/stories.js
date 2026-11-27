@@ -1,0 +1,270 @@
+import { canon, isGone, jsonText, labelOr, unreadable } from '../core/model.js';
+import { diagramOf } from '../core/registry.js';
+import { mainFlow } from '../layout/layered.js';
+import { mapContext } from './context.js';
+import { diff } from './diff.js';
+import { arrOf } from './validate.js';
+
+/* ---------- storyFromFlow(): a story generated from a view's main flow (layout-flow note, section 10) ----------
+   A main flow is a story already: one step per main card, in order. Each step selects its card, lights it and the main
+   line into it, rides that line (a tour of the two cards, which the view draws a line between) and says what the line
+   does: "2. Charges: Cart charges Payments; reads Orders". A dependency line is no step: the card it joins is named in
+   the caption of the step that reads or writes it. A branch (a chain of flow lines off the main flow) is a chapter,
+   offered at the step where it leaves. A sequence view tells its messages in order; a BPMN view its main path, from the start
+   event whose path is longest (a collaboration's main process, an expanded sub-process's box a step; each gateway's or activity's default flow where it names one), a
+   flowchart from its start terminal to an end one (its type's storyOn), a communication view its numbered messages in time order. The lines are read as the view draws them (its
+   geometry), so every tour rides a drawn line. audience: who it is told to, kept on the story (and its chapters); for
+   "business" the captions leave out the stores a step reads or writes. Pure: nothing is saved, the model is not changed. */
+const STORY_ROLES = ['main', 'branch', 'dep'];
+const STORY_START = /StartEvent$/, STORY_SEQ_FLOW = /SequenceFlow$/;
+// storyPlain words from a field's Markdown: its first sentence, with no marks
+const storyPlain = s => { const t = String(s).replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim();
+  const m = /^(.+?[.!?])(\s|$)/.exec(t); return (m ? m[1] : t).replace(/[.!?]+$/, ''); };
+const storyA = w => (/^(?!u[sm]|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "an er view", "a uml.class view" (audit 67)
+const storyUpper = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const storyPut = (m, k, x) => { const l = m.get(k); if (l) l.push(x); else m.set(k, [x]); }; // an index of lists by key
+
+/* the view as a story reads it: its lines as drawn, which of them are dependencies and which close a loop, its cards'
+   names and what a line says (storyFromFlow and storyFromDiff) */
+function storyView(model, viewId) {
+  const ctx = mapContext(model), v = ctx.V[viewId];
+  if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
+  const T = model && model.schemaVersion === 2 && v.diagram != null && v.diagram !== 'map' ? diagramOf(v) : null;
+  const g = ctx.buildGeo(viewId), mine = new Set(arrOf(v.nodeIds)), byId = g.byId || {};
+  const modelLine = new Map(arrOf(ctx.D.edges).filter(e => e && e._id != null).map(e => [e._id, e]));
+  arrOf(v.edges).forEach(e => { if (e && typeof e === 'object' && e._id != null && !modelLine.has(e._id)) modelLine.set(e._id, e); });
+  // a typed view's drawn box (an expanded sub-process) is a card a line runs to, a main flow's step too (audit 68)
+  const box = T ? new Map(arrOf(g.families).filter(f => f && f.id != null && !byId[f.id]).map(f => [f.id, f])) : new Map(), at = id => byId[id] || box.get(id);
+  // a card's name: its label, else in a typed view the kind its picture says ("the initial node", "the merge"), else its id (audit 68)
+  const labelIn = id => { const n = at(id), c = ctx.nodeIn(id, viewId); return c && c.label != null ? c.label : n && n.label; };
+  const kindOf = id => { const n = at(id); return T && labelOr(labelIn(id), null) == null && n && typeof n.aria === 'string' ? n.aria.split(',')[0].trim() : ''; };
+  const name = id => { const k = kindOf(id); return k ? 'the ' + k[0].toLowerCase() + k.slice(1) : String(labelOr(labelIn(id), id)).replace(/\s+/g, ' ').trim(); };
+  // the view's lines as drawn: a map's each model line a drawn line stands for, a typed view's each line between the cards it is drawn between
+  const lines = [], gone = []; // gone: the lines drawn as removed (a diff's), which tell no flow
+  g.edges.forEach(d => {
+    (d.all && !T ? d.all.map(x => ({ ...x, from: x.from, to: x.to })) : [...new Set([d._id, ...arrOf(d.ids)].filter(x => x != null))].map(id => ({ ...(modelLine.get(id) || d), _id: id, from: d.from, to: d.to })))
+      .forEach(x => { if (x.from != null && x.to != null && at(x.from) && at(x.to)) (isGone(d) || isGone(x) ? gone : lines).push({ ...x, drawn: d }); }); });
+  const near = new Set(g.edges.flatMap(d => [d.from + '\u0000' + d.to, d.to + '\u0000' + d.from]));
+  const joined = (a, b) => near.has(a + '\u0000' + b);
+  // a dependency line, which is no step: its flow field says, else in BPMN any line but a sequence flow (a data association),
+  // else a typed view's type as the layout reads it (its flowRole: a DFD flow to or from a store, a comment link), else a
+  // map line's kind as drawn (state, guard)
+  const bpmn = !!T && /^bpmn/.test(String(v.diagram)), TF = T ? ctx.storyFlow(viewId) : null;
+  // read once a line: a typed view's rule asks its type, so a story asks it once, not once a card (audit 69)
+  const depOnce = new WeakMap(), dep = e => { if (!depOnce.has(e)) depOnce.set(e, STORY_ROLES.includes(e.flow) ? e.flow === 'dep' : bpmn ? !STORY_SEQ_FLOW.test(String(e.type || '')) : TF ? TF.dep(e) : !T && ['state', 'guard'].includes(e.drawn.wk)); return depOnce.get(e); };
+  const cards = [...new Set([...arrOf(v.nodeIds), ...Object.keys(byId)])].filter(id => byId[id]);
+  // the lines that close a loop: marked loop, else found depth-first from the cards no line comes into (as the layout reads them),
+  // each card's lines out read from an index, never a scan of every line (audit 69)
+  const back = new Set(), st = new Map(), outK = new Map(), into = new Set(); lines.forEach((e, k) => { if (e.loop) back.add(k); storyPut(outK, e.from, k); if (e.from !== e.to && !e.loop && !dep(e)) into.add(e.to); });
+  const dfs = u => { const fr = [[u, outK.get(u) || [], 0]]; st.set(u, 1);
+    while (fr.length) { const f = fr[fr.length - 1]; if (f[2] === f[1].length) { fr.pop(); st.set(f[0], 2); continue; }
+      const k = f[1][f[2]++], e = lines[k]; if (e.from === e.to || e.loop || dep(e)) continue; if (st.get(e.to) === 1) back.add(k); else if (!st.get(e.to)) { st.set(e.to, 1); fr.push([e.to, outK.get(e.to) || [], 0]); } } };
+  [...cards.filter(c => !into.has(c)), ...cards].forEach(c => { if (!st.get(c)) dfs(c); });
+  const idOf = e => e.id != null ? String(e.id) : e._id;
+  // a line's words: a map line's or a relationship's label is a verb ("charges"); a flow's, a path's or a data flow's names
+  // what goes along it or when ("yes", "HTTPS", "priced order"), as does any line's of a type that says so (storyNouns: the
+  // cloud family's, audit 69) and a label that starts with a capitalised short word
+  const words = e => e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : null;
+  const verbal = e => { const w = words(e); return !!w && !/^[A-Z0-9]{2,}\b/.test(w) && !(T && (T.storyNouns === true || /(Flow|Path|Transition|Message)$/.test(String(e.type || '')))); };
+  const verb = w => /^[A-Z][a-z]/.test(w) ? w[0].toLowerCase() + w.slice(1) : w;
+  const lineSays = e => { if (e.what != null && String(e.what).trim()) return storyPlain(e.what);
+    const w = words(e); if (!w) return `${name(e.from)} leads to ${name(e.to)}`;
+    return verbal(e) ? `${name(e.from)} ${verb(w)} ${name(e.to)}` : /DataFlow$/.test(String(e.type || '')) ? `${name(e.from)} sends ${w} to ${name(e.to)}` : `${name(e.from)} to ${name(e.to)} (${w})`; };
+  return { ctx, v, T, TF, g, mine, byId, at, kindOf, modelLine, name, lines, gone, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays };
+}
+
+/** A story generated from the main flow of a view (#flow-stories): one step per main card, each with select, highlight,
+ *  tour and caption; branches as chapters offered at the step they leave from. options: id, title, chapters (false: none),
+ *  audience. Throws when the view has no main flow. */
+export function storyFromFlow(model, viewId, options = {}) {
+  const { ctx, v, T, TF, g, mine, byId, at, kindOf, modelLine, name, lines, joined, bpmn, dep, cards, back, idOf, words, verbal, verb, lineSays } = storyView(model, viewId);
+  const id = typeof options.id === 'string' && options.id ? options.id : `flow-${viewId}`;
+  const title = typeof options.title === 'string' && options.title.trim() ? options.title : `${String(labelOr(v.title, viewId))}: the main flow`;
+  const audience = typeof options.audience === 'string' && options.audience.trim() ? options.audience.trim() : null, brief = !!audience && /^business$/i.test(audience);
+  const caption = (n, head, body, deps) => { let s = `${n}. ${head}: ${body}`; if (deps.length) s += '; ' + deps.join(', '); return /[.!?]$/.test(s) ? s : s + '.'; };
+  // a card's dependency lines, from an index read once (after the main flow is carried), never a scan of every line a card (audit 69)
+  let depBy = null; const depLines = c => { if (!depBy) { depBy = new Map(); lines.forEach(e => { if (dep(e) && e.from !== e.to) { storyPut(depBy, e.from, e); storyPut(depBy, e.to, e); } }); } return depBy.get(c) || []; };
+  const depsOf = c => brief ? [] : [...new Set(depLines(c).map(e => { const w = words(e), o = e.from === c ? e.to : e.from, x = name(o);
+    // a note (a comment, a text annotation) is no store a step reads: its words, said as a note (audit 68)
+    if (/^(uml\.Comment|bpmn\.TextAnnotation)$/.test(String((ctx.nodeIn(o, viewId) || {}).type || ''))) return `note: ${storyPlain(x)}`;
+    if (verbal(e)) return e.from === c ? `${verb(w)} ${x}` : `${verb(w)} from ${x}`;
+    return e.from === c ? `${w ? w + ' to' : 'uses'} ${x}` : `${w ? w + ' from' : 'takes from'} ${x}`; }))];
+  // one step: card c, reached by line e from card p (none for the first)
+  const stepOf = (n, c, e, p) => { const s = { view: viewId };
+    if (mine.has(c)) s.select = c;
+    s.highlight = [...(mine.has(c) ? [c] : []), ...(e && !e.carry ? [idOf(e)] : [])];
+    if (e && p != null && mine.has(p) && mine.has(c) && joined(p, c)) s.tour = [p, c];
+    const head = e && verbal(e) ? storyUpper(words(e)) : kindOf(c) ? storyUpper(name(c)) : name(c);
+    const body = e && e.carry ? `the flow carries on from ${name(p)}` : e ? lineSays(e) : at(c) && ctx.nodeIn(c, viewId).what ? storyPlain(ctx.nodeIn(c, viewId).what)
+      : `${name(c)} starts the ${on && arrOf(on.starts).length && !arrOf(on.starts).includes(c) ? 'main ' : ''}flow`;
+    s.caption = caption(n, head, body, depsOf(c));
+    if (!s.highlight.length) delete s.highlight;
+    return s; };
+  const out = { id, title, ...(audience ? { audience } : {}), steps: [], chapters: [] };
+  let on = null; if (T && typeof T.storyOn === 'function') try { on = T.storyOn(model, v); } catch { on = null; }
+  // a sequence view: its messages in the order the view lists them
+  if (T && /sequence$/.test(String(v.diagram))) {
+    // a message's place: the first of the view's edges that is it or names it, from a map read once (audit 69)
+    const pos = new Map(); arrOf(v.edges).forEach((x, k) => { if (x) (typeof x === 'object' ? [x.id] : [x, undefined]).forEach(i => { if (!pos.has(i)) pos.set(i, k); }); });
+    const msgs = lines.filter(e => e.from != null).sort((a, b) => order(a) - order(b));
+    function order(e) { return pos.has(e.id) ? pos.get(e.id) : 1e9; }
+    msgs.forEach((e, k) => { const s = { view: viewId, select: idOf(e), highlight: [idOf(e)] };
+      if (e.from !== e.to && mine.has(e.from) && mine.has(e.to) && joined(e.from, e.to)) s.tour = [e.from, e.to];
+      const head = e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : 'Message';
+      s.caption = caption(k + 1, head, e.what != null && String(e.what).trim() ? storyPlain(e.what) : e.from === e.to ? `${name(e.from)} to itself` : `${name(e.from)} to ${name(e.to)}`, []);
+      out.steps.push(s); });
+    if (!out.steps.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no messages to tell`);
+    return out;
+  }
+  // a communication view: its messages, each a row its picture draws with its number (1, 1.1, 1.1.2), in the time order the
+  // view lists them; a step selects the message, lights it and the cards it joins, and rides the connector that carries it
+  if (T && /communication$/.test(String(v.diagram))) {
+    const listed = arrOf(v.edges).map(x => x && typeof x === 'object' ? x.id : x), rows = Object.values(byId).filter(n => n && n.shape === 'message-row' && n.id != null);
+    const first = new Map(); listed.forEach((x, k) => { if (!first.has(x)) first.set(x, k); });
+    const at = n => first.has(n.id) ? first.get(n.id) : 1e9, says = { call: 'calls', async: 'signals', reply: 'replies to', create: 'creates', delete: 'deletes' };
+    rows.sort((a, b) => at(a) - at(b)).forEach(r => { const e = modelLine.get(r.id) || {}, f = e.from, t = e.to, self = f === t;
+      const s = { view: viewId, select: r.id, highlight: [r.id, ...[f, t].filter((x, i, a) => mine.has(x) && a.indexOf(x) === i)] };
+      if (!self && mine.has(f) && mine.has(t) && joined(f, t)) s.tour = [f, t];
+      const head = e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : 'Message';
+      const body = e.what != null && String(e.what).trim() ? storyPlain(e.what) : f == null ? head : `${name(f)} ${says[r.sort] || 'calls'} ${self ? 'itself' : name(t)}`;
+      s.caption = caption(r.num != null && String(r.num) ? String(r.num) : out.steps.length + 1, head, body, []);
+      out.steps.push(s); });
+    if (!out.steps.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no messages to tell`);
+    return out;
+  }
+  let main = null;
+  if (T && TF) { // a typed view: the main flow its type reads (typedMain, which an arranged view's picture draws), each of
+    // its lines the drawn line that stands for it; BPMN's is its type's main path (bzMain: the start event whose path is
+    // longest, a collaboration's main process, not the first-listed pool's; audit 67). A type with no flowRole (a use case,
+    // a class view) reads none
+    const M = TF.main, ks = [], outs = new Map(); lines.forEach((e, k) => storyPut(outs, e.from, k)); // each card's lines out, read once (audit 69)
+    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1], ab = (outs.get(a) || []).filter(k => lines[k].to === b);
+      const k = ab.find(k => lid != null && idOf(lines[k]) === String(lid)), j = k !== undefined ? k : ab.find(k => !dep(lines[k]));
+      ks.push(j !== undefined ? j : -1); });
+    if (M && M.cards.length && ks.every(k => k >= 0)) main = { cards: M.cards, lines: ks };
+  }
+  if (!main && bpmn) { // no main path its type reads: the path from the start event, each node's default flow out (props.default) else its first, never coming back
+    const node = id => ctx.N[id] || {}, start = [...(TF && TF.main ? TF.main.cards.slice(0, 1) : []), ...cards].find(c => STORY_START.test(String(node(c).type || ''))); // bzMain's start, not the first-listed pool's (audit 68)
+    const dflt = id => { const p = node(id).props; return p && typeof p === 'object' && typeof p.default === 'string' ? p.default : null; };
+    if (start != null) { const flows = new Map(); lines.forEach((e, k) => { if (!back.has(k) && !dep(e) && e.from !== e.to && STORY_SEQ_FLOW.test(String(e.type || ''))) storyPut(flows, e.from, [e, k]); });
+      const seen = new Set([start]), ks = []; let at = start;
+      for (;;) { const d = dflt(at), out = (flows.get(at) || []).filter(([e]) => !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
+      if (ks.length) main = { cards: [start, ...ks.map(k => lines[k].to)], lines: ks }; }
+  } else if (!main && !T) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
+    main = mainFlow(lines, { back, dep, cards, run: v.render === 'sequence' });
+  }
+  // a type's own story reading (storyOn: a flowchart's): the main flow carried back to a start and on to an end along the
+  // view's flow lines, across the links it names that no line draws (an on-page connector pair) (audit 68)
+  // its links by the card they leave, each a list of cards: a [from, to] pair, or a group { from, to } (each card of from to
+  // each of to but itself: a flowchart's connectors of one label), read as one list, never one line a pair (audit 69)
+  const links = new Map(), drawnOut = new Map(), made = new Map(); if (on) arrOf(on.carry).forEach(l => {
+    if (Array.isArray(l)) { if (at(l[0]) && at(l[1]) && l[0] !== l[1]) storyPut(links, l[0], [l[1]]); }
+    else if (l && typeof l === 'object') { const to = arrOf(l.to).filter(x => at(x)); if (to.length) arrOf(l.from).forEach(a => { if (at(a)) storyPut(links, a, to); }); } });
+  // the flow lines as drawn by the card they leave, closing no loop; a link a line once the story takes it (made)
+  lines.forEach((e, k) => { if (!back.has(k) && !dep(e) && e.from !== e.to) storyPut(drawnOut, e.from, k); });
+  const linkLine = (a, b) => { let m = made.get(a); if (!m) made.set(a, m = new Map()); if (!m.has(b)) { m.set(b, lines.length); lines.push({ from: a, to: b, carry: true }); } return m.get(b); };
+  if (on && main && main.cards.length) main = carried(main, on);
+  if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: ${T && !TF && !bpmn ? `${storyA(String(v.diagram))} view reads none` : 'no flow line joins two of its cards'}`);
+  const onMain = new Set(main.cards), mainKs = new Set(main.lines);
+  // the main flow with the shortest way from a start to its first card before it, and from its last card to an end after it,
+  // each along flow lines (and links) that close no loop, never through a main card
+  // breadth first over the index of lines and links, each link list read once a search (a card it reaches the first time is
+  // reached, from any card of the list): linear in the lines and links (audit 69)
+  function carried(M, o) {
+    const mc = new Set(M.cards);
+    const way = (from, goal) => { const prev = new Map([[from, null]]), q = [from], read = new Set(), ok = x => !prev.has(x) && (!mc.has(x) || goal(x));
+      for (let h = 0; h < q.length; h++) { const c = q[h];
+        if (c !== from && goal(c)) { const ks = []; for (let x = c; prev.get(x) != null;) { const p = prev.get(x), k = typeof p === 'number' ? p : linkLine(p.from, x); ks.unshift(k); x = lines[k].from; } return ks; }
+        (drawnOut.get(c) || []).forEach(k => { const x = lines[k].to; if (ok(x)) { prev.set(x, k); q.push(x); } });
+        (links.get(c) || []).forEach(l => { if (read.has(l)) return; read.add(l); l.forEach(x => { if (x !== c && ok(x)) { prev.set(x, { from: c }); q.push(x); } }); }); }
+      return null; };
+    const first = M.cards[0], last = M.cards[M.cards.length - 1], starts = arrOf(o.starts), ends = new Set(arrOf(o.ends));
+    let head = null; if (!starts.includes(first)) for (const s of starts) { if (mc.has(s)) continue; const ks = way(s, c => c === first); if (ks) { head = [s, ks]; break; } }
+    const tail = ends.has(last) ? null : way(last, c => ends.has(c) && !mc.has(c));
+    const cs = [...(head ? [head[0], ...head[1].slice(0, -1).map(k => lines[k].to)] : []), ...M.cards, ...(tail ? tail.map(k => lines[k].to) : [])];
+    return { cards: cs, lines: [...(head ? head[1] : []), ...M.lines, ...(tail || [])] };
+  }
+  main.cards.forEach((c, i) => { const e = i ? lines[main.lines[i - 1]] : null; out.steps.push(stepOf(i + 1, c, e, i ? main.cards[i - 1] : null)); });
+  // branches: from each main card, each flow line off the main flow to a card off it, followed while it stays off it
+  if (options.chapters !== false) {
+    // a card's flow lines out, then its links, off the main flow (first: the first of them only); from the indexes (audit 69)
+    const flowOut = (c, seen, first) => { const r = [];
+      for (const k of drawnOut.get(c) || []) if (!mainKs.has(k) && !seen.has(lines[k].to)) { r.push(lines[k]); if (first) return r; }
+      for (const l of links.get(c) || []) for (const x of l) if (x !== c && !seen.has(x)) { const k = linkLine(c, x); if (!mainKs.has(k)) { r.push(lines[k]); if (first) return r; } }
+      return r; };
+    const taken = new Set();
+    main.cards.forEach((c, i) => flowOut(c, new Set()).forEach(e0 => { if (onMain.has(e0.to) || taken.has(e0.to)) return;
+      const seen = new Set(main.cards), chain = []; let e = e0, p = c;
+      while (e && !onMain.has(e.to) && !seen.has(e.to)) { chain.push([e, p]); seen.add(e.to); p = e.to; e = flowOut(p, seen, true)[0] || null; }
+      if (!chain.length) return; chain.forEach(([x]) => taken.add(x.to));
+      const n = out.chapters.length + 1;
+      out.chapters.push({ id: `${id}-branch-${n}`, title: `Branch from ${name(c)} to ${name(chain[0][0].to)}`, ...(audience ? { audience } : {}), at: i,
+        steps: chain.map(([x, q], j) => stepOf(`${i + 1}.${j + 1}`, x.to, x, q)) }); }));
+  }
+  return out;
+}
+
+/* ---------- storyFromDiff(): a story told from what a change does to a view (product item 4: a pull request's diff) ----------
+   diff(before, after) marks each card and line added, changed or removed; the story gives a step per marked card and line
+   the view draws, in the order of the view's main flow as it was and is (a card by its place on it, a card off it after the
+   main card its lines reach first, a line just before the later of its two cards), else in the view's order. Each step says what
+   happened: "2. Added: Cart asks Fraud check.", "3. Changed: Shipping svc, renamed from Shipping.", "4. Removed: Ledger,
+   which was joined to Payments.". By default the story plays on the model after: a removed card or line is selected by no
+   step (the model after has none), and the cards it was joined to are lit; on: 'diff' tells it on diff(before,
+   after).model, which draws the removed ones too, and selects them. Pure: nothing is saved. */
+const DIFF_MARKS = ['added', 'changed', 'removed'];
+/** A story of what changed from `before` to `after` on one view (options: id, title, audience, on: 'after' | 'diff').
+ *  Throws when the view is in neither model, or shows no change. */
+export function storyFromDiff(before, after, viewId, options = {}) {
+  const o = options && typeof options === 'object' ? options : {}, onDiff = o.on === 'diff';
+  const B = unreadable(before).model || {}, A = unreadable(after).model || {}, D = diff(B, A).model;
+  const { ctx, v, mine, byId, name, lines, gone, joined, dep, cards, back, idOf, lineSays } = storyView(D, viewId);
+  const vAfter = arrOf(A.views).find(x => x && x.id === viewId);
+  if (!onDiff && !vAfter) throw new Error(`umlimator: view ${jsonText(viewId)} is not in the model after the change: tell its story with on: 'diff'`);
+  const markOf = x => DIFF_MARKS.includes(x && x.change) ? x.change : null;
+  const idx = (m, k) => new Map(arrOf(m[k]).filter(x => x && typeof x === 'object' && x.id != null).map(x => [String(x.id), x]));
+  const N0 = idx(B, 'nodes'), N1 = idx(A, 'nodes'), E0 = idx(B, 'edges'), E1 = idx(A, 'edges');
+  const same = (a, b) => { try { return canon(a) === canon(b); } catch { return false; } };
+  const fields = (was, now) => was && now ? [...new Set([...Object.keys(was), ...Object.keys(now)])].filter(k => !['change', 'edited', 'style'].includes(k) && !same(was[k], now[k])) : [];
+  const plainName = x => x && x.label != null && typeof x.label !== 'object' ? String(x.label).replace(/\s+/g, ' ').trim() : null;
+  // what changed: the cards the view draws marked, and its drawn lines marked (each model line once)
+  const items = [];
+  cards.forEach((c, i) => { const h = markOf(byId[c]) || markOf(ctx.nodeIn(c, viewId)); if (h) items.push({ card: c, h, i }); });
+  const seenL = new Set();
+  [...lines, ...gone].forEach((e, k) => { const h = markOf(e) || (gone.includes(e) ? 'removed' : null), key = idOf(e); if (!h || seenL.has(key)) return; seenL.add(key); items.push({ line: e, h, i: cards.length + k }); });
+  if (!items.length) throw new Error(`umlimator: view ${jsonText(viewId)} shows no change`);
+  // the order: along the main flow when the view has one, else the view's own
+  let rank = null;
+  const all = [...lines, ...gone]; // the flow as it was too: a removed line keeps its place in the order
+  try { const main = mainFlow(all, { back, dep, cards, run: v.render === 'sequence' });
+    if (main && main.cards.length > 1) { rank = new Map(main.cards.map((c, i) => [c, i]));
+      const todo = [...main.cards]; // a card off the main flow: after the main card its lines reach first (either way), a store too
+      while (todo.length) { const c = todo.shift(); all.forEach(e => { const x = e.from === c ? e.to : e.to === c ? e.from : null;
+        if (x != null && !rank.has(x)) { rank.set(x, Math.floor(rank.get(c)) + 0.5 + (rank.get(c) % 1 ? 0.001 : 0)); todo.push(x); } }); } } } catch { rank = null; }
+  const at = c => rank && rank.has(c) ? rank.get(c) : Infinity;
+  const place = it => it.card != null ? at(it.card) : Math.max(at(it.line.from), at(it.line.to)) - 0.25;
+  items.sort((a, b) => { const pa = place(a), pb = place(b); return pa === pb || (!Number.isFinite(pa) && !Number.isFinite(pb)) ? a.i - b.i : !Number.isFinite(pa) ? 1 : !Number.isFinite(pb) ? -1 : pa - pb; });
+  // the cards a removed card or line was joined to, that the story's model still shows
+  const shows = c => mine.has(c) && !(markOf(byId[c]) === 'removed') && (onDiff || arrOf(vAfter.nodeIds).includes(c));
+  const word = { added: 'Added', changed: 'Changed', removed: 'Removed' };
+  const id = typeof o.id === 'string' && o.id ? o.id : `diff-${viewId}`;
+  const title = typeof o.title === 'string' && o.title.trim() ? o.title : `${String(labelOr(v.title, viewId))}: what changed`;
+  const audience = typeof o.audience === 'string' && o.audience.trim() ? o.audience.trim() : null;
+  const steps = items.map((it, k) => { const s = { view: viewId }, n = k + 1, lost = it.h === 'removed' && !onDiff;
+    let body;
+    if (it.card != null) { const c = it.card, near = [...new Set([...lines, ...gone].filter(e => e.from === c || e.to === c).map(e => e.from === c ? e.to : e.from))].filter(x => x !== c && shows(x));
+      if (lost) { if (near.length) s.highlight = near; body = `${name(c)}${near.length ? ', which was joined to ' + near.map(name).join(', ') : ''}`; }
+      else { s.select = c; s.highlight = [c];
+        const was = N0.get(String(c)), now = N1.get(String(c)), f = it.h === 'changed' ? fields(was, now) : [];
+        body = name(c) + (f.includes('label') && plainName(was) ? `, renamed from ${plainName(was)}` : '') + (f.filter(x => x !== 'label').length ? ` (${f.filter(x => x !== 'label').join(', ')})` : '');
+        const node = ctx.nodeIn(c, viewId); if (it.h === 'added' && node && node.what != null && String(node.what).trim()) body += `: ${storyPlain(node.what)}`; } }
+    else { const e = it.line, lid = idOf(e), ends = [e.from, e.to].filter((x, i, a) => a.indexOf(x) === i);
+      if (lost) { const lit = ends.filter(shows); if (lit.length) s.highlight = lit; }
+      else { s.select = lid; s.highlight = [lid, ...ends.filter(x => mine.has(x) && (onDiff || shows(x)))];
+        if (it.h !== 'removed' && e.from !== e.to && mine.has(e.from) && mine.has(e.to) && joined(e.from, e.to) && shows(e.from) && shows(e.to)) s.tour = [e.from, e.to]; }
+      const f = it.h === 'changed' ? fields(E0.get(String(e.id)), E1.get(String(e.id))) : [];
+      body = lineSays(e) + (f.length ? ` (${f.join(', ')})` : ''); }
+    s.caption = `${n}. ${word[it.h]}: ${body}`; if (!/[.!?]$/.test(s.caption)) s.caption += '.';
+    return s; });
+  return { id, title, ...(audience ? { audience } : {}), steps };
+}

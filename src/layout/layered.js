@@ -1,10 +1,11 @@
 import { EDGE_BREAK, EDGE_LH, brLines, fit, linesW, sansW, textW, widest } from '../core/text.js';
-import { behind, detour, onBorder, routeAudit } from './audit.js';
+import { behind, detour, leaveIssues, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
 import { TYPED, idTable } from '../core/registry.js';
+import { BARY_SWEEPS, CROSS_CAP, FAN_IN, FAN_TRIES, LABEL_PASSES, OUTSIDE_TRIES, ROW_SWEEPS } from './tune.js';
 
 const CHG = Object.assign(Object.create(null), { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] }); // no prototype: a change named constructor is none
 // a line's fromSide or toSide, as its side's letter; no prototype: a side named toString is none, as validate() says (audit 28: it was a function)
@@ -20,6 +21,8 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 // a line whose route layoutPass draws itself in a typed view: 'loop' (a node to itself) or 'fan'. A symbol, so no field of a
 // model's line can set it
 const OWN_ROUTE = Symbol('own route');
+// a snake (layout-flow note, section 14): a map view whose lines say their reading way (dir)
+const snaked = dg => (dg.edges || []).some(e => e.dir);
 // a typed view laid out as before audit 38 (layoutTyped's try when the new one leaves check() something to say): a symbol, so
 // no field of a model's view can set it
 const PLAIN = Symbol('plain');
@@ -29,8 +32,15 @@ const TURNS = Symbol('turns');
 // a typed view whose box side, past its title, had no room for its lines and grew over the title (audit 44), laid out without
 // that too (layoutTyped): a symbol, as TURNS
 const SPAN = Symbol('span');
+// a typed view whose main line kept its side of a card with room for one port, a line beside it moved instead (audit 68), laid
+// out with the main line moved as before too (layoutTyped): a symbol, as TURNS
+const MAIN_SIDE = Symbol('main side');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
+// ponytail: the searches a label's spot may take with a label near it moved to each of that label's other spots (placeLabel),
+// counted over a layout pass; past them a label goes on to the late tries. 200 is some seven times the most a test, example or
+// bench model takes in a pass (29, bench model b69's back view; audit 71)
+const LABEL_TRIES = 200, LABEL_CAP = Symbol('label tries'); // LABEL_CAP: a test's lower bound in its place, a symbol as TURNS
 // gridRoute's working arrays, kept between its searches and cleared for each: a fresh set for every search (a view of 90 cards
 // makes some 270, on grids of up to 64000 cells) was most of a route's time spent in allocating and collecting them. Kept for
 // grids of up to GR_MAX cells (some 15 MB), and a heap of up to a million items; a bigger one is made for its search alone
@@ -41,6 +51,83 @@ const grPool = N => { const P = N > GR_MAX ? { n: 0, hn: 0 } : GR_POOL; if (P.n 
   return P; };
 const labelW = e => widest(String((e.step != null ? e.step + ' · ' : '') + (e.label || '')).split(EDGE_BREAK), r => textW(fit(r, 10, e.cut || 150), 10)) + 12; // its widest line
 
+/* Anchors (layout-flow note, sections 6.2 and 14): an id -> row map, or a Map, read for the ids in cols with a finite row.
+   null when there is none, so a view with no anchor takes the paths it took before anchors were added. */
+function anchorsIn(cols, anchor) {
+  if (!anchor) return null; const get = anchor instanceof Map ? id => anchor.get(id) : id => (Object.hasOwn(anchor, id) ? anchor[id] : undefined);
+  const pin = Object.create(null); let any = false;
+  cols.forEach(c => c.forEach(id => { const r = get(id); if (typeof r === 'number' && Number.isFinite(r)) { pin[id] = r; any = true; } }));
+  return any ? pin : null;
+}
+/* A column with anchors, in order: its anchored items by row (the order given breaking ties), and the free items between
+   them on the side each was on (the number of anchored items before it in the column as it is), each side by key, then by
+   its place. keyed: [id, key] in the column's order. */
+function bySide(c, pin, keyed) {
+  if (!c.some(id => id in pin)) return c;
+  const anchored = c.filter(id => id in pin).map((id, i) => [id, i]).sort((x, y) => pin[x[0]] - pin[y[0]] || x[1] - y[1]), rank = new Map(anchored.map(([id], j) => [id, j]));
+  let seen = 0; return keyed.map(([id, key], i) => { const part = id in pin ? 2 * rank.get(id) + 1 : 2 * seen; if (id in pin) seen++; return [id, part, key ?? 0, i]; })
+    .sort((p, q) => p[1] - q[1] || p[2] - q[2] || p[3] - q[3]).map(x => x[0]);
+}
+/* Each item's top row in a column with anchors: an anchored item at its row, the items before the first stacked up from it,
+   the items after each stacked down from it (a fixed item at its row, as without anchors). Writes into at. */
+function stackAt(c, h, fixed, pin, at) {
+  const js = []; c.forEach((id, i) => { if (id in pin) js.push(i); });
+  let r = pin[c[js[0]]]; for (let i = js[0] - 1; i >= 0; i--) { r -= h(c[i]); at[c[i]] = fixed[c[i]] ?? r; }
+  js.forEach((j, n) => { at[c[j]] = pin[c[j]]; let r = pin[c[j]] + h(c[j]); for (let i = j + 1, e = n + 1 < js.length ? js[n + 1] : c.length; i < e; i++) { at[c[i]] = fixed[c[i]] ?? r; r += h(c[i]); } });
+  return at;
+}
+/* A view's main flow (layout-flow note, section 6.1), from its lines as the layout reads them: lines, [{ from, to, flow, step,
+   change }]; o.back, the indexes of the lines that close a loop (loopsOf's); o.dep(line), true for a dependency line; o.cards,
+   the view's cards in order (ties go to the first mentioned); o.run, a numbered view (render "sequence"), whose lines are its
+   steps in order; o.pairs, a view that draws a line and its pair the other way as one two-way line (a map without keepPairs);
+   o.avoid, the indexes of lines the longest path keeps off where it can. The main flow is, in this order: the longest path among the lines marked flow "main"; else the longest
+   chain of stepped lines in step order (2 < 2a < 2b < 3), each starting where the one before ends, the first of a step's
+   suffixes on it and the others branches; else, in a numbered view, the longest such chain in run order; else the longest
+   path of flow lines from a card no flow line comes into. Returns null when the view has no flow line, else { cards, lines,
+   by, breaks }: the main cards in order, the indexes of the main lines, how it was found ("main", "step", "run" or "path"),
+   and for a chain, each stepped line that did not start where the one before it ended ([its index, that line's index]).
+   Pure: the layout (flowPos), validate() and the score read it, and stories (section 10) will. */
+function mainFlow(lines, o = {}) {
+  const back = o.back || new Set(), dep = o.dep || (() => false), list = Array.from(lines || []);
+  const flowK = list.map((e, k) => k).filter(k => { const e = list[k]; return e && e.from != null && e.to != null && e.from !== e.to && !back.has(k) && !dep(e); });
+  if (!flowK.length) return null;
+  const first = new Map(); [...(o.cards || []), ...flowK.flatMap(k => [list[k].from, list[k].to])].forEach(id => { if (!first.has(id)) first.set(id, first.size); });
+  const pathOf = ks => { // the longest path over the lines ks (a DAG once loops are out), ties to the earlier line and the first card
+    const ins = new Map(), outs = new Map(), ids = [...new Set(ks.flatMap(k => [list[k].from, list[k].to]))].sort((a, b) => first.get(a) - first.get(b));
+    ks.forEach(k => { const { from, to } = list[k]; (outs.get(from) || outs.set(from, []).get(from)).push(k); ins.set(to, (ins.get(to) || 0) + 1); });
+    const len = new Map(ids.map(id => [id, 0])), pred = new Map(), queue = ids.filter(id => !ins.get(id));
+    for (let q = 0; q < queue.length; q++) for (const k of outs.get(queue[q]) || []) { const { from, to } = list[k];
+      if (len.get(from) + 1 > len.get(to)) { len.set(to, len.get(from) + 1); pred.set(to, k); }
+      ins.set(to, ins.get(to) - 1); if (!ins.get(to)) queue.push(to); }
+    let end = queue[0]; queue.forEach(id => { if (len.get(id) > len.get(end) || len.get(id) === len.get(end) && first.get(id) < first.get(end)) end = id; });
+    const out = []; for (let id = end; pred.has(id); id = list[pred.get(id)].from) out.unshift(pred.get(id));
+    return out; };
+  const chainOf = ks => { // ks in order: chains of lines each starting where the one before ended, the longest kept (the first of equals)
+    const chains = [], breaks = []; let cur = null, seen = null;
+    ks.forEach(k => { const e = list[k], last = cur && list[cur.at(-1)];
+      if (last && e.from === last.to && !seen.has(e.to)) { cur.push(k); seen.add(e.to); return; }
+      if (last) breaks.push([k, cur.at(-1)]);
+      chains.push(cur = [k]); seen = new Set([e.from, e.to]); });
+    return { ks: chains.reduce((a, c) => c.length > a.length ? c : a, []), breaks }; };
+  const done = (ks, by, breaks = []) => { if (!ks.length) return null; const cards = [list[ks[0]].from, ...ks.map(k => list[k].to)]; return { cards, lines: ks, by, breaks }; };
+  const marked = flowK.filter(k => list[k].flow === 'main');
+  if (marked.length) return done(pathOf(marked), 'main');
+  const stepped = flowK.filter(k => list[k].step != null && list[k].step !== '');
+  if (stepped.length) { // each step's first suffix: 2 and 2a and 2b are one step, 2 (else 2a) on the main flow
+    const num = s => { const m = /^\d+(?:\.\d+)?/.exec(String(s)); return m ? 'n' + +m[0] : 't' + String(s); }, taken = new Set();
+    const ks = stepped.map((k, i) => [k, i]).sort((a, b) => stepOrder(list[a[0]].step, list[b[0]].step) || a[1] - b[1]).map(x => x[0])
+      .filter(k => { const n = num(list[k].step); if (taken.has(n)) return false; taken.add(n); return true; });
+    const c = chainOf(ks); return done(c.ks, 'step', c.breaks);
+  }
+  if (o.run) { const ks = flowK.filter(k => !(typeof list[k].change === 'string' && list[k].change.toLowerCase() === 'removed')), c = chainOf(ks); return done(c.ks, 'run', c.breaks); }
+  // o.pairs: a line whose pair the other way is a line too is drawn as one line with a head at each end (prepEdges), which
+  // reads no way, so the longest path does not run along it
+  // o.avoid: the indexes of lines the path takes only when it has no other (a line into a person at the start, out of an
+  // external card at the end, to or from a store under the flow: section 7.1's zones)
+  const two = o.pairs ? new Set(list.filter(e => e && e.from !== e.to).map(e => e.from + '>' + e.to)) : null, avoid = o.avoid || new Set();
+  const free = flowK.filter(k => !avoid.has(k) && !(two && two.has(list[k].to + '>' + list[k].from))), path = free.length ? pathOf(free) : [];
+  return done(path.length ? path : pathOf(flowK), 'path');
+}
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
 /* Lines cross as little as the order of the cards in a column allows (#53): a few barycentre sweeps (each card goes where
@@ -51,11 +138,16 @@ const labelW = e => widest(String((e.step != null ? e.step + ' · ' : '') + (e.l
    A box is one item of its column, h(id) rows tall, and a line meets it at the row of its card inside (#86): [a, b, oa, ob]
    leaves a at row oa inside it and reaches b at row ob, as rowsFor's links do (the middle when not given). Each line into a
    box has its own entry, so two that cross on the way in to its cards count as crossing; they all met it at one point.
-   fixed: items at a set row in columns of their own, which stay as they are (a box's far ends, in blockPos). */
-function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // maps by id: no prototype (M3)
+   fixed: items at a set row in columns of their own, which stay as they are (a box's far ends, in blockPos).
+   anchor: id -> row (layout-flow note, section 6.2), items held at a row in a column that may hold free items too (a main
+   flow's cards; two rows a column when it wraps, section 14). Each anchored item stays between the free items before it in
+   the order given and those after it, which are ordered each side on their own; a column's anchored items go in order of
+   their rows. With no anchor in cols, untangle is as it was. */
+function untangle(cols, links, h = () => 1, fixed = Object.create(null), anchor = null) { // maps by id: no prototype (M3)
   const colOf = Object.create(null); cols.forEach((c, k) => c.forEach(id => { colOf[id] = k; }));
+  const pin = anchorsIn(cols, anchor); if (pin) cols.forEach((c, k) => { cols[k] = bySide(c, pin, c.map((id, i) => [id, i])); });
   const segs = [], extra = new Set(), want = Object.create(null), hh = id => extra.has(id) ? 1 : h(id), mid = (id, o) => o ?? (hh(id) - 1) / 2;
-  const tops = () => { const at = Object.create(null); cols.forEach(c => { let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
+  const tops = () => { const at = Object.create(null); cols.forEach(c => { if (pin && c.some(id => id in pin)) return stackAt(c, hh, fixed, pin, at); let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
   const at0 = tops();
   links.forEach(([a, b, oa, ob], n) => {
     const ka = colOf[a], kb = colOf[b]; if (ka == null || kb == null || kb <= ka) return;
@@ -65,8 +157,12 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
       segs.push([prev, p, po, 0]); prev = p; po = 0; }
     segs.push([prev, b, po, mid(b, ob)]);
   });
-  if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k);
-    if (ps.length) cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
+  if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k); if (!ps.length) return;
+    if (pin && c.some(id => id in pin)) { // the points merged in by row, the column's own order kept (a crowded side may overrun the anchor's row)
+      const ds = ps.map(p => [p, want[p]]).sort((x, y) => x[1] - y[1]), out = []; let d = 0;
+      c.forEach(id => { while (d < ds.length && ds[d][1] < at0[id]) out.push(ds[d++][0]); out.push(id); }); while (d < ds.length) out.push(ds[d++][0]);
+      cols[k] = out; return; }
+    cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
   const ins = Object.create(null), outs = Object.create(null); segs.forEach(([a, b, oa, ob]) => { (outs[a] ||= []).push([b, ob, oa]); (ins[b] ||= []).push([a, oa, ob]); });
   // two lines out of one column cross when their order at its end is the other way round from their order at their start (a
   // tie either end is no crossing): sorted by their start (ties by their end), the crossings are the pairs an earlier one ends
@@ -79,12 +175,13 @@ function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // ma
       L.forEach(([, v], seen) => { const r = rank.get(v); let le = 0; for (let i = r; i > 0; i -= i & -i) le += bit[i]; n += seen - le; for (let i = r; i <= vs.length; i += i & -i) bit[i]++; }); }
     return n; };
   let best = segs.length > 1 ? crossings() : 0, keep = cols.map(c => c.slice()); // the order given, unless one crosses less
-  for (let it = 0; it < 8 && best; it++) {
+  for (let it = 0; it < BARY_SWEEPS && best; it++) {
     const down = it % 2 === 0, seq = cols.map((_, k) => k).filter(k => (down ? k > 0 : k < cols.length - 1) && !cols[k].every(id => id in fixed));
     if (!down) seq.reverse();
     for (const k of seq) { const at = tops(), side = down ? k - 1 : k + 1; // where each item would be for its lines to run level
       const key = id => { const nb = ((down ? ins : outs)[id] || []).filter(([x]) => colOf[x] === side).map(([x, ox, o]) => at[x] + ox - o);
         return nb.length ? nb.reduce((x, y) => x + y, 0) / nb.length : at[id]; };
+      if (pin && cols[k].some(id => id in pin)) { cols[k] = bySide(cols[k], pin, cols[k].map(id => [id, key(id)])); continue; }
       cols[k] = cols[k].map((id, i) => [id, key(id), i]).sort((p, q) => p[1] - q[1] || p[2] - q[2]).map(x => x[0]); }
     const n = crossings(); if (n < best) { best = n; keep = cols.map(c => c.slice()); }
   }
@@ -102,24 +199,38 @@ function pullSources(ids, links, rank) {
    to, then again from the left, as near as the order allows with its height between it and the next (least squares: pool
    adjacent violators); on half rows from 0. A line between cards on one row runs straight, past fewer cards. h: an item's
    height in rows (a box in a view with boxes); a link [a, b, oa, ob] leaves a at row oa inside it and reaches b at row
-   ob (a box's card), else at its middle. fixed: items at a set row, in columns of their own that stay (as untangle's). */
-function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
+   ob (a box's card), else at its middle. fixed: items at a set row, in columns of their own that stay (as untangle's).
+   anchor: id -> row (layout-flow note, section 6.2), items that keep that row, never moved, in columns that may hold free
+   items too; more than one a column (two main rows, section 14) splits it into more sides. Each column is split at its
+   anchored items: the items before an anchored item fit into the rows above it (its row less their heights), those after
+   it into the rows from its row plus its height, and those between two into the rows between, each side by the same
+   pooling, with the column's order kept (its anchored items in order of their rows, as untangle leaves them). Rows are
+   then not moved to start at 0: an anchor's row is the row it asked for, and an item above row 0's anchor has a row
+   below 0. With no anchor in cols, rowsFor is as it was. */
+function rowsFor(cols, links, h = () => 1, fixed = Object.create(null), anchor = null) {
   const row = Object.create(null); if (!cols.length) return row; // an empty view
-  const colOf = Object.create(null); cols.forEach((c, k) => { let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); colOf[id] = k; }); });
+  const pin = anchorsIn(cols, anchor), held = c => !!pin && c.some(id => id in pin);
+  const colOf = Object.create(null); cols.forEach((c, k) => { c.forEach(id => { colOf[id] = k; }); if (held(c)) return stackAt(c, h, fixed, pin, row); let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); }); });
   const ins = Object.create(null), outs = Object.create(null), at = (id, o) => o ?? (h(id) - 1) / 2; // where a link meets an item, in rows from its top
   links.forEach(([a, b, oa, ob]) => { if (colOf[a] == null || colOf[b] == null || colOf[b] <= colOf[a]) return;
     (outs[a] ||= []).push([b, at(b, ob), at(a, oa)]); (ins[b] ||= []).push([a, at(a, oa), at(b, ob)]); });
   const median = xs => { const s = xs.slice().sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-  const fit = (list, want) => { const blocks = []; let off = 0;
+  // lo, hi: the least and the most the first item's top may be (its side's room between anchors), the pooled rows held to them
+  const fit = (list, want, lo = -Infinity, hi = Infinity) => { const blocks = []; let off = 0;
     list.forEach(id => { blocks.push({ ids: [id], sum: want[id] - off, n: 1 }); off += h(id);
       while (blocks.length > 1 && blocks.at(-2).sum / blocks.at(-2).n > blocks.at(-1).sum / blocks.at(-1).n) { const b = blocks.pop(), a = blocks.at(-1); a.ids.push(...b.ids); a.sum += b.sum; a.n += b.n; } });
-    off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = b.sum / b.n + off; off += h(id); })); };
-  for (const [from, to, step] of [[1, cols.length, 1], [cols.length - 2, -1, -1], [1, cols.length, 1]])
-    for (let k = from; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
+    off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = (pin ? Math.max(lo, Math.min(hi, b.sum / b.n)) : b.sum / b.n) + off; off += h(id); })); };
+  const fitSides = (list, want) => { let from = 0, top = -Infinity; // each run of free items between anchored ones, in the room it has
+    list.forEach((id, i) => { if (!(id in pin) && i < list.length - 1) return; const end = id in pin ? i : i + 1, side = list.slice(from, end);
+      if (side.length) fit(side, want, top, id in pin ? row[id] - side.reduce((t, x) => t + h(x), 0) : Infinity);
+      if (id in pin) { from = i + 1; top = row[id] + h(id); } }); };
+  for (const step of ROW_SWEEPS)
+    for (let k = step > 0 ? 1 : cols.length - 2, to = step > 0 ? cols.length : -1; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
       cols[k].forEach(id => { const nb = (step > 0 ? ins : outs)[id] || []; want[id] = nb.length ? median(nb.map(([x, ox, o]) => row[x] + ox - o)) : row[id]; });
-      fit(cols[k], want); }
-  const low = Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));
-  cols.forEach(c => !c.every(id => id in fixed) && c.forEach((id, i) => { row[id] = Math.round((row[id] - low) * 2) / 2; if (i) row[id] = Math.max(row[id], row[c[i - 1]] + h(c[i - 1])); }));
+      if (held(cols[k])) fitSides(cols[k], want); else fit(cols[k], want); }
+  const low = pin ? 0 : Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));
+  cols.forEach(c => !c.every(id => id in fixed) && c.forEach((id, i) => { if (pin && id in pin) return; row[id] = Math.round((row[id] - low) * 2) / 2; if (i) row[id] = Math.max(row[id], row[c[i - 1]] + h(c[i - 1])); }));
+  if (pin) cols.forEach(c => { if (held(c)) for (let i = c.length - 2; i >= 0; i--) if (!(c[i] in pin)) row[c[i]] = Math.min(row[c[i]], row[c[i + 1]] - h(c[i])); }); // above an anchor: up from it, not over it
   return row;
 }
 /* A typed view's pins, settled (audit 58): two pins on one cell, a pin on the cell of a card in a box it is not in or in such
@@ -163,12 +274,22 @@ function settlePins(pins, at, up, fixed = null, rows = .5) { // rows: how far pa
   Object.defineProperty(out, MOVED, { value: moved });
   return out;
 }
+/* A pile: three or more pins on one cell, which no hand made (a host that writes one cell for every card; 0.44.0 drew them over
+   each other). Settled one by one round that cell (settlePins), 80 linked classes in 10 packages took a picture of crossing
+   lines that routed in a second a layout, and pinsClear (src/map/context.js) laid it out some 20 times (audit 64 lane, 26 s).
+   The first pin of a pile keeps the cell; the others are dropped, so their cards take a slot as a card with no pin does. Two
+   pins on one cell (Alt + an arrow onto a pinned card: audit 58) still settle. pins: [[id, cell]]; the same list when none drops */
+function unpile(pins) {
+  const at = new Map(); pins.forEach(([i, p]) => { const k = p[0] + ',' + p[1]; if (!at.has(k)) at.set(k, []); at.get(k).push(i); });
+  const drop = new Set([...at.values()].flatMap(a => (a.length > 2 ? a.slice(1) : [])));
+  return drop.size ? pins.filter(([i]) => !drop.has(i)) : pins;
+}
 /* A view that ranks its own cards (component, BPMN, requirement) with pins: at, its ranked cells by id, the pins [[id, cell]]
    settled (settlePins) and put in, then each other card, in order, at its cell, or down a row while a card is there, and on
    to the nearest clean slot when its box would grow there over what it does not hold (the component gallery's Basket pinned
    on Checkout's cell, Checkout down past Payment provider). at is changed and returned */
 function pinCells(at, P, up, order = Object.keys(at)) {
-  const pinned = new Set(P.map(([id]) => id)), S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up), held = new Set(pinned);
+  P = unpile(P); const pinned = new Set(P.map(([id]) => id)), S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up), held = new Set(pinned);
   let taken = P.map(([id]) => S[id]); const free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
   P.forEach(([id]) => { at[id] = S[id]; }); Object.assign(at, S[MOVED]); // what a fresh row a pin went in moved down
   order.forEach(id => { if (pinned.has(id) || !Object.hasOwn(at, id)) return; let [c, r] = at[id]; if (!free(c, r)) { while (!free(c, r)) r++;
@@ -180,13 +301,15 @@ function pinCells(at, P, up, order = Object.keys(at)) {
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
-  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew;
-  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; }
+  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew, kept = g.kept, side = g.side;
+  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; kept ||= g.kept; side ||= g.side; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
-  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0); // a label not drawn the worst
-    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (snaked(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
+    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; kept ||= g2.kept; side ||= g2.side; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
   if (grew) g.grew = true; // and a side grown over a box's title
+  if (kept) g.kept = true; // and a main line that kept its side
+  if (side) g.side = true; // a side swap kept (dg.sideSwap): layoutTyped judges it by check()
   if (rr) g.rr = true; // a typed view's request/reply swap kept: buildGeo (context.js) judges it by the finished picture
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
   // line that closes a loop leaves its source on the far side, out round the map as a loop under the boxes does, and still comes
@@ -194,7 +317,7 @@ function layoutGraph(dg, map) {
   // records); of two other lines, the steeper comes into its target's top or bottom (clinic's "Sends texts" with Clinic bookings
   // unfolded, up past Patient records into the SMS gateway's bottom). ponytail: a layout more, so only up to 30 cards (as
   // bestFlow); a larger view keeps its crossings
-  const refs = [], pairs = map && !dg.quick && !dg.flipped && dg.nodes.length <= 30 ? routeAudit(g, '', null, refs).flatMap((s, k) => s.endsWith(' cross') ? [refs[k]] : []) : [];
+  const refs = [], pairs = map && !dg.quick && !dg.flipped && dg.nodes.length <= CROSS_CAP ? routeAudit(g, '', null, refs).flatMap((s, k) => s.endsWith(' cross') ? [refs[k]] : []) : [];
   const far = { L: 'right', R: 'left', T: 'bottom', B: 'top' }, dy = e => (e.s.y + e.s.h / 2) - (e.t.y + e.t.h / 2), out = new Map();
   pairs.forEach(p => p.forEach(e => { if (e.back && !e.fixed && !e.fromSide) out.set(e.from + '>' + e.to, ['fromSide', far[e.fs]]); }));
   pairs.forEach(p => { const e = p.filter(e => !e.back && !e.fixed && !e.toSide && /[LR]/.test(e.ts) && dy(e)).sort((a, b) => Math.abs(dy(b)) - Math.abs(dy(a)))[0];
@@ -211,7 +334,7 @@ function layoutGraph(dg, map) {
   const r2 = [], left = n && best !== g ? routeAudit(best, '', null, r2).flatMap((s, k) => s.endsWith(' cross') ? [r2[k]] : []) : pairs;
   const feeds = (s, t) => best.edges.some(o => o.s === s && o.t === t), both = ([a, b]) => { const k = a.t !== b.t && best.edges.filter(o => [a.t, b.t].includes(o.t) && feeds(o.s, a.t) && feeds(o.s, b.t)); return k && k.length >= 4 ? k : []; };
   const round = [...new Set([...left.slice(0, 2).flatMap(both), ...left.slice(0, 2).flat()])].filter(e => !e.back && !e.fixed && !e.fromSide && !e.toSide && /[LR]/.test(e.fs) && /[LR]/.test(e.ts));
-  let tries = 4;
+  let tries = OUTSIDE_TRIES;
   round.forEach(e => { const side = { fromSide: e.fs === 'R' ? 'left' : 'right', toSide: dy(e) >= 0 ? 'top' : 'bottom' };
     [...new Set([bestDg, dg])].forEach(d => { if (n && tries-- > 0) attempt({ ...d, edges: d.edges.map(x => x.from === e.from && x.to === e.to ? { ...x, ...side } : x) }); }); });
   // fan-in (issue 149): lines into a card that six or more lines come into still cross. One line of such a pair at a time, of
@@ -221,11 +344,11 @@ function layoutGraph(dg, map) {
   // r19's logger: boxed 5 → 1, plain 6 → 3. ponytail: 14 layouts more at most, on views of up to 30 cards; a crossing-aware
   // placement would reach plain's last ones (search beside db)
   const fan = Object.create(null); best.edges.forEach(e => { if (!e.back) fan[e.to] = (fan[e.to] || 0) + 1; });
-  if (map && dg.fan && !dg.quick && !dg.flipped && dg.nodes.length <= 30 && Object.values(fan).some(k => k >= 6)) {
-    const audit = h => { const r = [], is = routeAudit(h, '', null, r), hot = r.filter((p, k) => / (cross|share a line)$/.test(is[k]) && p.some(e => fan[e.to] >= 6));
+  if (map && dg.fan && !dg.quick && !dg.flipped && dg.nodes.length <= CROSS_CAP && Object.values(fan).some(k => k >= FAN_IN)) {
+    const audit = h => { const r = [], is = routeAudit(h, '', null, r), hot = r.filter((p, k) => / (cross|share a line)$/.test(is[k]) && p.some(e => fan[e.to] >= FAN_IN));
       return { hot, n: is.length }; };
     const far = { L: 'right', R: 'left', T: 'bottom', B: 'top' }, tried = new Set(), start = audit(best), g0 = [best, bestDg], lined = new Set(dg.edges.flatMap(e => [e.from, e.to]));
-    let cur = start, left = 14;
+    let cur = start, left = FAN_TRIES;
     const ways = e => [['fromSide', far[e.fs]], ['toSide', far[e.ts]], ['foot', e.to]].map(([k, s]) => {
       if (k !== 'foot') return !e[k] && s && { key: e.from + '>' + e.to + k, d: { ...bestDg, edges: bestDg.edges.map(x => x.from === e.from && x.to === e.to ? { ...x, [k]: s } : x) } };
       const nodes = bestDg.nodes.map(n => ({ ...n })), me = nodes.find(n => n.id === s), col = nodes.filter(n => n !== me && n.col === me.col), rows = col.filter(n => lined.has(n.id)).map(n => n.row);
@@ -242,7 +365,7 @@ function layoutGraph(dg, map) {
   return best;
 }
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
-  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN]; let used = false, turns = false, grew = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
+  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
@@ -290,6 +413,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const place = () => {
     x = 0; for (let c = Math.floor(cols[0] ?? 0); c <= Math.ceil(cols[cols.length - 1] ?? 0); c++) { colX[c] = x; x += (colW[c] || NW) + gap(c); }
     nodes.forEach(n => { n.x = cx(n.col) + ((colW[n.col] || n.w) - n.w) / 2; n.y = rowY(n.row); if (map && n.k === 'm-script') { n.h = NH - 22; n.y += 11; } });
+    // an arranged typed view's main cards (mainCard, layout-flow.md section 12 step 10) centred on the tallest main card of their row
+    if (dg.typed && nodes.some(n => n.mainCard)) { const H = Object.create(null); nodes.forEach(n => { if (n.mainCard) H[n.row] = Math.max(H[n.row] || 0, n.h); });
+      nodes.forEach(n => { if (n.mainCard) n.y += (H[n.row] - n.h) / 2; }); }
     let prev = null; // that row in column order: each card at its column, or right of the one before when that one is wider
     nodes.filter(n => n.aside).sort((a, b) => a.row - b.row || a.col - b.col).forEach(n => { if (prev && prev.row === n.row) n.x = Math.max(n.x, prev.x + prev.w + CG); prev = n; });
   };
@@ -312,7 +438,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
   const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
+  // nor does a typed box hold a card of a box beside it in the same box (sibling: audit 71, a state's region grown over its
+  // sibling region's card by fanned transitions, laid out down, so the two regions were never moved apart). Only boxes of one
+  // parent: a top-level box over another stack's card keeps it (tests/deployment-stress.json's all, which moved apart drew more crossings)
+  const sibling = (f, id) => !!dg.typed && f.parent != null && (boxesOf.get(id) || []).some(b => b !== f.id && upOf.get(b) === f.parent);
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !sibling(f, n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
   // border. Narrower, the labels found no spot inside and each was set on the other line (audit 26: Mermaid's keyboard example)
@@ -510,7 +640,13 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       // out right, four transitions from a composite state to the state beside it, two of them on one track; audit 38: seven
       // between two states, all moved went under the card, where the row below left one track)
       const oth = e => e.s === n ? e.t : e.s, level = o => (!TB || NEST) && o.box && o.y < n.y && o.y + o.h > n.y + n.h, turn = new Map();
-      const moved = mine.sort((a, b) => Math.abs(far(b)) - Math.abs(far(a))).filter(e => !facesLoop(n, far(e) < 0 ? 'T' : 'B')).slice(0, over);
+      // a typed view's main line (an arranged view's, mainLine) keeps its side, the middle port mainPort gives it, and a line
+      // beside it moves instead (audit 68: an arranged overview's merge, one port high, sent its main line out of its side and
+      // round the loop-back flow that took the port, so the two crossed); layoutTyped lays the view out as before too and keeps
+      // the one check() has less to say of (the activity stress view drew a crossing more). A map's lines move as before
+      const pin = dg.typed && !dg[MAIN_SIDE], pinned = e => !!(pin && e.mainLine), steep = (a, b) => Math.abs(far(b)) - Math.abs(far(a));
+      if (pin && mine.some(e => e.mainLine)) { const was = [...mine].sort(steep).slice(0, over); if (was.some(e => e.mainLine)) kept = true; }
+      const moved = mine.sort((a, b) => pinned(a) - pinned(b) || steep(a, b)).filter(e => !facesLoop(n, far(e) < 0 ? 'T' : 'B')).slice(0, over);
       moved.forEach(e => {
         const o = oth(e), k = turn.get(o) || 0, all = mine.every(d => oth(d) === o), two = !!(level(o) || NEST && !o.box && Math.abs(far(e)) < 1) && (all || NEST && !dg[TURNS] && (TB || !!level(o)) && moved.filter(d => oth(d) === o).length > 1) && moved.length > 1; turn.set(o, k + 1); if (two && (TB || !level(o))) used = true; if (two && !all) turns = true;
         const ns = (far(e) < 0) !== (two && k % 2 === 1) ? 'T' : 'B';
@@ -557,9 +693,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     list.sort((a, b) => vertical ? ((a.e.under || 0) - (b.e.under || 0)) || (a.other.y - b.other.y) || (lean(a) - lean(b)) || ((side === 'R' ? -1 : 1) * (a.other.x - b.other.x)) : turn(a) - turn(b));
     const sp = vertical ? null : sideSpan(n, side);
     const len = vertical ? n.h : sp ? sp[1] - sp[0] : n.w, mid = sp ? (sp[0] + sp[1]) / 2 : n.x + n.w / 2;
-    const gap = Math.min(vertical ? 16 : 26, (len * 0.84) / Math.max(1, list.length)), cy = n.y + n.h / 2;
+    // mainPort (layout-flow note, section 6.2): a main-flow line takes the side's middle, the others spread round it in their
+    // order, closer (not under 10 px apart) when they would not fit the side else, so it runs straight between two cards on
+    // the main row; as near the middle as they fit when even that is too little
+    const mp = vertical ? list.findIndex(it => it.e.mainLine) : -1, reach = mp >= 0 ? Math.max(mp, list.length - 1 - mp) : 0;
+    const gap = Math.min(vertical ? 16 : 26, (len * 0.84) / Math.max(1, list.length), reach ? Math.max(10, len * 0.42 / reach) : Infinity), cy = n.y + n.h / 2;
+    const lim = len * 0.42 / gap, mid0 = mp >= 0 ? Math.min(lim, Math.max(list.length - 1 - lim, mp)) : (list.length - 1) / 2;
     list.forEach((it, i) => {
-      const off = (i - (list.length - 1) / 2) * gap;
+      const off = (i - mid0) * gap;
       const p = side === 'R' ? [n.x + n.w, cy + off] : side === 'L' ? [n.x, cy + off]
         : side === 'T' ? [mid + off, n.y] : [mid + off, n.y + n.h];
       portAt(it, side, p);
@@ -605,6 +746,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const BEND = map ? 60 : 26, CROSS = 900; // maps: few bends
   const OUT = { R: [1, 0], L: [-1, 0], T: [0, -1], B: [0, 1] };
   const nodeRects = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h }));
+  // each card with the room a label keeps from it, strict (its stubs') and relaxed (its title's), found once a pass (fits)
+  const cardRoom = [null, null], cardsOf = relax => cardRoom[+relax] ||= nodeRects.map(r => relax ? { x: r.x, y: r.y - 10, w: r.w, h: r.h + 10 } : { x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 });
+  // a route's runs as boxes (R: x, y, w, h) and as their least and most x and y (B), and its bounds, found once a pass (fits)
+  const RUNS = new WeakMap(), runsOf = P => { let L = RUNS.get(P); if (L) return L; const S = segsOf(P), R = new Float64Array(4 * S.length), B = new Float64Array(4 * S.length);
+    L = { R, B, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+    S.forEach(([p, q], i) => { const k = 4 * i; R[k] = Math.min(p[0], q[0]); R[k + 1] = Math.min(p[1], q[1]); R[k + 2] = Math.abs(q[0] - p[0]); R[k + 3] = Math.abs(q[1] - p[1]);
+      B[k] = Math.min(p[0], q[0]); B[k + 1] = Math.max(p[0], q[0]); B[k + 2] = Math.min(p[1], q[1]); B[k + 3] = Math.max(p[1], q[1]);
+      L.x0 = Math.min(L.x0, B[k]); L.x1 = Math.max(L.x1, B[k + 1]); L.y0 = Math.min(L.y0, B[k + 2]); L.y1 = Math.max(L.y1, B[k + 3]); });
+    RUNS.set(P, L); return L; };
   const gapLinesX = [], gapLinesY = [];
   if (dg.abs) {
     (dg.lanes || []).forEach(l => gapLinesX.push(l.x - (dg.laneGap || 32) / 2, l.x + 8, l.x + l.w - 8, l.x + l.w + (dg.laneGap || 32) / 2));
@@ -860,36 +1010,53 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   function* fits(e, text, pass) { const relax = pass === 2 || pass === 3 || pass === 5, sub = subOf(e, text);
     const segs = segsOf(e.pts).map((s, i) => ({ a: s[0], b: s[1], i, l: Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), h: s[0][1] === s[1][1] }));
     const order = [...segs].sort((p, q) => (q.h - p.h) * 40 + (q.l - p.l));
-    // the runs of the other routed lines, as boxes (for spots) and as their ends' least and most x and y (for a box a label would
-    // take), found once a call: routed does not change while it yields. Found for every spot, they made a view of 150 labelled
-    // lines into one card spend seconds here (audit 55)
-    let runs = null, ends = null;
-    const cards = nodeRects.map(r => relax ? { x: r.x, y: r.y - 10, w: r.w, h: r.h + 10 } : { x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 }); // each card and the room its stubs take
-    const lines = () => runs ||= [...routed.filter(r => r !== e).map(r => r.pts), e.pts].flatMap(P => segsOf(P).map(([p, q]) => ({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) })));
-    const onLine = g => { if (!ends) { const B = []; for (const r of routed) if (r !== e) for (const [a, b] of segsOf(r.pts)) B.push(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); ends = Float64Array.from(B); }
-      for (let k = 0; k < ends.length; k += 4) if (ends[k + 1] > g.x && ends[k] < g.x + g.w && ends[k + 3] > g.y && ends[k + 2] < g.y + g.h) return true; return false; }; // segHitsRect
+    // the cards (each with the room its stubs take), tags, labels and runs of lines that meet a segment's corridor (the box every
+    // spot's box on it lies in), found once a segment: each spot is tested only against them, and spots() finds its spots only
+    // among them, in the order it took them in. Every spot tested every card, label and line, and spots() made a box of each, so a
+    // decision of 400 labelled exits took 52 s (audit 70). A line's runs are found once a pass (runsOf: its route is never changed
+    // in place, only replaced); the labels are found again after each yield, whose taker may place and take back labels
+    const cards = cardsOf(relax), others = routed.filter(r => r !== e).map(r => runsOf(r.pts)), all = [...others, runsOf(e.pts)];
+    const meets = (r, C) => r.x < C.x + C.w && C.x < r.x + r.w && r.y < C.y + C.h && C.y < r.y + r.h; // hit
+    // runs meeting C: as boxes { x, y, w, h } of the other lines' and then e's (box), else as their least and most x and y of
+    // the other lines' (segHitsRect); a line whose bounds miss C is passed over whole
+    const runsIn = (C, box) => { const got = [];
+      for (const L of box ? all : others) { if (L.x1 < C.x || L.x0 > C.x + C.w || L.y1 < C.y || L.y0 > C.y + C.h) continue;
+        const R = L.R, B = L.B; for (let k = 0; k < R.length; k += 4) if (box ? R[k] < C.x + C.w && C.x < R[k] + R[k + 2] && R[k + 1] < C.y + C.h && C.y < R[k + 1] + R[k + 3]
+          : B[k + 1] > C.x && B[k] < C.x + C.w && B[k + 3] > C.y && B[k + 2] < C.y + C.h) got.push(box ? { x: R[k], y: R[k + 1], w: R[k + 2], h: R[k + 3] } : [B[k], B[k + 1], B[k + 2], B[k + 3]]); }
+      return got; };
+    const onLine = (g, near) => near.some(E => E[1] > g.x && E[0] < g.x + g.w && E[3] > g.y && E[2] < g.y + g.h); // segHitsRect
     // the strict spots along a segment: the middle, a third and a fifth of the way, then those just clear of each card's stub room,
-    // tag, label and line beside it, the middle's nearest first: where the label fits, one of them is in. The five alone missed a
-    // gap 15 px wide, and the label sat on a box's border (clinic's "Queues reminders")
-    const spots = (sg, w, hgt, off = 0) => { const v = sg.h ? 0 : 1, lo = sg.a[v], len = sg.b[v] - lo, half = (v ? hgt : w) / 2 + 3.5, mid = sg.a[1 - v] + off, across = (v ? w : hgt) / 2 + 3;
-      const span = r => [[r.x, r.x + r.w], [r.y, r.y + r.h]], rs = [...nodeRects.map(r => ({ x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 })), ...tagRects, ...placed, ...lines()];
-      return [.5, .32, .68, .2, .8, ...rs.map(span).filter(s => s[1 - v][0] < mid + across && s[1 - v][1] > mid - across).flatMap(s => [s[v][0] - half, s[v][1] + half])
-        .map(u => (u - lo) / len).filter(f => f >= 0 && f <= 1).sort((p, q) => Math.abs(p - .5) - Math.abs(q - .5))]; };
+    // tag, label and line beside it (rs: those that meet its corridor), the middle's nearest first: where the label fits, one of
+    // them is in. The five alone missed a gap 15 px wide, and the label sat on a box's border (clinic's "Queues reminders")
+    const spots = (sg, w, hgt, off, rs) => { const v = sg.h ? 0 : 1, lo = sg.a[v], len = sg.b[v] - lo, half = (v ? hgt : w) / 2 + 3.5, mid = sg.a[1 - v] + off, across = (v ? w : hgt) / 2 + 3, fs = [];
+      for (const r of rs) { const a0 = v ? r.x : r.y, a1 = v ? r.x + r.w : r.y + r.h; if (!(a0 < mid + across && a1 > mid - across)) continue;
+        for (const u of v ? [r.y - half, r.y + r.h + half] : [r.x - half, r.x + r.w + half]) { const f = (u - lo) / len; if (f >= 0 && f <= 1) fs.push(f); } }
+      return [.5, .32, .68, .2, .8, ...fs.sort((p, q) => Math.abs(p - .5) - Math.abs(q - .5))]; };
     const { two, w, hgt } = sizeOf(e, text, sub), pill = map && e.step != null;
     for (const sg of order) {
       if (!relax && sg.h && sg.l < w + 10) continue;
       if (!relax && !sg.h && sg.l < hgt + 14) continue;
       // pass 4: beside the segment, either side, as strict (a line along a box's border leaves no spot on itself)
-      for (const off of (pass === 4 || pass === 5 ? [-1, 1].map(k => k * ((sg.h ? hgt : w) / 2 + 4)) : [0])) for (const f of (relax ? [.5, .32, .68, .2, .8, .1, .9, .42, .58, .26, .74, .05, .95] : spots(sg, w, hgt, off))) {
-        const lx = sg.a[0] + (sg.b[0] - sg.a[0]) * f + (sg.h ? 0 : off), ly = sg.a[1] + (sg.b[1] - sg.a[1]) * f + (sg.h ? off : 0);
-        const box = { x: lx - w / 2, y: ly - hgt / 2, w, h: hgt };
-        const grow = { x: box.x - 3, y: box.y - 3, w: box.w + 6, h: box.h + 6 };
-        if (cards.some(r => hit(r, box))) continue; // keep port stubs free
-        if (tagRects.some(r => hit(r, grow))) continue;
-        if (placed.some(r => (pass === 0 || pass >= 3 || !r.band) && hit(r, grow))) continue;
-        if (!relax && onLine(grow)) continue;
-        if (!relax && segs.some(s2 => s2.i !== sg.i && segHitsRect(s2.a, s2.b, box))) continue;
-        yield { box, grow, lbl: { ...box, text, ...(two ? { sub } : {}), step: map ? e.step : null, ...(pill ? { sw: stepW(e.step) } : {}) } };
+      for (const off of (pass === 4 || pass === 5 ? [-1, 1].map(k => k * ((sg.h ? hgt : w) / 2 + 4)) : [0])) {
+        // every spot's box on this segment lies in its corridor C: only the cards, labels and lines that meet C are tested
+        // spot by spot (audit 70: each spot tested every card, label and line, and a decision of 400 labelled exits took 52 s).
+        // The labels are taken again after each yield, whose taker may place and take back labels before asking for the next
+        const ox = sg.h ? 0 : off, oy = sg.h ? off : 0, C = { x: Math.min(sg.a[0], sg.b[0]) + ox - w / 2 - 4, y: Math.min(sg.a[1], sg.b[1]) + oy - hgt / 2 - 4 };
+        C.w = Math.max(sg.a[0], sg.b[0]) + ox + w / 2 + 4 - C.x; C.h = Math.max(sg.a[1], sg.b[1]) + oy + hgt / 2 + 4 - C.y;
+        const cs = cards.filter(r => meets(r, C)), tg = tagRects.filter(r => meets(r, C)), near = relax ? null : runsIn(C, false);
+        let pl = placed.filter(r => meets(r, C));
+        for (const f of (relax ? [.5, .32, .68, .2, .8, .1, .9, .42, .58, .26, .74, .05, .95] : spots(sg, w, hgt, off, [...cs, ...tg, ...pl, ...runsIn(C, true)]))) {
+          const lx = sg.a[0] + (sg.b[0] - sg.a[0]) * f + (sg.h ? 0 : off), ly = sg.a[1] + (sg.b[1] - sg.a[1]) * f + (sg.h ? off : 0);
+          const box = { x: lx - w / 2, y: ly - hgt / 2, w, h: hgt };
+          const grow = { x: box.x - 3, y: box.y - 3, w: box.w + 6, h: box.h + 6 };
+          if (cs.some(r => hit(r, box))) continue; // keep port stubs free
+          if (tg.some(r => hit(r, grow))) continue;
+          if ((pl ||= placed.filter(r => meets(r, C))).some(r => (pass === 0 || pass >= 3 || !r.band) && hit(r, grow))) continue;
+          if (!relax && onLine(grow, near)) continue;
+          if (!relax && segs.some(s2 => s2.i !== sg.i && segHitsRect(s2.a, s2.b, box))) continue;
+          yield { box, grow, lbl: { ...box, text, ...(two ? { sub } : {}), step: map ? e.step : null, ...(pill ? { sw: stepW(e.step) } : {}) } };
+          pl = null;
+        }
       }
     }
   }
@@ -910,14 +1077,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // lines, and over every line it made the late tries of a large typed view three times as slow)
     const { w: lw, hgt: lh } = sizeOf(e, full), xs = e.pts.map(p => p[0]), ys = e.pts.map(p => p[1]);
     const reach = { x: Math.min(...xs) - lw / 2 - 4, y: Math.min(...ys) - lh / 2 - 4, w: Math.max(...xs) - Math.min(...xs) + lw + 8, h: Math.max(...ys) - Math.min(...ys) + lh + 8 };
-    if (map ? !late : late) for (const o of routed) { if (o === e || !o.lbl || o.lbl.short || o.fixed || !hit(o.lbl, reach)) continue;
+    if (map ? !late : late) for (const o of routed) { if (moves >= moveCap) break; if (o === e || !o.lbl || o.lbl.short || o.fixed || !hit(o.lbl, reach)) continue;
       const was = o.lbl, back = () => put(o, { box: { x: was.x, y: was.y, w: was.w, h: was.h }, grow: { x: was.x - 3, y: was.y - 3, w: was.w + 6, h: was.h + 6 }, lbl: was }, was.text);
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
-      for (const so of fits(o, was.text, 0)) { put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
+      for (const so of fits(o, was.text, 0)) { if (moves >= moveCap) break; moves++; put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
-    for (const pass of (late ? (map ? [4, 3] : [0, 4, 3, 5, 1, 2]) : map ? [0, 1, 2] : [0])) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
   }
-  let stats = {};
+  // moves: the searches placeLabel's moved labels took in this pass (ms.moves), at most LABEL_TRIES, or a test's own bound (LABEL_CAP)
+  let stats = {}, moves = 0; const moveCap = dg[LABEL_CAP] ?? LABEL_TRIES;
   free.forEach(e => { // every port's stub is reserved before routing starts
     const st = [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB], en = [e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB];
     e.stubs = [[e.p1, st], [en, e.p2]];
@@ -952,9 +1120,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // (NEST) not a card whose lines all come from one other, which nest (shortest first, above): taken first, the lines one way
   // between two states took the inner tracks, and those the other way went round them and crossed (audit 39: eight
   // transitions, laid out right)
+  // dependency lines (an arranged view's, layout-flow.md section 5.2: dep on the line) go after every flow line, so the flow
+  // lines take the straight tracks; a view with none keeps its order
+  const depLast = list => list.some(e => e.dep) ? [...list.filter(e => !e.dep), ...list.filter(e => e.dep)] : list;
   const srcs = Object.create(null); if (NEST) free.forEach(e => { (srcs[e.t.id] ||= new Set()).add(e.s.id); });
-  const fan = Object.create(null), hot = e => fan[e.t.id] >= 6 && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
-  order = [...order.filter(hot), ...order.filter(e => !hot(e))];
+  const fan = Object.create(null), hot = e => fan[e.t.id] >= FAN_IN && !(NEST && srcs[e.t.id].size < 2); free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
+  // an arranged map view's main lines (mainLine, section 6.2) go before every other, so each takes the straight track between
+  // its two ports on the main row; the lines routed before them took it, and a main line jogged round an empty cell
+  const mainFirst = list => map && list.some(e => e.mainLine) ? [...list.filter(e => e.mainLine), ...list.filter(e => !e.mainLine)] : list;
+  order = depLast(mainFirst([...order.filter(hot), ...order.filter(e => !hot(e))]));
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
@@ -965,7 +1139,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     return L.length > 0 && order.some(e => e.how !== 'grid' && L.some(l => (l.s === e.s || l.s === e.t) && segsOf(e.pts || []).some(([p, q]) => segsOf(l.pts).some(([r, s]) => crosses(p, q, r, s))))); };
   for (let tries = 0; bad && (dg.reroute !== false || !tries && acrossLoop()) && (!last || room.lx) && tries < 4; tries++) {
     const stuck = order.filter(e => e.how !== 'grid');
-    const next = [...stuck, ...order.filter(e => e.how === 'grid')];
+    const next = depLast([...stuck, ...order.filter(e => e.how === 'grid')]);
     const snap = order.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
     const b2 = runRouting(next);
     if (b2 < bad) { bad = b2; order = next; }
@@ -1007,7 +1181,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const routeOne = (e, spare) => { let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320, spare);
     if (!e.pts) { how = 'cross'; e.pts = wide(e, true, spare); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
     e.how = how; routed.push(e); placeLabel(e); return true; };
-  let budget = 2 * free.length, swapped = false, rrSwap = false;
+  let budget = 2 * free.length, swapped = false, rrSwap = false, sideKept = false;
   // a route moved onto its end's new port: its last run follows it
   const moved = (e, k, P) => { const [i, j] = k === 'p1' ? [0, 1] : [P.length - 1, P.length - 2], v = P[i][1] === P[j][1];
     return P.length > 2 && simplify(P.map((p, x) => x === i ? e[k] : x === j ? (v ? [p[0], e[k][1]] : [e[k][0], p[1]]) : p)); };
@@ -1020,9 +1194,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // (issueCount sees no box): else the two are routed again, the grid keeping off borders (audit 61: laid out right, a call each
   // way between two services beside an account group, one moved route ran 4 px under the group's border)
   const rims = (...l) => families.length ? routeAudit({ edges: l, families, byId }, '').filter(s => / runs along the border | header crossed by /.test(s)).length : 0;
+  // ponytail: the swap's routings, two a pair tried, at most eight a free line (audit 70: unbounded, the pairs of 160 lines among
+  // five tables were routed again some 20,000 times, 17 s; the most a test, example or bench model spends is 8, of c4-stress's 560)
+  let swapBudget = 8 * free.length;
   if (issues && dg.typed && dg.repair === false && !dg.noSwap) { const by = new Map(); free.forEach(e => { if (e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner) return; /* a port's end stays on its port */ const k = [e.s.id, e.t.id].sort().join('\n'); by.set(k, [...(by.get(k) || []), e]); });
     by.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => {
-      if (!xing(a, b)) return;
+      if (!xing(a, b) || swapBudget <= 0) return;
       const ks = [a.s, a.t].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
       if (ks.length !== 2) return;
       const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()], ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b);
@@ -1033,11 +1210,25 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
         let ma = a.pts, mb = b.pts; sw.forEach(([ka, kb]) => { [a[ka], b[kb]] = [b[kb], a[ka]]; ma = ma && moved(a, ka, ma); mb = mb && moved(b, kb, mb); }); restub(a); restub(b);
         let now = Infinity;
         if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); now = issues - was + issueCount(ab); if (now >= issues || rims(a, b) > b0) { ripUp(a); ripUp(b); now = Infinity; } }
-        if (now >= issues) { routeOne(a); routeOne(b); now = issues - was + issueCount(ab); }
+        if (now >= issues) { swapBudget -= 2; routeOne(a); routeOne(b); now = issues - was + issueCount(ab); }
         if (now < issues) { issues = now; swapped = rrSwap = true; return; }
         undo();
       }
     })));
+    // two lines that cross and leave or enter one side of a card side by side (between other cards: a do-while's back line from a
+    // decision, laid out down, left its top left of the line in and turned right over it, audit 70) swap their ports there, each
+    // route's last run moved onto the other's port, else both routed again; kept when the issues drop and none but crossings rise
+    // (its routings are charged to the swap's budget, so a view of many crossing lines cannot route them pair by pair unbounded)
+    if (issues && dg.sideSwap) free.forEach((a, i) => free.slice(i + 1).forEach(b => { if (swapBudget <= 0 || !a.pts || !b.pts || !xing(a, b) || [a, b].some(e => e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner)) return;
+      const ks = [...new Set([a.s, a.t])].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
+      if (ks.length !== 1) return; const [[ka, kb]] = ks, ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b), other = () => routeAudit({ edges }, '', ab).filter(x => !/ cross$/.test(x)).length, o0 = other();
+      const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()];
+      ripUp(a); ripUp(b); [a[ka], b[kb]] = [b[kb], a[ka]]; const ma = moved(a, ka, a.pts), mb = moved(b, kb, b.pts); restub(a); restub(b);
+      const keep = () => { const now = issues - was + issueCount(ab); if (now < issues && rims(a, b) <= b0 && other() <= o0) { issues = now; swapped = rrSwap = sideKept = true; return true; } ripUp(a); ripUp(b); return false; };
+      if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); if (keep()) return; }
+      swapBudget -= 2; routeOne(a, b); routeOne(b); if (keep()) return;
+      snap.forEach(([e, p, lb, hw, p1, p2]) => { Object.assign(e, { pts: p, lbl: lb, how: hw, p1, p2 }); restub(e); });
+      routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); }));
   }
   for (let round = 0; issues && dg.repair !== false && round < 8 && budget > 0; round++) {
     let fixed = false; __ms.rounds++;
@@ -1112,7 +1303,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a labelled line with no spot for its label yet: 1 when the first spot the late tries find (placeLabel, the labels before it
   // left where they are) lies on another line, or there is none
   const lateOn = e => { if (e.lbl || (!e.label && e.step == null)) return 0; const full = fullOf(e), tries = [full, ...(e.step != null && e.label && !dg.abs ? [String(e.step)] : [])];
-    for (const pass of [0, 4, 3, 5, 1, 2]) for (const text of tries) { if (!pass && text === full) continue; const s = fits(e, text, pass).next().value; if (!s) continue;
+    for (const pass of LABEL_PASSES.late) for (const text of tries) { if (!pass && text === full) continue; const s = fits(e, text, pass).next().value; if (!s) continue;
       const r = { x: s.box.x + 1, y: s.box.y + 1, w: s.box.w - 2, h: s.box.h - 2 }; return edges.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, b]) => segHitsRect(a, b, r))) ? 1 : 0; }
     return 1; };
   const heads = P => dg.typed && families.some(f => segsOf(P).some(([a, b]) => segHitsRect(a, b, headRect(f))));
@@ -1186,18 +1377,22 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     out.forEach(d => { const f = by.get(d.id), q = d && flip(d); if (f && q && (q.x !== f.x || q.y !== f.y || q.w !== f.w || q.h !== f.h)) m.set(f, { ...f, x: q.x, y: q.y, w: q.w, h: q.h }); }); return m.size ? m : null; })();
   const titles = e => families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)) || (drawnAs && drawnAs.has(f) && segHitsRect(a, b, headRect(drawnAs.get(f)))))).length;
   const boxIn = e => families.filter(f => !holds(boxEnd[f.id], e.s) && !holds(boxEnd[f.id], e.t) && segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, { x: f.x + 1, y: f.y + 1, w: f.w - 2, h: f.h - 2 }))).length;
-  // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each)
+  // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each); with dg.shutBoxes 2 (the
+  // component view, audit 70) [issues other than crossings, boxes run through, all]: a line through a box and its ports is worse than a crossing
   const boxSaid = only => { const ps = routeAudit({ edges, families, byId }, '', only).filter(p => !/ header crossed by /.test(p)), x = ps.filter(p => / cross$/.test(p)).length;
-    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); return [ps.length - x + b, ps.length + b, L.reduce((k, e) => k + boxIn(e), 0)]; };
+    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); return [ps.length - x + b, ps.length + b, L.reduce((k, e) => k + boxIn(e), 0)].map((x, i, a) => (dg.shutBoxes === 2 && i ? a[3 - i] : x)); };
   const lt3 = (u, w) => u[0] < w[0] || (u[0] === w[0] && (u[1] < w[1] || (u[1] === w[1] && u[2] < w[2])));
   const relabel = (e, L) => { e.lbl = L; routed.push(e); if (L) { placed.push(L); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); } };
   // (the pass is kept only when the view as a whole is better for it: a line's move can take a track another line wanted)
   // ponytail: a dozen grid searches a layout, and a line that only runs through a box tried in views of up to 30 cards (as
   // bestFlow): the stress file's 50 states laid out in twice the time
   let boxBudget = 12;
-  if (NEST) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
+  // (BOXES) a typed view that asks for this pass alone (dg.shutBoxes, the class view): a line that runs through a box holding
+  // neither of its ends, just under its title, read as one along the box's border (a «use» line past a package it has no end in)
+  // A line ending on a port is tried too: that end keeps its side, as one whose side the type gives (audit 70)
+  if (BOXES) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
     is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box || r0[k].some(y => y.s === y.t)))) r0[k].forEach(x => bad.add(x)); });
-    const todo = free.filter(e => !e.fixed && !e.inner && e.fromPort == null && e.toPort == null && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
+    const todo = free.filter(e => !e.fixed && !e.inner && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
     const v0 = todo.length ? boxSaid() : null, snap = todo.length ? edges.map(e => [e, e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl, e.stubs]) : null, snapR = todo.length ? [routed.slice(), reserved.slice(), placed.slice()] : null, used0 = used;
     todo.forEach(e => { const k0 = boxSaid(new Set([e])), was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl]; let best = null; ripUp(e);
       for (const [k, fk, n, o, given] of [['p1', 'fs', e.s, e.t, e.fromSide], ['p2', 'ts', e.t, e.s, e.toSide]]) { if (n.box) continue;
@@ -1212,7 +1407,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
           if (P && !roundOwn(e, P) && !through(P, e)) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = boxSaid(new Set([e]));
             if (lt3(k1, k0) && (!best || lt3(k1, best[0]) || (!lt3(best[0], k1) && lenOf(P) < lenOf(best[1])))) best = [k1, P, k, fk, e[k], side]; ripUp(e); }
           [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
-      if (best) { e[best[2]] = best[4]; e[best[3]] = best[5]; restub(e); e.pts = best[1]; e.how = 'grid'; used = true; e.lbl = null; routed.push(e); placeLabel(e); }
+      if (best) { e[best[2]] = best[4]; e[best[3]] = best[5]; restub(e); e.pts = best[1]; e.how = 'grid'; if (NEST) used = true; e.lbl = null; routed.push(e); placeLabel(e); }
       else { e.pts = was[4]; e.how = was[5]; relabel(e, was[6]); } });
     if (todo.length && !lt3(boxSaid(), v0)) { snap.forEach(([e, p1, p2, fs, ts, pts, how, lbl, stubs]) => Object.assign(e, { p1, p2, fs, ts, pts, how, lbl, stubs }));
       routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); used = used0; } }
@@ -1254,7 +1449,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const lost = e => !e.lbl || LOOSE.has(e) || STAYS.has(e) && !dg.labelGaps; // a typed view's rows are of mixed height: only such a label widens a row gap, by its row's foot
   // ponytail: a typed view without labelGaps is laid out again for such a label only up to 30 cards (as bestFlow): the layout
   // more doubled the time of a generated view of 50 (requirement-stress, past CI's 1 s); a larger one keeps the looser spot
-  const tight = !last && !dg.quick && !dg.abs ? free.filter(e => (e.label || e.step != null) && (lost(e) && (map || dg.labelGaps || nodes.length <= 30) || (map || dg.labelGaps) && (e.lbl.short || families.some(f => onBorder(e.lbl, f))))) : [];
+  // a snake's (layout-flow note, section 14) label that leaves too little of its line, on the turn line or a store's line
+  // between two runs' rows, widens the gap it is in too
+  const leaves = e => map && e.lbl && snaked(dg) && leaveIssues({ map: true, edges: [e] }, '').some(m => / leaves its line /.test(m));
+  const tight = !last && !dg.quick && !dg.abs ? free.filter(e => (e.label || e.step != null) && (lost(e) && (map || dg.labelGaps || nodes.length <= 30) || (map || dg.labelGaps) && (e.lbl.short || families.some(f => onBorder(e.lbl, f))) || leaves(e))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
     const gaps = [...cs.filter(c => colX[c + 1] != null).map(c => ['x', c, colX[c] + (colW[c] || NW), colX[c + 1]]),
@@ -1278,7 +1476,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  __ms.moves = moves;
+  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells };
+export { CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };

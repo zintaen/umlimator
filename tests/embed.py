@@ -28,6 +28,8 @@ tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in 
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
 tests/uml-panel.html: the UML views' panel and F2 (audit 18): no Members section where a view draws none, a member row's ✕ through the type's remove, F2 on a fragment's operator and an emptied timing ruler.
 tests/phone.html: the standalone page at a phone's width (audit 61): the details header keeps the card's name and its buttons on the screen.
+The docs link: a page umlimator.py render --docs writes has a "Back to Docs" link at its header's end, a tab stop; none without
+  --docs, in a still or a check, or in a frame (tests/docs-frame.html).
 tests/timelapse.html: the time-lapse slider says the version shown ("1 of 3"), not its 0-based index, on the page umlimator.py timelapse writes; examples/timelapse.html's show() is read for the same (audit 61).
 tests/package.html: the package diagram (2.2): examples/bookshop-packages.json as stage 2 made it (6.7's profile and «apply» line taken out) in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
   legend), a closed package, and each gesture by pointer and keyboard (palette, import by the picker, visibility, Owner, a drop into a box, a box's name, hide, delete).
@@ -148,7 +150,7 @@ SLOW = {"tests/m2.html": 46, "tests/sysml.html": 31, "tests/embed.html": 29, "te
         "tests/unfold.html": 5}  # their seconds on a runner; the rest about 3
 part = shards.Parts(__file__, {**{page: SLOW.get(page, 3) for page, _ in PAGES}, **{page: 3 for page, _ in DEMOS}, "examples/element.html": 3,
                               "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16,
-                              "the playground's own icons": 3, "the time-lapse slider": 4})
+                              "the playground's own icons": 3, "the time-lapse slider": 4, "the docs link": 4, "the opening view's flow story": 4})
 for page, motion in PAGES:
     if not part(page):
         continue
@@ -334,6 +336,45 @@ if part("record"):
     print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, frames along a step's tour (the dot rides), each step for its duration",
           "" if rec_ok else [[d for d, _ in frames], steps_ok, r.stderr[-400:]])
     failed |= not rec_ok
+if part("the opening view's flow story"):
+    # audit 66: the page umlimator.py render writes mounts deferred, after mountPage returns; the arranged view it opens on
+    # offers "From the main flow" in its Stories menu as a view the reader goes to does (the flow corpus has no story of its own)
+    out = ROOT / "tests" / "fixtures" / "flow-menu.html"
+    try:
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "bench" / "models" / "f12.json"), "--out", str(out), "--no-check"], capture_output=True, text=True)
+        t = dom("tests/fixtures/flow-menu.html#view=order", lambda t: 'id="m-stories-menu"' in t and 'id="m-ghosts"' not in t)
+    finally:
+        out.unlink(missing_ok=True)
+    tags = [re.search(r"<[^>]*\bid=\"%s\"[^>]*>" % i, t) for i in ("m-stories-menu", "m-flow-story")]
+    flow_ok = r.returncode == 0 and all(tags) and not any(re.search(r"\shidden(?:[\s=>])", m.group(0)) for m in tags)
+    print(("ok  " if flow_ok else "FAIL"), "umlimator.py render · the arranged view the page opens on offers \"From the main flow\" in its Stories menu",
+          "" if flow_ok else [m and m.group(0) for m in tags])
+    failed |= not flow_ok
+if part("the docs link"):
+    # umlimator.py render --docs: "Back to Docs" at the header's end, an <a href> a Tab reaches (no tabindex), its full name read
+    # out at any width; none without --docs, in a still or a check, or in a frame, where the docs page framing it is that page
+    (ROOT / "tests" / "fixtures" / "docs-link.html").unlink(missing_ok=True)  # never a page an earlier run wrote
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "fixtures" / "integration.json"),
+                        "--out", str(ROOT / "tests" / "fixtures" / "docs-link.html"), "--no-check", "--docs", "../../docs/start/install.html"], capture_output=True, text=True)
+    t = dom("tests/fixtures/docs-link.html", lambda t: 'id="m-help"' in t)
+    link = re.search(r'<a class="docslink" id="m-docs" href="([^"]*)"([^>]*)>(.*?)</a>\s*</header>', t, re.S)
+    ok_link = r.returncode == 0 and bool(link) and link.group(1) == "../../docs/start/install.html" and "tabindex" not in link.group(2) and re.sub(r"<[^>]+>", "", link.group(3)) == "Back to Docs"
+    print(("ok  " if ok_link else "FAIL"), "umlimator.py render --docs · the page's header ends in a Back to Docs link to the href, a tab stop", "" if ok_link else (r.stderr[-300:], link and link.group(0)))
+    failed |= not ok_link
+    none = [p for p in ("tests/fixtures/integration.html", "tests/fixtures/docs-link.html#still=overview", "tests/fixtures/docs-link.html#check=1")
+            if re.search(r'id="m-docs" href="(?!\$\{)', dom(p, lambda t: 'id="m-help"' in t or 'id="visual-check"' in t))]  # drawn, not the module's source the page inlines
+    print(("ok  " if not none else "FAIL"), "umlimator.py render · no docs link without --docs, in a still or in a check", "" if not none else none)
+    failed |= bool(none)
+    f = dom("tests/docs-frame.html", lambda t: 'id="result"' in t)
+    m = re.search(r'<pre id="result">(.*?)</pre>', f, re.S)
+    framed_ok = bool(m) and html.unescape(m.group(1)) == "no link in a frame"
+    print(("ok  " if framed_ok else "FAIL"), "tests/docs-frame.html · the page in a frame has no docs link", "" if framed_ok else (m and m.group(1)))
+    failed |= not framed_ok
+    bad = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "fixtures" / "integration.json"),
+                          "--out", str(ROOT / "tests" / "fixtures" / "docs-link.html"), "--no-check", "--docs", "javascript:alert(1)"], capture_output=True, text=True)
+    bad_ok = bad.returncode == 1 and "is not a web address" in bad.stderr
+    print(("ok  " if bad_ok else "FAIL"), "umlimator.py render --docs javascript:... · refused in one line", "" if bad_ok else bad.stderr[-300:])
+    failed |= not bad_ok
 part.done()
 server.shutdown()
 sys.exit(1 if failed else 0)

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { layout, check, history, validate } from '../lib/umlimator.js';
-import { leaveIssues } from '../src/layout/audit.js';
+import { leaveIssues, routeAudit } from '../src/layout/audit.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
 
@@ -23,7 +23,7 @@ const expected = read('../bench/expected.json').results; // the reference geomet
 
 test('the module built from src/ exports what 0.16.0 exported, and migrate() from 0.17.0 (stage 1 note, §2.3)', async () => {
   assert.deepEqual(Object.keys(await import('../lib/umlimator.js')).sort(), ['apply', 'check', 'critical', 'describe', 'diff', 'drift', 'history',
-    'layout', 'migrate', 'mountPage', 'otlpSpans', 'paths', 'reach', 'references', 'render', 'rules', 'sequenceFromTrace', 'validate', 'whatIf']);
+    'layout', 'migrate', 'mountPage', 'otlpSpans', 'paths', 'reach', 'references', 'render', 'rules', 'sequenceFromTrace', 'storyFromDiff', 'storyFromFlow', 'validate', 'whatIf']);
 });
 
 test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
@@ -629,7 +629,7 @@ test('audit 25: a name or line label broken on 200,000 lines lays out and is che
 
 // audit 25: a card's details cut in two at a space pushed every space as an argument (a spread) and counted the backticks
 // before each one again: a body of 150,000 words threw, and a long one took seconds
-test('audit 25: a card\'s details of 150,000 words are cut into points, quickly', async () => {
+test('audit 25: a card\'s details of 150,000 words are cut into points, quickly (timed)', async () => {
   const { detailBullets } = await import('../src/canvas/pieces.js');
   const t = Date.now(), out = detailBullets('word '.repeat(150000));
   assert.ok(out.length >= 2); assert.ok(Date.now() - t < 2000, `${Date.now() - t} ms`);
@@ -693,7 +693,7 @@ const foreignUnder = (m, vid, g) => { const fs = g.families || [], out = [];
   const holds = (b, id, k = 0) => k <= fs.length && ((b.nodeIds || []).includes(id) || fs.some(c => c.parent === b.id && holds(c, id, k + 1)));
   fs.forEach(f => g.nodes.forEach(n => { if (n.id !== f.id && !holds(f, n.id) && n.x < f.x + f.w - 1 && f.x < n.x + n.w - 1 && n.y < f.y + f.h - 1 && f.y < n.y + n.h - 1) out.push(`${f.id} over ${n.id}`); }));
   return out; };
-test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped', async () => {
+test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped (timed)', async () => {
   const U = await import('../lib/umlimator-all.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
   try {
     // edit.html's own add-in-box: a new card in each box of each integration fixture view (the rider shop's checkout among them), with no pin
@@ -800,4 +800,18 @@ test('audit 43: a card with no pin whose clean auto-layout slot runs its lines b
   const N = 40, h = { nodes: Array.from({ length: N }, (_, i) => ({ id: 'n' + i, label: 'n' + i })), edges: Array.from({ length: N - 1 }, (_, i) => ({ id: 'e' + i, from: 'n' + i, to: 'n' + (i + 1) })),
     views: [{ id: 'v', nodeIds: Array.from({ length: N }, (_, i) => 'n' + i), layout: Object.fromEntries(Array.from({ length: N / 2 }, (_, k) => ['n' + 2 * k, [N - 2 * k, 0]])) }] };
   const g = layout(h, 'v'); assert.equal(new Set(g.nodes.map(n => n.x + ',' + n.y)).size, N);
+});
+
+// audit 70: routeAudit about some lines (the repair passes ask so once a line) takes just the pairs with an end among them, not
+// every pair; what it says must stay what the whole audit says of those lines, in the whole audit's order
+test('routeAudit about some lines says what the whole audit says of them, in its order, and nothing more (audit 70)', () => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647, at = () => Math.round(rnd() * 20) * 10, card = k => ({ id: 'n' + k, label: 'N' + k });
+  const edges = Array.from({ length: 40 }, (_, k) => { const x0 = at(), y0 = at(), x1 = at(), y1 = at();
+    return { s: card(k), t: card(k + 1), from: 'n' + k, to: 'n' + (k + 1), pts: [[x0, y0], [x1, y0], [x1, y1]], ...(k % 3 ? {} : { lbl: { x: x1 - 15, y: (y0 + y1) / 2 - 8, w: 30, h: 16, text: 'L' + k } }), ...(k % 7 ? {} : { fixed: true }) }; });
+  const refs = [], all = routeAudit({ edges }, 'v', null, refs);
+  assert.ok(all.some(s => / cross$/.test(s)) && all.some(s => / share a line$/.test(s)) && all.some(s => /^v: label /.test(s)), 'crossings, shared runs and labels on lines');
+  for (const only of [[edges[0]], [edges[5], edges[6]], [edges[39], edges[1], edges[14]], [edges[7], edges[14]], [], edges]) {
+    const set = new Set(only), r = [], said = routeAudit({ edges }, 'v', set, r);
+    assert.deepEqual(said.map((s, k) => [s, r[k]]), all.flatMap((s, k) => refs[k].some(x => set.has(x)) ? [[s, refs[k]]] : []), `about ${only.length} lines`);
+  }
 });

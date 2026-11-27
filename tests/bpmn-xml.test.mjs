@@ -130,10 +130,17 @@ const DEFAULTS = { 'bpmn.Task': { taskType: 'none' }, 'bpmn.StartEvent': { defin
   'bpmn.IntermediateThrowEvent': { definition: 'none' }, 'bpmn.BoundaryEvent': { cancelActivity: true } };
 const filled = m => ({ ...m, nodes: m.nodes.map(n => (DEFAULTS[n.type] ? { ...n, props: { ...DEFAULTS[n.type], ...n.props } } : n)) });
 
+// a generated model split by validate(): its lines BPMN refuses for their scope (a sequence flow across pools or sub-processes,
+// a message flow inside one pool or to no pool, an association with no text annotation, data joined across pools), which the
+// reader keeps under ext.bpmn and says (audit 65), and the model without them
+const scopeRules = /^(sequence-scope|message-scope|data-ends): /;
+const scoped = m => { const bad = new Set(validate(m).filter(p => scopeRules.test(p.message)).map(p => /^edges\[(\d+)\]$/.exec(p.path)).filter(Boolean).map(x => +x[1]));
+  return [{ ...m, edges: m.edges.filter((e, i) => !bad.has(i)) }, m.edges.filter((e, i) => bad.has(i))]; };
+
 test('read(write(model)) equals the model, its defaults filled in, for 500 generated models in the subset', needs, async () => {
   let left = 0, saidUndrawn = 0;
   for (let seed = 1; seed <= 500; seed++) {
-    const m = generated(seed), [w, back] = await roundTrip(m);
+    const [m] = scoped(generated(seed)), [w, back] = await roundTrip(m);
     left += m.nodes.filter(n => DEFAULTS[n.type] && Object.keys(DEFAULTS[n.type]).some(k => !(n.props && k in n.props))).length;
     assert.deepEqual(w.report, [], `seed ${seed}`);
     // a line the diagram keeps and does not draw (a message flow between two pools, a line from a boundary event to its own
@@ -200,22 +207,23 @@ test('tests/import/descriptive.bpmn: every row of Table 2.1 and the extras, read
   assert.deepEqual((await read(xml, BpmnModdle())).model, model); // the same file, the same ids (R3)
 });
 
-test('tests/import/weakened.bpmn: conditions, a default, send and receive tasks and a timer\'s time read as plain, each reported weakened and kept', needs, async () => {
+test('tests/import/weakened.bpmn: conditions, send and receive tasks and a timer\'s time read as plain, each reported weakened and kept; the default read as props.default', needs, async () => {
   const { model, report } = await read(file('import/weakened.bpmn'), BpmnModdle());
   const w = (line, message) => ({ line, status: 'weakened', message: `${message}: kept under ext.bpmn, read as plain` });
-  assert.deepEqual(report, [{ line: 'approve', status: 'skipped', message: 'process approve, in no pool: its elements are read in no pool, its id not kept' }, w('wait-form', 'a receive task'), w('days', 'a gateway\'s default flow'), w('ask-manager', 'a send task'),
+  assert.deepEqual(report, [{ line: 'approve', status: 'skipped', message: 'process approve, in no pool: its elements are read in no pool, its id not kept' }, w('wait-form', 'a receive task'), w('ask-manager', 'a send task'),
     w('an-hour', 'a timer\'s timeDuration'), w('f-short', 'a condition'),
     { line: '', status: 'skipped', message: 'no diagram interchange: every element is in one view, process' }]);
   const node = id => model.nodes.find(n => n.id === id), edge = id => model.edges.find(e => e.id === id);
   assert.deepEqual([node('wait-form').props, node('wait-form').ext, node('ask-manager').ext], [{ taskType: 'none' }, { bpmn: { task: 'receive' } }, { bpmn: { task: 'send' } }]);
-  assert.deepEqual([node('days').ext, edge('f-short').ext, edge('f-long').ext, node('an-hour').ext], [{ bpmn: { default: 'f-long' } }, { bpmn: { condition: '${days <= 3}' } }, undefined, { bpmn: { timer: { timeDuration: 'PT1H' } } }]);
+  assert.deepEqual([node('days').ext, node('days').props, edge('f-short').ext, edge('f-long').ext, node('an-hour').ext], [undefined, { default: 'f-long' }, { bpmn: { condition: '${days <= 3}' } }, undefined, { bpmn: { timer: { timeDuration: 'PT1H' } } }]);
   // what gateway-flows and flow-start (4b.3) read: the gateway keeps both flows out, each task its flow in
   assert.deepEqual(model.edges.filter(e => e.from === 'days').map(e => [e.type, e.to, e.label]), [['bpmn.SequenceFlow', 'approve-short', 'up to 3'], ['bpmn.SequenceFlow', 'ask-manager', 'more']]);
   assert.ok(['wait-form', 'approve-short', 'ask-manager'].every(t => model.edges.some(e => e.to === t && e.type === 'bpmn.SequenceFlow')));
   // written plain, and the writer says what it leaves
   const back = await write(model, 'process', null, BpmnModdle());
-  assert.doesNotMatch(back.xml, /conditionExpression|default=|sendTask|receiveTask|timeDuration/);
-  assert.deepEqual(back.report.map(x => `${x.line}: ${x.message}`), ['wait-form: what it keeps under ext.bpmn: not written', 'days: what it keeps under ext.bpmn: not written',
+  assert.doesNotMatch(back.xml, /conditionExpression|sendTask|receiveTask|timeDuration/);
+  assert.match(back.xml, /<bpmn:exclusiveGateway id="days" name="How many days\?" default="f-long" \/>/); // the default written back
+  assert.deepEqual(back.report.map(x => `${x.line}: ${x.message}`), ['wait-form: what it keeps under ext.bpmn: not written',
     'ask-manager: what it keeps under ext.bpmn: not written', 'an-hour: what it keeps under ext.bpmn: not written', 'f-short: what it keeps under ext.bpmn: not written']);
 });
 
@@ -322,11 +330,30 @@ test('the reader says what it does not read: a host not read, a sub-process\'s l
       <subProcess id="sp"><laneSet id="ls"><lane id="l" /></laneSet></subProcess></process></definitions>`, BpmnModdle());
   assert.deepEqual(report.map(x => `${x.line} ${x.status}: ${x.message}`), ['p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'ah skipped: AdHocSubProcess outside the subset: kept under ext.bpmn, not read',
     'io skipped: InputOutputSpecification outside the subset: kept under ext.bpmn, not read', 'pr skipped: Property outside the subset: kept under ext.bpmn, not read',
-    'ls skipped: LaneSet of a sub-process: kept under ext.bpmn, not read', 'b skipped: its host ah is not read: attachedTo not read',
+    'ls skipped: LaneSet of a sub-process: kept under ext.bpmn, not read', 'b skipped: BoundaryEvent whose host ah is not read: kept under ext.bpmn, not read',
     'f skipped: its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read', ' skipped: no diagram interchange: every element is in one view, process']);
-  assert.deepEqual(model.nodes.find(n => n.id === 'b').props, { definition: 'timer', cancelActivity: true });
+  assert.equal(model.nodes.find(n => n.id === 'b'), undefined);
   assert.deepEqual(model.edges[0].ext, { bpmn: { categoryValueRef: ['cv'] } });
-  assert.deepEqual(model.ext.bpmn.skipped.map(x => [x.parent, x.element.id]), [[undefined, 'ah'], ['t', 'io'], ['t', 'pr'], ['sp', 'ls']]);
+  assert.deepEqual(model.ext.bpmn.skipped.map(x => [x.parent, x.element.id]), [[undefined, 'ah'], ['t', 'io'], ['t', 'pr'], ['sp', 'ls'], [undefined, 'b']]);
+});
+
+// audit 63: a boundary event whose host is not read (a scriptTask, a gateway, none) was kept with no attachedTo, which validate()
+// takes for an error: it is kept whole under ext.bpmn, what was said of it as read unsaid, and its lines go as lines to an end not read
+test('a boundary event whose host is not read is kept under ext.bpmn, its lines too, and the model is valid', needs, async () => {
+  const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:x="urn:x" id="d" targetNamespace="x">
+    <process id="p"><startEvent id="s" /><scriptTask id="calc" /><task id="t" /><exclusiveGateway id="g" /><endEvent id="e" />
+      <boundaryEvent id="slow" name="Too slow" attachedToRef="calc" x:foo="1"><extensionElements><x:y /></extensionElements><timerEventDefinition><timeDuration>PT1H</timeDuration></timerEventDefinition></boundaryEvent>
+      <boundaryEvent id="gb" attachedToRef="g"><messageEventDefinition /></boundaryEvent><boundaryEvent id="lost"><timerEventDefinition /></boundaryEvent>
+      <boundaryEvent id="ok" attachedToRef="t"><timerEventDefinition /></boundaryEvent>
+      <sequenceFlow id="f1" sourceRef="s" targetRef="t" /><sequenceFlow id="f2" sourceRef="slow" targetRef="e" /><sequenceFlow id="f3" sourceRef="ok" targetRef="e" /></process></definitions>`, BpmnModdle());
+  assert.deepEqual(model.nodes.map(n => n.id), ['s', 't', 'g', 'e', 'ok']);
+  assert.deepEqual(model.nodes.find(n => n.id === 'ok').props, { definition: 'timer', cancelActivity: true, attachedTo: 't' });
+  assert.deepEqual(model.edges.map(e => e.id), ['f1', 'f3']);
+  assert.deepEqual(model.ext.bpmn.skipped.map(x => [x.parent, x.element.id]), [[undefined, 'calc'], [undefined, 'slow'], [undefined, 'gb'], [undefined, 'lost'], [undefined, 'f2']]);
+  assert.deepEqual(report.filter(x => !/no pool|interchange/.test(x.message)).map(x => `${x.line}: ${x.message}`), ['calc: ScriptTask outside the subset: kept under ext.bpmn, not read',
+    'slow: BoundaryEvent whose host calc is not read: kept under ext.bpmn, not read', 'gb: BoundaryEvent whose host g is not read: kept under ext.bpmn, not read',
+    'lost: BoundaryEvent on no host: kept under ext.bpmn, not read', 'f2: SequenceFlow whose source is not read: kept under ext.bpmn, not read']);
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
 });
 
 test('neither function throws: no moddle, not text, a moddle that throws, a model that is not one', async () => {
@@ -372,7 +399,8 @@ test('hostile files are read or refused in under a second each, and never throw 
   assert.deepEqual(msgs('entities.bpmn'), [' skipped: unparsable content ]>: non-whitespace outside of root node: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', ' skipped: no diagram interchange: every element is in one view, process']);
   assert.deepEqual(said['entities.bpmn'].model.nodes.map(n => n.label), ['&e;', 'Plain']); // never expanded
   assert.deepEqual(msgs('dangling.bpmn'), ['b skipped: unresolved reference <nowhere>: not read', 'f skipped: unresolved reference <nowhere>: not read',
-    's skipped: unresolved reference <ghost>: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'f skipped: SequenceFlow whose target is not read: kept under ext.bpmn, not read', R5.line + ' skipped: ' + R5.message]);
+    's skipped: unresolved reference <ghost>: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'b skipped: BoundaryEvent on no host: kept under ext.bpmn, not read',
+    'f skipped: SequenceFlow whose target is not read: kept under ext.bpmn, not read', R5.line + ' skipped: ' + R5.message]);
   assert.deepEqual(msgs('no-di.bpmn'), ['p skipped: process p, in no pool: its elements are read in no pool, its id not kept', ' skipped: no diagram interchange: every element is in one view, process']);
   assert.deepEqual(said['no-di.bpmn'].model.views, [{ id: 'process', diagram: 'bpmn', parent: null, nodeIds: ['s', 't', 'e'] }]);
   assert.deepEqual(msgs('unknown-namespace.bpmn'), [' skipped: unparsable content <x:settings> detected: not read', ' skipped: unparsable content <x:robot> detected: not read',
@@ -750,4 +778,114 @@ test('audit 48: with no diagram interchange the view takes no id the writer writ
   }
   const fine = await read(D('<bpmn:process id="p"><bpmn:task id="t" name="a\tb \u{1F4E6}"/></bpmn:process>'), BpmnModdle());
   assert.deepEqual(fine.report.filter(x => x.status === 'weakened'), []);
+});
+
+test('audit 64: a boundary event dropped for a host not read takes back all it kept and linked, and a once-said attribute moves to the next element read with it', needs, async () => {
+  const doc = body => `<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p">${body}</process></definitions>`;
+  const kept = '<task id="t"/><boundaryEvent id="ok" attachedToRef="t" parallelMultiple="true"><timerEventDefinition/></boundaryEvent>';
+  const said = r => r.report.filter(x => /parallelMultiple/.test(x.message)).map(x => `${x.line}: ${x.message}`);
+  const want = ['ok: the attribute parallelMultiple="true": not read, here or elsewhere in the file'];
+  assert.deepEqual(said(await read(doc(kept), BpmnModdle())), want, 'alone');
+  // a dropped event (its host a script task, not read) first: the line is said at the kept one, where the dropped one's was
+  const lost = '<scriptTask id="calc"/><boundaryEvent id="lost" attachedToRef="calc" parallelMultiple="true"><timerEventDefinition/></boundaryEvent>';
+  const r = await read(doc(lost + kept), BpmnModdle()), lines = r.report.map(x => x.line);
+  assert.deepEqual(said(r), want, 'with a dropped event first');
+  assert.ok(lines.indexOf('ok') < lines.indexOf('lost'), 'in the dropped event\'s place');
+  assert.deepEqual(r.model.nodes.find(n => n.id === 'ok').props.attachedTo, 't');
+  // two dropped ones and no kept one: nothing to say it at, so nothing said of it but the events kept
+  assert.deepEqual(said(await read(doc(lost + lost.replaceAll('lost', 'lost2').replace('calc"/>', 'calc2"/>').replace('"calc"', '"calc2"')), BpmnModdle())), []);
+  // a dropped event's output set, data output, marker and data association are inside its own entry, kept once, none
+  // under a parent the model does not have; nor is its association said as a line of its own
+  const es = '<subProcess id="es" triggeredByEvent="true"/><dataObjectReference id="dr" dataObjectRef="o"/><dataObject id="o"/>'
+    + '<boundaryEvent id="b" attachedToRef="es" parallelMultiple="true"><outputSet id="os"/><dataOutput id="do1"/><dataOutputAssociation id="da"><targetRef>dr</targetRef></dataOutputAssociation><messageEventDefinition/></boundaryEvent>';
+  const b = await read(doc(es + kept), BpmnModdle()), sk = b.model.ext.bpmn.skipped;
+  assert.deepEqual(said(b), want);
+  assert.deepEqual(sk.filter(s => s.parent === 'b').map(s => s.element.id), [], 'no entry under the dropped event');
+  assert.deepEqual(sk.filter(s => s.element.id === 'b').length, 1);
+  assert.deepEqual(sk.map(s => s.element.id).filter(id => ['os', 'do1', 'da'].includes(id)), [], 'its parts only inside it');
+  assert.deepEqual(b.report.filter(x => ['os', 'do1', 'da', 'b'].includes(x.line)).map(x => x.message), ['BoundaryEvent whose host es is not read: kept under ext.bpmn, not read']);
+  assert.deepEqual(validate(b.model).filter(p => p.level === 'error'), []);
+});
+
+// audit 65: a sequence flow across pools, a message flow inside one pool or to a process in no pool, and an association with
+// no text annotation were read as given, nothing said, and the model read failed validate(); each is kept under ext.bpmn and said
+test('audit 65: a line BPMN refuses for its scope is kept under ext.bpmn and said, so the model read passes validate()', needs, async () => {
+  const mk = (collab, procs) => `<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="http://x">${collab}${procs}</bpmn:definitions>`;
+  const two = '<bpmn:process id="P1"><bpmn:task id="t1"/><bpmn:task id="t2"/></bpmn:process><bpmn:process id="P2"><bpmn:task id="t3"/></bpmn:process>';
+  const cases = [
+    [mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:participant id="b" processRef="P2"/><bpmn:messageFlow id="m1" sourceRef="t1" targetRef="t2"/></bpmn:collaboration>', two), 'm1', 'MessageFlow inside one pool (a sequence flow joins it)'],
+    [mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:participant id="b" processRef="P2"/><bpmn:messageFlow id="m1" sourceRef="a" targetRef="t1"/></bpmn:collaboration>', two), 'm1', 'MessageFlow inside one pool (a sequence flow joins it)'],
+    [mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:messageFlow id="m1" sourceRef="t1" targetRef="t3"/></bpmn:collaboration>', two), 'm1', 'MessageFlow with an end in no pool'],
+    [mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:participant id="b" processRef="P2"/></bpmn:collaboration>', two.replace('<bpmn:task id="t2"/>', '<bpmn:task id="t2"/><bpmn:sequenceFlow id="f" sourceRef="t1" targetRef="t3"/>')), 'f', 'SequenceFlow across pools (a message flow joins pools)'],
+    [mk('', '<bpmn:process id="P1"><bpmn:task id="t1"/><bpmn:subProcess id="s"><bpmn:task id="t2"/></bpmn:subProcess><bpmn:sequenceFlow id="f" sourceRef="t1" targetRef="t2"/></bpmn:process>'), 'f', 'SequenceFlow across sub-processes'],
+    [mk('', '<bpmn:process id="P1"><bpmn:task id="t1"/><bpmn:task id="t2"/><bpmn:association id="as" sourceRef="t1" targetRef="t2"/></bpmn:process>'), 'as', 'Association with no text annotation at either end'],
+    [mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:participant id="b" processRef="P2"/></bpmn:collaboration>', '<bpmn:process id="P1"><bpmn:dataObjectReference id="d1" dataObjectRef="o"/><bpmn:dataObject id="o"/></bpmn:process><bpmn:process id="P2"><bpmn:task id="t3"><bpmn:dataOutputAssociation id="da"><bpmn:targetRef>d1</bpmn:targetRef></bpmn:dataOutputAssociation></bpmn:task></bpmn:process>'), 'da', 'DataOutputAssociation from data of one pool to another pool (data stays in its pool)'],
+  ];
+  for (const [xml, id, why] of cases) {
+    const { model, report } = await read(xml, BpmnModdle());
+    assert.ok(!model.edges.some(e => e.id === id), `${id}: ${why}`);
+    assert.ok(report.some(x => x.line === id && x.status === 'skipped' && x.message === `${why}: kept under ext.bpmn, not read`), JSON.stringify(report));
+    assert.ok(model.ext.bpmn.skipped.some(x => x.element.id === id), why);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], why);
+  }
+  // the lines in scope stay: a pool's message flow to another pool's task, a sequence flow in one pool across its lanes, a note's association
+  const ok = mk('<bpmn:collaboration id="c"><bpmn:participant id="a" processRef="P1"/><bpmn:participant id="b" processRef="P2"/><bpmn:messageFlow id="m1" sourceRef="a" targetRef="t3"/></bpmn:collaboration>',
+    '<bpmn:process id="P1"><bpmn:laneSet id="ls"><bpmn:lane id="L1"><bpmn:flowNodeRef>t1</bpmn:flowNodeRef></bpmn:lane><bpmn:lane id="L2"><bpmn:flowNodeRef>t2</bpmn:flowNodeRef></bpmn:lane></bpmn:laneSet><bpmn:task id="t1"/><bpmn:task id="t2"/><bpmn:sequenceFlow id="f" sourceRef="t1" targetRef="t2"/><bpmn:textAnnotation id="n"/><bpmn:association id="as" sourceRef="t1" targetRef="n"/></bpmn:process><bpmn:process id="P2"><bpmn:task id="t3"/></bpmn:process>');
+  const r = await read(ok, BpmnModdle());
+  assert.deepEqual(r.model.edges.map(e => e.id).sort(), ['as', 'f', 'm1']);
+  assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
+  // the generated models with such lines kept: each is said and left out, and no other line goes
+  let said = 0;
+  for (let seed = 1; seed <= 500; seed++) {
+    const m = generated(seed), [, bad] = scoped(m), back = await read((await write(m, m.root, null, BpmnModdle())).xml, BpmnModdle());
+    const ids = new Set(back.model.edges.map(e => e.id));
+    for (const e of bad) { assert.ok(!ids.has(e.id), `seed ${seed}: ${e.id}`); said++; } // said by its id in the file (an XML name)
+    assert.equal(back.report.filter(x => x.status === 'skipped' && / (across|inside one pool|with an end in no pool|with no text annotation|from data of one pool)/.test(x.message)).length, bad.length, `seed ${seed}`);
+    assert.deepEqual([...ids].sort(), m.edges.filter(e => !bad.includes(e)).map(e => e.id).sort(), `seed ${seed}`);
+    assert.deepEqual(validate(back.model).filter(p => scopeRules.test(p.message)), [], `seed ${seed}`);
+  }
+  assert.ok(said > 100, said);
+});
+
+// audit 65: an attribute named toString on an element kept under ext.bpmn (or on a foreign element inside one) was kept as a
+// key, and validate() left the object out with an error; it is left out and said, the other attributes kept
+test('audit 65: an attribute named toString on an element kept under ext.bpmn is left out and said; the model read passes validate()', needs, async () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:c="http://c" id="d" targetNamespace="http://x">
+  <bpmn:process id="P"><bpmn:task id="t"><bpmn:extensionElements><c:foo toString="x" a="1"><c:bar toString="y" b="2"/></c:foo></bpmn:extensionElements></bpmn:task>
+  <bpmn:inclusiveGateway id="g" toString="x" valueOf="y" constructor="z"/></bpmn:process></bpmn:definitions>`;
+  const { model, report } = await read(xml, BpmnModdle());
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  assert.deepEqual(model.ext.bpmn.skipped.map(x => x.element), [
+    { $type: 'bpmn:ExtensionElements', values: [{ $type: 'c:foo', a: '1', $children: [{ $type: 'c:bar', b: '2' }] }] },
+    { $type: 'bpmn:InclusiveGateway', id: 'g', $attrs: { valueOf: 'y', constructor: 'z' } }]);
+  assert.deepEqual(report.filter(x => /toString/.test(x.message) && /not kept/.test(x.message)).map(x => [x.line, x.message]), [
+    ['t', 'the attribute toString, a name no model key holds: not kept'], ['g', 'the attribute toString, a name no model key holds: not kept']]);
+});
+
+// a default flow (an exclusive gateway's or an activity's `default`) is props.default, the flow's id, and written back as
+// `default`; one that is no sequence flow out of it read is kept under ext.bpmn and said, so the model read passes validate()
+test('a gateway\'s and an activity\'s default flow read as props.default and written back (round trip); one not out of it said', needs, async () => {
+  const doc = body => `<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p">${body}</process></definitions>`;
+  const flows = '<startEvent id="s"/><task id="t" default="t-e"/><exclusiveGateway id="g" default="g-b"/><task id="b"/><endEvent id="e"/>'
+    + '<sequenceFlow id="s-t" sourceRef="s" targetRef="t"/><sequenceFlow id="t-g" sourceRef="t" targetRef="g"/><sequenceFlow id="t-e" sourceRef="t" targetRef="e"/>'
+    + '<sequenceFlow id="g-b" name="else" sourceRef="g" targetRef="b"/><sequenceFlow id="g-e" name="done" sourceRef="g" targetRef="e"/><sequenceFlow id="b-e" sourceRef="b" targetRef="e"/>';
+  const { model, report } = await read(doc(flows), BpmnModdle()), node = id => model.nodes.find(n => n.id === id);
+  assert.deepEqual([node('t').props, node('g').props, node('g').ext], [{ taskType: 'none', default: 't-e' }, { default: 'g-b' }, undefined]);
+  assert.deepEqual(report.filter(x => !/no pool|interchange/.test(x.message)), []);
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  const [w, back] = await roundTrip({ ...model, root: model.views[0].id });
+  assert.deepEqual(w.report, []);
+  assert.match(w.xml, /<bpmn:task id="t" default="t-e" \/>/);
+  assert.match(w.xml, /<bpmn:exclusiveGateway id="g" default="g-b" \/>/);
+  assert.deepEqual([back.model.nodes.find(n => n.id === 't').props, back.model.nodes.find(n => n.id === 'g').props], [{ taskType: 'none', default: 't-e' }, { default: 'g-b' }]);
+  // a default that is another node's flow: kept under ext.bpmn and said; the model read passes validate()
+  const odd = await read(doc(flows.replace('default="g-b"', 'default="s-t"')), BpmnModdle()), g = odd.model.nodes.find(n => n.id === 'g');
+  assert.deepEqual([g.props, g.ext], [undefined, { bpmn: { default: 's-t' } }]);
+  assert.deepEqual(odd.report.filter(x => x.line === 'g').map(x => x.message), ['a default flow, s-t, that is no sequence flow out of it read: kept under ext.bpmn, read as plain']);
+  assert.deepEqual(validate(odd.model).filter(p => p.rule === 'default-flow'), []);
+  // the writer says a props.default that is no sequence flow out of its node, and writes no default
+  const bad = structuredClone(model); bad.nodes.find(n => n.id === 'g').props.default = 's-t';
+  const wb = await write(bad, model.views[0].id, null, BpmnModdle());
+  assert.deepEqual(wb.report.map(x => `${x.line}: ${x.message}`), ['g: props.default s-t, which is no sequence flow out of it: not written']);
+  assert.doesNotMatch(wb.xml, /exclusiveGateway id="g" default/);
 });

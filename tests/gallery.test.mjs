@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { files, inventory, types, groupOf, atlases, writing, EX, DIRS, NOTES } from '../tools/gallery.mjs';
+import { files, inventory, types, groupOf, atlases, writing, docsOf, EX, DIRS, NOTES } from '../tools/gallery.mjs';
 import { families } from '../tools/types.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8'), json = p => JSON.parse(read(p));
@@ -142,7 +142,7 @@ function served() {
   assert.match(site, /cp -r examples\/traces _site\/examples\//);
   assert.match(site, /for m in examples\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/\$n\.html"[\s\S]*stills "_site\/examples\/\$n\.html" --out "_site\/examples\/stills\/\$n"[\s\S]*pdf "_site\/examples\/\$n\.html" --out "_site\/examples\/\$n\.pdf"/);
   assert.match(site, /cp examples\/types\/\*\.json _site\/examples\/types\/\n\s*for m in examples\/types\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/types\/\$n\.html"[\s\S]*stills "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/stills\/\$n"[\s\S]*pdf "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/\$n\.pdf"/);
-  const files = new Set(readdirSync(new URL('examples/', root)).filter(f => /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
+  const files = new Set(readdirSync(new URL('examples/', root)).filter(f => !f.startsWith('.') && /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
   readdirSync(new URL('examples/traces/', root)).forEach(f => files.add(`traces/${f}`));
   const views = {};
   // the retired models too: the site renders them, and the host pages load them
@@ -199,7 +199,7 @@ test('every link, picture and frame on the written pages names a docs page, a fi
 
 test('the host pages fetch only models and traces the site serves', () => {
   const { files } = served(), bad = [];
-  for (const f of readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.html') && f !== 'umlimator-atlas.html')) {
+  for (const f of readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.html') && !f.startsWith('.') && f !== 'umlimator-atlas.html')) {
     const s = read(`examples/${f}`);
     for (const [, p] of s.matchAll(/(?:fetch\(|src=|<option value=)['"]([\w./-]+\.(?:json|png))['"]/g)) if (!files.has(p)) bad.push(`${f}: ${p}`);
   }
@@ -273,8 +273,8 @@ test('the examples\' README links only files that exist, and \'Not shown\' names
   assert.ok(links.length > 20, links.length);
   assert.deepEqual(links.filter(l => !existsSync(new URL(l, new URL('examples/', root)))), []);
   const notShown = readme.split('\n').find(l => l.startsWith('Not shown')); assert.ok(notShown);
-  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => `examples/${f}`),
-    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => `examples/types/${f}`)];
+  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `examples/${f}`),
+    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => `examples/types/${f}`)];
   const sets = (m, key, value) => { let hit = false; JSON.parse(read(m), (k, v) => { if (k === key && (value === undefined || JSON.stringify(v) === value)) hit = true; return v; }); return hit; };
   const said = [...notShown.matchAll(/`(\w+)(?:: ([^`]+))?`/g)].map(([, k, v]) => [k, v]).filter(([k]) => k !== 'nodes' && k !== 'lanes');
   assert.ok(said.length > 8, said.length);
@@ -358,4 +358,65 @@ test('the Umlimator atlas says which formats umlimator.py import reads in Node, 
   for (const f of FORMATS.filter(f => name[f])) assert.ok(python.includes(name[f]) && !node.includes(name[f]), `${f}: read in Python (${how})`);
   const line = m.edges.find(e => e.from === 'cli' && e.to === 'readers');
   assert.notEqual(line.sublabel, 'in Node', 'the import line: not every format is read in Node');
+});
+
+// the site job renders each example with umlimator.py render --docs, a "Back to Docs" link in its header (tools/gallery.mjs
+// docsOf): a type's model to its type page, an atlas to its atlas page, another example to the type page of its first typed
+// view, a map with none to the maps guide. Each href, read from where the site job puts the page, is a docs page
+test('every rendered example links back to a docs page that exists, and the site job passes it to render --docs', () => {
+  const page = href => href.replace(/\.html$/, '.md'), at = (dir, href) => new URL(page(href), new URL(dir, new URL('docs/', root)));
+  const said = [...examples.map(n => [`examples/${n}.json`, 'examples/']), ...typePages.map(n => [`examples/types/${n}.json`, 'examples/types/'])]
+    .map(([f, dir]) => [f, docsOf(f), dir]);
+  for (const [f, href, dir] of said) assert.ok(existsSync(at(dir, href)), `${f}: ${href} is no docs page`);
+  const by = Object.fromEntries(said.map(([f, href]) => [f, href]));
+  assert.equal(by['examples/types/uml-class.json'], '../../types/uml-class.html', 'a type\'s model: its type page');
+  for (const A of atlases()) assert.equal(by[`examples/${A.file}.json`], `../atlas/${A.page}.html`, 'an atlas: its page');
+  assert.equal(by['examples/sales-classes.json'], '../types/uml-class.html', 'another example: its first typed view\'s type page');
+  assert.equal(by['examples/shapes.json'], '../maps/model.html', 'a map with no typed view: the maps guide');
+  const ci = read('.github/workflows/check.yml');
+  for (const out of ['_site/examples/$n.html', '_site/examples/types/$n.html'])
+    assert.ok(ci.includes(`python3 umlimator.py render "$m" --out "${out}" --no-check --docs "$(node tools/gallery.mjs --docs-of "$m")"`), out);
+});
+
+// audit 71: an argument other than --docs-of PATH was not read, and the command wrote every generated page
+test('node tools/gallery.mjs refuses an option or argument it does not know with exit 2, and writes nothing', async () => {
+  const { spawnSync } = await import('node:child_process');
+  for (const [args, bad] of [[['--docs-off', 'examples/shapes.json'], 'option --docs-off'], [['--docs'], 'option --docs'], [['examples/shapes.json'], 'argument examples/shapes.json'],
+    [['--docs-of', 'examples/shapes.json', '--check'], 'option --check'], [['--docs-of', 'examples/shapes.json', 'x'], 'argument x']]) {
+    // a copy of the repository's tools and inputs would be needed to see a write; a refusal comes before files() is read at all
+    const r = spawnSync(process.execPath, ['tools/gallery.mjs', ...args], { cwd: new URL('.', root), encoding: 'utf8' });
+    assert.deepEqual([r.status, r.stdout, r.stderr], [2, '', `tools/gallery.mjs: unknown ${bad}; usage: node tools/gallery.mjs [--docs-of MODEL.json]\n`], String(args));
+  }
+});
+
+// node tools/gallery.mjs --docs-of with no path, a path that is not there, a folder or a file that is no model: one line
+// naming the problem and exit 1, no Node stack trace (audit 65); a model there prints its href as docsOf says
+test('node tools/gallery.mjs --docs-of with no path or a bad one says what is wrong in one line and exits 1', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'umlimator-docs-of-'));
+  try {
+    writeFileSync(join(dir, 'list.json'), '[1]'); writeFileSync(join(dir, 'bad.json'), '{');
+    const run = (...a) => spawnSync(process.execPath, ['tools/gallery.mjs', '--docs-of', ...a], { cwd: new URL('.', root), encoding: 'utf8' });
+    for (const [args, said] of [
+      [[], /^tools\/gallery\.mjs: --docs-of takes a model's path/],
+      [['examples/nope.json'], /^tools\/gallery\.mjs: examples\/nope\.json: no such file$/],
+      [['examples/types/nope.json'], /^tools\/gallery\.mjs: examples\/types\/nope\.json: no such file$/],
+      [['examples'], /^tools\/gallery\.mjs: examples: a folder, not a model$/],
+      [[join(dir, 'list.json')], /: not a model \(a JSON object\)$/],
+      [[join(dir, 'bad.json')], /: not JSON \(/],
+    ]) {
+      const r = run(...args);
+      assert.equal(r.status, 1, String(args));
+      assert.equal(r.stdout, '', String(args));
+      assert.equal(r.stderr.trimEnd().split('\n').length, 1, `${args}: one line, no stack trace: ${r.stderr}`);
+      assert.match(r.stderr.trimEnd(), said, String(args));
+    }
+    for (const f of ['examples/types/uml-class.json', 'examples/sales-classes.json', 'examples/shapes.json', `examples/${atlases()[0].file}.json`]) {
+      const r = run(f);
+      assert.deepEqual([r.status, r.stdout, r.stderr], [0, docsOf(f) + '\n', ''], f);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

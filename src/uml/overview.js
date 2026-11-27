@@ -203,7 +203,7 @@ function ovGeo({ model, view, pos, memo }) {
   // ponytail: one gap for every column, so one long guard widens them all (to ~612 px at the 280 px cut); room only where a
   // labelled flow runs needs a per-column gap from layoutGraph (it has gapAfter inside, no option for it). Less than twice drops guards
   const wide = Math.max(0, ...edges.filter(e => e.label).map(labelW)), gap = wide ? Math.ceil(Math.max(64, 2 * ((down ? 18 : wide) + OV_GAP))) : 64;
-  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap, rgap: 56, repair: false, reroute: false }, memo); // P1 on a shared CI runner (§17)
+  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap, rgap: 56, repair: false, reroute: false, sideSwap: true }, memo); // P1 on a shared CI runner (§17)
   // reading order (§14): by rank (the layout's column, then its row), then the lines
   const order = I.ids.filter(id => g.byId[id]).sort((a, b) => g.byId[a].col - g.byId[b].col || g.byId[a].row - g.byId[b].row);
   return { ...g, nodes: order.map(id => g.byId[id]), order: [...order, ...g.edges.map(e => e.id)], legend: ovLegendOf(g.edges, g.nodes) };
@@ -310,6 +310,10 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
   props: { ...Object.fromEntries(OV_NODES.map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(OV_SHAPE[t]) ? [] : [OV_STEREO]])), 'uml.Comment': [], 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
   layout: ovGeo,
+  // a control-flow diagram, as the activity (layout-flow.md section 7.2; audit 67): a comment link is a dependency, a control
+  // flow a flow line; the initial node comes first, a final node last
+  flowRole: e => (OV_OBJ(e) && e.type === 'uml.CommentLink' ? 'dep' : 'branch'),
+  zoneOf: x => (!OV_OBJ(x) ? null : x.type === 'uml.InitialNode' ? 'first' : x.type === 'uml.ActivityFinalNode' || x.type === 'uml.FlowFinalNode' ? 'last' : null),
   member: { holds: () => false }, // nothing here has members
   validate: ovProblems,
   rules: OV_RULES,

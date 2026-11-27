@@ -20,5 +20,11 @@ examples/types/*.html
 
 # the integration fixture's standalone page: tests/embed.py renders it from tests/fixtures/integration.json before the browser pages
 tests/fixtures/integration.html
+# the page with a docs link tests/embed.py writes with umlimator.py render --docs, for tests/docs-frame.html too
+tests/fixtures/docs-link.html
 # the time-lapse page tests/embed.py writes with umlimator.py timelapse for tests/timelapse.html
 tests/fixtures/timelapse.html
+# the self-evolving loop's local state (tools/evolve/): the ownership lease, its lock and the fuzz run's findings
+/.evolve/lease.json
+/.evolve/lease.json.lock/
+/.evolve/fuzz/

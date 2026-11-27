@@ -62,6 +62,8 @@ From a CDN, with no install:
 | `paths(model, viewId, from, to)` | no | Every card and line on a path between two cards. | [apply and commands](./apply-and-commands.md#paths) |
 | `reach(model, viewId, from, options?)` | no | What a card leads to, or what leads to it. | [apply and commands](./apply-and-commands.md#reach) |
 | `critical(model, viewId, options?)` | no | The slowest or costliest path along a view's lines. | [apply and commands](./apply-and-commands.md#critical) |
+| `storyFromFlow(model, viewId, options?)` | no | A story told from a view's main flow, one step per main card, branches as chapters. | [apply and commands](./apply-and-commands.md#storyfromflow) |
+| `storyFromDiff(before, after, viewId, options?)` | no | A story of what changed on a view: the cards and lines added, changed or removed, along its main flow. | [apply and commands](./apply-and-commands.md#storyfromdiff) |
 | `whatIf(model, viewId, options)` | no | What loses its way when cards are taken out. | [apply and commands](./apply-and-commands.md#whatif) |
 | `otlpSpans(otlp)` | no | The spans of an OpenTelemetry trace, ready for `replay()`. | [events and state](./events-and-state.md#otlpspans) |
 | `sequenceFromTrace(model, spans, options?)` | no | A trace kept as a numbered view of the model. | [events and state](./events-and-state.md#sequencefromtrace) |
@@ -73,7 +75,7 @@ None of them changes the model it is given: each one that returns a model return
 | Group | Types | Page |
 |---|---|---|
 | Drawing | `RenderOptions`, `Handle`, `ExportOptions`, `Geometry`, `CheckIssue` | [render](./render.md) |
-| The model | `MapModel`, `MapNode`, `MapEdge`, `MapView`, `Shape`, `Badge`, `WireKind`, `Element`, `Ref`, `Selector`, `LensSelector`, `Lens`, `Rule`, `Story`, `StoryStep` | [model and schema](./model-and-schema.md) |
+| The model | `MapModel`, `MapNode`, `MapEdge`, `MapView`, `Shape`, `Badge`, `WireKind`, `Element`, `Ref`, `Selector`, `LensSelector`, `Lens`, `Rule`, `Story`, `StoryStep`, `FlowStory` | [model and schema](./model-and-schema.md) |
 | Changing and reading a model | `Command`, `History`, `Reference`, `Problem`, `RuleBreak`, `DiffResult`, `Observed`, `DriftResult` | [apply and commands](./apply-and-commands.md) |
 | Events, state and marks | `Events`, `Change`, `Hint`, `MapState`, `StoryPlayer`, `Overlay`, `CardMark`, `LineMark`, `Lit`, `Span`, `Replay` | [events and state](./events-and-state.md) |
 | The element | `UmlimatorMap` | [element and plugins](./element-and-plugins.md) |

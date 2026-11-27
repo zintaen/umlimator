@@ -128,7 +128,7 @@ test('audit 12: the schema names every type laid out down with no direction, and
   const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, said = console.warn, seen = new Set(), down = [];
   console.warn = () => {};
   try {
-    for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) {
+    for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !f.startsWith('.')).sort()) {
       const m = JSON.parse(doc('../examples/' + f));
       for (const v of Array.isArray(m.views) ? m.views : []) { if (!v || !v.diagram || v.diagram === 'map' || seen.has(v.diagram)) continue; seen.add(v.diagram);
         const at = d => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id); if (d) w.direction = d; else delete w.direction; return JSON.stringify(layout(c, v.id).byId); };
@@ -416,7 +416,7 @@ test('audit 51: a parameter\'s direction is documented as the class diagram draw
 // the bookshop's views ('api', 'pic-*'), and both stopped with exit 1. Each --views on a page.html line goes through
 // umlimator.py's own pick() on the page that block's render line writes.
 test('audit 49: every --views in the CLI guide names views of the page its render line writes', async () => {
-  const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
+  const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync, writeFileSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
   const root = new URL('..', import.meta.url).pathname, guide = readFileSync(new URL('../docs/use/cli.md', import.meta.url), 'utf8');
   const cmds = [...guide.matchAll(/```bash\n([\s\S]*?)```/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/\s+#.*$/, '').trim()).filter(l => l.startsWith('python3 umlimator.py'));
   const src = /^python3 umlimator\.py render (\S+) --out page\.html/.exec(cmds.find(l => / --out page\.html\b/.test(l)) || '');
@@ -425,7 +425,10 @@ test('audit 49: every --views in the CLI guide names views of the page its rende
   assert.ok(specs.length >= 2, `the guide's --views lines: ${specs}`);
   const dir = mkdtempSync(join(tmpdir(), 'um-cli-')), page = join(dir, 'page.html');
   try {
-    const r = spawnSync('python3', ['umlimator.py', 'render', src[1], '--out', page, '--no-check'], { cwd: root, encoding: 'utf8' });
+    // a copy of the model in this test's own folder: render writes its temporary copies beside the model it reads, and in
+    // examples/ they would show up in what the suites running beside this one list there
+    const model = join(dir, src[1].split('/').pop()); writeFileSync(model, readFileSync(join(root, src[1])));
+    const r = spawnSync('python3', ['umlimator.py', 'render', model, '--out', page, '--no-check'], { cwd: root, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     for (const spec of specs) {
       const p = spawnSync('python3', ['-c', 'import sys; sys.path.insert(0, "."); import umlimator; print(umlimator.pick(sys.argv[1], sys.argv[2]))', page, spec], { cwd: root, encoding: 'utf8' });
@@ -487,4 +490,36 @@ test('audit 60: module-api.md\'s section after 0.44.0 names the behaviour change
   // the map example, the atlas names and the one-sidebar docs came after the 0.44.0 tag (c78fc3e5, ef2c0271)
   assert.doesNotMatch(rel, /`examples\/types\/map\.json` and `docs\/gallery\/map\.md` are gone/);
   assert.match(rel, /Diagrams \(the map and the 28 types\)/);
+});
+
+// audit 68: the opening of the section after the last release said "the fixes of audits 63 and 64" while its lines went
+// on to audits 65 to 67, and the audit 64 test above accepted any "63 and": the opening names 63 to the last round tagged
+test('audit 68: module-api.md\'s section after the last release opens with every round it holds, up to the last', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8');
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  const from = doc.indexOf('\n## ', doc.indexOf(`\n## ${version}:`) + 4), end = doc.indexOf('\n## ', from + 4);
+  const after = doc.slice(from, end > 0 ? end : undefined), lines = after.split('\n');
+  const open = lines.find(l => /^These changes come after/.test(l)), rest = lines.filter(l => l !== open).join('\n');
+  const rounds = [...rest.matchAll(/\baudits? (\d+(?:(?:, | and | to )\d+)*)/g)].flatMap(m => m[1].match(/\d+/g).map(Number)), last = Math.max(...rounds);
+  assert.ok(open && last >= 67, 'an opening paragraph and the rounds named');
+  assert.match(open, new RegExp(`They are the fixes of audits 63 to ${last}, `), `the opening names audits 63 to ${last}`);
+});
+
+// audit 64 finding 9: round 63's fixes landed after 0.45.0 was cut (from 9b836c1e) with no line in the release notes, and
+// 0.45.0's Known gaps list them as open: the section after the last release names each change a host sees and closes them
+test('audit 64: module-api.md\'s section after the last release names round 63\'s changes and closes 0.45.0\'s open audit 63 items', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.ok(at(version + ':') > 0, `a ${version} section`);
+  const from = doc.indexOf('\n## ', at(version + ':') + 4);
+  assert.ok(from > 0, `a section after ${version}`);
+  const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined).replace(/\s+/g, ' ');
+  assert.match(after, new RegExp(`^ ## After ${version.replace(/\./g, '\\.')}: changes not yet released`));
+  for (const [what, re] of [['the audits it holds', /They are the fixes of audits 63 to \d+,/], ['0.45.0\'s open items closed', /Audit 63's 5 low findings, open in 0\.45\.0 \(its Known gaps\), are closed/],
+    ['the BPMN boundary event on a host not read', /boundary event whose host the reader does not read[^.]*kept whole under `ext\.bpmn\.skipped`/],
+    ['the Ingress resource backend', /Ingress resource backend is said as a resource backend/], ['the v1beta1 spec.backend', /`extensions\/v1beta1` `spec\.backend` is read as the default route/],
+    ['the use case actor\'s Alt + arrow', /Alt \+ an arrow along the rank axis on an actor[^.]*emits nothing/], ['keepsRank', /`keepsRank\(model, view, id\)`/],
+    ['the history() docs', /The `history\(\)` docs say `limit` caps the steps back/], ['the showcase guard', /showcase guard counts each legacy test file's reads/],
+    ['the PDF Members rows (audit 64)', /PDF's Members column prints an operation as its box draws it/], ['the BPMN said-once line (audit 64)', /moves to the next element read with that attribute/]])
+    assert.match(after, re, what);
 });

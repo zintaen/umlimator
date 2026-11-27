@@ -22,7 +22,7 @@
 // `--views system,f*` and `fl*` globs of tests/cli.py and tests/outcomes.py mean the fleet view only), and a new view
 // that lists accounts, flags or payments (diff's views == ["system"] pins keep those cards to the kept views).
 import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { isMain } from '../../tools/main.mjs';
 
 const PARTS = new URL('integration/', import.meta.url), OUT = new URL('integration.json', import.meta.url);
 const WIDTH = 120;
@@ -163,7 +163,7 @@ export function files() {
       text: format(JSON.parse(now(at(name))), 'part', `part ${name}`) }))];
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const stale = files().filter(f => f.now !== f.text);
   if (process.argv.includes('--check')) {
     if (stale.length) { console.error(`not as tests/fixtures/integration.mjs writes it: ${stale.map(f => f.path).join(', ')}; run node tests/fixtures/integration.mjs`); process.exit(1); }

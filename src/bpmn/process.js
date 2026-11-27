@@ -39,6 +39,10 @@ const BZ_DEFS = { 'bpmn.StartEvent': ['none', 'message', 'timer'], 'bpmn.EndEven
   'bpmn.IntermediateThrowEvent': ['none', 'message'], [BZ_BE]: ['message', 'timer'] }; // §3.2, decision 21: a none throw event
 const BZ_EVENTS = Object.keys(BZ_DEFS), BZ_FLOW = [...BZ_ACT, ...BZ_EVENTS, ...BZ_GATE], BZ_CATCH = ['bpmn.StartEvent', 'bpmn.IntermediateCatchEvent', BZ_BE];
 const BZ_KINDS = [...BZ_FLOW, ...BZ_DATA, BZ_POOL, BZ_LANE, BZ_GROUP, BZ_NOTE]; // the subset's node types (§3.1)
+// what may name a default flow (BPMN 2.0.2 10.6.2 and 10.3.1: an exclusive gateway's and an activity's `default`; a
+// parallel gateway takes every flow, so has none): props.default, the id of one of its sequence flows out, the one taken
+// when no condition on the others holds. It has no condition of its own; drawn with a slash near its source
+const BZ_DEFAULTS = [...BZ_ACT, 'bpmn.ExclusiveGateway'];
 const BZ_SHAPE = t => (BZ_EVENTS.includes(t) ? 'bpmn-event' : BZ_GATE.includes(t) ? 'bpmn-gateway' : t === 'bpmn.DataObject' ? 'bpmn-data' : t === 'bpmn.DataStoreReference' ? 'bpmn-store' : t === BZ_NOTE ? 'bpmn-note' : 'bpmn-task');
 const BZ_OUT = ['bpmn-event', 'bpmn-gateway', 'bpmn-data', 'bpmn-store']; // their names drawn outside (§9.2)
 // null-prototype: a side read from the model ('toString', say) finds no inherited value
@@ -50,6 +54,8 @@ const bzPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const bzDef = x => (BZ_HAS(bzProps(x).definition) ? String(bzProps(x).definition) : 'none');
 const bzDocOf = x => (BZ_HAS(bzProps(x).documentation) ? [String(bzProps(x).documentation).trim()] : []);
 const bzRefs = x => BZ_ARR(bzProps(x).categoryValueRef).filter(BZ_HAS).map(String);
+// a sequence flow's condition, which the model keeps where the XML reader put it (ext.bpmn.condition, read as plain)
+const bzCond = e => { const b = BZ_OBJ(e) && BZ_OBJ(e.ext) && BZ_OBJ(e.ext.bpmn) ? e.ext.bpmn : null; return !!b && Object.hasOwn(b, 'condition'); };
 // a node's drawing input (notation.js §9.4): its type, name and the props its look reads
 const bzLook = (x, open) => { const p = bzProps(x); return { type: x.type, label: x.label ?? '', shape: open ? 'bpmn-frame' : BZ_SHAPE(x.type),
   ...(BZ_HAS(p.taskType) ? { taskType: p.taskType } : {}), ...(BZ_EVENTS.includes(x.type) ? { definition: bzDef(x) } : {}), ...(x.type === BZ_BE ? { cancelActivity: p.cancelActivity !== false } : {}) }; };
@@ -82,7 +88,9 @@ function bzIndex(model, view) {
   // a line's end as its card names it: a pool, lane or group with no name by its id (bzLabel), a flow node by its kind (audit 35:
   // a message flow to an unnamed pool was "from pool", where the pool's card and the PDF say its id)
   const called = id => { const x = el(id); return x ? (BZ_HAS(x.label) ? String(x.label) : [BZ_POOL, BZ_LANE, BZ_GROUP].includes(x.type) ? bzLabel(x) : bzWord(x).toLowerCase()) : String(id); };
-  return { N, L, E, path, el, ty, up, chain, poolOf, laneIn, level, looped, called, lanesOf: p => [...L].filter(([, v]) => v.pool === p).map(([id]) => id) };
+  // a line that is its source's default flow: a sequence flow its source (an exclusive gateway or an activity) names as props.default
+  const isDefault = e => BZ_OBJ(e) && e.type === BZ_SEQ && typeof e.id === 'string' && BZ_DEFAULTS.includes(ty(e.from)) && bzProps(el(e.from)).default === e.id;
+  return { N, L, E, path, el, ty, up, chain, poolOf, laneIn, level, looped, called, isDefault, lanesOf: p => [...L].filter(([, v]) => v.pool === p).map(([id]) => id) };
 }
 
 /* ---- the view read: its pools and lanes (the bands), boundary events and their activities, expanded sub-processes (boxes),
@@ -147,32 +155,102 @@ function bzNodeName(P, id) {
   return name + (lane != null ? `, in ${bzLabel(I.el(lane))}` : '');
 }
 const BZ_LINE_WORD = { [BZ_SEQ]: 'Sequence flow', [BZ_MSG]: 'Message flow', [BZ_ASSOC]: 'Association', [BZ_DATA_ASSOC]: 'Data association' };
-const bzLineName = (I, e) => `${(Object.hasOwn(BZ_LINE_WORD, e.type) && BZ_LINE_WORD[e.type]) || 'Line'} from ${I.called(e.from)} to ${I.called(e.to)}${BZ_HAS(e.label) ? `, named ${String(e.label).trim()}` : ''}`;
+const bzLineName = (I, e) => `${(Object.hasOwn(BZ_LINE_WORD, e.type) && BZ_LINE_WORD[e.type]) || 'Line'} from ${I.called(e.from)} to ${I.called(e.to)}${BZ_HAS(e.label) ? `, named ${String(e.label).trim()}` : ''}${I.isDefault(e) ? ', the default flow' : ''}`;
 // each line kind's ends (§7.1): a sequence flow's filled arrow; a message flow dashed, an open circle at its source and a
 // hollow triangle at its target; an association dotted, open arrowheads by its direction; a data association dotted
-const bzEnds = e => { if (e.type === BZ_MSG) return { from: 'circle', to: 'triangle', dashed: true };
+const bzEnds = (e, dflt) => { if (e.type === BZ_MSG) return { from: 'circle', to: 'triangle', dashed: true };
   if (e.type === BZ_ASSOC) { const d = bzProps(e).direction; return { from: d === 'both' ? 'open' : 'none', to: d === 'one' || d === 'both' ? 'open' : 'none', dashed: 'dot' }; }
   // a listed line of another kind (a uml.Dependency): plain, never a sequence flow's filled arrow (audit 28)
-  return e.type === BZ_DATA_ASSOC ? { from: 'none', to: 'open', dashed: 'dot' } : e.type === BZ_SEQ ? { from: 'none', to: 'arrow' } : { from: 'none', to: 'none' }; };
+  return e.type === BZ_DATA_ASSOC ? { from: 'none', to: 'open', dashed: 'dot' } : e.type === BZ_SEQ ? { from: dflt ? 'slash' : 'none', to: 'arrow' } : { from: 'none', to: 'none' }; }; // a default flow: a slash near its source
 
 /* ---- the legend: each line kind drawn ---- */
 const BZ_KEYS = [[BZ_SEQ, '<path d="M2 8H17"/><path d="M17 4L26 8L17 12Z" fill="var(--um-muted)"/>', 'the order of steps in one pool'],
   [BZ_MSG, '<circle cx="5" cy="8" r="3" fill="var(--um-stage-bg)"/><path d="M8 8H16" stroke-dasharray="3 2"/><path d="M16 3L26 8L16 13Z" fill="var(--um-stage-bg)"/>', 'a message between pools'],
   [BZ_ASSOC, '<path d="M2 8H26" stroke-dasharray="1 2"/>', 'a note or link to an element'], [BZ_DATA_ASSOC, '<path d="M2 8H25" stroke-dasharray="1 2"/><path d="M17 4L26 8L17 12" fill="none"/>', 'data read or written']];
-const bzLegend = types => [...BZ_KEYS.filter(([t]) => types.has(t)).map(([t, svg, says]) => `<span class="lgi" title="${esc(BZ_LINE_WORD[t] + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(BZ_LINE_WORD[t])}</b><span>${esc(says)}</span></span>`),
+const BZ_DEFAULT_KEY = ['Default flow', '<path d="M2 8H17"/><path d="M5 4L10 12"/><path d="M17 4L26 8L17 12Z" fill="var(--um-muted)"/>', 'taken when no other way out\'s condition holds'];
+const bzLegend = (types, dflt) => [...BZ_KEYS.filter(([t]) => types.has(t)).map(([t, svg, says]) => `<span class="lgi" title="${esc(BZ_LINE_WORD[t] + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(BZ_LINE_WORD[t])}</b><span>${esc(says)}</span></span>`),
+  ...(dflt ? [BZ_DEFAULT_KEY].map(([w, svg, says]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`) : []),
   // a line of another kind, drawn plain (bzEnds): "Line" with that plain swatch, as the other typed views key it (audit 28)
   ...([...types].some(t => !BZ_LINES.includes(t)) ? [`<span class="lgi" title="${esc('Line — ' + BZ_OTHER_SAYS)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H26"/></g></svg><b>Line</b><span>${BZ_OTHER_SAYS}</span></span>`] : [])];
 const BZ_OTHER_SAYS = 'a kind of line this view does not draw as its own';
 
 /* ---- the view laid out: { model, view, pos, memo } (§5, §6, §7.2, §8) ---- */
-function bzGeo({ model, view, pos: pins, memo }) {
-  const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
-  const pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
+/* The lane pass sets what a pin would: data drawn beside its flow node takes no pin at all, an item with no other item of its lane
+   in its columns keeps its row whatever its pin says, and a step the ranking and the lane pass settle back (the first or last
+   item of a lane's rows stepped outward) moves nothing. The canvas's Alt + an arrow writes no pin there and says
+   this (keepsRank, keepsRow), where it wrote one that moved nothing (audits 64 and 65) */
+function bzKeeps(model, view, id, geo, d) {
+  const P = bzPic(model, view), by = BZ_OBJ(geo) && BZ_OBJ(geo.byId) ? geo.byId : {}, top = P.holds(null), n = by[id];
+  if (!P.lanes.length || !top.includes(id) || !Object.hasOwn(by, id) || !Array.isArray(d) || !(d[0] || d[1])) return null;
+  // the pin the canvas would write, laid out (the ranking and the lane pass, bzCells) against the pins as they are, on the grid
+  // as the host puts them (onGrid): a pin's row also feeds the ranking, so whether it moves anything is asked, never assumed
+  // (audit 65: the first or last item of a lane's rows stepped outward, or one the lane pass settles back, wrote a pin that
+  // moved nothing). A cell a pin names already is the canvas's to step over: not asked
+  const lim = BZ_ARR(view.nodeIds).length + 64, grid = x => Math.max(-lim, Math.min(lim, x || 0));
+  const L = Object.fromEntries(Object.entries(BZ_OBJ(view.layout) ? view.layout : {}).filter(([, p]) => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number').map(([k, p]) => [k, [grid(p[0]), grid(p[1])]]));
+  const c = n && n.col + d[0], r = n && n.row + d[1];
+  if (!Number.isFinite(c) || !Number.isFinite(r) || Object.values(L).some(p => p[0] === c && Math.abs(p[1] - r) < 1)) return null;
+  const flat = o => Object.keys(o || {}).sort().map(k => `${k}\u0000${o[k]}`).join('\u0001'); // a map's entries in key order, a cell as "col,row"
+  const F = bzFlow(model, view, P); let now, then; try { now = bzCells(P, L, F); then = bzCells(P, { ...L, [id]: [c, r] }, F); } catch { return null; }
+  if (!['at', 'runs', 'spans'].every(k => flat(now[k]) === flat(then[k]))) return null;
+  // why, said: data beside its flow node, an item alone in its lane's columns, or one its lane stacks back
+  const beside = x => (P.dataLane.get(x) || {}).by, b = beside(id);
+  if (b != null) return `${P.I.called(id)} is drawn beside ${P.I.called(b)}, the flow node it is associated with`;
+  if (!d[1]) return `${P.I.called(id)} keeps its column: the flows into and out of it rank it there`;
+  const leaves = x => (P.open.has(x) ? P.holds(x).flatMap(leaves) : [x]), cols = x => leaves(x).map(i => (Object.hasOwn(by, i) ? by[i].col : NaN)).filter(Number.isFinite);
+  const mine = cols(id), l = P.laneOf(id), lane = l == null ? 'no lane' : P.I.called(l), c0 = Math.min(...mine), c1 = Math.max(...mine);
+  return top.some(x => x !== id && beside(x) == null && P.laneOf(x) === l && cols(x).some(k => k >= c0 && k <= c1))
+    ? `${P.I.called(id)} keeps its place in ${lane}: the lane stacks its items in their columns from its first row; the Owner field, or a drag into another lane, moves it to another lane`
+    : `${P.I.called(id)} is the only item of ${lane} here: the Owner field, or a drag into another lane, moves it to another lane`;
+}
+/* each item's cell [col, row] (at) as the view draws it, from the pins: ranked (cpPlace), then the lane pass; with each lane's run
+   of rows and each pool's (spans). bzGeo draws from it, and bzKeeps asks it whether a step's pin would move anything (audit 65) */
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md sections 6.1 and 7.2, section 12 step 10), read only in a view
+   with arrange "flow". The main flow: from a start event (the one whose flow is longest), each step its default flow
+   (props.default, an exclusive gateway's or an activity's) when that leads to an item not yet on it, else the first sequence
+   flow out (in the view's order of lines) to an item not yet on it, until an end event. An association or a data association
+   is a dependency (it ranks nothing: cpPlace never ranked one), a sequence flow on the main flow is main; a start event goes
+   first and an end event last (in the main flow's pool, and not one a message flow meets, which keeps the message's column:
+   moved, it crossed more lines in tests/bpmn-stress.json), data objects and data stores under, which the lane pass draws
+   beside their flow node already. The main flow's items hold one row in cpPlace's ranking (its anchors); the lane pass then
+   stacks each lane's items from its first row as before, so a main flow that changes lanes changes rows, and a branch item
+   alone in its column may take the main row there (kept free, it crossed more lines in tests/bpmn-stress.json) */
+const BZ_MAINS = new WeakMap();
+function bzMain(model, view, P0) {
+  let c = BZ_MAINS.get(view); if (c && c.model === model) return c.main;
+  const P = P0 || bzPic(model, view), seq = P.lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null && l.f.at !== l.t.at);
+  // an activity's step is its own flow out: a boundary event's (l.f.port) is an exception path, whatever the edge order (audit 66)
+  const walk = start => { const ids = [], lines = new Set();
+    for (let cur = start, seen = new Set(); cur != null && !seen.has(cur);) { seen.add(cur); ids.push(cur); if (P.I.ty(cur) === 'bpmn.EndEvent') break;
+      const d = BZ_DEFAULTS.includes(P.I.ty(cur)) ? bzProps(P.I.el(cur)).default : null;
+      const l = (d != null && seq.find(x => x.f.at === cur && !x.f.port && x.e.id === d && !seen.has(x.t.at))) || seq.find(x => x.f.at === cur && !x.f.port && !seen.has(x.t.at)); if (!l) break; lines.add(l.e.id); cur = l.t.at; }
+    return { ids, lines }; };
+  // the start event whose path is longest (the first of equals): a collaboration's main process, not a customer's two steps
+  const main = P.items.filter(id => P.I.ty(id) === 'bpmn.StartEvent').map(walk).reduce((a, b) => (b.ids.length > a.ids.length ? b : a), { ids: [], lines: new Set() });
+  BZ_MAINS.set(view, { model, main }); return main;
+}
+const bzFlowRole = (e, model, view) => !BZ_OBJ(e) ? null : e.type === BZ_ASSOC || e.type === BZ_DATA_ASSOC ? 'dep' : BZ_OBJ(view) && e.type === BZ_SEQ && bzMain(model, view).lines.has(e.id) ? 'main' : 'branch';
+const bzZoneOf = x => !BZ_OBJ(x) ? null : x.type === 'bpmn.StartEvent' ? 'first' : x.type === 'bpmn.EndEvent' ? 'last' : BZ_DATA.includes(x.type) ? 'under' : null;
+// an arranged view's main items and zones, for cpPlace (bzCells); null in any other view
+function bzFlow(model, view, P) {
+  if (!BZ_OBJ(view) || view.arrange !== 'flow') return null;
+  const M = bzMain(model, view, P), on = new Set(M.ids), ov = BZ_OBJ(view.nodeOverrides) ? view.nodeOverrides : {}, zone = Object.create(null), ZS = ['first', 'flow', 'last', 'under'];
+  // zones in the main flow's pool only (or in no pool): another pool's end event is not drawn past this one's flow
+  const pool = M.ids.length ? P.I.poolOf(M.ids[0]) : undefined;
+  const msg = new Set(P.lines.filter(l => l.e.type === BZ_MSG).flatMap(l => [l.f.at, l.t.at])); // an event a message flow meets keeps its column: the message's
+  P.items.forEach(id => { if (!M.ids.length || P.I.poolOf(id) !== pool) return; const x = P.I.el(id) || {}, o = BZ_OBJ(ov[id]) ? ov[id] : {}, own = ZS.includes(o.zone) ? o.zone : ZS.includes(x.zone) ? x.zone : null;
+    const z = own || (view.zones === false ? null : bzZoneOf(x)); if (!msg.has(id) && (z === 'first' && (!on.has(id) || M.ids[0] === id) || z === 'last' && (!on.has(id) || M.ids.at(-1) === id))) zone[id] = z; });
+  const under = Object.create(null); P.lines.filter(l => (l.e.type === BZ_DATA_ASSOC || l.e.type === BZ_ASSOC) && l.f.at != null && l.t.at != null).forEach(l => [[l.f.at, l.t.at], [l.t.at, l.f.at]].forEach(([a, b]) => {
+    if (a !== b && BZ_DATA.includes(P.I.ty(a)) && !(view.zones === false && !ZS.includes((BZ_OBJ(ov[a]) ? ov[a] : {}).zone))) (under[a] ||= []).push(b); }));
+  return { anchor: on, zone, under, role: l => (l.e ? bzFlowRole(l.e, model, view) : 'branch') };
+}
+function bzCells(P, pins, F) {
+  const { open, lines } = P, pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
   // ranked: the sequence flows (a boundary event's from its activity), then each message flow between laid-out items that closes no cycle
   const links = lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null).map(l => [l.f.at, l.t.at]);
   const reach = (a, b) => { const seen = new Set([a]), q = [a]; while (q.length) { const u = q.pop(); if (u === b) return true; links.forEach(([s, t]) => { if (s === u && !seen.has(t)) { seen.add(t); q.push(t); } }); } return false; };
   lines.forEach(l => { if (l.e.type === BZ_MSG && l.f.at != null && l.t.at != null && !reach(l.t.at, l.f.at)) links.push([l.f.at, l.t.at]); });
-  const placed = cpPlace(pic, links.map(([a, b]) => ({ f: { at: a }, t: { at: b } })), pins);
+  const placed = cpPlace(pic, links.map(([a, b]) => ({ f: { at: a }, t: { at: b }, e: (lines.find(l => l.f.at === a && l.t.at === b) || {}).e })), pins, F || undefined);
   // the lane pass (§8.1): each lane's top-level items in cpPlace's order, stacked in their columns from the lane's first row,
   // a block whole; data beside the flow node it is associated with; a pool's own items after its lanes; pools apart by an
   // empty row; what is in no pool after them all
@@ -193,6 +271,11 @@ function bzGeo({ model, view, pos: pins, memo }) {
       if (pool !== 1) stack(l.id, ks.length ? 0 : 1); if (pool !== 2) { if (pool) q.push([l, 2]); q.push(...ks.map(k => [k, 0]).reverse()); } } };
     ord.filter(l => l.depth === 0).forEach((p, k) => { if (k) { runs['\u0000gap' + k] = [base, base]; base++; } const b0 = base; visit(p); spans[p.id] = [b0, base - 1]; });
     if (by.has('\u0000none')) { runs['\u0000gap'] = [base, base]; base++; stack('\u0000none', 0); } }
+  return { at, runs, spans };
+}
+function bzGeo({ model, view, pos: pins, memo }) {
+  const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
+  const leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]), { at, runs, spans } = bzCells(P, pins, bzFlow(model, view, P));
   const rowOf = x => Math.min(...leaves(x).map(id => at[id][1])), colOf = x => Math.min(...leaves(x).map(id => at[id][0]));
   const toward = (me, other) => (other.pool ? (spans[other.pool] || [0])[0] : rowOf(other.at)) < (me.pool ? spans[me.pool][0] : rowOf(me.at));
   // anchors (§7.2): a message flow to or from a pool ends at a 2 px node in the empty row beside it, on the other end's side
@@ -216,7 +299,7 @@ function bzGeo({ model, view, pos: pins, memo }) {
     return { ...d, w, h }; }), ...[...anchors.values()].map(({ k, ...n }) => n)];
   const lay = s => BZ_NAME[down ? BZ_TURN[s] : s]; // a picture's side as layoutTyped takes it: laid out down, turned
   const edges = lines.map(l => { const e = l.e, label = BZ_HAS(e.label) ? String(e.label).trim() : '', o = { id: e.id, _id: e.id, type: e.type, from: l.f.at ?? l.anchor.id, to: l.t.at ?? l.anchor.id,
-    ...(label ? { label, cut: BZ.cut } : {}), end: bzEnds(e), aria: bzLineName(I, e), ...(BZ_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) };
+    ...(label ? { label, cut: BZ.cut } : {}), end: bzEnds(e, I.isDefault(e) && !l.f.port), aria: bzLineName(I, e), ...(BZ_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) };
     const rank = [l.f, l.t].map(me => (me.port ? onSide(me.at, side.get(me.port)).indexOf(me.port) : null));
     [['from', l.f], ['to', l.t]].forEach(([w, me]) => { if (me.port) Object.assign(o, { [w + 'Port']: me.port, [w + 'Side']: lay(side.get(me.port)) }); });
     if (l.f.port || l.t.port) Object.assign(o, l.f.port && l.t.port ? { portRank: rank, portMin: [32, 32] } : { portRank: rank[l.f.port ? 0 : 1], portMin: 32 });
@@ -251,6 +334,33 @@ function bzGeo({ model, view, pos: pins, memo }) {
         const m = alt ? (alt[`${id}|${k}|${w}`] ||= {}) : null, h = layoutTyped({ ...dg, edges: base.map(e => e.id === id ? { ...e, [k]: w } : e) }, m), c = weigh(routeAudit(h, ''));
         if (c < n || c === n && run(h) < run(g)) { g = h; n = c; } }))); } }
   return bzFinish(P, g, { runs, anchors, grown, side, down });
+}
+
+// a line's label that lies on another line as drawn: the layout routes a line again after another's label was placed, and a
+// line's end sunk 16 px into a side grown for boundary events runs on (0.45.0's known gap: Alt + Up on the example's timer
+// put "Payment result" on the Charge request line). Such a label slides along its own line, centred on it as the layout puts
+// it, else beside it, to the nearest spot clear of every other line, node, label and pool, lane or box border; with none it stays. A label
+// on no other line is never moved, so a picture with none draws as before. edges: as drawn, a line with a moved label copied
+// in place (layoutTyped's own objects, which a memo may keep, are never changed); nodes: rectangles a label keeps off;
+// frames: rectangles whose borders it keeps off
+const bzSegs = P => P.slice(1).map((q, k) => [P[k], q]);
+const bzHits = (L, [a, b]) => Math.max(a[0], b[0]) > L.x && Math.min(a[0], b[0]) < L.x + L.w && Math.max(a[1], b[1]) > L.y && Math.min(a[1], b[1]) < L.y + L.h;
+const bzMeets = (L, r, k = 0) => L.x < r.x + r.w + k && r.x - k < L.x + L.w && L.y < r.y + r.h + k && r.y - k < L.y + L.h;
+const bzAcross = (L, f) => bzMeets(L, f) && !(L.x >= f.x && L.y >= f.y && L.x + L.w <= f.x + f.w && L.y + L.h <= f.y + f.h) && !(f.x >= L.x && f.y >= L.y && f.x + f.w <= L.x + L.w && f.y + f.h <= L.y + L.h);
+function bzRelabel(edges, nodes, frames) {
+  // as check() reads a label: 1 px in on each side
+  const onOther = (e, L) => { const r = { x: L.x + 1, y: L.y + 1, w: L.w - 2, h: L.h - 2 }; return edges.some(o => o !== e && bzSegs(o.pts).some(s => bzHits(r, s))); };
+  edges.forEach((e, i) => { const L = e.lbl; if (!L || !Array.isArray(e.pts) || !onOther(e, L)) return;
+    // the spots (a label's centre): on a segment, then beside it (4 px off the line, on either side), each set nearest first
+    const c0 = [L.x + L.w / 2, L.y + L.h / 2], on = [], beside = [], near = (p, q) => Math.hypot(p[0] - c0[0], p[1] - c0[1]) - Math.hypot(q[0] - c0[0], q[1] - c0[1]);
+    bzSegs(e.pts).forEach(([a, b]) => { const v = a[0] === b[0], h = a[1] === b[1]; if (v === h) return; // a slant or a point: no spot
+      const k = v ? 1 : 0, half = (v ? L.h : L.w) / 2, off = (v ? L.w : L.h) / 2 + 4;
+      for (let t = Math.min(a[k], b[k]) + half + 3; t <= Math.max(a[k], b[k]) - half - 3; t += 2) on.push(v ? [a[0], t] : [t, a[1]]);
+      for (let t = Math.min(a[k], b[k]) + 3; t <= Math.max(a[k], b[k]) - 3; t += 2) [-off, off].forEach(d => beside.push(v ? [a[0] + d, t] : [t, a[1] + d])); });
+    const spots = [...on.sort(near), ...beside.sort(near)];
+    const clear = M => !onOther(e, M) && !nodes.some(n => bzMeets(M, n, 2)) && !frames.some(f => bzAcross(M, f))
+      && !edges.some((o, j) => j !== i && o.lbl && bzMeets(M, o.lbl, 2));
+    for (const [x, y] of spots) { const M = { ...L, x: r2(x - L.w / 2), y: r2(y - L.h / 2) }; if (clear(M)) { edges[i] = { ...e, lbl: M }; return; } } });
 }
 
 /* The laid-out graph as it is drawn, a new object: the bands; the activities at their own size and the boundary circles on
@@ -302,6 +412,7 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
     const b = l.anchor && band.get(l.anchor.pool);
     if (b) { const k = l.anchor.w === 'from' ? 0 : c.pts.length - 1; c.pts[k][down ? 0 : 1] = l.anchor.above ? b[A] : b[A] + b[S]; Object.assign(c, { [l.anchor.w === 'from' ? 's' : 't']: byId[l.anchor.pool], [l.anchor.w]: l.anchor.pool }); }
     return c; });
+  bzRelabel(edges, [...laid, ...circles, ...heads], [...families, ...bands]); // edges: bzFinish's own array
   // the reading order (§13): each pool, its lanes, each lane's items by rank (a box's contents after it, an activity's
   // boundary events after it), what is in no pool, the groups, then the lines
   const order = [];
@@ -333,7 +444,7 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
   return { ...g, nodes, byId, edges, families, bounds, bands, labels, order: order.filter(id => byId[id] || families.some(f => f.id === id) || edges.some(e => e.id === id)),
     // the slots (src/typed/edit.js): one per node, header and box, so the palette's add hears what is selected
     slots: [...drawn.map(n => ({ after: n.id, parent: P.laneOf(P.be.get(n.id) ?? n.id), ...mid(n) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) })), ...families.map(f => ({ after: f.id, parent: f.id, ...mid(f) }))],
-    legend: bzLegend(new Set(edges.map(e => e.type))),
+    legend: bzLegend(new Set(edges.map(e => e.type)), edges.some(e => e.end && e.end.from === 'slash')),
     // the lines the view shows and the picture leaves out (§8.3: a message flow between two pools, a line from a boundary
     // event to its own activity), for check(), as describe() says them (audit 27)
     notDrawn: [...P.said, ...P.foreign].filter(e => !lineOf.has(e.id)).map(e => ({ id: e.id, ids: [e.id], what: bzLineName(I, e) })) };
@@ -364,6 +475,7 @@ const BZ_RULES = {
   'data-ends': 'a data association joins data with an activity or event of its own pool (any pool for data in none) in BPMN\'s direction; an association has a text annotation at one end',
   'group-ref': 'every categoryValueRef names a group',
   'opens-view': 'a collapsed sub-process or a call activity opens a BPMN view, the sub-process\'s own',
+  'default-flow': 'an exclusive gateway\'s or an activity\'s default flow is one of its sequence flows out, with no condition',
 };
 function bzProblems(model, view) {
   const I = bzIndex(model, view), out = [], shown = new Set(BZ_ARR(view && view.nodeIds));
@@ -417,6 +529,13 @@ function bzProblems(model, view) {
       if (i === 1 && o.length === 1) say('warning', 'gateway-flows', id, [id], `${q(id)} has one flow in and one out: a gateway with one exit does nothing`);
       if (t === 'bpmn.ExclusiveGateway' && o.length > 1 && o.some(e => !BZ_HAS(e.label))) say('warning', 'gateway-flows', id, [id, ...o.filter(e => !BZ_HAS(e.label)).map(e => e.id)], `${q(id)} splits the flow: name each way out (${o.filter(e => !BZ_HAS(e.label)).map(e => e.id).join(', ')} has none)`); }
     if (BZ_ACT.includes(t) && !ins(id).length) say('warning', 'flow-start', id, [id], `${q(id)} has no sequence flow in: it never starts`);
+    // its default flow (props.default): an exclusive gateway's or an activity's, one of its own sequence flows out, with no condition
+    if (Object.hasOwn(p, 'default') && p.default != null) { const d = p.default, e = typeof d === 'string' ? I.E.get(d) : undefined;
+      if (!BZ_DEFAULTS.includes(t)) say('error', 'default-flow', id, [id], `${q(id)} names a default flow, which only an exclusive gateway or an activity has${t === 'bpmn.ParallelGateway' ? ': a parallel gateway takes every way out' : ''}`, '.props.default');
+      else if (typeof d !== 'string') say('error', 'default-flow', id, [id], `${q(id)}'s default flow is ${jsonText(d)}, not the id of a sequence flow out of it`, '.props.default');
+      else if (!e) { if (!H.has(d)) say('error', 'default-flow', id, [id], `${q(id)}'s default flow ${jsonText(d)} is no line of the model`, '.props.default'); }
+      else if (e.type !== BZ_SEQ || e.from !== id) say('error', 'default-flow', id, [id, d], `${q(id)}'s default flow ${q(d)} is no sequence flow out of it`, '.props.default');
+      else if (bzCond(e)) say('warning', 'default-flow', id, [id, d], `${q(id)}'s default flow ${q(d)} has a condition: the default flow is the one taken when no other condition holds, so it has none`, '.props.default'); }
     const pa = x.parent;
     if (pa != null && (flow(id) || BZ_DATA.includes(t))) { const ok = BZ_DATA.includes(t) ? ty(pa) === BZ_POOL : I.L.has(pa) || ty(pa) === BZ_POOL || ty(pa) === BZ_SUB;
       if (!ok) say('error', 'lane-owner', id, [id, pa], `${q(id)}'s parent ${q(pa)} is ${I.el(pa) ? bzA(bzWord(I.el(pa)).toLowerCase()) : 'no element'}: ${BZ_DATA.includes(t) ? 'data sits in a pool or none' : 'a flow node sits in a lane, a pool or a sub-process'}`, '.parent'); }
@@ -452,7 +571,7 @@ function bzDescribe(model, viewId) {
   const out = [`${labelOr(v.title, v.id)}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id)) || !BZ_KINDS.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
-  const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
+  const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${I.isDefault(e) ? ' by default' : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
     out.push(bzNodeName(P, id) + doc(I.el(id)) + (said.length ? '; ' + said.join('; ') : '') + '.'); };
   laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say); other.forEach(e => out.push(bzLineName(I, e) + (drew.has(e.id) ? '' : ', not drawn') + '.'));
   P.groups.forEach(gid => { const ms = P.ids.filter(i => bzRefs(I.el(i)).includes(gid)).map(I.called); out.push(`Group ${bzLabel(I.el(gid))}${doc(I.el(gid))}${ms.length ? ': ' + ms.join(', ') : ', round nothing shown: not drawn'}.`); });
@@ -666,6 +785,7 @@ function bzOwners(model, x) {
 
 /* ---- the type ---- */
 const BZ_DOC = { key: 'documentation', label: 'Documentation', kind: 'text' }, BZ_GROUPS = { key: 'categoryValueRef', label: 'Groups', kind: 'list' };
+const BZ_DEFAULT = { key: 'default', label: 'Default flow', kind: 'text' }; // the id of one of its sequence flows out
 const BZ_EV = t => [BZ_DOC, { key: 'definition', label: 'Definition', kind: 'enum', options: BZ_DEFS[t] }, BZ_GROUPS];
 const BZ_TYPE = registerDiagramType('bpmn', {
   untyped: 'Task', // an element of no type (or ""): a task, as named and warned (audit 30)
@@ -679,14 +799,17 @@ const BZ_TYPE = registerDiagramType('bpmn', {
   // one entry, so the canvas opens no picker of kinds: connect picks the kind by the ends (§7.1, decision 8)
   lines: [{ type: BZ_SEQ, label: 'Flow (sequence, message, association or data association, by its ends)' }],
   props: { [BZ_POOL]: [BZ_DOC, { key: 'processRef', label: 'Process', kind: 'text', drawn: false }], [BZ_LANE]: [BZ_DOC],
-    'bpmn.Task': [BZ_DOC, { key: 'taskType', label: 'Task type', kind: 'enum', options: ['none', 'user', 'service'] }, BZ_GROUPS], [BZ_SUB]: [BZ_DOC, BZ_GROUPS],
-    'bpmn.CallActivity': [BZ_DOC, { key: 'calledElement', label: 'Called element', kind: 'text', drawn: false }, BZ_GROUPS],
+    'bpmn.Task': [BZ_DOC, { key: 'taskType', label: 'Task type', kind: 'enum', options: ['none', 'user', 'service'] }, BZ_GROUPS, BZ_DEFAULT], [BZ_SUB]: [BZ_DOC, BZ_GROUPS, BZ_DEFAULT],
+    'bpmn.CallActivity': [BZ_DOC, { key: 'calledElement', label: 'Called element', kind: 'text', drawn: false }, BZ_GROUPS, BZ_DEFAULT],
     ...Object.fromEntries(BZ_EVENTS.map(t => [t, BZ_EV(t)])), [BZ_BE]: [...BZ_EV(BZ_BE), { key: 'cancelActivity', label: 'Interrupting', kind: 'bool' }],
-    ...Object.fromEntries(BZ_GATE.map(t => [t, [BZ_DOC, BZ_GROUPS]])), 'bpmn.DataObject': [BZ_DOC, BZ_GROUPS], 'bpmn.DataStoreReference': [BZ_DOC, { key: 'dataStoreRef', label: 'Data store', kind: 'text', drawn: false }, BZ_GROUPS],
+    ...Object.fromEntries(BZ_GATE.map(t => [t, [BZ_DOC, BZ_GROUPS, ...(BZ_DEFAULTS.includes(t) ? [BZ_DEFAULT] : [])]])), 'bpmn.DataObject': [BZ_DOC, BZ_GROUPS], 'bpmn.DataStoreReference': [BZ_DOC, { key: 'dataStoreRef', label: 'Data store', kind: 'text', drawn: false }, BZ_GROUPS],
     [BZ_NOTE]: [BZ_DOC, BZ_GROUPS], [BZ_GROUP]: [BZ_DOC], [BZ_SEQ]: [BZ_DOC], [BZ_MSG]: [BZ_DOC], [BZ_ASSOC]: [BZ_DOC, { key: 'direction', label: 'Direction', kind: 'enum', options: ['none', 'one', 'both'] }], [BZ_DATA_ASSOC]: [BZ_DOC] },
-  // an activity deleted takes its boundary events with it; a group deleted leaves the elements that named it
-  refs: Object.fromEntries([...BZ_FLOW, ...BZ_DATA, BZ_NOTE].map(t => [t, { 'props.categoryValueRef': 'drop', ...(t === BZ_BE ? { 'props.attachedTo': 'cascade' } : {}) }])),
-  layout: Object.assign(bzGeo, { rank: false }), // bzGeo ranks the view itself (cpPlace): the host passes only the pins
+  // an activity deleted takes its boundary events with it; a group deleted leaves the elements that named it; a default flow
+  // deleted leaves its gateway or activity with none
+  refs: Object.fromEntries([...BZ_FLOW, ...BZ_DATA, BZ_NOTE].map(t => [t, { 'props.categoryValueRef': 'drop', ...(t === BZ_BE ? { 'props.attachedTo': 'cascade' } : {}), ...(BZ_DEFAULTS.includes(t) ? { 'props.default': 'drop' } : {}) }])),
+  flowRole: bzFlowRole,
+  zoneOf: bzZoneOf,
+  layout: Object.assign(bzGeo, { rank: false, keepsRank: bzKeeps, keepsRow: bzKeeps }), // bzGeo ranks the view itself (cpPlace): the host passes only the pins
   boxes: (model, view) => bzPic(model, view).boxes,
   draw: bzDraw,
   owners: bzOwners,

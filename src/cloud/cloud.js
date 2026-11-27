@@ -272,6 +272,25 @@ function clRemove(F, model, view, ids, fromModel) {
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${one ? `${clKindWord(F, one)} ${clName(one)}` : clPlural(gs.length, 'group')} and the ${clPlural(held, 'element')} ${one ? 'it' : 'they'} held${more ? `, and ${clPlural(more, 'other element')}` : ''}` };
 }
 
+/* Layout by business flow (docs/diagrams/notes/layout-flow.md section 7.2, section 12 step 10), read only in a view with
+   arrange "flow": users and clients first (the family's user, or a service whose icon names users, a client or a device),
+   a data or storage service (by its icon: SQL, a database, storage, a bucket, a cache...) in the band under the flow, and an
+   outside service (in no group the view shows, where it shows one) last; a line to or from a data service is a dependency */
+const CL_CLIENT = /(^|[-_\s])(users?|clients?|mobile|desktop|laptop|browser|devices?)([-_\s]|$)/i;
+const CL_DATA = /sql|database|(^|[-_\s])db([-_\s]|$)|dynamo|aurora|(^|[-_])rds|storage|bucket|blob|bigquery|bigtable|spanner|firestore|datastore|memorystore|redis|cache|cosmos|filestore|elastic-block|elastic-file|glacier|redshift|data-lake|disk/i;
+const clIconId = x => { const id = clProps(x).icon; return typeof id === 'string' ? id : ''; };
+const clClient = (F, x) => clU(F, x) || (Object.hasOwn(F.items, x.type) && CL_CLIENT.test(clIconId(x)));
+const clData = (F, x) => Object.hasOwn(F.items, x.type) && !clClient(F, x) && CL_DATA.test(clIconId(x));
+function clZoneOf(F, x, model, view) {
+  if (!CL_OBJ(x) || !CL_OBJ(view)) return null;
+  if (clClient(F, x)) return 'first';
+  if (clData(F, x)) return 'under';
+  if (!Object.hasOwn(F.items, x.type)) return null;
+  const I = clIndex(model), shown = new Set(CL_ARR(view.nodeIds)), group = id => (I.at.get(id) || {}).type === F.group && shown.has(id);
+  return [...shown].some(group) && !I.chain(x.id).some(group) ? 'last' : null;
+}
+const clFlowRole = (F, e, model) => { if (!CL_OBJ(e)) return null; const I = clIndex(model); return [e.from, e.to].some(id => I.at.has(id) && clData(F, I.at.get(id))) ? 'dep' : 'branch'; };
+
 /* ---- a family's definition ---- */
 function clDef(pack, F) {
   F.pack = pack;
@@ -285,8 +304,12 @@ function clDef(pack, F) {
     lines: [{ type: F.line[0], label: F.line[1] }],
     // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
     drawsOnly: [F.line[0]],
+    // a line's label names what goes along it ("paid order", "/api"), never a verb: a story says "A to B (paid order)" (audit 69)
+    storyNouns: true,
     props: { [F.group]: [kindField], ...Object.fromEntries(Object.keys(F.items).map(t => [t, [iconField]])), ...(F.user ? { [F.user]: [] } : {}), [F.line[0]]: [] },
     layout: clGeo(F),
+    flowRole: (e, model, view) => clFlowRole(F, e, model, view),
+    zoneOf: (x, model, view) => clZoneOf(F, x, model, view),
     draw: clDraw,
     boxes: (model, view) => clPic(F, model, view).boxes,
     // the Owner field: every group of the family, its kind in brackets, but one a line of it would join it to (line-inside, audit 19)

@@ -26,7 +26,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 | 12.2 Package | `uml.Package`, holding components | a box, its name in the header room |
 | 7.7 Dependency, 7.8 Comment | `uml.Dependency` (`props.stereotypes`), `uml.Comment`, `uml.CommentLink` | dashed with an open arrowhead; a note, a dashed line |
 
-Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-5.md` §10.1): `port-owner` (a port is a member of a component or a class), `provided-ends`, `delegation-ends` (as built: the outer end a port), `assembly-ends`, `manifest-ends` (from an artifact; to anything but a component, a warning), `component-realization-ends`, `multiplicity` (an attribute's multiplicity on an interface drawn as a box, judged as the class view judges it) (errors); `required-ends`, `ball-interface`, `present-values` (a port's present side other than left, right, top or bottom, or an interface's present as other than ball, as written: ignored), `component-owner`, `line-inside` (a line other than a connector between a box and something it holds, with no port at the box's end, is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings).
+Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-5.md` §10.1): `port-owner` (a port is a member of a component or a class), `provided-ends`, `delegation-ends` (as built: the outer end a port), `assembly-ends`, `manifest-ends` (from an artifact; to anything but a component, a warning), `component-realization-ends`, `multiplicity` (an attribute's multiplicity on an interface drawn as a box, judged as the class view judges it) (errors); `required-ends`, `ball-interface`, `present-values` (a port's present side other than left, right, top or bottom, or an interface's present as other than ball, as written: ignored), `component-owner`, `line-inside` (a line other than a connector between a box and something it holds, with no port at the box's end, is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored), `comment-link` (a comment link the view draws with no comment at either end, which connect refuses) (warnings).
 
 **Departures from UML 2.5.1:**
 
@@ -58,6 +58,8 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   `reroute: false`), with `gap: 48`, `rgap: 56`, `cut: 280` and `labelGaps` (decision 9). A box whose ports have lines
   takes a 48 px padding.
 - The example lays out clean right and down: no crossing, `check()` finds nothing, every line routed by the grid.
+- A line whose ends are both outside a box is routed round it (the class view's box pass, which here ranks a line through a
+  box above a crossing, audit 70), and a port with no line keeps off where a line crosses its box's border.
 - `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: laid out right two crossings, down one,
   both between lines of the component whose four ports are pinned to the four sides (a pin against the ranking). Ten
   ports on one side of a box: a box is sized by its contents, not its ports (§4.1), so five are held at the start of the

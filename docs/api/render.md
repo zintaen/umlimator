@@ -63,9 +63,11 @@ interface RenderOptions {
   wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;
   flow?: boolean;
+  speed?: number;
   measure?: false | ((text: string, px: number) => number);
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   stableLayout?: boolean;
+  stableFrom?: MapModel;
   ease?: boolean;
   nav?: boolean;
   legend?: boolean;
@@ -79,13 +81,15 @@ interface RenderOptions {
 |---|---|---|
 | `view` | `model.root`, else the view with no parent | The view shown first. |
 | `select` | none | A [`Ref`](./model-and-schema.md#ref) selected at the start. |
-| `controls` | `true` | The up, zoom, fit, 1:1 and flow buttons over the canvas. |
+| `controls` | `true` | The up, zoom, fit, 1:1, flow and speed buttons over the canvas. |
 | `wheel` | `'zoom'` | `'zoom'`: the wheel zooms and a trackpad pans. `'ctrl'`: only Ctrl or ⌘ with the wheel (or a pinch) zooms, and the wheel otherwise scrolls the page, as a map inside a document should. |
 | `minimap` | `false` | A small overview of the view in a corner. |
 | `flow` | on, unless the reader prefers reduced motion | Animated flow along lines. |
+| `speed` | the model's [`motion.speed`](./model-and-schema.md#motion), else 1 | The motion speed, from 0.25 to 4: one multiplier on a tour's dot, a story step's time and the flow along lines. Reduced motion still stops all motion. |
 | `measure` | the host's font (`--um-sans`), measured on a canvas | How text widths are measured. `false` uses a font-independent estimate, the same one `layout()` uses in Node. |
 | `editable` | `false` | Edit gestures that emit [`change`](./events-and-state.md#change) events: all of them, or only those set `true`. On a typed view they emit [`edit`](./events-and-state.md#edit) instead. See [`docs/editing.md`](https://github.com/zintaen/umlimator/blob/main/docs/editing.md). |
 | `stableLayout` | `true` | Cards keep their places across `update()`, in this handle only (never written to the model). |
+| `stableFrom` | none | The model before an edit. The first picture keeps each card the edit left alone (on the view in both models, in the same box, with none of its flow lines added, removed or turned round) at the cell it had there, and places the other cards round them. A card's own pin wins. A view whose stable layout has more hard issues than a fresh one (a line through a card or on another line, cards or boxes over each other), or scores worse by more than one label left out, is drawn fresh. Never written to the model; ignored with `stableLayout: false`. |
 | `ease` | `true` | `update()` eases into the next model: moved cards glide, new ones fade in, removed ones fade out. Never under reduced motion. |
 | `nav` | `false` | The views list (Miller columns) left of the map, opened by its ☰ button or O. Picking a view emits `viewchange`. |
 | `legend` | `false` | The kinds of cards and lines the view draws, in a box over the map that folds away. |
@@ -280,7 +284,7 @@ tour(path: string[] | null, options?: { speed?: number }): Promise<boolean>;
 ```
 
 A dot rides the lines between each pair of cards in `path` in turn, flashing each card it reaches. `speed` is in map
-units a second (default 240). Resolves `true` at the end, and `false` when cut short: a new tour or replay,
+units a second at 1x (default 240), and the map's [`speed`](#properties) multiplies it as the dot rides, so a change mid-ride goes on from where the dot is. Resolves `true` at the end, and `false` when cut short: a new tour or replay,
 `tour(null)`, Esc on the map, a new picture of the view, or `destroy()`. Under reduced motion no dot rides: the path is
 lit at rest and the promise resolves at once.
 
@@ -308,7 +312,7 @@ await r.done;
 ### play
 
 ```ts
-play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
+play(id: string | Story | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
 ```
 
 Tells one of the model's [stories](./model-and-schema.md#story): each step sets the view, camera, selection,
@@ -316,9 +320,14 @@ highlight and caption, then plays its tour. `step` is where to start (0-based); 
 step's time is up. Returns a [`StoryPlayer`](./events-and-state.md#storyplayer), or `null` when the model has no story
 `id` with steps (the story shown, if any, plays on). `play(null)` stops the story shown.
 
+A [`Story`](./model-and-schema.md#story) object plays as it is given, such as one [`storyFromFlow()`](./apply-and-commands.md#storyfromflow) told from a view's main flow: it is not added to the model, and the standalone page's link does not name it. It plays while the views its steps name are in the model.
+
+The caption bar has a scrubber, a range input named "Story step", which goes to any step by pointer or by its own keys (the arrows, Page Up and Page Down, Home and End; the map's keys leave it alone, and Esc closes the story). Playing goes on from the step it comes to, at the map's [speed](#properties). A story's chapters are offered in the bar at their step `at` (and ticked on the scrubber): pressing one tells it, and ↩ in the bar, its end, or ‹ on its first step returns to the story at that step. A chapter's step is in no page link.
+
 ```js
 const player = map.play('checkout');
 if (player && await player.done) console.log('told to the end');
+map.play(storyFromFlow(model, 'order'));   // told from the view's main flow, not saved
 ```
 
 ### destroy
@@ -345,6 +354,7 @@ readonly destroyed: boolean;
 readonly motion: 'full' | 'reduced' | 'instant';
 readonly story: StoryPlayer | null;
 flow: boolean;
+speed: number;
 ```
 
 | Property | What it is |
@@ -359,11 +369,12 @@ flow: boolean;
 | `motion` | `'instant'` (drawn without animation), `'reduced'` (the reader's setting) or `'full'`. |
 | `story` | The player of the story shown, whoever started it, else `null`. |
 | `flow` | The animated flow along lines. Settable: `map.flow = false`. |
+| `speed` | The motion speed: a tour's dot rides that much faster, a story step started from then on lasts its duration divided by it, and the flow along lines runs that much faster. Settable: `map.speed = 2`; a value outside 0.25 to 4 is ignored, and `null` goes back to the model's `motion.speed`, else 1. The speed button on the controls steps it through 0.5, 1, 1.5 and 2. Set by a host, it is not saved as the reader's choice. Reduced motion still stops the dot and the flow; a story step's time scales under it too. |
 
 ## mountPage
 
 ```ts
-function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
+function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
 ```
 
 The whole standalone viewer that `umlimator.py render` writes: top bar, breadcrumbs, views list, details panel, search,
@@ -375,6 +386,7 @@ listeners it added to the document and the window.
 |---|---|
 | `params` | The page's mode, as the CLI passes it: `theme`, `reader`, and the CLI's own `check`, `still`, `shot` and `pdf`. Default: none. The link's `view`, `node`, `story`, `step` and `lens` are read from `location.hash`. |
 | `instant` | Draw with no animation, as the CLI's checks and stills do. |
+| `stableFrom` | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions). A page the CLI writes with `diff` (unless `--no-stable`), or the MCP page after an edit, holds it in a `#umlimator-base` script. |
 
 ```js
 import { mountPage } from 'umlimator';
@@ -386,7 +398,7 @@ Use `render()` with `nav`, `details`, `legend` and `hints` when the host wants t
 ## layout
 
 ```ts
-function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
+function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): Geometry & { unfolded?: string[] };
 ```
 
 A view's geometry, with no DOM: where each card is, the route of each line, and where each label goes. Deterministic:
@@ -397,6 +409,7 @@ the same model gives the same geometry, and Node and a browser give the same res
 | `repair` | the view's own `repair` | Port repair, on a map view: moves line ends to cut crossings. A typed view's type decides, and its lines are never port-repaired, so the option does nothing there. |
 | `measure` | a font-independent estimate | Text widths in px for a text at a font size. |
 | `expand` | none | Cards of the view to unfold in place, as [`expand()`](#expand) draws them. The result's `unfolded` lists those that did. |
+| `stableFrom` | none | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions): the cards the edit left alone keep their cells, unless the stable layout draws worse than a fresh one. |
 
 ```js
 import { layout } from 'umlimator';
@@ -422,7 +435,7 @@ Card boxes, drawn lines (one may stand for several model edges, listed in `ids`)
 ## check
 
 ```ts
-function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
+function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
 ```
 
 The layout check on `layout()`'s geometry, with no browser: overlapping cards, crossing or shared lines, detours,

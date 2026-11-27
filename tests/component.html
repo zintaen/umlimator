@@ -127,9 +127,11 @@ try {
   gives('B on an interface: a ball (edits.key)', [{ op: 'set', view: 'components', path: ['present', 'i-sign-in', 'as'], value: 'ball' }], m => m.views[0].present['i-sign-in'].as === 'ball', m2);
   click('.node[data-id="i-orders"]'); key('B');
   gives('B on a ball: back to a rectangle', [{ op: 'set', view: 'components', path: ['present', 'i-orders', 'as'], value: undefined }], m => !m.views[0].present['i-orders'].as, m2);
-  // Alt + arrows on a port: across its side moves it, along it is said and does nothing (edits.moveTo)
-  click('.node[data-id="payment-provider-component.charges"]'); const was = ed.length; key('ArrowDown', { altKey: true });
-  check('Alt + ↓ along a port\'s side: nothing emitted', ed.length === was);
+  // Alt + arrows on a port: the arrow names the side, so every side a drag reaches; toward its own side, said and nothing (edits.moveTo)
+  click('.node[data-id="payment-provider-component.charges"]'); const was = ed.length; key('ArrowLeft', { altKey: true });
+  check('Alt + ← toward the side a port is on: nothing emitted, said', ed.length === was && /left side already/.test(sr.textContent));
+  key('ArrowDown', { altKey: true });
+  gives('Alt + ↓ on a port on the left: present.side bottom (audit 64: it was refused as along its side)', [{ op: 'set', view: 'components', path: ['present', 'payment-provider-component.charges', 'side'], value: 'bottom' }], m => true, m2);
   key('ArrowRight', { altKey: true });
   const m3 = gives('Alt + → on a port on the left: present.side right', [{ op: 'set', view: 'components', path: ['present', 'payment-provider-component.charges', 'side'], value: 'right' }], m => true, m2);
   h.update(m3);

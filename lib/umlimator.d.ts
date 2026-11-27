@@ -24,6 +24,10 @@ export interface MapModel {
   stories?: Story[];
   /** Saved ways to look at the map (#94): handle.lens(id), the standalone page's Lenses menu and #lens=<id>. */
   lenses?: Lens[];
+  /** How the map moves when it is played: speed is the author's multiplier on a tour's dot, a story step's time and the flow
+   *  along lines, from 0.25 to 4 (default 1). A reader's own choice (the speed button), a host's `speed` option and the
+   *  page's `#speed=` outrank it; reduced motion still stops all motion. */
+  motion?: { speed?: number };
   [key: string]: unknown;
 }
 /** A card's shape (0.15.0). A map draws each card in one style (0.21.0; the box/c4/uml choice and `shapes` are gone):
@@ -44,6 +48,12 @@ export interface MapNode {
   owner?: string;
   /** The card's own shape (0.15.0); without it, a map draws the card by its kind. */
   shape?: Shape;
+  /** Where the card sits in a view with `arrange: 'flow'` (layout by business flow, docs/diagrams/notes/layout-flow.md):
+   *  without it, the diagram type's default (on a map, for a card off the main flow: a person and a public card no line comes
+   *  into first, an external card last, a database, file or board card under). A view's `nodeOverrides` may set it for that
+   *  view. Map views read it, and typed views whose type gives zoneOf or flowRole; a pin beats it. validate() warns on any other value, and diff() reports a
+   *  change of it. */
+  zone?: FlowZone;
   /** In schema version 2 (0.17.0) a node may also be a typed Element: type, parent, props, members. */
   [key: string]: unknown;
 }
@@ -66,8 +76,10 @@ export type UmlClassMemberType = 'uml.Property' | 'uml.Operation' | 'uml.Enumera
  *  a comment link from the comment. */
 export type UmlClassLineType = 'uml.Association' | 'uml.Generalization' | 'uml.InterfaceRealization' | 'uml.Dependency' | 'uml.CommentLink';
 export type UmlVisibility = 'public' | 'private' | 'protected' | 'package';
-/** A classifier's or a package's props. Stereotypes are drawn «in guillemets»; any UML element or line may have them. */
-export interface UmlClassifierProps { isAbstract?: boolean; stereotypes?: string[]; [key: string]: unknown }
+/** A classifier's or a package's props. Stereotypes are drawn «in guillemets»; any UML element or line may have them.
+ *  associationClass (unreleased): on a uml.Class, the id of the uml.Association it is the association class of, drawn joined to
+ *  the middle of the association's line by a dashed line. */
+export interface UmlClassifierProps { isAbstract?: boolean; stereotypes?: string[]; associationClass?: string; [key: string]: unknown }
 /** An attribute's props: its UML text `+ {static} /total: Money [1] = 0` as fields. Types and defaults are text. */
 export interface UmlPropertyProps { visibility?: UmlVisibility; valueType?: string; multiplicity?: string; default?: string; isStatic?: boolean; isDerived?: boolean; stereotypes?: string[]; [key: string]: unknown }
 /** An operation's props: `+ {static} place(at: Date, in qty: Int): Order` as fields. */
@@ -345,10 +357,12 @@ export type BpmnLineType = 'bpmn.SequenceFlow' | 'bpmn.MessageFlow' | 'bpmn.Asso
 /** A BPMN element's props. `definition` by kind: a start event `none`, `message` or `timer`; an end event `none`, `message`
  *  or `terminate`; an intermediate catch event `message` or `timer`; an intermediate throw event `none` or `message`; a
  *  boundary event `message` or `timer`. `attachedTo` and `categoryValueRef` are declared references (deleting the activity
- *  deletes its boundary events; a deleted group is dropped). */
+ *  deletes its boundary events; a deleted group is dropped). `default` (unreleased): on an exclusive gateway or an activity,
+ *  the id of its default flow, one of its sequence flows out with no condition, the one taken when no other condition holds;
+ *  drawn with a slash near its source and followed by the main flow and storyFromFlow; a deleted flow is dropped. */
 export interface BpmnElementProps { documentation?: string; processRef?: string; taskType?: 'none' | 'user' | 'service';
   definition?: 'none' | 'message' | 'timer' | 'terminate'; attachedTo?: string; cancelActivity?: boolean; calledElement?: string;
-  dataStoreRef?: string; categoryValueRef?: string[]; [key: string]: unknown }
+  dataStoreRef?: string; categoryValueRef?: string[]; default?: string; [key: string]: unknown }
 /** A BPMN line's props: an association's direction (its open arrowheads). A flow's `label` is its name. */
 export interface BpmnLineProps { documentation?: string; direction?: 'none' | 'one' | 'both'; [key: string]: unknown }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
@@ -400,8 +414,20 @@ export interface MapEdge {
    *  warns about any other value, which is ignored. */
   fromSide?: 'top' | 'bottom' | 'left' | 'right';
   toSide?: 'top' | 'bottom' | 'left' | 'right';
+  /** The line's part in a view with `arrange: 'flow'` (layout by business flow): without it, from the line's kind. A typed
+   *  line takes it too. Read on map views so far: a 'dep' line (or a state or guard line with no flow) ranks nothing, and is
+   *  routed after the flow lines; 'main' lines are the main flow, which holds one straight row, across a view's boxes too (with
+   *  none marked, the stepped lines chained in step order, else the longest path of flow lines). validate() warns on any
+   *  other value, and in an arranged view on main-flow lines that are not one path (a card with two main lines out or in, a
+   *  main line that closes a loop) and on steps that break into chains; diff() reports a change of it. */
+  flow?: FlowRole;
   [key: string]: unknown;
 }
+/** A line's part in a flow (docs/diagrams/notes/layout-flow.md section 3): on the main flow, a flow line off it, or a
+ *  dependency line that ranks nothing. */
+export type FlowRole = 'main' | 'branch' | 'dep';
+/** Where a card sits in an arranged view: a column before the flow, in it, a column after it, or a band of rows under it. */
+export type FlowZone = 'first' | 'flow' | 'last' | 'under';
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   /** Model line ids or lines of its own; in a sequence view (0.20.0) its messages and interaction uses (Elements), in time order. */
@@ -412,6 +438,15 @@ export interface MapView {
   /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
    *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
   kindsFromLabels?: boolean;
+  /** 'flow': lay the view out by business flow (docs/diagrams/notes/layout-flow.md), a map or a typed view. Without it the view
+   *  lays out as always. On a map view with a flow line, dependency lines rank nothing and a card whose lines are all
+   *  dependencies sits under the flow, and the main flow holds one straight row with each branch on one side of it,
+   *  across the view's boxes too (more than 10 main cards wrap onto a second row that runs back under the first: the
+   *  snake, whose geometry gives each main card its run and each line its dir), and cards take their zones; a typed view does the same where its type gives flowRole or zoneOf (but for the snake, map views only for now). validate() warns on any other value, on a sequence, timing or mindmap
+   *  view, which does not rank its elements, and on a type that gives neither flowRole nor zoneOf, where it changes nothing; diff() reports a change of it. */
+  arrange?: 'flow';
+  /** false: no default zones in an arranged view; a card's own `zone` still holds. Default true. */
+  zones?: boolean;
   /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
    *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string; change?: 'added' | 'new' | 'modified' | 'changed' | 'removed' | 'planned' }[];
@@ -451,8 +486,8 @@ export interface Events {
    *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
   /** A story changed: it shows a step (0-based), it was paused or resumed (playing), or it ended (step null, on destroy()
-   *  too). playing (0.14.0): it goes on by itself. */
-  story: { story: string; step: number | null; steps: number; playing: boolean };
+   *  too). playing (0.14.0): it goes on by itself. chapter: the chapter told (its id), and at, the story's step it is offered at; none on the main story. */
+  story: { story: string; step: number | null; steps: number; playing: boolean; chapter?: string; at?: number };
   /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The
    *  camera is the exception: a pan, zoom, glide or drag is one event, once it comes to rest, and until then the event's
    *  camera is where it last rested (handle.state reads it live). The last event, on destroy(), has destroyed: true. */
@@ -470,7 +505,7 @@ export interface MapState {
   expanded: string[];             // as `expanded`
   lens: string | null;
   overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', 'story', 'tour', a host's)
-  story: { id: string; step: number; steps: number; playing: boolean } | null;   // playing: the player's own (it goes on by itself)
+  story: { id: string; step: number; steps: number; playing: boolean; chapter?: string; at?: number } | null;   // playing: the player's own (it goes on by itself); in a chapter: its id, and the story's step it is offered at
   tour: boolean;                  // a tour's dot is on the map, riding or held (by paused, or by its story's pause); a path lit at rest: false
   replay: { playing: boolean } | null;   // a replay under way: playing, or paused by its own pause()
   /** The standalone page's ❚❚ is on (0.15.0): it holds every clock (a tour's or a replay's dot, a story's step, the flow)
@@ -479,6 +514,7 @@ export interface MapState {
   camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size); a state event's: at rest
   flow: boolean;
   motion: 'full' | 'reduced' | 'instant';
+  speed: number;                  // the motion speed, as `handle.speed`
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';   // an edit in progress (editable maps)
   destroyed: boolean;
 }
@@ -506,12 +542,20 @@ export interface RenderOptions {
   wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
+  /** The motion speed, from 0.25 to 4: tours, story steps and the flow along lines, together. Default: the model's
+   *  `motion.speed`, else 1. Reduced motion still stops all motion; a story step's time scales under it too. */
+  speed?: number;
   /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
   measure?: false | ((text: string, px: number) => number);
   /** Edit gestures that emit `change` events: all of them, or only those set true. Off by default. */
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   /** Cards keep their places across update() (in this handle only, never in the model). Default true. */
   stableLayout?: boolean;
+  /** The model before an edit: the first picture keeps each card the edit left alone (on the view in both models, in the
+   *  same box, none of its flow lines added, removed or turned round) at the cell it had there, and places the others round
+   *  them. A real pin wins. A view whose stable layout has more hard issues than a fresh one, or scores worse by more than
+   *  one label, is drawn fresh. Never written to the model; ignored with `stableLayout: false`. */
+  stableFrom?: MapModel;
   /** update() eases into the next model: moved cards glide, new ones fade in, removed ones fade out (#67). Default true;
    *  never under prefers-reduced-motion. false draws the next model at once. */
   ease?: boolean;
@@ -581,6 +625,11 @@ export interface Handle {
   /** How this map moves: 'instant' (drawn without animation, as the page's #check, #still and #shot are), 'reduced' (the
    *  reader's setting), else 'full'. */
   readonly motion: 'full' | 'reduced' | 'instant';
+  /** The motion speed (the speed button on the controls steps it through 0.5, 1, 1.5 and 2), to read or set: a tour's dot
+   *  rides that much faster (from where it is), a story step armed from now on lasts its duration divided by it, and the
+   *  flow along lines runs that much faster. A value outside 0.25 to 4 is ignored; null goes back to the model's
+   *  `motion.speed`, else 1. Set by a host, it is not saved as the page reader's choice. */
+  speed: number;
   /** The player of the story shown, whoever started it (play(), the standalone page's Stories menu or a link), else null. */
   readonly story: StoryPlayer | null;
   /** Sets (or, with null, removes) a named layer of marks, drawn over the picture without touching the model. Layers stack
@@ -614,13 +663,17 @@ export interface Handle {
    *  (← → PageUp PageDown, Esc) step through and stop it. The reader taking the map (a press, a key, a view or a selection
    *  the story didn't make) pauses it, and a pause holds the step's tour too, until resume(). A step folds back the cards
    *  unfolded on its view first, and its highlight is its own 'story' layer, which dims alone while the step shows.
-   *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. */
-  play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
+   *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. A Story
+   *  object (storyFromFlow()'s) plays as given: it is not added to the model, and the page's link does not name it. */
+  play(id: string | Story | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
   destroy(): void;
 }
 
-/** A walk-through: its steps, in order. */
-export interface Story { id: string; title?: string; steps: StoryStep[] }
+/** A walk-through: its steps, in order. audience: who it is told to (the standalone page's Stories menu groups by it).
+ *  chapters: stories of their own, each offered in the caption bar while the story shows its step `at`. */
+export interface Story { id: string; title?: string; audience?: string; steps: StoryStep[]; chapters?: StoryChapter[] }
+/** A chapter of a story: offered at the story's step `at` (0-based); its end, or ‹ on its first step, returns there. */
+export interface StoryChapter { id: string; title?: string; audience?: string; at: number; steps: StoryStep[] }
 /** What one step shows. select: a card id, a line id, or a Ref. highlight: card ids, line ids or Lits; the lines between
  *  two cards it names light too. tour: card ids, the dot's path. camera: 'fit' (the default), a point and zoom, or a card
  *  to frame. duration: the step's time in ms when playing (default 4000; its tour runs to its end first). */
@@ -628,13 +681,20 @@ export interface StoryStep {
   view: string; caption?: string; select?: string | Ref; highlight?: (string | Lit)[]; tour?: string[];
   camera?: 'fit' | { x: number; y: number; zoom?: number } | { card: string; zoom?: number }; duration?: number;
 }
+/** A story storyFromFlow() tells from a view's main flow: a Story, and each branch off the main flow as a chapter, a Story of
+ *  its own offered at the main story's step `at` (0-based), where the branch leaves the main flow. */
+export interface FlowStory extends Story { chapters: StoryChapter[] }
 /** A story being told. step: the one shown (0-based). next() past the last step ends it (done: true); stop() closes it
  *  (done: false). state (0.14.0): entering a step (its view, camera, selection and highlight on their way), playing or paused
- *  on it, then ended or stopped. */
+ *  on it, then ended or stopped. go(k): step k shown, as the caption bar's scrubber does. chapters: the story's chapters;
+ *  enter(id) tells one from its first step (false when the story has no such chapter), and while it is told, chapter is its
+ *  id and step and steps are the chapter's; back(), or next() past its last step, or prev() on its first, returns to the
+ *  main story at the chapter's step `at`. */
 export interface StoryPlayer {
   readonly story: string; readonly step: number; readonly steps: number; readonly playing: boolean; readonly done: Promise<boolean>;
   readonly state: 'entering' | 'playing' | 'paused' | 'ended' | 'stopped';
-  next(): void; prev(): void; pause(): void; resume(): void; stop(): void;
+  readonly chapter: string | null; readonly chapters: { id: string; title: string | null; at: number }[];
+  next(): void; prev(): void; pause(): void; resume(): void; stop(): void; go(step: number): void; enter(chapter: string): boolean; back(): boolean;
 }
 
 /** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */
@@ -669,7 +729,8 @@ export function history(model: MapModel, limit?: number): History;
 /** expand: cards of the view unfolded in place (#71), as handle.expand() draws them; the geometry's `unfolded` lists those
  *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). A
  *  numbered inner view's numbers are its lines' and cards' `step`, and its lanes are boxes with `lane: true` (#82). */
-export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
+/** stableFrom: the model before an edit, as render()'s option: the cards the edit left alone keep their cells. */
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
  *  a view a card opens that the host has not loaded yet, a line from a card or box to itself, which is not drawn). The JSON Schema is umlimator/schema.json. */
@@ -711,7 +772,7 @@ export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
 /** Picks cards by id, kind (as the map draws it: "db" picks databases), box (at any depth) or owner, each a value or a
  *  list; every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind
  *  and no owner. */
@@ -739,6 +800,22 @@ export function paths(model: MapModel, viewId: string, from: string, to: string)
 export function reach(model: MapModel, viewId: string, from: string, options?: { backward?: boolean; depth?: number }): (Ref & { distance: number })[];
 /** A view in plain sentences: cards and kinds, boxes, what each card's lines do, cards with no line. Deterministic. */
 export function describe(model: MapModel, viewId: string): string;
+/** A story told from a view's main flow (layout-flow note, section 10): one step per main card, each selecting it, lighting
+ *  it and the main line into it, riding that line (a tour of the two cards, which the view draws a line between) and saying
+ *  what the line does ("2. Charges: Cart charges Payments; reads Orders"), a dependency line's card named in the caption of
+ *  the step it joins. Branches are chapters, offered at the step they leave from (chapters: false leaves them out). A
+ *  sequence view tells its messages in order, a BPMN view its main path from the start event whose path is longest (a collaboration's main process), a communication view its numbered
+ *  messages in time order ("1.1. place(order): storefront calls api."). audience: kept on the story and its chapters; for
+ *  "business" the captions leave out the stores a step reads or writes. The model is not changed and the story is not
+ *  added to it: play it with play(story), or add it to `stories`. Throws when the view has no main flow. */
+export function storyFromFlow(model: MapModel, viewId: string, options?: { id?: string; title?: string; chapters?: boolean; audience?: string }): FlowStory;
+/** A story of what changed on a view from `before` to `after` (a pull request's base and head, say): a step per card and
+ *  line diff() marks added, changed or removed that the view draws, along its main flow (a removed line keeps its place),
+ *  else in the view's order, each captioned "Added", "Changed" (with the fields, and a rename's old name) or "Removed".
+ *  on 'after' (the default): the story plays on the model after, so a removed card or line is selected by no step and the
+ *  cards it was joined to are lit; on 'diff': on diff(before, after).model, which draws the removed ones, and selects them.
+ *  Throws when the view shows no change. Pure: nothing is saved. */
+export function storyFromDiff(before: MapModel, after: MapModel, viewId: string, options?: { id?: string; title?: string; audience?: string; on?: 'after' | 'diff' }): Story;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
@@ -762,8 +839,10 @@ export function sequenceFromTrace(model: MapModel, spans: Span[], options?: { vi
  *  by its ends, as a Ref names it). `summary`: what changed in words, in model order ("adds Payments queue between
  *  Trip service and Payment provider"); `views`: those that show a change. The marks are the model's own fields, so a
  *  page or still the CLI makes shows them. Neither input is changed. */
-export interface DiffResult { model: MapModel; summary: string[]; views: string[] }
-export function diff(before: MapModel | null, after: MapModel | null): DiffResult;
+/** `stableFrom` is the model before, for render(), layout() or check() to draw `model` with, so the cards the change left
+ *  alone keep their cells. It is there by default; with `{ stable: false }` the result has none, and each view is drawn fresh. */
+export interface DiffResult { model: MapModel; summary: string[]; views: string[]; stableFrom?: MapModel }
+export function diff(before: MapModel | null, after: MapModel | null, options?: { stable?: boolean }): DiffResult;
 /** A call between two services as traffic showed it: { from, to, count }, or a Jaeger or Tempo dependency. */
 export type Observed = { from: string; to: string; count?: number } | { parent: string; child: string; callCount?: number };
 /** The map against the traffic seen (#68). A line that ran but is not drawn comes in (`drift: 'undrawn'`: rose, dashed,
@@ -776,4 +855,4 @@ export type Observed = { from: string; to: string; count?: number } | { parent: 
 export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
 export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
-export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
+export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;

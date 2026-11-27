@@ -1,6 +1,6 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
+import { MAIN_SIDE, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -12,7 +12,7 @@ import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'shutBoxes', 'sideSwap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -41,7 +41,14 @@ function repaint(g, was, dg) {
    calls; while the geometry key is the same, the geometry it holds is repainted and returned, and nothing is laid out or
    routed. memo.runs counts the layouts. dg.reroute false: lines that had to cross are not routed again in a new order (the
    rip-up and reroute pass, layered.js), for a type whose edits must be quick (risks.md P1); a map never sets it. */
-function layoutTyped(dg, memo) {
+function layoutTyped(dg0, memo) {
+  // an arranged view's lines by their part in the flow (memo.flow, set by the host, src/map/context.js: layout-flow.md section
+  // 12 step 10): a main line takes the middle port of its sides, a dependency line is routed after the flow lines, as a map's
+  // and a main card is centred on its row, so main lines between cards of other heights run straight (layoutPass)
+  // a snake's (memo.flow's run and dir): each main card's run and each line's reading way, which the route audit and the score read
+  const F = memo && memo.flow, R = F && F.run, dg = F ? { ...dg0, nodes: (dg0.nodes || []).map(n => (F.cards && F.cards.has(n.id) ? { ...n, mainCard: true, ...(R && R[n.id] != null && { run: R[n.id] }) } : n)),
+    edges: (dg0.edges || []).map(e => { const k = e._id ?? e.id, m = F.main.has(k), d = F.dep.has(k), w = F.dir && F.dir.get(k);
+      return m || d || w ? { ...e, ...(m && { mainLine: true }), ...(d && { dep: true }), ...(w && { dir: w }) } : e; }) } : dg0;
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
   const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'
@@ -62,10 +69,12 @@ function layoutTyped(dg, memo) {
   // laid out without those turns too, and that one kept when check() has less to say of it (audit 40: laid out right, the turns
   // of two lines into a composite crossed the lines between its state and the state beside it, twice)
   // a layout with a box side grown over its title (layoutPass, audit 44) is laid out without that too, and kept only when check()
-  // has less to say of it
+  // has less to say of it; one whose main line kept its side of a card one port high (layoutPass, audit 68) is laid out with the
+  // main line moved as before too, and that one kept when check() has less to say of it
   const best = u => { let g = lay(u), tried = false;
     if (g.grew) { const v = { ...u, [SPAN]: true }, h = lay(v); if (!less(said(g), said(h))) { g = h; u = v; } }
     if (g.turns) { const v = { ...u, [TURNS]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
+    if (g.kept) { const v = { ...u, [MAIN_SIDE]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
     if (g.nested) { const a0 = said(g);
       const judged = (v, h = lay(v), b = said(h)) => { if (!memo || v.noSwap || !h.rr || (h.nodes || []).length > 30) return [h, b, false];
         const h2 = lay({ ...v, noSwap: true }), b2 = said(h2); return less(b2, b) ? [h2, b2, true] : [h, b, true]; };
@@ -74,9 +83,18 @@ function layoutTyped(dg, memo) {
   // a view whose port ends followed the far ports' places (spreadPorts, audit 39) is laid out with them in their own ports' order
   // too, as up to 0.41, and that one is kept unless following has no more crossings and no more other issues (check()'s), so
   // following them never draws a view worse
-  let [g, tried] = best(t);
-  if (g.edges.some(e => e[FOLLOWED])) { const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
-    const a = told(g); if (a[0] || a[1]) { const [h, ht] = best({ ...t, [PORTS_PLAIN]: true }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } } }
+  let [g, tried] = best(t), u0 = t; // u0: the way g was laid out
+  // check()'s problems of a layout: [crossings, the rest]
+  const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
+  if (g.edges.some(e => e[FOLLOWED])) {
+    const a = told(g); if (a[0] || a[1]) { const u = { ...t, [PORTS_PLAIN]: true }, [h, ht] = best(u), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; u0 = u; } } }
+  // main cards centred on their row (an arranged view's, memo.flow) are laid out top-aligned too, and that kept when check()
+  // has less to say of it: a centred event can push a line into a crossing (tests/bpmn-stress.json's edge cases)
+  if (F && (t.nodes || []).some(n => n.mainCard)) { const u = { ...t, nodes: t.nodes.map(n => (n.mainCard ? { ...n, mainCard: false } : n)) }, [h, ht] = best(u); if (less(said(h), said(g))) { g = h; tried = ht; u0 = u; } }
+  // a layout that kept a side swap (dg.sideSwap, layoutPass) is laid out without them too, and the swap kept only where check()
+  // says no more of it, crossings or other (audit 71: a do-while loop among 25 other cards, laid out down, kept a swap that its
+  // two lines judged better and the finished view drew one crossing more)
+  if (g.side && t.sideSwap) { const a = told(g), [h, ht] = best({ ...u0, sideSwap: false }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;
 }

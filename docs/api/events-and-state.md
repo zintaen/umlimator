@@ -14,7 +14,7 @@ interface Events {
   change: Change;
   edit: { view: string; commands: Command[] };
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
-  story: { story: string; step: number | null; steps: number; playing: boolean };
+  story: { story: string; step: number | null; steps: number; playing: boolean; chapter?: string; at?: number };
   state: { state: MapState; changed: (keyof MapState)[] };
   lens: { lens: string | null };
 }
@@ -83,7 +83,7 @@ emits none.
 ### story
 
 The story shown changed: it entered a step (0-based), was paused or resumed (`playing`), or ended (`step: null`, on
-`destroy()` too).
+`destroy()` too). While a chapter is told, `chapter` is its id, `at` the story's step it is offered at, and `step` and `steps` are the chapter's; on the main story neither is there.
 
 ### state
 
@@ -145,13 +145,14 @@ interface MapState {
   expanded: string[];
   lens: string | null;
   overlays: string[];
-  story: { id: string; step: number; steps: number; playing: boolean } | null;
+  story: { id: string; step: number; steps: number; playing: boolean; chapter?: string; at?: number } | null;
   tour: boolean;
   replay: { playing: boolean } | null;
   paused: boolean;
   camera: { x: number; y: number; zoom: number };
   flow: boolean;
   motion: 'full' | 'reduced' | 'instant';
+  speed: number;
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';
   destroyed: boolean;
 }
@@ -170,13 +171,14 @@ logged, sent or compared as it is. Read it as [`handle.state`](./render.md#prope
 | `expanded` | The cards unfolded on the view shown, in the order they unfolded. |
 | `lens` | The lens on the map. |
 | `overlays` | The layers of marks, in the order first set: `lens`, `highlight`, `story`, `tour`, `replay`, the page's `lit`, the MCP page's `mcp`, a host's own. |
-| `story` | The story shown: its step (from 0), how many it has, and whether it goes on by itself. |
+| `story` | The story shown: its step (from 0), how many it has, and whether it goes on by itself; in a chapter, the chapter's id and the story's step it is offered at (`chapter`, `at`). |
 | `tour` | A tour's dot is on the map, riding or held. |
 | `replay` | A replay under way, playing or paused by its own `pause()`. |
 | `paused` | The standalone page's ❚❚ holds every clock (tour, replay, story, flow) and leaves each one's own state as it is. |
 | `camera` | The centre in map units and the zoom (1 is actual size). In a `state` event, where it last rested. |
 | `flow` | The lines flow. |
 | `motion` | How this map moves. |
+| `speed` | The motion speed, as [`handle.speed`](./render.md#properties). |
 | `gesture` | An edit in progress, on an editable map. |
 | `destroyed` | `destroy()` has run. |
 
@@ -245,7 +247,8 @@ how lit it is: `level` (0 to 1), else `distance` (each step out a little fainter
 interface StoryPlayer {
   readonly story: string; readonly step: number; readonly steps: number; readonly playing: boolean; readonly done: Promise<boolean>;
   readonly state: 'entering' | 'playing' | 'paused' | 'ended' | 'stopped';
-  next(): void; prev(): void; pause(): void; resume(): void; stop(): void;
+  readonly chapter: string | null; readonly chapters: { id: string; title: string | null; at: number }[];
+  next(): void; prev(): void; pause(): void; resume(): void; stop(): void; go(step: number): void; enter(chapter: string): boolean; back(): boolean;
 }
 ```
 
@@ -253,7 +256,9 @@ A story being told, as [`handle.play()`](./render.md#play) returns it and [`hand
 reads it. `step` is the step shown (0-based) of `steps`. `next()` past the last step ends it, and `done` resolves
 `true`; `stop()` closes it, and `done` resolves `false`. `state` is `entering` while a step's view, camera, selection and
 highlight are on their way, then `playing` or `paused`, then `ended` or `stopped`. The reader taking the map (a press, a
-key, a view or selection the story didn't make) pauses it.
+key, a view or selection the story didn't make) pauses it. `go(k)` shows step `k`, as the caption bar's scrubber does.
+
+`chapters` lists the story's [chapters](./model-and-schema.md#story) and the step each is offered at. `enter(id)` tells one from its first step (`false` when the story has no such chapter); while it is told, `chapter` is its id and `step` and `steps` are the chapter's. `back()`, `next()` past its last step or `prev()` on its first returns to the main story at the chapter's step `at`.
 
 ```js
 const player = map.play('checkout', { auto: false });

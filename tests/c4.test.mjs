@@ -157,7 +157,7 @@ test('23-c4.json\'s static views draw: people and boxes, external grey, the subj
 test('people first: a line into a person is ranked as from them (rankFlip), so the shopper is not ranked after the email service', () => {
   const g = layout(C4, 'c4-containers'), x = id => g.byId[id].col;
   assert.ok(x('c4-shopper') < x('c4-storefront') && x('c4-shopper') < x('c4-mail'));
-  assert.equal(T.rankFlip({ from: 'c4-mail', to: 'c4-shopper' }), true); assert.equal(T.rankFlip({ from: 'c4-shopper', to: 'c4-storefront' }), false);
+  assert.equal(T.rankFlip({ from: 'c4-mail', to: 'c4-shopper' }, C4), true); assert.equal(T.rankFlip({ from: 'c4-shopper', to: 'c4-storefront' }, C4), false);
 });
 
 test('a landscape view: people and software systems, laid out clean right and down', () => {
@@ -709,4 +709,19 @@ test('audit 55: an element whose description ends in an abbreviation keeps its p
     n.props = { ...n.props, description: d }; const g = layout(m, 'c4-context'), s = svgOf(g);
     assert.ok(g.byId['c4-bookshop'].aria.includes(said), g.byId['c4-bookshop'].aria);
     assert.ok(/data-id="c4-bookshop"[^>]*aria-label="([^"]*)"/.exec(s)[1].includes(said), d); }
+});
+
+// Layout by business flow, section 12 step 10 (docs/diagrams/notes/layout-flow.md section 7.2): C4's zoneOf and flowRole, read
+// only in an arranged view, where the zones put people first and no line turns round (rankFlip, read from the model, not module state)
+test('zoneOf: a person first, an external software system last, a cylinder container under; flowRole: a relationship flows, a comment link is a dependency', () => {
+  const el = (type, props = {}) => ({ id: 'x', type, label: 'X', props });
+  assert.deepEqual([el('c4.Person'), el('c4.SoftwareSystem', { external: true }), el('c4.SoftwareSystem'), el('c4.Container', { shape: 'cylinder' }), el('c4.Container'), el('c4.Component', { shape: 'cylinder' })].map(x => T.zoneOf(x, C4, {})),
+    ['first', 'last', null, 'under', null, null]);
+  assert.deepEqual([{ type: 'c4.Relationship' }, { type: 'uml.CommentLink' }].map(e => T.flowRole(e, C4, {})), ['branch', 'dep']);
+  const arranged = { ...C4.views.find(v => v.id === 'c4-containers'), arrange: 'flow' };
+  assert.equal(T.rankFlip({ from: 'c4-mail', to: 'c4-shopper' }, C4, arranged), false, 'an arranged view turns no line round: its zones put people first');
+  assert.equal(T.rankFlip({ from: 'c4-mail', to: 'c4-shopper' }, C4, { ...arranged, zones: false }), true, 'zones: false ranks as before');
+  const A = structuredClone(C4); A.views.find(v => v.id === 'c4-context').arrange = 'flow';
+  const g = layout(A, 'c4-context'), x = id => g.byId[id].col, ext = ['c4-payments', 'c4-mail', 'c4-courier'];
+  assert.ok(['c4-shopper', 'c4-staff'].every(p => x(p) < x('c4-bookshop')) && ext.every(e => x(e) > x('c4-bookshop')), 'people in the first column, external systems in the last');
 });

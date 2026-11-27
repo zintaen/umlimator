@@ -458,7 +458,7 @@ test('audit 56: a reply after a break does not answer a call inside it, nor one 
   }
 });
 
-test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged', () => {
+test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged (timed)', () => {
   const make = n => 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(n) + 'B-->>A: r\n'.repeat(n);
   const time = text => { const t = performance.now(), r = read(text); return [performance.now() - t, r]; };
   const [q] = time(make(1500)), [ms, { model }] = time(make(6000)); // linear by growth, not a wall clock: quadratic was 1.5 s and 16x a quarter
@@ -494,4 +494,23 @@ test('a self-message after create or destroy is an ordinary message, a create an
     [['A-B:call', 'A-C:create', 'A-C-2:call'], ['4 destroy C: a later message reaches C, so its stem is not ended'], []]);
   assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\ndestroy C\nA->>C: both'),
     [['A-B:call', 'A-C:delete'], ['3 create C: the next message to it also destroys it, so it is read as a delete'], []]);
+});
+
+test('audit 68: thousands of created and destroyed lifelines are read and validated in linear time: create-once and delete-once look at the receiver\'s messages alone (timed)', () => {
+  const time = f => { const t = performance.now(), r = f(); return [performance.now() - t, r]; };
+  const grows = (make, n, check) => { check(make(n / 4)); const [q] = time(() => check(make(n / 4))), [ms, r] = time(() => check(make(n))); // warmed; linear by growth: quadratic was 8 to 10x a quarter, 4 s in all
+    assert.ok(ms < 500 || (ms < 3000 && ms / Math.max(q, 1) < 7), `${ms} ms, a quarter ${q} ms`); return r; };
+  const pairs = n => 'sequenceDiagram\nA->>B: m\n' + Array.from({ length: n }, (_, i) => `create participant C${i}\nA->>C${i}: new\ndestroy C${i}\nA-xC${i}: kill`).join('\n');
+  const r = grows(pairs, 12000, read); // just under the size limit
+  assert.equal(r.report.length, 0); assert.equal(r.model.views[0].edges.filter(e => e.props.sort === 'create').length, 12000);
+  assert.equal(r.model.views[0].edges.filter(e => e.props.sort === 'delete').length, 12000);
+  grows(n => read(pairs(n)).model, 12000, m => assert.deepEqual(validate(m).filter(p => p.level === 'error'), []));
+  // one lifeline: created, reached n times, destroyed; and many messages to it around a create in an alt (each create looks at its earlier messages)
+  const long = n => 'sequenceDiagram\nA->>B: m\ncreate participant C\nA->>C: new\n' + 'A->>C: ping\nC-->>A: pong\n'.repeat(n) + 'destroy C\nA-xC: kill';
+  grows(long, 40000, read);
+  // the worst for the walk itself: a model with every create of one lifeline after many messages to it, each an error found at once
+  const model = n => ({ schemaVersion: 2, root: 'v', nodes: ['A', 'B'].map(id => ({ id, type: 'uml.Lifeline', label: id })), edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'], edges: Array.from({ length: n }, (_, i) => ({ id: `m${i}`, type: 'uml.Message', from: 'A', to: 'B', props: { sort: i % 2 ? 'create' : 'delete' } })) }] });
+  const probs = grows(model, 20000, m => validate(m).filter(p => /create-once|delete-once/.test(p.rule)));
+  assert.equal(probs.length, 20000);
 });

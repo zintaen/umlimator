@@ -11,7 +11,7 @@
 | `UmlClassElementType` | `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType`, `uml.Package`, `uml.Comment` |
 | `UmlClassMemberType` | `uml.Property`, `uml.Operation`, `uml.EnumerationLiteral` |
 | `UmlClassLineType` | `uml.Association`, `uml.Generalization`, `uml.InterfaceRealization`, `uml.Dependency`, `uml.CommentLink` (from client to supplier) |
-| `UmlClassifierProps` | `isAbstract`, `stereotypes` |
+| `UmlClassifierProps` | `isAbstract`, `stereotypes`; on a `uml.Class`, `associationClass`: the id of the `uml.Association` it is the association class of, drawn joined to the middle of that line by a dashed line |
 | `UmlPropertyProps` | `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `stereotypes`: `+ {static} /total: Money [1] = 0` as fields |
 | `UmlOperationProps` | `visibility`, `parameters` (`name`, `valueType`, `direction`), `returnType`, `isStatic`, `isAbstract`, `stereotypes` |
 | `UmlLineProps` | `ends.from` and `ends.to`, each a `UmlAssociationEnd`; `stereotypes` |
@@ -271,5 +271,5 @@
 | `BpmnElementType` | `bpmn.Participant`, `bpmn.Task`, `bpmn.SubProcess`, `bpmn.CallActivity`, `bpmn.StartEvent`, `bpmn.EndEvent`, `bpmn.IntermediateCatchEvent`, `bpmn.IntermediateThrowEvent`, `bpmn.BoundaryEvent`, `bpmn.ExclusiveGateway`, `bpmn.ParallelGateway`, `bpmn.DataObject`, `bpmn.DataStoreReference`, `bpmn.TextAnnotation`, `bpmn.Group` |
 | `BpmnMemberType` | `bpmn.Lane` |
 | `BpmnLineType` | `bpmn.SequenceFlow`, `bpmn.MessageFlow`, `bpmn.Association`, `bpmn.DataAssociation` |
-| `BpmnElementProps` | `documentation`, `processRef`, `taskType` (`none`, `user`, `service`), `definition` (`none`, `message`, `timer`, `terminate`), `attachedTo`, `cancelActivity`, `calledElement`, `dataStoreRef`, `categoryValueRef` |
+| `BpmnElementProps` | `documentation`, `processRef`, `taskType` (`none`, `user`, `service`), `definition` (`none`, `message`, `timer`, `terminate`), `attachedTo`, `cancelActivity`, `calledElement`, `dataStoreRef`, `categoryValueRef`, `default` (an exclusive gateway's or an activity's default flow: the id of one of its sequence flows out) |
 | `BpmnLineProps` | `documentation`, `direction` (`none`, `one`, `both`: an association's arrowheads) |

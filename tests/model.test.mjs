@@ -329,6 +329,10 @@ test('audit 20: every exported function reads a hostile model (an object with a 
       otlpSpans: () => U.otlpSpans(otlp), sequenceFromTrace: () => U.sequenceFromTrace(m, spans, { match: { [a]: B() } }),
       layout: () => U.layout(m, v), check: () => U.check(m, v), describe: () => U.describe(m, v), paths: () => U.paths(m, v, a, b), reach: () => U.reach(m, v, a),
       critical: () => U.critical(m, v, { from: a }), whatIf: () => U.whatIf(m, v, { remove: [a] }),
+      // a view with no main flow is said by a throw that names it, as the docs give it; any other throw fails
+      storyFromFlow: () => { try { return U.storyFromFlow(m, v); } catch (e) { if (/has no main flow|has no messages to tell/.test(e.message)) return null; throw e; } },
+      // a view that shows no change is said by a throw that names it, as the docs give it; any other throw fails
+      storyFromDiff: () => { try { return [U.storyFromDiff(plain, m, v), U.storyFromDiff(m, plain, v, { on: 'diff' })]; } catch (e) { if (/shows no change/.test(e.message)) return null; throw e; } },
     };
     for (const [k, fn] of Object.entries(runs)) try { call(k, fn); } catch (e) { thrown.push(`${f} ${bad} ${k}: ${e.message}`); }
   }
@@ -987,4 +991,18 @@ test('audit 40: validate() says a prop drawn as text that is not text, as a labe
     assert.equal(got[0][0], 'warning'); assert.match(got[0][1], new RegExp(`\\.props\\.${key}$`));
     assert.equal(got[0][2], `${key} ${JSON.stringify(value)} is not text: drawn as ${JSON.stringify(String(value))}`);
     x.props[key] = 7; assert.deepEqual(said(m), [], `${f} ${key}: a number is drawn as written`); }
+});
+
+// motion speed: the author's motion.speed, a number from 0.25 to 4, read by the canvas as the map's speed until a host or a
+// reader chooses one; validate() says a motion that is not an object, and a speed outside that range or not a number
+test('motion speed: validate() says a motion that is not an object and a speed that is not a number from 0.25 to 4', () => {
+  const m = { nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', title: 'V', nodeIds: ['a'] }] };
+  const said = motion => validate({ ...m, motion }).map(p => `${p.level} ${p.path}: ${p.message}`);
+  for (const ok of [undefined, null, {}, { speed: 0.25 }, { speed: 1 }, { speed: 1.5 }, { speed: 4 }, { speed: null }]) assert.deepEqual(said(ok), [], JSON.stringify(ok));
+  assert.deepEqual(said({ speed: 2, other: true }), []); // other fields are the author's own
+  for (const [bad, text] of [[0, '0'], [0.2, '0.2'], [4.5, '4.5'], [-1, '-1'], ['2', '"2"'], [NaN, 'NaN'], [Infinity, 'Infinity'], [true, 'true'], [[2], '[2]'], [{ valueOf: () => 2 }, '{}']])
+    assert.deepEqual(said({ speed: bad }), [`warning motion.speed: speed ${text} is not a number from 0.25 to 4: ignored`], String(bad));
+  for (const bad of [2, 'fast', [1], true]) assert.deepEqual(said(bad), ['warning motion: motion is an object, { speed }: ignored'], String(bad));
+  // the integration fixture has no motion field: it moves at 1x as before (the showcase test checks examples/)
+  assert.equal(JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))).motion, undefined);
 });

@@ -46,9 +46,11 @@ effect; decision input behaviour; an object node's type, state, upper bound and 
 
 Layout limits, measured on `examples/fulfil-activity.json` and `tests/activity-stress.json`:
 
-- Port repair is off (`notes/stage-4.md` §17): two lines that cross next to a shared side keep their ports. Example 9
-  has two crossings laid out down and none right; `tests/activity-stress.json` one in its `edge-cases` view either way,
-  and nine right and fourteen down in its `all` view (50 nodes, 60 flows, four lanes). All pinned, in
+- Port repair is off (`notes/stage-4.md` §17), but two lines that cross after leaving or entering one side of a node
+  side by side swap their ports there when that leaves fewer layout check problems (audit 70: a do-while loop's back line
+  laid out down crossed the line into its decision). Example 9 has one crossing laid out down (two before audit 70) and
+  none right; `tests/activity-stress.json` one in its `edge-cases` view either way, and six right and eight down in its
+  `all` view (nine and fourteen before audit 70) (50 nodes, 60 flows, four lanes). All pinned, in
   `tests/activity.test.mjs`, `tests/stage4-fixtures.test.mjs` and `tests/cli.py`; CI's example check passes over them.
 - No line runs along a lane's divider for more than 24 px in example 9 (`risks.md` L16).
 - The column gap is one for every column: one long guard widens them all. A gap per column needs an option of the
