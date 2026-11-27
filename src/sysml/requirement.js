@@ -161,7 +161,7 @@ function rqGeo({ model, view, pos: pins, memo }) {
   pinCells(at, ids.filter(id => pinOf(id) && Object.hasOwn(at, id)).map(id => [id, pinOf(id)]), up, ids);
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
   const down = view.direction == null || view.direction === 'down', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); a direction neither right nor down is drawn right, as the core warns (audit 12); laid out right, the class type's room for labels
-  const g = placeTabs(layoutTyped({ nodes, edges, containers: [frame, ...boxes], direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false }, memo));
+  const g = placeTabs(layoutTyped({ nodes, edges, containers: [frame, ...boxes], direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false, shutBoxes: 2 }, memo));
   // a new object: what layoutTyped returned is not edited (§2.4; a closed package's tab is placed once, as the class type's).
   // The reading order: the cards by their places, top to bottom, then left to right, then the lines. Slots at each card and box, so the palette's add hears what is selected
   const order = [...g.nodes].sort((a, b) => (down ? a.col - b.col || a.row - b.row : a.row - b.row || a.col - b.col)).map(n => n.id);

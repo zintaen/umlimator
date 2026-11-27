@@ -85,7 +85,7 @@ function dynGeo({ model, view, pos, memo }) {
   const edges = [...steps.map(({ e, k }) => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(k != null ? { step: k } : {}), label: c4LineLabel(e) || undefined, end: V_LINE.rel, aria: dynName(e, k, pic), cut: 280 })),
     ...notes.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, end: V_LINE.note, aria: c4LineName(e, pic), cut: 280 }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo);
   // on a copy (stage 4 §2.4): a person's or robot's body starts just above the highest line on its side, as src/c4/c4.js does
   const sp = sidePorts(g), lift = new Map();
   g.nodes.forEach(n => { const p = (n.sh === 'person' || n.sh === 'robot') && sp.get(n), t = p ? Math.min(p.L, p.R) : Infinity; if (t < n.y + 14) lift.set(n, { ...n, portTop: t }); });
@@ -221,7 +221,7 @@ function depGeo({ model, view, pos, memo }) {
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(V_HAS).join(' ') || undefined }))];
   edges.push(...c4Gone(view, nodes, edges, pic, V_LINE)); // an implied line the model before a diff drew (audit 47)
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo);
   return { ...g, legend: depLegend(nodes, edges, pic.boxes), order: [...readingOrder(pic), ...edges.map(e => e.id)] };
 }
 function depProblems(model, view) {

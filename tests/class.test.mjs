@@ -771,7 +771,9 @@ test('a pile of pins on one cell lays out in about the time the view takes with 
     assert.ok(t < (n / 20) ** 2 * t20 + 300, `${n} classes piled on one cell: ${Math.round(t)} ms, 20 of them ${Math.round(t20)} ms`);
     assert.equal(new Set(cards.map(x => x.col + ',' + x.row)).size, n, `${n}: no two classes on one cell`);
     assert.deepEqual([g.byId.c0.col, g.byId.c0.row], [0, 0], `${n}: the pile's first pin keeps its cell`);
-    assert.deepEqual(U.check(m, 'v').map(p => p.message), [], `${n}: nothing over anything, no line shared`); }
+    // (since audit 71 check() also names a line through a box that holds neither of its ends: the pile's packages stand in a
+    // row and the chain's lines from the last to the first run through those between, drawn as before; over and shared are asked here)
+    assert.deepEqual(U.check(m, 'v').map(p => p.message).filter(p => !/ which holds neither of its ends$/.test(p)), [], `${n}: nothing over anything, no line shared`); }
   // a requirement view settles its pins among its ranked cards (pinCells): the pile drawn as the view with none, but the first pin
   const req = p => pile(40, 'sysml.requirement', 'sysml.Requirement', 'sysml.DeriveReqt', p);
   assert.ok(U.check(req(true), 'v').length <= U.check(req(false), 'v').length, 'requirements piled on one cell: no more said of them than of the view with no pins');

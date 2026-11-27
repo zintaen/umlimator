@@ -155,6 +155,22 @@ function throughIssues(geo, where, refs) {
         say(`${where}: edge ${name(e)} runs back inside its own box "${nm(b)}"`, e, (geo.families || []).find(f => f.id === b.id) || b); }); });
   return issues;
 }
+// a typed view's line through a box that holds neither of its ends, nor a port or box of either (audit 71: a cloud view's line
+// between two cards outside a VPC ran across it), in a view whose type runs layered.js's box pass (geo.shutBoxes: the class,
+// component, deployment, cloud, requirement and C4 views), which routes such a line round the box; what it cannot
+// avoid is said here. check() only, kept out of throughIssues and the scores, so no picture changes; a map's boxes are groups
+// a wire may cross
+function boxThroughIssues(geo, where, refs) {
+  const issues = [], say = teller(issues, refs), F = geo.families || []; if (geo.map || !geo.shutBoxes || !F.length) return issues;
+  const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
+  const byF = new Map(F.map(f => [f.id, f])), at = id => (geo.byId && geo.byId[id]) || byF.get(id);
+  const holds = (f, n, k = 0) => !!n && (n.id === f.id || inside(n, f) || (n.owner != null && k < 9 && holds(f, at(n.owner), k + 1)));
+  geo.edges.forEach(e => { const P = e.pts || [], a = e.s || at(e.from), b = e.t || at(e.to); if (P.length < 2 || !a || !b) return;
+    F.forEach(f => { if (holds(f, a) || holds(f, b)) return;
+      if (P.some((p, k) => k && Math.max(p[0], P[k - 1][0]) > f.x + 1 && Math.min(p[0], P[k - 1][0]) < f.x + f.w - 1 && Math.max(p[1], P[k - 1][1]) > f.y + 1 && Math.min(p[1], P[k - 1][1]) < f.y + f.h - 1))
+        say(`${where}: edge ${name(e)} runs through box "${nm(f)}", which holds neither of its ends`, e, f); }); });
+  return issues;
+}
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
   // a labelled line, on a map or a typed view, whose label found no spot at all: not drawn, so said (audit 6). A numbered
@@ -200,10 +216,10 @@ function auditSvg(svg, geo, where) {
   });
   svg.querySelectorAll('rect.verb-chip').forEach(r => { const own = geo.byId[r.closest('[data-id]').dataset.id], x = +r.getAttribute('x'); // a chip's pill, not only its text (#84)
     if (own && (x < own.x + 1 || x + +r.getAttribute('width') > own.x + own.w - 1)) issues.push(`${where}: chip "${r.nextElementSibling.textContent}" overflows node "${nm(own)}"`); });
-  issues.push(...routeAudit(geo, where), ...throughIssues(geo, where), ...leaveIssues(geo, where));
+  issues.push(...routeAudit(geo, where), ...throughIssues(geo, where), ...boxThroughIssues(geo, where), ...leaveIssues(geo, where));
   const els = T.filter(a => a.t === 'el');
   for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) if (hit(els[i].b, els[j].b, -1)) issues.push(`${where}: edge labels "${els[i].txt}" and "${els[j].txt}" overlap`);
   return issues;
 }
 
-export { onBorder, detour, behind, boxClash, routeAudit, overlapIssues, throughIssues, leaveIssues };
+export { onBorder, detour, behind, boxClash, boxThroughIssues, routeAudit, overlapIssues, throughIssues, leaveIssues };

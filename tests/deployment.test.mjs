@@ -502,3 +502,20 @@ test('audit 51: Shift + Delete of a model node counts the artifacts another view
   assert.equal(r.say, 'Deleted node srv and the 2 elements it held');
   const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes], [[], []]);
 });
+
+// audit 71: laid out down, an execution environment (or device, or node) with a stereotype or a long name grew wider than its
+// slot for its title and lay over the box beside it, whose artifact it then took for its own, so nothing moved them apart
+test('audit 71: a deployment box grown for its title (a «docker» stereotype, a long name) keeps off the box beside it, right and down', () => {
+  const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const cases = [['uml.ExecutionEnvironment', 'Web server', ['docker']], ['uml.ExecutionEnvironment', 'Customer Relationship Management Subsystem', []],
+    ['uml.Device', 'Web server', ['docker', 'kubernetes']], ['uml.Node', 'Customer Relationship Management Subsystem Primary Cluster Host', []], ['uml.Node', 'X', ['a very long stereotype name here']]];
+  for (const [type, label, stereotypes] of cases) for (const direction of ['down', 'right']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'web', type, label, props: { stereotypes } }, { id: 'app', type: 'uml.Node', label: 'App server' },
+      { id: 'site', type: 'uml.Artifact', label: 'site.war', parent: 'web' }, { id: 'api', type: 'uml.Artifact', label: 'api.jar', parent: 'app' }, { id: 'shop', type: 'uml.Component', label: 'Shop' }],
+    edges: [{ id: 'm1', type: 'uml.Manifestation', from: 'site', to: 'shop' }], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['web', 'app', 'site', 'api', 'shop'], direction }] };
+    const g = layout(m, 'v'), web = g.families.find(f => f.id === 'web'), app = g.families.find(f => f.id === 'app'), at = `${type} ${label} ${stereotypes} ${direction}`;
+    assert.ok(!hit(web, app), `${at}: the boxes keep apart`);
+    assert.ok(!hit(web, g.byId.api), `${at}: api.jar is not under ${label}`);
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => / overlap$| which it does not hold$/.test(s)), [], at);
+  }
+});
