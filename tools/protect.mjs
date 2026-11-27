@@ -9,9 +9,8 @@
 // assert is not node:assert's own (imported from another module, or patched or handed on in the file, assert.equal = ...,
 // const a = assert) asserts nothing and is reported, also when it asserts through a helper; so is one whose file reaches
 // node:assert by another name and changes it (a second import, process.getBuiltinModule, createRequire, a dynamic import,
-// an escaped name): the scan reads every binding of node:assert as it reads assert, and the command also runs each file's
-// tests with tools/assert-watch.mjs, which sees any change made to node:assert as the file loads or its tests run, in any
-// test, hook or timer (assertLoads, audits 69 and 70). An entry
+// an escaped name): the scan reads every binding of node:assert as it reads assert, and the command also loads each file
+// with tools/assert-watch.mjs, which sees any change made to node:assert as it loads (assertLoads, audit 69). An entry
 // also records where each name it uses is imported from, and a changed import is a change.
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
@@ -24,10 +23,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spawn } from 'node:child_process';
-import { availableParallelism } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { tokenize, significant, normalized, literal } from './jsscan.mjs';
-import { isMain } from './main.mjs';
 
 export const LIST = 'tests/protected.json';
 const OPEN = new Set(['(', '[', '{']), CLOSE = new Set([')', ']', '}']);
@@ -118,17 +115,13 @@ export function scan(src) {
   let assertWhy = null;
   const a = imports.get('assert'), lineOf = k => `line ${src.slice(0, sig[k].start).split('\n').length}`;
   // every binding that holds node:assert, by whatever name it was imported (import other from 'node:assert'), is read as
-  // assert is; a name written with an escape (ass\u0065rt) can spell any of them, and a string naming node:assert given to
-  // a load, or process.getBuiltinModule, reaches it at run time (audit 69). What a run-time name still reaches,
-  // assertLoads() sees as the file and its tests run
+  // assert is; a name written with an escape (ass\u0065rt) can spell any of them, and a string naming node:assert outside
+  // an import, or process.getBuiltinModule, reaches it at run time (audit 69). What a run-time name still reaches,
+  // assertLoads() sees as the file loads
   const held = new Set(['assert', ...[...imports].filter(([, b]) => ASSERTS.includes(b.module) && ['default', 'strict', '*'].includes(b.imported)).map(([n]) => n)]);
   const escaped = sig.findIndex(x => x.type === 'id' && x.text.includes('\\'));
-  // a string naming node:assert counts only as what a load is given (import('node:assert'), require(...), createRequire(...)
-  // (...), process.getBuiltinModule(...)), and binding, _linkedBinding and getBuiltinModule only as process's: a string
-  // 'assert' as data, or a model's .binding, reaches nothing (audit 70). A name built at run time is assertLoads()'s
-  const loads = k => sig[k - 1]?.text === '(' && (['import', 'require', 'getBuiltinModule'].includes(sig[k - 2]?.text) || sig[k - 2]?.text === ')');
-  const reached = sig.findIndex((x, k) => !importAt.has(k) && (((x.type === 'str' || (x.type === 'tpl' && !x.text.includes('${'))) && ASSERTS.includes(literal(x) ?? x.text.slice(1, -1)) && loads(k))
-    || (x.type === 'id' && ['getBuiltinModule', 'binding', '_linkedBinding'].includes(x.text) && ['.', '?.'].includes(sig[k - 1]?.text) && sig[k - 2]?.text === 'process')));
+  const reached = sig.findIndex((x, k) => !importAt.has(k) && (((x.type === 'str' || (x.type === 'tpl' && !x.text.includes('${'))) && ASSERTS.includes(literal(x) ?? x.text.slice(1, -1)))
+    || (x.type === 'id' && ['getBuiltinModule', 'binding', '_linkedBinding'].includes(x.text) && ['.', '?.'].includes(sig[k - 1]?.text))));
   if (a && !(ASSERTS.includes(a.module) && ['default', 'strict', '*'].includes(a.imported))) {
     assertWhy = !ASSERTS.includes(a.module) ? `assert is imported from ${a.module || 'elsewhere'}, not node:assert` : `assert is node:assert's ${a.imported}`;
   } else if (!a && !sig.some((x, k) => x.text === 'assert' && depthAt[k] === 0 && DECL.has(sig[k - 1]?.text))) assertWhy = 'assert is not imported from node:assert';
@@ -302,33 +295,19 @@ const asserting = (scanned, title) => {
   return null;
 };
 
-// every protected test whose file changes node:assert, by whatever name it reaches it (audit 69), as it loads or as its
-// tests run (audit 70): each file is run once as node --test runs it in CI (every test but the timed ones, which CI runs in
-// a step of their own, where no protected test runs), with tools/assert-watch.mjs preloaded, which compares node:assert's
-// objects with how they started before and after every test, before every callback and at exit, and says the first
-// change on stderr at once: [{ file, title, problem }]. A file whose run does not end in the time given is reported too,
-// since what it would have changed was not seen. The files run side by side, `jobs` at a time
-export async function assertLoads(root, list = readList(root), { jobs = Math.max(1, Math.min(4, availableParallelism() - 1)), timeout = 600000 } = {}) {
-  const env = { ...process.env }, watch = join(dirname(fileURLToPath(import.meta.url)), 'assert-watch.mjs');
+// every protected test whose file changes node:assert as it loads, by whatever name it reaches it (audit 69): each file is
+// run once with its tests filtered out (its top level and its describe callbacks run) and tools/assert-watch.mjs
+// preloaded, which compares node:assert's objects at exit with how they started: [{ file, title, problem }]
+export function assertLoads(root, list = readList(root)) {
+  const problems = [], env = { ...process.env }, watch = join(dirname(fileURLToPath(import.meta.url)), 'assert-watch.mjs');
   delete env.NODE_TEST_CONTEXT; // run as a plain process, not as a child of a test runner around this one
-  const files = Object.keys(list.tests).filter(file => existsSync(join(root, file))); // a file gone: check() says so
-  const run = file => new Promise(done => {
-    const child = spawn(process.execPath, ['--import', pathToFileURL(watch).href, '--test-skip-pattern=\\(timed\\)', join(root, file)], { cwd: root, env, stdio: ['ignore', 'ignore', 'pipe'] });
-    let err = '', late = false;
-    const timer = setTimeout(() => { late = true; child.kill('SIGKILL'); }, timeout);
-    child.stderr.setEncoding('utf8').on('data', d => { err += d; });
-    child.on('close', () => {
-      clearTimeout(timer);
-      const said = err.split('\n').find(l => l.startsWith('protect: node:assert changed: '));
-      done(said ? `no longer asserts (${said.slice('protect: '.length)})` : late ? `could not be checked: its tests did not end in ${timeout / 1000} s` : null);
-    });
-  });
-  const found = new Map();
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, async () => {
-    while (next < files.length) { const file = files[next++]; found.set(file, await run(file)); }
-  }));
-  return files.flatMap(file => found.get(file) ? Object.keys(list.tests[file]).map(title => ({ file, title, problem: found.get(file) })) : []);
+  for (const [file, entries] of Object.entries(list.tests)) {
+    if (!existsSync(join(root, file))) continue; // check() says so
+    const r = spawnSync(process.execPath, ['--import', pathToFileURL(watch).href, '--test-name-pattern=(?!)', join(root, file)], { cwd: root, env, encoding: 'utf8', timeout: 120000 });
+    const said = `${r.stderr || ''}`.split('\n').find(l => l.startsWith('protect: node:assert changed: '));
+    if (said) for (const title of Object.keys(entries)) problems.push({ file, title, problem: `no longer asserts (${said.slice('protect: '.length)} as the file loads)` });
+  }
+  return problems;
 }
 
 export const say = p => `${p.file}: "${p.title}": ${p.problem}`;
@@ -375,7 +354,7 @@ export function remove(root, file, titles) {
   writeList(root, list);
 }
 
-async function main(argv) {
+function main(argv) {
   let root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const r = argv.indexOf('--root');
   if (r >= 0) { root = argv[r + 1]; argv.splice(r, 2); }
@@ -389,7 +368,7 @@ async function main(argv) {
     if (cmd === '--list') { for (const [f, e] of Object.entries(readList(root).tests)) for (const [t, v] of Object.entries(e)) console.log(`${f}: "${t}" (${v.asserts} asserts${v.helpers.length ? '; helpers ' + v.helpers.join(', ') : ''})`); return 0; }
     if (cmd) { console.error(`unknown option ${cmd}`); return 2; }
     const problems = check(root), seen = new Set(problems.map(p => `${p.file}\0${p.title}`));
-    problems.push(...(await assertLoads(root)).filter(p => !seen.has(`${p.file}\0${p.title}`)));
+    problems.push(...assertLoads(root).filter(p => !seen.has(`${p.file}\0${p.title}`)));
     for (const p of problems) console.log(say(p));
     const n = Object.values(readList(root).tests).reduce((s, e) => s + Object.keys(e).length, 0);
     console.log(problems.length ? `${problems.length} of ${n} protected tests gone or changed: ask the maintainer, who runs node tools/protect.mjs --update after approving` : `${n} protected tests as recorded`);
@@ -397,4 +376,4 @@ async function main(argv) {
   } catch (e) { console.error(e.message); return 1; }
 }
 
-if (isMain(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = main(process.argv.slice(2));

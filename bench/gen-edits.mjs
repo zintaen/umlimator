@@ -15,7 +15,6 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { apply, validate } from '../lib/umlimator-all.js';
 import { seeded } from '../tools/evolve/args.mjs';
-import { isMain } from '../tools/main.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = resolve(ROOT, 'bench/edits/edits.json');
@@ -88,7 +87,7 @@ export function build() {
 
 const text = () => JSON.stringify(build(), null, 1) + '\n';
 
-if (isMain(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const t = text();
   if (process.argv.includes('--check')) {
     let was = ''; try { was = readFileSync(OUT, 'utf8'); } catch {}

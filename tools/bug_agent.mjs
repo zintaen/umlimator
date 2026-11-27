@@ -22,7 +22,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { isMain } from './main.mjs';
+import { pathToFileURL } from 'node:url';
 
 export const OUTCOMES = ['fixed', 'reproduced', 'not-reproduced'];
 
@@ -387,4 +387,4 @@ function main(argv) {
   }
 }
 
-if (isMain(import.meta.url)) main(process.argv.slice(2));
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) main(process.argv.slice(2));

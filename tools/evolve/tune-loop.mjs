@@ -35,7 +35,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, seeded } from './args.mjs';
 import { take, renew, release, leasePath } from './lease.mjs';
 import { killSwitch } from './killswitch.mjs';
-import { isMain } from '../main.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const TUNE = 'src/layout/tune.js';
@@ -386,4 +385,4 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   }
 }
 
-if (isMain(import.meta.url)) process.exitCode = await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main();

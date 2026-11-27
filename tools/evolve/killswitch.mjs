@@ -9,8 +9,8 @@
 // Every session and scheduled job runs it first, and the orchestrator again before every step.
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from './args.mjs';
-import { isMain } from '../main.mjs';
 
 export const STOP = '.evolve/STOP';
 
@@ -40,4 +40,4 @@ export function main(argv, out = console.log) {
   return r.stopped ? 1 : 0;
 }
 
-if (isMain(import.meta.url)) process.exitCode = main(process.argv.slice(2));
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = main(process.argv.slice(2));

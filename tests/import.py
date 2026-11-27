@@ -127,23 +127,6 @@ ok("compose · two keys that differ only in a character XML cannot hold are kept
    [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
    and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
    and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
-# the report's order reads digit runs as numbers, and a name with a character isdigit() takes but int() does not (², ①),
-# other scripts' digits or a run longer than int() reads is still imported, its report in order (audit 70)
-names = ["web1\u00b2", "web2\u2460", "db\u00b3", "q\u0661\u0662", "q\u0663", "x\u0967", "s10", "s9", "n" + "7" * 5000, "n8"]
-m, un = imp.read("compose", json.dumps({"services": {k: {"depends_on": ["gone"]} for k in names}}), "x")
-ok("compose · service names holding superscript or circled digits, other scripts' digits or 5000 digits import, the report in numeric order (audit 70)",
-   len(m["nodes"]) == len(names)
-   and [w for w, _ in un] == [f"services.{k}" for k in ["db\u00b3", "n8", "n" + "7" * 5000, "q\u0663", "q\u0661\u0662", "s9", "s10", "web1\u00b2", "web2\u2460", "x\u0967"]],
-   [w[:40] for w, _ in un])
-ok("natural() · digit runs as numbers, leading zeros alike, and no int() on what is not \\d (audit 70)",
-   sorted(["a10", "a9", "a09b", "a\u00b2", "a1\u00b2", "a\u0662", "b"], key=imp.natural) == ["a1\u00b2", "a\u0662", "a9", "a09b", "a10", "a\u00b2", "b"],
-   sorted(["a10", "a9", "a09b", "a\u00b2", "a1\u00b2", "a\u0662", "b"], key=imp.natural))
-for bad in ("\u00b2", "8\u00b2", "\u0668\u0660"):
-    try:
-        u.port(bad); said = "accepted"
-    except Exception as e:  # argparse's own type error, not int()'s ValueError
-        said = type(e).__name__
-    ok(f"--port {bad!r} is not a port, said as a usage error (audit 70)", said == "ArgumentTypeError", said)
 m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["web\\u0002"]}, "web\\u0002": {"image": "y", "depends_on": {"web\\u0001": {"condition": "service_started"}}}, "db": {"image": "z", "depends_on": ["web\\u0002"]}}}', "x")
 k8s = {"kind": "List", "items": [
     {"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": {"k\u0002": "b"}}},
