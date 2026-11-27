@@ -168,6 +168,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: lane head 85298f21; audit-loop merge bef3d443 and its revert 7b720083; baseline c9cbf79b; handoff log, 27 Nov 2026, fix round 70 combine.
 - Proposed change: In A3.4, before merging a lane, the combine also runs the lane's listed tests on origin/<branch> in a clean worktree, and a lane whose listed test fails there is returned at once, with no merge, bisect or revert. In A3.3, the lane runs its listed tests from a clean checkout of the commit it pushes, not from its working tree.
 
+### F17. Lanes forked before main's last commits: one duplicated a main change and broke the build without a conflict, and three edited the same two lines
+
+- Date: 2026-11-27
+- Round: fix round 71 (combine)
+- Rule: A3.2, A3.3, A3.4, A8.6 (and F11, F8, F14 again, as F15 describes)
+- What happened: The four lanes branched from 3da83a99, but the integration branch had since taken aabfac0e and cd5254db from main. aabfac0e gives a boxed arranged map view a ranked layout and declares `arranged` in src/map/context.js; fix71-flow gives typed views a ranked way and declares its own `arranged` in the same function. Git merged the two with no conflict, the build then stopped with "Identifier 'arranged' has already been declared", every suite failed, and the merge was reverted: three findings (3, 4, 5) for an overlap with work already on main. Separately, fix71-boxes, fix71-flow and fix71-layout-misc each edited the same `owns` line of layoutPass and the same return line of src/layout/layered.js, so under A3.4's no-hand-resolution rule at most one of the three could merge; fix71-boxes (findings 2, 7, 8) conflicted with whichever went first and was returned. Only the revert of fix71-flow let fix71-layout-misc merge in the same combine. F11 (the kill switch from the main checkout), F8 (python3 is 3.14 and fails the audit 20 check) and F14 (no sweep command) recurred again.
+- Evidence: audit-loop merge eef9ae8c and its revert 504d1389; merges 3da695b2 (fix71-tools) and b794ffc8 (fix71-layout-misc); lane heads 255465b8, e7e2dd95, e3072d1b; main commit aabfac0e; handoff log, 27 Nov 2026, fix round 71 combine.
+- Proposed change: In A3.2, lanes branch from the integration head after it has merged main, not from the audit's base, and findings whose suggested fix names the same function go to one lane. In A3.4, the combine builds after each merge (a minute, against a full gate) so a clean merge that does not build is returned at once with no gate run or bisect, and a lane returned for a conflict is tried again in the same combine when the lane it conflicted with is later reverted.
+
 ## Closed
 
 None.
