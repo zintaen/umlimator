@@ -551,3 +551,23 @@ test('zoneOf: a primary actor first, a secondary actor last; an arranged view dr
   assert.ok(col(a, 'shopper') < col(a, 'buy') && col(a, 'bank') > col(a, 'pay'), 'arranged: the bank after the use cases');
   assert.equal(T.layout.keepsRank(a, a.views[0], 'bank'), null, 'a last actor\'s pin holds');
 });
+
+// audit 72: the use case gives zoneOf but no flowRole, so an arranged view was never laid out ranked too (bestTyped took only
+// types with a flow): a member actor specialising the shopper, use cases in two subjects, drew two crossings arranged and
+// none without arrange. It is laid out both ways now (typedWay, src/map/context.js), with or without pins, and kept ranked
+// where arranged draws more
+test('audit 72: arranged, a use case view draws no more layout check problems than without arrange, laid out right or down, with a pin or none', () => {
+  const U = (id, label, parent) => ({ id, type: 'uml.UseCase', label, parent });
+  const nodes = [{ id: 'shop', type: 'uml.Subject', label: 'Online bookshop' }, { id: 'bank', type: 'uml.Subject', label: 'Payments' },
+    { id: 'shopper', type: 'uml.Actor', label: 'Shopper' }, { id: 'member', type: 'uml.Actor', label: 'Member' },
+    U('browse', 'Browse the catalog', 'shop'), U('checkout', 'Check out', 'shop'), U('track', 'Track an order', 'shop'), U('review', 'Write a review', 'shop'), U('wish', 'Keep a wish list', 'shop'),
+    U('refund', 'Ask for a refund', 'bank')];
+  const edges = [['e1', 'shopper', 'checkout'], ['e2', 'shopper', 'refund'], ['e3', 'member', 'track'], ['e4', 'member', 'shopper', 'uml.Generalization']]
+    .map(([id, from, to, type = 'uml.Association']) => ({ id, type, from, to }));
+  const said = (direction, arrange, layout) => { const m = { schemaVersion: 2, title: 'Bookshop', root: 'v', nodes, edges,
+    views: [{ id: 'v', diagram: 'uml.use-case', title: 'Shopping', nodeIds: nodes.map(n => n.id), direction, ...(arrange && { arrange }), ...(layout && { layout }) }] };
+    return check(m, 'v').map(p => p.message); };
+  for (const direction of ['right', 'down']) { assert.deepEqual(said(direction, 'flow'), said(direction), direction);
+    const at = mapContext({ schemaVersion: 2, title: 'Bookshop', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: nodes.map(n => n.id), direction }] }).cellsOf('v');
+    const pin = { member: at.member }; assert.ok(said(direction, 'flow', pin).length <= said(direction, false, pin).length, `${direction}, the member pinned where it is`); }
+});
