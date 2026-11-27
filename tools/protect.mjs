@@ -11,8 +11,8 @@
 // node:assert by another name and changes it (a second import, process.getBuiltinModule, createRequire, a dynamic import,
 // an escaped name): the scan reads every binding of node:assert as it reads assert, and the command also runs each file's
 // tests with tools/assert-watch.mjs, which sees any change made to node:assert as the file loads or its tests run, in any
-// test, hook or timer (assertLoads, audits 69 and 70). An entry
-// also records where each name it uses is imported from, and a changed import is a change.
+// test, hook or timer (assertLoads, audits 69 and 70); a protected test that this run does not show passing (the file
+// exits before it runs, or it fails) is reported too (audit 71). An entry also records where each name it uses is imported from, and a changed import is a change.
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
 //   node tools/protect.mjs --list                   print the entries
@@ -21,11 +21,11 @@
 //   node tools/protect.mjs --remove file title...   protect fewer
 //   --root dir                                      the repository to work on (default: this one)
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { tokenize, significant, normalized, literal } from './jsscan.mjs';
 import { isMain } from './main.mjs';
 
@@ -303,32 +303,65 @@ const asserting = (scanned, title) => {
 };
 
 // every protected test whose file changes node:assert, by whatever name it reaches it (audit 69), as it loads or as its
-// tests run (audit 70): each file is run once as node --test runs it in CI (every test but the timed ones, which CI runs in
-// a step of their own, where no protected test runs), with tools/assert-watch.mjs preloaded, which compares node:assert's
-// objects with how they started before and after every test, before every callback and at exit, and says the first
-// change on stderr at once: [{ file, title, problem }]. A file whose run does not end in the time given is reported too,
-// since what it would have changed was not seen. The files run side by side, `jobs` at a time
-export async function assertLoads(root, list = readList(root), { jobs = Math.max(1, Math.min(4, availableParallelism() - 1)), timeout = 600000 } = {}) {
+// tests run (audit 70), or that this run does not show passing (audit 71: a file that calls process.exit(0) before its
+// tests passes node --test with none of them run): each file is run once as node --test runs it in CI (every test but the
+// timed ones, which CI runs in a step of their own, where no protected test runs), with tools/assert-watch.mjs preloaded,
+// which compares node:assert's objects with how they started before and after every test, before every callback and at
+// exit, and says the first change on stderr at once, and with node:test's TAP reporter writing to a file of its own (not
+// stdout, where the file could print a line that reads as a pass): [{ file, title, problem }]. A file whose run does not
+// end in the time given is reported too, since what it would have changed was not seen. The files run side by side,
+// `jobs` at a time
+const TIMED = /\(timed\)/;
+const UNTAP = { n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', v: '\v' };
+// what a TAP report says of each test title: { title: ['ok' | 'not ok' | 'skip', ...] }, in the order the tests ended
+export function tapResults(tap) {
+  const out = {};
+  for (const line of tap.split('\n')) {
+    const m = /^\s*(not )?ok \d+ - (.*)$/.exec(line);
+    if (!m) continue;
+    const d = / # (SKIP|TODO)\b/i.exec(m[2]), name = (d ? m[2].slice(0, d.index) : m[2]).replace(/\\(.)/g, (_, c) => UNTAP[c] ?? c);
+    (out[name] ||= []).push(d ? 'skip' : m[1] ? 'not ok' : 'ok');
+  }
+  return out;
+}
+// why a protected title did not pass in a run's results, or null; a title the scanner numbered ("doubles #2") is the nth
+// test of that title. A test node:test skipped as it ran (a skip option or t.skip(), as bpmn-xml's tests do where
+// bpmn-moddle is not installed) is reported where `skips` is false, as in CI (CI=true), where every protected test runs
+const ranWhy = (results, title, skips) => {
+  if (TIMED.test(title)) return null; // not run here (see above)
+  const n = / #(\d+)$/.exec(title), seen = results[title] ?? (n ? [results[title.slice(0, n.index)]?.[n[1] - 1]].filter(Boolean) : []);
+  if (!seen.length) return 'does not run: node --test of its file did not run it (the file exits or stops before it?)';
+  if (seen.includes('not ok')) return 'fails: node --test of its file ran it and it did not pass';
+  return seen.every(r => r === 'skip') && !skips ? 'does not run: node --test of its file skipped it' : null;
+};
+export async function assertLoads(root, list = readList(root), { jobs = Math.max(1, Math.min(4, availableParallelism() - 1)), timeout = 600000, skips = !process.env.CI } = {}) {
   const env = { ...process.env }, watch = join(dirname(fileURLToPath(import.meta.url)), 'assert-watch.mjs');
   delete env.NODE_TEST_CONTEXT; // run as a plain process, not as a child of a test runner around this one
   const files = Object.keys(list.tests).filter(file => existsSync(join(root, file))); // a file gone: check() says so
-  const run = file => new Promise(done => {
-    const child = spawn(process.execPath, ['--import', pathToFileURL(watch).href, '--test-skip-pattern=\\(timed\\)', join(root, file)], { cwd: root, env, stdio: ['ignore', 'ignore', 'pipe'] });
+  const tmp = mkdtempSync(join(tmpdir(), 'protect-'));
+  const run = (file, i) => new Promise(done => {
+    const tap = join(tmp, `${i}.tap`);
+    const child = spawn(process.execPath, ['--import', pathToFileURL(watch).href, '--test-reporter=tap', `--test-reporter-destination=${tap}`, '--test-skip-pattern=\\(timed\\)', join(root, file)], { cwd: root, env, stdio: ['ignore', 'ignore', 'pipe'] });
     let err = '', late = false;
     const timer = setTimeout(() => { late = true; child.kill('SIGKILL'); }, timeout);
     child.stderr.setEncoding('utf8').on('data', d => { err += d; });
     child.on('close', () => {
       clearTimeout(timer);
       const said = err.split('\n').find(l => l.startsWith('protect: node:assert changed: '));
-      done(said ? `no longer asserts (${said.slice('protect: '.length)})` : late ? `could not be checked: its tests did not end in ${timeout / 1000} s` : null);
+      if (said) return done(() => `no longer asserts (${said.slice('protect: '.length)})`);
+      if (late) return done(() => `could not be checked: its tests did not end in ${timeout / 1000} s`);
+      const results = tapResults(existsSync(tap) ? readFileSync(tap, 'utf8') : '');
+      done(title => ranWhy(results, title, skips));
     });
   });
   const found = new Map();
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, async () => {
-    while (next < files.length) { const file = files[next++]; found.set(file, await run(file)); }
-  }));
-  return files.flatMap(file => found.get(file) ? Object.keys(list.tests[file]).map(title => ({ file, title, problem: found.get(file) })) : []);
+  try {
+    await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, async () => {
+      while (next < files.length) { const i = next++; found.set(files[i], await run(files[i], i)); }
+    }));
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+  return files.flatMap(file => Object.keys(list.tests[file]).map(title => ({ file, title, problem: found.get(file)(title) })).filter(p => p.problem));
 }
 
 export const say = p => `${p.file}: "${p.title}": ${p.problem}`;
