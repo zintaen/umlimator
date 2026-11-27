@@ -85,8 +85,10 @@ function parseColumn(text, I, was) {
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
-  const ref = r && !/\s/.test(pair) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
-  return [q(erName(c)), ER_HAS(p.dataType) && (d => (erBareType(d) ? d : `"${d.replace(/["\\]/g, '\\$&')}"`))(String(p.dataType)), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
+  const ref = r && !/\s/.test(pair) && erRef(pair, I) === p.references ? pair : p.references, qq = x => `"${x.replace(/["\\]/g, '\\$&')}"`, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? qq(x) : x);
+  const parts = [q(erName(c)), ER_HAS(p.dataType) && (d => (erBareType(d) ? d : qq(d)))(String(p.dataType)), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '');
+  // a bare part whose last word is NOT, the NULL flag next: the two would read as SQL's NOT NULL, so it is quoted (audit 69)
+  return parts.map((x, i) => (parts[i + 1] === 'NULL' && /(?:^|\s)not$/i.test(x) ? qq(x) : x)).join(' ');
 }
 
 /* ---- the entity (§7.1): its name in a 24 px header, then its key columns, a divider, the rest; each row its marks (PK, FK,

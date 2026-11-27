@@ -527,3 +527,23 @@ test('audit 68: a type a bare row would misread (a flag word, NOT NULL, a lone q
     assert.deepEqual(parseColumn(flags, I), { label: 'c', props: { dataType: d, primaryKey: true, unique: true, nullable: true } }, flags); }
   assert.deepEqual(parseColumn('c "int" PK', I), { label: 'c', props: { dataType: 'int', primaryKey: true } }, 'a quoted type is read without its quotes');
 });
+
+test('audit 69: every row round trips for every flag combination, a type, name or reference whose last word is NOT among them (NOT and the NULL flag after it would read as SQL NOT NULL)', () => {
+  const ent = (id, label, cols) => ({ id, type: 'er.Entity', label, props: { columns: cols } });
+  const model = { nodes: [ent('a b', 'a b', [{ id: 'not', type: 'er.Column', label: 'x', props: {} }]), ent('t', 't', [{ id: 't.k', type: 'er.Column', label: 'k', props: {} }])] };
+  const I = { col: new Map([['not', { c: model.nodes[0].props.columns[0], e: model.nodes[0] }], ['t.k', { c: model.nodes[1].props.columns[0], e: model.nodes[1] }]]) };
+  let n = 0;
+  for (const label of ['c', 'NOT', 'not', 'a b']) for (const dataType of [undefined, 'NOT', 'not', 'IS NOT', 'int not', 'varchar(2) Not', 'x.not', 'NOT NULL', 'null', 'int', 'notable'])
+    for (const references of [undefined, 'not', 't.k']) for (let m = 0; m < 16; m++) {
+      const flags = { primaryKey: !!(m & 1), foreignKey: !!(m & 2), unique: !!(m & 4), nullable: !!(m & 8) };
+      const props = { ...(dataType != null && { dataType }), ...Object.fromEntries(Object.entries(flags).filter(([, v]) => v)), ...(references && { references }) };
+      const want = { ...props, ...(references && { foreignKey: true }) }, row = printColumn({ id: 'e.c', type: 'er.Column', label, props }, I);
+      const got = parseColumn(row, I);
+      assert.equal(got.error, undefined, row);
+      assert.equal(got.label, label, row); assert.deepEqual(Object.keys(got.props).sort(), Object.keys(want).sort(), row);
+      for (const k of Object.keys(want)) assert.deepEqual(got.props[k], want[k], `${row}: ${k}`);
+      n++; }
+  assert.equal(n, 4 * 11 * 3 * 16);
+  assert.equal(printColumn({ id: 'e.c', type: 'er.Column', label: 'c', props: { dataType: 'int not' } }, I), 'c int not', 'no NULL after it: the type prints bare');
+  assert.equal(printColumn({ id: 'e.c', type: 'er.Column', label: 'c', props: { dataType: 'int not', nullable: true } }, I), 'c "int not" NULL');
+});
