@@ -224,6 +224,8 @@ function prConnect(model, view, from, to, at, line) {
   const I = prIndex(model), t = PR_OBJ(line) ? line.type : null;
   if (t === 'uml.Extension' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.MetaclassReference')) return { error: 'An extension runs from a stereotype to a metaclass' };
   if (t === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(from)) || I.ty(to) !== 'uml.Profile' || from === to)) return { error: `A profile application runs from a package to a profile${from === to ? ' other than itself' : ''}` };
+  // a package that applies the profile already (a model line or a view's own): refused, as a second line adds nothing (audit 68)
+  if (t === 'uml.ProfileApplication' && I.of(t).some(e => e.from === from && e.to === to)) return { error: `${prName(I.at.get(from))} applies ${prName(I.at.get(to))} already` };
   if (t === 'uml.Generalization' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.Stereotype')) return { error: 'A generalization here joins two stereotypes' };
   return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : commentConnect(model, view, from, to, line); // generalization-cycle (audit 36); comment-link (audit 44)
 }
