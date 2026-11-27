@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { commentConnect, commentLinkProblems, lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
-import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
+import { lineInside, modelLines, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 
@@ -224,9 +224,28 @@ function dpDescribe(model, viewId) {
 /* ---- editing (§12) ---- */
 // the Owner field: an artifact's, a deployment specification's or a target's: every node, device and execution environment by
 // its name (the core leaves out the element and what it holds)
+// but one a line of it (or of what it holds) joins: the move would put that line inside its box (dpBlocks, audit 76)
 function dpOwners(model, x) {
   if (!DP_OBJ(x) || x.from != null || ![...DP_TARGETS, ...DP_ARTIFACTS].includes(x.type)) return null;
-  return DP_ARR(model.nodes).filter(n => DP_OBJ(n) && DP_TARGETS.includes(n.type)).map(n => ({ id: n.id, label: dpName(n) }));
+  const B = dpBlocks(model, x.id);
+  return DP_ARR(model.nodes).filter(n => DP_OBJ(n) && DP_TARGETS.includes(n.type) && B(n.id) == null).map(n => ({ id: n.id, label: dpName(n) }));
+}
+// what blocks a new owner for id: the first line of this view's kinds (the model's, or any view's own: the owner is the model's)
+// that joins id, or what it holds, with the owner or one of its owners, and so would be a line between a box and what it
+// holds (never drawn; a communication path's path-ends error), as connect refuses one; null where none does (audit 76). Not a
+// deployment: an artifact moved into the target it is deployed on is deployed there by nesting, the same fact (deployed-twice)
+function dpBlocks(model, id) {
+  const I = dpIndex(model), mine = x => x === id || I.holds(id, x);
+  const L = modelLines(model).filter(e => DP_OBJ(e) && DP_LINES.includes(e.type) && e.type !== 'uml.Deployment' && (mine(e.from) !== mine(e.to)) && !I.holds(e.from, e.to) && !I.holds(e.to, e.from));
+  return parent => { if (parent == null || !I.at.has(parent)) return null;
+    const up = new Set([parent]); for (let p = I.at.get(parent).parent; p != null && I.at.has(p) && !up.has(p); p = I.at.get(p).parent) up.add(p);
+    return up.has(id) ? null : L.find(e => up.has(mine(e.from) ? e.to : e.from)) || null; }; // inside itself: apply() refuses it
+}
+// owner: the Owner field's choice, and a drop into a box (src/typed/edit.js), refused where a line would join a node and what
+// it holds, in connect's words; else the default reparent (audit 76, as cloud's line-inside, audit 19)
+function dpOwner(model, view, id, parent) {
+  const e = dpBlocks(model, id)(parent);
+  return e ? { error: `A ${(DP_LINE_WORD[e.type] || 'line').toLowerCase()} cannot join a node and what it holds` } : null;
 }
 // connect: a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact, is added from
 // the artifact; a deployment, a manifestation or a communication path between ends it cannot join, or any line between a box and what it holds
@@ -284,7 +303,7 @@ const DP_TYPE = registerDiagramType('uml.deployment', {
     if (x && DP_TARGETS.includes(x.type)) return I.deployed(id).map(a => (I.at.get(a).parent === id ? nm(a) : `${nm(a)}, by «deploy»`));
     if (x && DP_ARTIFACTS.includes(x.type)) return I.outOf('uml.Manifestation', id).filter(e => I.at.has(e.to)).map(e => `manifests ${nm(e.to)}`);
     return x ? [] : null; }, // any other kind is drawn with no compartments: no members in the PDF (audit 29)
-  edits: { connect: dpConnect, remove: dpRemove, rename: lineRename(dpLineLabel) },
+  edits: { connect: dpConnect, remove: dpRemove, rename: lineRename(dpLineLabel), owner: dpOwner },
 });
 
-export { DP_TYPE, DP_RULES, dpGeo, dpProblems, dpDescribe, dpConnect, dpRemove, dpOwners };
+export { DP_TYPE, DP_RULES, dpGeo, dpProblems, dpDescribe, dpConnect, dpRemove, dpOwners, dpOwner };

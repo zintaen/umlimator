@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { commentConnect } from '../uml/class.js';
 import { brLines } from '../typed/draw.js';
-import { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Blocks, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -283,7 +283,8 @@ const depRename = (model, view, id, text) => ((c4Index(model).at.get(id) || {}).
 function depOwners(model, x) {
   if (!V_OBJ(x) || x.from != null || (x.type !== 'c4.ContainerInstance' && x.type !== 'c4.DeploymentNode')) return c4Owners(model, x);
   const I = c4Index(model); // not the node itself nor a node inside it (the core refuses a cycle)
-  return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: vName(n) }));
+  const B = c4Blocks(model, x.id); // nor one a relationship of it would then join to its own part (audit 76)
+  return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id) && B(n.id) == null).map(n => ({ id: n.id, label: vName(n) }));
 }
 // some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc); memo: validate()'s, so
 // each view's ids and depPic are worked out once a run, not once a node (audit 46)
@@ -313,7 +314,7 @@ const DEP_DEF = {
     if (x.type !== 'c4.ContainerInstance') return C4_DEF.rows(model, view, id);
     const c = depOf(I, x); return [`Instance of ${c ? vName(c) : 'no container'}`, ...(c ? C4_DEF.rows(model, view, c.id) : [])]; },
   text: C4_DEF.text,
-  edits: { add: depAdd, key: depKey, rename: depRename, connect: C4_DEF.edits.connect }, // a comment link (audit 46)
+  edits: { add: depAdd, key: depKey, rename: depRename, connect: C4_DEF.edits.connect, owner: C4_DEF.edits.owner }, // a comment link (audit 46); a relationship joining an element and its own owner (audit 76)
 };
 
 const C4_VIEW_TYPES = [registerDiagramType('c4.dynamic', DYN_DEF), registerDiagramType('c4.deployment', DEP_DEF)];

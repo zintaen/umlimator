@@ -372,6 +372,26 @@ ok("edit · a typed view's hooks decide, as on the page: a reply pairs with its 
    and flow == "FAIL connect: A message flow cannot start at a start event; nothing written"
    and pool == "FAIL move_to_box: Move its sequence flows first: a sequence flow stays in its pool; nothing written"
    and nopin.startswith("FAIL pin: a uml.sequence view places its elements itself"), [call_, reply_, unnamed, flow, pool, nopin])
+# audit 76: a move that would put a line inside its box, or break an assembly, is refused in the rule's words, as the page's
+# Owner field and drop are: a device into the node it has a communication path to; a component into one its assembly joins
+def own_model(name, nodes, edges, view):
+    (ed_dir / name).write_text(json.dumps({"schemaVersion": 2, "nodes": nodes, "edges": edges, "views": [view]}), encoding="utf-8")
+    return edit_on(name, ed_dir / name)
+own_model("dep76.json", [{"id": "phone", "type": "uml.Device", "label": "Phone"}, {"id": "srv", "type": "uml.Node", "label": "Server"},
+                         {"id": "app", "type": "uml.Artifact", "label": "app.jar", "parent": "srv"}, {"id": "rack", "type": "uml.Node", "label": "Rack"}],
+          [{"id": "p1", "type": "uml.CommunicationPath", "from": "phone", "to": "srv", "label": "HTTPS"}],
+          {"id": "d", "diagram": "uml.deployment", "nodeIds": ["phone", "srv", "app", "rack"]})
+dep_in, dep_ok = ed("move_to_box", view="d", id="phone", box="srv"), ed("move_to_box", view="d", id="phone", box="rack")
+own_model("comp76.json", [{"id": "web", "type": "uml.Component", "label": "Web", "members": [{"id": "web.out", "type": "uml.Port", "label": "out"}]},
+                          {"id": "pay", "type": "uml.Component", "label": "Payments", "members": [{"id": "pay.in", "type": "uml.Port", "label": "in"}]},
+                          {"id": "gw", "type": "uml.Component", "label": "Gateway", "parent": "pay"}],
+          [{"id": "a1", "type": "uml.Connector", "from": "web.out", "to": "pay.in", "props": {"kind": "assembly"}}],
+          {"id": "c", "diagram": "uml.component", "nodeIds": ["web", "pay", "gw"]})
+comp_in = ed("move_to_box", view="c", id="web", box="pay")
+ok("edit · move_to_box refuses a device into the node it has a communication path to, and a component into one its assembly joins (audit 76)",
+   dep_in == "FAIL move_to_box: A communication path cannot join a node and what it holds; nothing written"
+   and isinstance(dep_ok, dict) and dep_ok.get("written") is True
+   and comp_in == "FAIL move_to_box: An assembly joins two components or their ports, neither inside the other; nothing written", [dep_in, dep_ok, comp_in])
 # a map view: the commands a host would write (the edit demo page), boxes in the view's containers
 edit_on("map.json", ROOT / "tests" / "fixtures" / "integration.json")
 got = [ed("add_card", view="system", label="Billing", kind="backend", box="rides"), ed("connect", view="system", **{"from": "backend1", "to": "pricing"}, kind="sync", label="prices"),

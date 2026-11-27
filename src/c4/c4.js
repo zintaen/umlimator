@@ -356,10 +356,24 @@ function c4Add(model, view, entry, label) {
   return [{ op: 'add', element: { id: base + k, type: entry.type, ...(label ? { label } : {}), parent: o.id }, view: view.id }];
 }
 // the Owner field: a container's software systems, a component's containers
+// (not one a relationship of it would then join to its own part: c4Blocks, audit 76)
 function c4Owners(model, x) {
   if (!C4_OBJ(x) || x.from != null || !Object.hasOwn(C4_OWNER, x.type) || x.type === 'c4.ContainerInstance') return null;
-  return C4_ARR(model.nodes).filter(n => C4_OBJ(n) && n.type === C4_OWNER[x.type]).map(n => ({ id: n.id, label: c4Name(n) }));
+  const B = c4Blocks(model, x.id);
+  return C4_ARR(model.nodes).filter(n => C4_OBJ(n) && n.type === C4_OWNER[x.type] && B(n.id) == null).map(n => ({ id: n.id, label: c4Name(n) }));
 }
+// what blocks a new owner for id: the first relationship (the model's, or any view's own: the owner is the model's) that joins
+// id, or what it holds, with the owner or one of its owners, which c4-relationship then calls an error; null where none does (audit 76)
+function c4Blocks(model, id) {
+  const I = c4Index(model), mine = x => x === id || I.chain(x).includes(id), rels = [...I.rels, ...C4_ARR(model && model.views).flatMap(v => (C4_OBJ(v) ? C4_ARR(v.edges) : []))
+    .filter(e => C4_OBJ(e) && e.type === 'c4.Relationship' && !I.rels.includes(e))];
+  const L = rels.filter(e => mine(e.from) !== mine(e.to) && I.at.has(e.from) && I.at.has(e.to) && !I.chain(e.from).includes(e.to) && !I.chain(e.to).includes(e.from));
+  return parent => { if (parent == null || !I.at.has(parent)) return null; const up = [parent, ...I.chain(parent)];
+    return up.includes(id) ? null : L.find(e => up.includes(mine(e.from) ? e.to : e.from)) || null; }; // inside itself: apply() refuses it
+}
+// owner: the Owner field's choice, and a drop into a box (src/typed/edit.js), refused where a relationship would join an element
+// and its own owner, in c4-relationship's words; else the default (audit 76, as cloud's, audit 19)
+const c4Owner = (model, view, id, parent) => (c4Blocks(model, id)(parent) ? { error: 'A relationship never joins an element and its own owner' } : null);
 
 /* ---- the type, under its four static view names ---- */
 // the model's people, once a model (rankFlip reads them for each line); a view laid out by flow puts them first by its zones
@@ -401,8 +415,8 @@ const C4_DEF = {
   rows: (model, view, id) => { const x = c4Index(model).at.get(id); if (!x || !C4_STATIC.includes(x.type)) return null; const P = C4_P(x);
     return [...(C4_HAS(P.technology) ? [P.technology] : []), ...(C4_HAS(P.description) ? [P.description] : []), ...(c4Ext(x) ? ['external'] : [])]; },
   text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); return e ? c4LineLabel(e) || null : null; },
-  edits: { add: c4Add, key: c4Key, rename: c4Rename, connect: c4Connect },
+  edits: { add: c4Add, key: c4Key, rename: c4Rename, connect: c4Connect, owner: c4Owner },
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4FlowRole, c4ZoneOf, c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4FlowRole, c4ZoneOf, c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Blocks, c4Rename };

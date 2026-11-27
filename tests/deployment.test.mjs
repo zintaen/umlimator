@@ -45,7 +45,7 @@ test('the definition: uml.deployment is registered with its palette, its five li
   assert.deepEqual(T.lines.map(e => [e.type, e.label]), [['uml.Deployment', 'Deployment'], ['uml.Manifestation', 'Manifestation'], ['uml.CommunicationPath', 'Communication path'], ['uml.Dependency', 'Dependency'], ['uml.CommentLink', 'Comment link']]);
   for (const t of ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment', 'uml.Artifact', 'uml.DeploymentSpecification', 'uml.Component', 'uml.Deployment', 'uml.CommunicationPath']) assert.deepEqual(T.props[t].map(f => f.key), ['stereotypes'], t);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'remove', 'rename', 'owner']); // owner: a line put inside its box (audit 76)
   assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends', 'own-boxes', 'line-inside', 'comment-link']);
 });
 
@@ -518,4 +518,54 @@ test('audit 71: a deployment box grown for its title (a «docker» stereotype, a
     assert.ok(!hit(web, g.byId.api), `${at}: api.jar is not under ${label}`);
     assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => / overlap$| which it does not hold$/.test(s)), [], at);
   }
+});
+
+// audit 76: a drop into a box (src/typed/edit.js's I.drop): what a card dropped on the canvas emits, by typedEditor
+async function dropInto(m, vid, id, into) {
+  await import('../src/typed/edit.js');
+  const { typedEditor } = await import('../src/canvas/edit.js');
+  const got = [], status = [];
+  const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(...c), view: () => vid, model: () => m,
+    picked: () => [], sel: () => null, geo: () => ({ byId: {}, nodes: [], edges: [], families: [] }), cam: () => null, focus() {}, touch() {} });
+  const ok = I.drop({ id, x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 50, y: 20, col: 0, row: 0 }, into, null);
+  return { ok, got, status };
+}
+
+test('audit 76: a device or node is not moved into a target it has a line to (Owner field, drop), in connect\'s words; the Owner field leaves that target out', async () => {
+  const m = model([N('phone', 'Device', 'Phone'), N('srv', 'Node', 'Server'), N('app', 'Artifact', 'app.jar', 'srv'), N('rack', 'Node', 'Rack'), N('vm', 'ExecutionEnvironment', 'VM', 'srv'), N('tab', 'Device', 'Tablet', 'phone')],
+    [L('p1', 'CommunicationPath', 'phone', 'srv', 'HTTPS')]), V = m.views[0];
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const refused = { error: 'A communication path cannot join a node and what it holds' };
+  assert.deepEqual(T.edits.owner(m, V, 'phone', 'srv'), refused);
+  assert.deepEqual(T.edits.owner(m, V, 'phone', 'vm'), refused, 'into a box inside the server: the server would hold it all the same');
+  assert.deepEqual(T.edits.owner(m, V, 'srv', 'phone'), refused, 'either way round');
+  assert.deepEqual(T.edits.owner(m, V, 'srv', 'tab'), refused, 'into what the phone holds');
+  assert.equal(T.edits.owner(m, V, 'phone', 'rack'), null, 'another node: the default reparent');
+  assert.equal(T.edits.owner(m, V, 'phone', null), null);
+  assert.equal(T.edits.owner(m, V, 'app', 'phone'), null, 'the artifact has no line');
+  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 'phone', parent: 'rack' }])), []);
+  // what it holds counts too: the tablet inside the phone has the path
+  const m2 = structuredClone(m); m2.edges[0] = L('p1', 'CommunicationPath', 'tab', 'srv');
+  assert.deepEqual(T.edits.owner(m2, m2.views[0], 'phone', 'srv'), refused);
+  // any line the view draws, one a view holds as its own too; one already inside is no change; a deployment line is no block:
+  // the artifact is then deployed on the server by nesting, the same fact (tests/deployment.html's Owner field)
+  const m3 = model([N('a', 'Artifact', 'a.war'), N('srv', 'Node', 'Server')], [], { edges: [L('k1', 'Dependency', 'a', 'srv')] });
+  assert.deepEqual(T.edits.owner(m3, m3.views[0], 'a', 'srv'), { error: 'A dependency cannot join a node and what it holds' });
+  const m3d = model([N('a', 'Artifact', 'a.war'), N('srv', 'Node', 'Server')], [L('d1', 'Deployment', 'a', 'srv')]);
+  assert.equal(T.edits.owner(m3d, m3d.views[0], 'a', 'srv'), null);
+  assert.deepEqual(validate(apply(m3d, [{ op: 'reparent', id: 'a', parent: 'srv' }])).filter(p => p.level === 'error'), []);
+  const m4 = model([N('srv', 'Node', 'Server'), N('vm', 'ExecutionEnvironment', 'VM', 'srv'), N('in', 'Node', 'Inner', 'srv')], [L('p', 'CommunicationPath', 'vm', 'srv')]);
+  assert.equal(T.edits.owner(m4, m4.views[0], 'vm', 'in'), null, 'its path was inside the server already');
+  // the Owner field leaves the server and what it holds out for the phone
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'phone')).map(o => o.id).filter(id => id !== 'phone' && id !== 'tab'), ['rack']);
+  assert.ok(T.owners(m, m.nodes.find(n => n.id === 'app')).some(o => o.id === 'phone'));
+  // a drop into the server's box is refused on the hint line, nothing emitted; into the rack, reparented
+  const d = await dropInto(m, 'v', 'phone', 'srv');
+  assert.equal(d.ok, false); assert.deepEqual(d.got, []); assert.deepEqual(d.status, [refused.error]);
+  assert.deepEqual((await dropInto(m, 'v', 'phone', 'rack')).got.filter(c => c.op === 'reparent'), [{ op: 'reparent', id: 'phone', parent: 'rack' }]);
+  // the shipped example: the shopper's device into the edge node it has the HTTPS path to
+  const dv = DEP.views.find(v => v.diagram === 'uml.deployment');
+  assert.deepEqual(T.edits.owner(DEP, dv, 'shopper-device', 'edge-node'), refused);
+  assert.ok(!T.owners(DEP, DEP.nodes.find(n => n.id === 'shopper-device')).some(o => o.id === 'edge-node'));
 });

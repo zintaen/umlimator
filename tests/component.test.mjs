@@ -39,7 +39,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.deepEqual(T.props['uml.Connector'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['assembly', 'delegation'] });
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'owner', 'remove', 'rename']); // owner: a move that breaks a connector (audit 76)
   assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends', 'comment-link'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
@@ -245,7 +245,8 @@ test('B on an interface: a ball, and back; other keys and elements are the canva
   assert.deepEqual(r.commands, [{ op: 'delete', id: 'payment-provider-component.charges' }]); assert.match(r.say, /Deleted port charges from the model: a port is not hidden/);
   assert.ok(!apply(CM, r.commands).edges.some(e => e.id === 'api-to-provider'), 'its lines go with it');
   assert.equal(T.edits.remove(CM, v, ['storefront-component'], false), null);
-  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout-component')).map(o => o.id), ['storefront-component', 'shop-api', 'accounts-component', 'payment-provider-component', 'order-worker'], 'not itself');
+  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout-component')).map(o => o.id), ['shop-api'], 'nor out of the API its port delegates to (audit 76)');
+  assert.ok(!T.owners(CM, CM.nodes.find(n => n.id === 'storefront-component')).some(o => o.id === 'storefront-component'), 'not itself');
   assert.ok(!T.owners(CM, CM.nodes.find(n => n.id === 'shop-api')).some(o => ['shop-api', 'checkout-component'].includes(o.id)), 'nor what it holds');
   // a selection of a port and more: the port deleted, the rest hidden (Delete) or deleted (Shift + Delete), both said
   const mix = T.edits.remove(CM, v, ['shop-api.orders', 'storefront-component'], false);
@@ -771,4 +772,40 @@ test('audit 70: no line runs through a component box that holds neither of its e
   for (const seed of [1291083776, 1240753920, 854915328, 913975296, 1191617280, 2116634624, 1418468352, 1146348544, 380326144, 644896000]) {
     const m = a70View(seed); assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], String(seed));
     assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => / passes through | overlap/.test(s)), [], String(seed)); }
+});
+
+test('audit 76: a component is not moved where an assembly or delegation it has would break (Owner field, drop), in the rule\'s words; the Owner field leaves those out', async () => {
+  const port = (id, label) => ({ id, type: 'uml.Port', label });
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'web', type: 'uml.Component', label: 'Web', members: [port('web.out', 'out')] },
+    { id: 'pay', type: 'uml.Component', label: 'Payments', members: [port('pay.in', 'in')] },
+    { id: 'gw', type: 'uml.Component', label: 'Gateway', parent: 'pay', members: [port('gw.in', 'in')] },
+    { id: 'other', type: 'uml.Component', label: 'Other' }, { id: 'pk', type: 'uml.Package', label: 'Shop' }],
+  edges: [E('a1', 'Connector', 'web.out', 'pay.in', { kind: 'assembly' }), E('d1', 'Connector', 'pay.in', 'gw.in', { kind: 'delegation' })],
+  views: [{ id: 'c', diagram: 'uml.component', nodeIds: ['web', 'pay', 'gw', 'other', 'pk'] }] }, Vw = m.views[0];
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const assembly = { error: 'An assembly joins two components or their ports, neither inside the other' }, delegation = { error: 'A delegation joins a component\'s port with a component or port inside it' };
+  assert.deepEqual(T.edits.owner(m, Vw, 'web', 'pay'), assembly);
+  assert.deepEqual(T.edits.owner(m, Vw, 'web', 'gw'), assembly, 'inside Payments all the same');
+  assert.deepEqual(T.edits.owner(m, Vw, 'pay', 'web'), assembly, 'either way round');
+  assert.deepEqual(T.edits.owner(m, Vw, 'gw', null), delegation, 'out of Payments: its delegation no longer runs inward');
+  assert.deepEqual(T.edits.owner(m, Vw, 'gw', 'other'), delegation);
+  for (const [id, p] of [['web', 'other'], ['web', 'pk'], ['web', null], ['pay', 'pk'], ['other', 'pay']]) assert.equal(T.edits.owner(m, Vw, id, p), null, `${id} -> ${p}`);
+  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 'pay', parent: 'pk' }])), [], 'a package is no component: the assembly stands');
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'web')).map(o => o.id), ['other', 'pk']);
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'gw')).map(o => o.id), ['pay'], 'only where it is: its delegation');
+  // a drop into Payments' box: cpMoveTo gives null for a component, and the owner hook refuses it on the hint line
+  await import('../src/typed/edit.js');
+  const { typedEditor } = await import('../src/canvas/edit.js');
+  const drop = (id, into) => { const got = [], status = [];
+    const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(...c), view: () => 'c', model: () => m,
+      picked: () => [], sel: () => null, geo: () => ({ byId: {}, nodes: [], edges: [], families: [] }), cam: () => null, focus() {}, touch() {} });
+    return { ok: I.drop({ id, x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 50, y: 20, col: 0, row: 0 }, into, null), got, status }; };
+  const d = drop('web', 'pay');
+  assert.equal(d.ok, false); assert.deepEqual(d.got, []); assert.deepEqual(d.status, [assembly.error]);
+  assert.deepEqual(drop('web', 'other').got.filter(c => c.op === 'reparent'), [{ op: 'reparent', id: 'web', parent: 'other' }]);
+  // the shipped example
+  assert.deepEqual(T.edits.owner(CM, CM.views.find(v => v.id === V), 'shop-api', 'payment-provider-component'), assembly);
+  assert.deepEqual(T.edits.owner(CM, CM.views.find(v => v.id === V), 'checkout-component', 'storefront-component'), delegation);
 });

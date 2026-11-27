@@ -153,7 +153,8 @@ try {
   // the Owner field: a container's software systems
   click('.node[data-id="c4-worker"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
-  check('the Owner field of a container: none and every software system', same(opts, ['none', 'Bookshop', 'Payment provider', 'Email service', 'Courier']) && own.value === 'c4-bookshop', opts);
+  // but the email service and the courier, which it has relationships to: in either it would join its own owner (audit 76)
+  check('the Owner field of a container: none and every software system it has no relationship to', same(opts, ['none', 'Bookshop', 'Payment provider']) && own.value === 'c4-bookshop', opts);
   change(own, 'c4-payments');
   gives('Owner: reparent the container (it leaves the boundary; c4-owner holds; c4-level says the container view and the dynamic view list it with its new owner, not the subject)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4, 2);
   // T: the type, picked
