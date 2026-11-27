@@ -538,10 +538,11 @@ def load_json(src, where=None):
     return m
 
 
-def read_json(path, model=True):
-    """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1."""
+def read_json(path, model=True, read=lambda p: Path(p).read_bytes()):
+    """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1. read: its bytes (the
+    MCP server reads only a regular file, an OSError else)."""
     try:
-        m = load_json(Path(path).read_bytes(), path)  # UTF-8 (a BOM too), UTF-16 and UTF-32, as diff --base and the MCP page read it (audit 31)
+        m = load_json(read(path), path)  # UTF-8 (a BOM too), UTF-16 and UTF-32, as diff --base and the MCP page read it (audit 31)
     except OSError as e:
         sys.exit(f"cannot read {path} ({e.strerror or e})")
     except ValueError as e:
@@ -863,7 +864,8 @@ def render(a, model, show=print):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
         docs = getattr(a, "docs", None)  # passed only when given: a test's stand-in for visual_cmd takes (tmp, *args)
-        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})))
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})),
+                **(getattr(a, "bound", None) or {}))
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
@@ -892,15 +894,16 @@ def quiet(*a, **k):
     pass
 
 
-def render_model(m, near, out, base=None):
+def render_model(m, near, out, base=None, **bound):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
     the render, so it is drawn as that file would be. base: the model before an edit, which the page draws it against
-    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8)."""
+    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8). bound:
+    run()'s timeout and started, for the engine's run (the MCP server stops a render that runs too long, or is cancelled)."""
     tmp = temp_json(m, near, ".change.json")
     try:
         model = page_model(tmp, out, source=near)
         try:
-            rep = render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
+            rep = render(argparse.Namespace(out=str(out), no_check=True, bound=bound), model, show=quiet)
         finally:
             untemp(model)
     finally:

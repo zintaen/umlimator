@@ -164,6 +164,10 @@ class Late(Fail):
     """A Node run of a tool that took longer than its limit, and was stopped (run())."""
 
 
+class Cancelled(Fail):
+    """A call the client cancelled (notifications/cancelled), its child stopped: it gets no answer."""
+
+
 class RpcError(Exception):
     """A JSON-RPC error: code, message, data."""
 
@@ -180,6 +184,12 @@ calls_lock = threading.Lock()
 def run(cmd, input, limit=None):
     """cli.run's child (Node) for a tool: stopped after limit (LIMIT) s, a Late; and stopped when the client cancels the
     request it answers (notifications/cancelled), so neither a hung run nor a cancelled one holds the server."""
+    return bounded(lambda **kw: cli.run(cmd, input=input, **kw), limit)
+
+
+def bounded(go, limit=None):
+    """go(timeout=, started=), a call that runs one child through cli.run (a Node run, the engine's render), bounded as
+    run() says: past limit (LIMIT) s a Late, cancelled by the client a Cancelled, the child stopped either way."""
     limit, call = limit or LIMIT, getattr(here, "call", None)
     def started(p):
         with calls_lock:
@@ -188,15 +198,19 @@ def run(cmd, input, limit=None):
                 if call["cancelled"]:
                     stop(p)
     try:
-        r = cli.run(cmd, timeout=limit, input=input, started=started)
+        r = go(timeout=limit, started=started)
     except subprocess.TimeoutExpired:
         raise Late(f"stopped after {limit} s: the model is too large for this tool to answer in time") from None
+    except (Exception, SystemExit):  # a stopped child's run ends as a failed one (the engine's render exits): it was cancelled
+        if call is not None and call["cancelled"]:
+            raise Cancelled("cancelled by the client") from None
+        raise
     finally:
         with calls_lock:
             if call is not None:
                 call["proc"] = None
     if call is not None and call["cancelled"]:
-        raise Fail("cancelled by the client")
+        raise Cancelled("cancelled by the client")
     return r
 
 
@@ -712,7 +726,7 @@ def call(name, a):
         if other is None:  # a FIFO, /dev/stdin or /dev/zero, read on the one thread that answers, blocked every call after it (audit 26)
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {said}")
         try:
-            before = cli.read_json(other)
+            before = cli.read_json(other, read=regular)  # a regular file still when read: swapped for a FIFO since, it is refused
         except SystemExit as e:
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
         if bad := cli.not_objects(before) or ([] if "views" in before else ["no views: not a map model"]):  # as render reads it (audit 11, 14)
@@ -1090,10 +1104,15 @@ def page():
                 m = cli.load_json(data, MODEL.name)  # as the CLI reads a model: a number out of range refused (audit 30)
                 with tempfile.TemporaryDirectory() as tmp:
                     out = Path(tmp) / "page.html"
-                    cli.render_model(m, MODEL, out, base_of())  # drawn as the model's own file is: its copy sits next to it
+                    # drawn as the model's own file is (its copy sits next to it), in LIMIT s: a large model's layout took
+                    # minutes, on the one worker that runs the tools (audit bh1 6)
+                    bounded(lambda **kw: cli.render_model(m, MODEL, out, base_of(), **kw))
                     head, _, tail = out.read_text(encoding="utf-8").rpartition("</body>")
+            except Cancelled:  # not this version's fault: the next call draws it again
+                tried = None
+                raise
             except (Exception, SystemExit) as e:  # the CLI ends on a model the engine rejects: here it is the page's
-                said = f"it is not JSON ({e})" if isinstance(e, ValueError) else "it nests too deep to read" if isinstance(e, RecursionError) else str(e.code) if isinstance(e, SystemExit) else repr(e)
+                said = f"it is not JSON ({e})" if isinstance(e, ValueError) else "it nests too deep to read" if isinstance(e, RecursionError) else str(e.code) if isinstance(e, SystemExit) else str(e) if isinstance(e, Fail) else repr(e)
                 with lock:
                     why = said.strip()[-1500:] or "it does not render"
             else:

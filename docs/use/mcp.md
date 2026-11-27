@@ -82,7 +82,7 @@ To measure how well an assistant turns a request into these calls, `tests/fixtur
   - The assistant's highlight is a layer of its own (`mcp`): off on another view, back on its own.
   - A model that stops rendering keeps the last page that did, and the tools and the page say why.
 - The server listens on 127.0.0.1 only and fetches nothing, so a logo not in the cache yet keeps its card's sigil.
-- Each Node run of a tool stops after 30 seconds, and the tool says so in one line; the element counts `list_views` adds stop after 10, and it counts each view's cards instead. Tool calls run one at a time in the order sent, apart from the thread that reads requests, so `ping` is answered while one runs, and `notifications/cancelled` stops a call that waits or runs: its Node run ends and it gets no answer.
+- Each Node run of a tool, and the render of the page, stops after 30 seconds, and the tool says so in one line (a page that does not render in time is tried again once the model changes); the element counts `list_views` adds stop after 10, and it counts each view's cards instead. Tool calls run one at a time in the order sent, apart from the thread that reads requests, so `ping` is answered while one runs, and `notifications/cancelled` stops a call that waits or runs: its Node run ends and it gets no answer.
 - The undo history `MODEL.json.undo` is read only when it is a regular file of at most 128 MB, never through a symbolic link: one that is a link, a device or a pipe is an empty history, and the edit tools refuse to write over it until it is removed. The model file is read only when it is a regular file.
 
 ## Map a repository with Claude Code

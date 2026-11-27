@@ -1094,4 +1094,19 @@ took6 = time.monotonic() - t6
 mcp.LIMIT, mcp.COUNTING, mcp.MODEL = keep6[:3]; mcp.counted[:] = keep6[3]
 ok("audit bh1 6 · a Node run past its limit is stopped and said in one line; list_views's element counts past theirs are left out",
    late and late == late2 and late.startswith("stopped after ") and "\n" not in late and counts6 == {} and took6 < 30, (late, late2, counts6, took6))
+# the page's render ran the engine (a layout in Node) with no limit as well: the 44 KB model held page_state two minutes. A
+# render past LIMIT s is stopped, and the page says why it does not render, once for that version (audit bh1 6)
+keep6r = getattr(mcp, "LIMIT", None), mcp.MODEL, mcp.tried, mcp.why, mcp.drawn[:], mcp.MAPID  # (no LIMIT before audit bh1 6)
+d6 = Path(tempfile.mkdtemp())
+shutil.copy(CLASS, d6 / "model.json")
+mcp.MODEL, mcp.LIMIT, mcp.tried, mcp.MAPID = d6 / "model.json", 0.001, None, mcp.MAPID or "map"
+t6 = time.monotonic()
+try:
+    shown6, why6 = mcp.page()
+except Exception as e:
+    shown6, why6 = None, repr(e)
+took6 = time.monotonic() - t6
+mcp.LIMIT, mcp.MODEL, mcp.tried, mcp.why = keep6r[:4]; mcp.drawn[:] = keep6r[4]; mcp.MAPID = keep6r[5]
+ok("audit bh1 6 · a page render past its limit is stopped, and the page says why the model does not render, in one line",
+   isinstance(why6, str) and why6.startswith("stopped after ") and "\n" not in why6 and took6 < 30, (shown6, why6, took6))
 sys.exit(1 if failed else 0)
