@@ -772,7 +772,7 @@ export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel; throughBoxes?: boolean }): CheckIssue[];
 /** Picks cards by id, kind (as the map draws it: "db" picks databases), box (at any depth) or owner, each a value or a
  *  list; every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind
  *  and no owner. */

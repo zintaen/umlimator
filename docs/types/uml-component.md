@@ -139,7 +139,7 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   the end labels' search may place it far from its port (L5). Its generated `all` view (50 elements, 60 lines, 54 ports
   in boxes three deep): 114 crossings right (116 before audit 60) and 128 down. Laid out right: a port's name over a node in six cases (`c0.b`
   over `c4`, `u1`, `u9` and `u14`; `c21.b` over `r8` and `r9`), since the layout keeps no room for names (§4.3).
-  Laid out down: one pair of lines sharing a line and one line across a box's header (along a box's border before audit 21). These are stated limits, not §13's
+  Laid out down: one pair of lines sharing a line and one line across a box's header (along a box's border before audit 21). Since audit 71 `check()` given `throughBoxes` names a line that runs through a box holding neither of its ends: 28 such runs of 11 lines laid out right and 31 of 15 lines down, which the box pass leaves since it tries such lines only in a view of up to 30 cards. These are stated limits, not §13's
   "no overlap, no line along a box's border, no port name over a node or a line".
 - Found in 5.8 (`tests/stage5.html`): in the browser under a font wider than the layout's estimate (the page's monospace
   font, laid out right), two of the `all` view's usages that come into a ball from below end on its node's bottom beside the circle, not on the circle

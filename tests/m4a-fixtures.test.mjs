@@ -89,9 +89,9 @@ const PINNED = {
   'cloud-stress': { 'edge-cases': { right: [0, 0, 0, 1], down: [0, 0, 0, 1] }, 'ec-no-product': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] },
     'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 0, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them; the one on a line placed again (audit 32)
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
-  'bookshop-gcp': { 'gcp-on-gcp': { right: [1, 0, 0, 0], down: [1, 0, 0, 0] } },
+  'bookshop-gcp': { 'gcp-on-gcp': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] } }, // 1 and 1 till audit 71: the box pass routes a line round a group that holds neither of its ends
   // audit 27: right, the subnet's line to Logs and alerts ran back through its own subnet box to dodge one crossing; it keeps out of it now
-  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [3, 0, 0, 0] } },
+  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [2, 0, 0, 0] } }, // down: 3 till audit 71 (the box pass)
 };
 
 test('every view of the four fixtures and the three examples (cloud views right and down, with a synthetic icons table): nothing meets, texts inside, no curve through a topic, each element in its group, ends on outlines; check()\'s findings only as pinned', () => {

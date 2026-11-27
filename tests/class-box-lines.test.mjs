@@ -36,3 +36,14 @@ test('a class view routes no line through a package box that holds neither of it
   assert.deepEqual(use.pts[0], [986.5, 37.5], 'it leaves Payable where it did');
   assert.equal(use.pts.at(-1)[1], g.nodes.find(n => n.id === 'money').y, 'and enters Money from its top');
 });
+
+// audit 71: seven class views from a seeded sweep (a package or three, up to a dozen classes, associations, generalizations
+// and dependencies, right or down), each of which ran a line through a package holding neither of its ends: a class view of
+// up to 30 cards takes a crossing over such a line, as the component and cloud views do, and check() given throughBoxes names any left
+test('audit 71: a small class view routes no line through a package that holds neither of its ends, and check() names none', () => {
+  const S = JSON.parse(readFileSync(new URL('./fixtures/uml-class-box-sweep.json', import.meta.url)));
+  S.forEach((m, k) => {
+    assert.deepEqual(throughBoxes(layout(m, 'v')), [], `model ${k} (${m.views[0].direction})`);
+    assert.deepEqual(check(m, 'v', { throughBoxes: true }).map(p => p.message).filter(s => / which holds neither of its ends$/.test(s)), [], `model ${k}: check()`);
+  });
+});
