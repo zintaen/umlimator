@@ -1,9 +1,9 @@
 {
- "commit": "07effce2",
+ "commit": "3da83a99",
  "corpus": "fixed",
  "total": {
   "views": 263,
-  "score": 611401.55
+  "score": 610660.93
  },
  "views": {
   "a8/dsl-context": {
@@ -18,25 +18,25 @@
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
-   "reverse": 1,
-   "score": 1161.01
+   "straight": null,
+   "reverse": 0,
+   "score": 1032.11
   },
   "a8/dsl-api-components": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
-   "score": 918.93
+   "score": 842.27
   },
   "a8/puml-components": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
-   "score": 654.61
+   "score": 621.83
   },
   "a8/checkout-flowchart": {
    "hard": 0,
@@ -648,11 +648,11 @@
   },
   "examples/bookshop-atlas/fulfil": {
    "hard": 0,
-   "cross": 2,
+   "cross": 1,
    "labels": 0,
    "straight": null,
    "reverse": 1,
-   "score": 1552.19
+   "score": 1451.85
   },
   "examples/bookshop-atlas/take-payment": {
    "hard": 0,
@@ -1000,11 +1000,11 @@
   },
   "examples/fulfil-activity/fulfil": {
    "hard": 0,
-   "cross": 2,
+   "cross": 1,
    "labels": 0,
    "straight": null,
    "reverse": 1,
-   "score": 1552.19
+   "score": 1451.85
   },
   "examples/fulfil-activity/take-payment": {
    "hard": 0,
@@ -1224,11 +1224,11 @@
   },
   "tests/activity-stress/all": {
    "hard": 0,
-   "cross": 9,
+   "cross": 6,
    "labels": 0,
    "straight": null,
    "reverse": 0,
-   "score": 6554.28
+   "score": 6252.68
   },
   "tests/block-definition-minimal/v": {
    "hard": 0,

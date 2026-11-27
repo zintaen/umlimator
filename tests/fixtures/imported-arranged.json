@@ -1,0 +1,1091 @@
+{
+ "title": "The import fixtures, arranged",
+ "nodes": [
+  {
+   "id": "dsl-rider",
+   "label": "Rider",
+   "kind": "person",
+   "sublabel": "Person",
+   "what": "Finds and hires mopeds, pays for rides and reports faults.",
+   "icon": "user",
+   "shape": "person"
+  },
+  {
+   "id": "dsl-staff",
+   "label": "Operations staff",
+   "kind": "person",
+   "sublabel": "Person",
+   "what": "Keep the fleet in service and refund rides.",
+   "icon": "user",
+   "shape": "person"
+  },
+  {
+   "id": "dsl-van",
+   "label": "Van service",
+   "kind": "external",
+   "sublabel": "Software system",
+   "what": "Collects faulty mopeds and brings them back repaired."
+  },
+  {
+   "id": "dsl-mopedshare",
+   "label": "Moped share",
+   "kind": "backend",
+   "sublabel": "Software system",
+   "what": "Hires e-mopeds from city docks: finding, unlocking, pricing and paying for rides.",
+   "opensView": "dsl-containers"
+  },
+  {
+   "id": "dsl-app",
+   "label": "Rider app",
+   "kind": "frontend",
+   "sublabel": "TypeScript, React",
+   "what": "The rider's app: a map of mopeds, unlock and ride history, and the admin pages for staff."
+  },
+  {
+   "id": "dsl-api",
+   "label": "Trip API",
+   "kind": "backend",
+   "sublabel": "Python, FastAPI",
+   "what": "Mopeds, rides, pricing and accounts as a JSON API.",
+   "opensView": "dsl-api-components"
+  },
+  {
+   "id": "dsl-finder",
+   "label": "Moped finder",
+   "kind": "backend",
+   "sublabel": "FastAPI router",
+   "what": "Lists and searches free mopeds and docks."
+  },
+  {
+   "id": "dsl-hire",
+   "label": "Hire",
+   "kind": "backend",
+   "sublabel": "FastAPI router",
+   "what": "Turns an unlock into a paid ride."
+  },
+  {
+   "id": "dsl-accounts",
+   "label": "Accounts and sign-in",
+   "kind": "security",
+   "sublabel": "FastAPI router",
+   "what": "Signs riders and staff in; keeps hashed passwords and sessions."
+  },
+  {
+   "id": "dsl-payment-client",
+   "label": "Payment client",
+   "kind": "frontend",
+   "sublabel": "Python, httpx",
+   "what": "Starts card payments and reads their result.",
+   "shape": "box"
+  },
+  {
+   "id": "dsl-ride-store",
+   "label": "Ride store",
+   "kind": "database",
+   "sublabel": "SQLAlchemy",
+   "what": "Saves rides and puts the ended ones on the ride queue.",
+   "shape": "box"
+  },
+  {
+   "id": "dsl-worker",
+   "label": "Ride worker",
+   "kind": "backend",
+   "sublabel": "Python",
+   "what": "Closes ended rides: books a van for a faulty moped and sends the receipt."
+  },
+  {
+   "id": "dsl-db",
+   "label": "Database",
+   "kind": "database",
+   "sublabel": "PostgreSQL",
+   "what": "Mopeds, docks, rides and accounts.",
+   "shape": "cylinder"
+  },
+  {
+   "id": "dsl-queue",
+   "label": "Ride queue",
+   "kind": "database",
+   "sublabel": "PostgreSQL table",
+   "what": "Ended rides waiting to be closed, oldest first."
+  },
+  {
+   "id": "dsl-payments",
+   "label": "Payment provider",
+   "kind": "external",
+   "sublabel": "Software system",
+   "what": "Takes card payments and makes refunds."
+  },
+  {
+   "id": "dsl-mail",
+   "label": "Email service",
+   "kind": "external",
+   "sublabel": "Software system",
+   "what": "Delivers the operator's emails."
+  },
+  {
+   "id": "puml-shipper",
+   "label": "Shipper",
+   "kind": "person",
+   "sublabel": "Person",
+   "what": "Books parcels and follows them",
+   "icon": "user"
+  },
+  {
+   "id": "puml-courier",
+   "label": "Courier",
+   "kind": "user",
+   "sublabel": "External person",
+   "what": "A partner's driver",
+   "icon": "user"
+  },
+  {
+   "id": "puml-web",
+   "label": "Tracking site",
+   "kind": "frontend",
+   "sublabel": "Next.js",
+   "what": "Booking and tracking pages"
+  },
+  {
+   "id": "puml-handset",
+   "label": "Courier app",
+   "kind": "mobile",
+   "sublabel": "Kotlin, Android",
+   "what": "Scans parcels on the road"
+  },
+  {
+   "id": "puml-routes",
+   "label": "REST routes",
+   "kind": "backend",
+   "sublabel": "Express",
+   "what": "Checks and routes each request"
+  },
+  {
+   "id": "puml-tracker",
+   "label": "Tracker",
+   "kind": "backend",
+   "sublabel": "TypeScript",
+   "what": "Moves a parcel through its states"
+  },
+  {
+   "id": "puml-scans",
+   "label": "Scan events",
+   "kind": "queue",
+   "sublabel": "Kafka",
+   "what": "Every scan, in order"
+  },
+  {
+   "id": "puml-db",
+   "label": "Parcel store",
+   "kind": "database",
+   "sublabel": "PostgreSQL",
+   "what": "Parcels and their scans"
+  },
+  {
+   "id": "puml-notify",
+   "label": "Notifications",
+   "kind": "backend",
+   "sublabel": "Software system",
+   "what": "Texts and e-mails shippers"
+  },
+  {
+   "id": "puml-maps",
+   "label": "Maps API",
+   "kind": "external",
+   "sublabel": "External software system",
+   "what": "Addresses and routes"
+  },
+  {
+   "id": "puml-billing",
+   "label": "Billing ledger",
+   "kind": "database",
+   "sublabel": "Software system",
+   "what": "Invoices, closed nightly"
+  },
+  {
+   "id": "checkout-shopper",
+   "label": "Shopper",
+   "kind": "frontend"
+  },
+  {
+   "id": "checkout-web",
+   "label": "Storefront",
+   "kind": "frontend"
+  },
+  {
+   "id": "checkout-api",
+   "label": "Order API",
+   "kind": "backend"
+  },
+  {
+   "id": "checkout-orders",
+   "label": "Orders DB",
+   "kind": "database"
+  },
+  {
+   "id": "checkout-bus",
+   "label": "Event bus",
+   "kind": "queue"
+  },
+  {
+   "id": "checkout-mailer",
+   "label": "Mailer",
+   "kind": "backend"
+  },
+  {
+   "id": "checkout-stock",
+   "label": "Stock service",
+   "kind": "backend"
+  },
+  {
+   "id": "checkout-psp",
+   "label": "Payment provider",
+   "kind": "backend"
+  },
+  {
+   "id": "meals-cook",
+   "label": "Home cook",
+   "kind": "person",
+   "sublabel": "Person",
+   "what": "Plans the week's meals",
+   "icon": "user"
+  },
+  {
+   "id": "meals-guest",
+   "label": "Guest",
+   "kind": "user",
+   "sublabel": "External person",
+   "what": "Rates a shared meal",
+   "icon": "user"
+  },
+  {
+   "id": "meals-planner",
+   "label": "Meal planner",
+   "kind": "backend",
+   "sublabel": "Software system",
+   "what": "Plans meals and shopping lists"
+  },
+  {
+   "id": "meals-recipes",
+   "label": "Recipe archive",
+   "kind": "database",
+   "sublabel": "Software system",
+   "what": "Every recipe and its ratings"
+  },
+  {
+   "id": "meals-grocer",
+   "label": "Grocer API",
+   "kind": "external",
+   "sublabel": "External software system",
+   "what": "Prices and delivery slots"
+  },
+  {
+   "id": "meals-mail",
+   "label": "Mail relay",
+   "kind": "queue",
+   "sublabel": "External software system",
+   "what": "Sends the week's plan"
+  },
+  {
+   "id": "compose-api",
+   "label": "api",
+   "kind": "backend",
+   "sublabel": "build api",
+   "what": "On networks data, edge."
+  },
+  {
+   "id": "compose-cache",
+   "label": "cache",
+   "kind": "database",
+   "sublabel": "redis:7"
+  },
+  {
+   "id": "compose-db",
+   "label": "db",
+   "kind": "database",
+   "sublabel": "postgres:16"
+  },
+  {
+   "id": "compose-mailer",
+   "label": "mailer",
+   "kind": "backend",
+   "sublabel": "axllent/mailpit"
+  },
+  {
+   "id": "compose-proxy",
+   "label": "proxy",
+   "kind": "cloud",
+   "sublabel": "nginx:1.27",
+   "what": "Publishes 443."
+  },
+  {
+   "id": "compose-queue",
+   "label": "queue",
+   "kind": "queue",
+   "sublabel": "rabbitmq:3-management"
+  },
+  {
+   "id": "compose-web",
+   "label": "web",
+   "kind": "frontend",
+   "sublabel": "build web"
+  },
+  {
+   "id": "compose-worker",
+   "label": "worker",
+   "kind": "backend",
+   "sublabel": "build api"
+  },
+  {
+   "id": "k8s-deploy-web",
+   "label": "web",
+   "kind": "frontend",
+   "sublabel": "Deployment \u00b7 tea-web:2.3.1",
+   "what": "2 replicas. Images: ghcr.io/example/tea-web:2.3.1."
+  },
+  {
+   "id": "k8s-deploy-api",
+   "label": "api",
+   "kind": "backend",
+   "sublabel": "Deployment \u00b7 tea-api:1.8.0",
+   "what": "3 replicas. Images: ghcr.io/example/tea-api:1.8.0."
+  },
+  {
+   "id": "k8s-sts-postgres",
+   "label": "postgres",
+   "kind": "database",
+   "sublabel": "StatefulSet \u00b7 postgres:16",
+   "what": "1 replica. Images: postgres:16."
+  },
+  {
+   "id": "k8s-svc-web",
+   "label": "web",
+   "kind": "cloud",
+   "sublabel": "Service \u00b7 ClusterIP \u00b7 80\u21923000"
+  },
+  {
+   "id": "k8s-svc-api",
+   "label": "api",
+   "kind": "cloud",
+   "sublabel": "Service \u00b7 ClusterIP \u00b7 8080\u21928080"
+  },
+  {
+   "id": "k8s-svc-postgres",
+   "label": "postgres",
+   "kind": "cloud",
+   "sublabel": "Service \u00b7 ClusterIP \u00b7 5432\u21925432"
+  },
+  {
+   "id": "k8s-ing-tea",
+   "label": "tea",
+   "kind": "cloud",
+   "sublabel": "Ingress \u00b7 tea.example.com"
+  }
+ ],
+ "edges": [
+  {
+   "id": "dsl-worker-queue",
+   "from": "dsl-worker",
+   "to": "dsl-queue",
+   "label": "Claims ended rides from",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "dsl-worker-van",
+   "from": "dsl-worker",
+   "to": "dsl-van",
+   "label": "Books van pickups with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-worker-mail",
+   "from": "dsl-worker",
+   "to": "dsl-mail",
+   "label": "Sends receipts with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-mail-rider",
+   "from": "dsl-mail",
+   "to": "dsl-rider",
+   "label": "Delivers receipts to",
+   "sublabel": "Email",
+   "loop": true
+  },
+  {
+   "id": "dsl-rider-app",
+   "from": "dsl-rider",
+   "to": "dsl-app",
+   "label": "Finds and unlocks a moped in",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-staff-app",
+   "from": "dsl-staff",
+   "to": "dsl-app",
+   "label": "Edit the fleet and refund\u2026",
+   "sublabel": "HTTPS",
+   "what": "Edit the fleet and refund rides in"
+  },
+  {
+   "id": "dsl-app-accounts",
+   "from": "dsl-app",
+   "to": "dsl-accounts",
+   "label": "Signs in through",
+   "sublabel": "JSON over HTTPS"
+  },
+  {
+   "id": "dsl-app-finder",
+   "from": "dsl-app",
+   "to": "dsl-finder",
+   "label": "Finds mopeds through",
+   "sublabel": "JSON over HTTPS"
+  },
+  {
+   "id": "dsl-app-hire",
+   "from": "dsl-app",
+   "to": "dsl-hire",
+   "label": "Starts rides through",
+   "sublabel": "JSON over HTTPS"
+  },
+  {
+   "id": "dsl-hire-ride-store",
+   "from": "dsl-hire",
+   "to": "dsl-ride-store",
+   "label": "Saves the paid ride with"
+  },
+  {
+   "id": "dsl-hire-payment-client",
+   "from": "dsl-hire",
+   "to": "dsl-payment-client",
+   "label": "Charges the card through"
+  },
+  {
+   "id": "dsl-payment-client-payments",
+   "from": "dsl-payment-client",
+   "to": "dsl-payments",
+   "label": "Starts a card payment with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-ride-store-db",
+   "from": "dsl-ride-store",
+   "to": "dsl-db",
+   "label": "Reads and writes rides in",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "dsl-ride-store-queue",
+   "from": "dsl-ride-store",
+   "to": "dsl-queue",
+   "label": "Puts ended rides on",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "dsl-finder-db",
+   "from": "dsl-finder",
+   "to": "dsl-db",
+   "label": "Reads mopeds and docks from",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "dsl-accounts-db",
+   "from": "dsl-accounts",
+   "to": "dsl-db",
+   "label": "Reads and writes accounts\u2026",
+   "sublabel": "SQL",
+   "what": "Reads and writes accounts and sessions in"
+  },
+  {
+   "id": "dsl-mopedshare-van",
+   "from": "dsl-mopedshare",
+   "to": "dsl-van",
+   "label": "Books van pickups with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-mopedshare-mail",
+   "from": "dsl-mopedshare",
+   "to": "dsl-mail",
+   "label": "Sends receipts with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-rider-mopedshare",
+   "from": "dsl-rider",
+   "to": "dsl-mopedshare",
+   "label": "Finds and unlocks a moped in",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-staff-mopedshare",
+   "from": "dsl-staff",
+   "to": "dsl-mopedshare",
+   "label": "Edit the fleet and refund\u2026",
+   "sublabel": "HTTPS",
+   "what": "Edit the fleet and refund rides in"
+  },
+  {
+   "id": "dsl-mopedshare-payments",
+   "from": "dsl-mopedshare",
+   "to": "dsl-payments",
+   "label": "Starts a card payment with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-app-api",
+   "from": "dsl-app",
+   "to": "dsl-api",
+   "label": "Signs in through",
+   "sublabel": "JSON over HTTPS"
+  },
+  {
+   "id": "dsl-api-payments",
+   "from": "dsl-api",
+   "to": "dsl-payments",
+   "label": "Starts a card payment with",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "dsl-api-db",
+   "from": "dsl-api",
+   "to": "dsl-db",
+   "label": "Reads and writes rides in",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "dsl-api-queue",
+   "from": "dsl-api",
+   "to": "dsl-queue",
+   "label": "Puts ended rides on",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "puml-shipper-web",
+   "from": "puml-shipper",
+   "to": "puml-web",
+   "label": "Follows parcels",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "puml-courier-handset",
+   "from": "puml-courier",
+   "to": "puml-handset",
+   "label": "Scans parcels"
+  },
+  {
+   "id": "puml-web-routes",
+   "from": "puml-web",
+   "to": "puml-routes",
+   "label": "Calls",
+   "sublabel": "JSON/HTTPS"
+  },
+  {
+   "id": "puml-handset-scans",
+   "from": "puml-handset",
+   "to": "puml-scans",
+   "label": "Publishes scans"
+  },
+  {
+   "id": "puml-scans-tracker",
+   "from": "puml-scans",
+   "to": "puml-tracker",
+   "label": "Feeds"
+  },
+  {
+   "id": "puml-routes-db",
+   "from": "puml-routes",
+   "to": "puml-db",
+   "label": "Reads parcels",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "puml-tracker-db",
+   "from": "puml-tracker",
+   "to": "puml-db",
+   "label": "Reads and writes",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "puml-db-tracker",
+   "from": "puml-db",
+   "to": "puml-tracker",
+   "label": "Reads and writes",
+   "sublabel": "SQL"
+  },
+  {
+   "id": "puml-routes-maps",
+   "from": "puml-routes",
+   "to": "puml-maps",
+   "label": "Looks up addresses",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "puml-tracker-notify",
+   "from": "puml-tracker",
+   "to": "puml-notify",
+   "label": "Parcel moved"
+  },
+  {
+   "id": "puml-tracker-billing",
+   "from": "puml-tracker",
+   "to": "puml-billing",
+   "label": "Bills",
+   "sublabel": "SFTP"
+  },
+  {
+   "id": "checkout-shopper-web",
+   "from": "checkout-shopper",
+   "to": "checkout-web",
+   "label": "browses"
+  },
+  {
+   "id": "checkout-web-api",
+   "from": "checkout-web",
+   "to": "checkout-api",
+   "label": "POST /orders"
+  },
+  {
+   "id": "checkout-api-orders",
+   "from": "checkout-api",
+   "to": "checkout-orders"
+  },
+  {
+   "id": "checkout-api-bus",
+   "from": "checkout-api",
+   "to": "checkout-bus",
+   "label": "order placed",
+   "style": "async"
+  },
+  {
+   "id": "checkout-bus-mailer",
+   "from": "checkout-bus",
+   "to": "checkout-mailer",
+   "style": "async"
+  },
+  {
+   "id": "checkout-bus-stock",
+   "from": "checkout-bus",
+   "to": "checkout-stock",
+   "style": "async"
+  },
+  {
+   "id": "checkout-api-psp",
+   "from": "checkout-api",
+   "to": "checkout-psp",
+   "label": "charges",
+   "weight": 2
+  },
+  {
+   "id": "meals-cook-planner",
+   "from": "meals-cook",
+   "to": "meals-planner",
+   "label": "Plans meals"
+  },
+  {
+   "id": "meals-guest-planner",
+   "from": "meals-guest",
+   "to": "meals-planner",
+   "label": "Rates meals"
+  },
+  {
+   "id": "meals-planner-recipes",
+   "from": "meals-planner",
+   "to": "meals-recipes",
+   "label": "Reads and writes"
+  },
+  {
+   "id": "meals-planner-grocer",
+   "from": "meals-planner",
+   "to": "meals-grocer",
+   "label": "Orders the shopping",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "meals-planner-mail",
+   "from": "meals-planner",
+   "to": "meals-mail",
+   "label": "Sends plans",
+   "sublabel": "SMTP"
+  },
+  {
+   "id": "compose-api-cache",
+   "from": "compose-api",
+   "to": "compose-cache",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-api-db",
+   "from": "compose-api",
+   "to": "compose-db",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-api-queue",
+   "from": "compose-api",
+   "to": "compose-queue",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-proxy-api",
+   "from": "compose-proxy",
+   "to": "compose-api",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-proxy-web",
+   "from": "compose-proxy",
+   "to": "compose-web",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-worker-mailer",
+   "from": "compose-worker",
+   "to": "compose-mailer",
+   "what": "depends on"
+  },
+  {
+   "id": "compose-worker-queue",
+   "from": "compose-worker",
+   "to": "compose-queue",
+   "what": "depends on"
+  },
+  {
+   "id": "k8s-deploy-web-svc-api",
+   "from": "k8s-deploy-web",
+   "to": "k8s-svc-api",
+   "label": "API_URL"
+  },
+  {
+   "id": "k8s-deploy-api-svc-postgres",
+   "from": "k8s-deploy-api",
+   "to": "k8s-svc-postgres",
+   "label": "DATABASE_URL"
+  },
+  {
+   "id": "k8s-svc-web-deploy-web",
+   "from": "k8s-svc-web",
+   "to": "k8s-deploy-web",
+   "what": "selects its pods"
+  },
+  {
+   "id": "k8s-svc-api-deploy-api",
+   "from": "k8s-svc-api",
+   "to": "k8s-deploy-api",
+   "what": "selects its pods"
+  },
+  {
+   "id": "k8s-svc-postgres-sts-postgres",
+   "from": "k8s-svc-postgres",
+   "to": "k8s-sts-postgres",
+   "what": "selects its pods"
+  },
+  {
+   "id": "k8s-ing-tea-svc-web",
+   "from": "k8s-ing-tea",
+   "to": "k8s-svc-web",
+   "label": "/"
+  }
+ ],
+ "views": [
+  {
+   "id": "dsl-context",
+   "title": "Moped share",
+   "nodeIds": [
+    "dsl-rider",
+    "dsl-staff",
+    "dsl-van",
+    "dsl-mopedshare",
+    "dsl-payments",
+    "dsl-mail"
+   ],
+   "containers": [
+    {
+     "id": "dsl-field-crews",
+     "label": "Field crews",
+     "nodeIds": [
+      "dsl-staff"
+     ]
+    }
+   ],
+   "caption": "Who hires mopeds, who keeps them running, and what Moped share leans on.",
+   "edges": [
+    "dsl-mopedshare-van",
+    "dsl-mopedshare-mail",
+    "dsl-mail-rider",
+    "dsl-rider-mopedshare",
+    "dsl-staff-mopedshare",
+    "dsl-mopedshare-payments"
+   ],
+   "parent": null,
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "dsl-containers",
+   "title": "Moped share containers",
+   "nodeIds": [
+    "dsl-rider",
+    "dsl-staff",
+    "dsl-van",
+    "dsl-app",
+    "dsl-api",
+    "dsl-worker",
+    "dsl-db",
+    "dsl-queue",
+    "dsl-payments",
+    "dsl-mail"
+   ],
+   "containers": [
+    {
+     "id": "dsl-mopedshare",
+     "label": "Moped share",
+     "nodeIds": [
+      "dsl-app",
+      "dsl-api",
+      "dsl-worker",
+      "dsl-db",
+      "dsl-queue"
+     ]
+    },
+    {
+     "id": "dsl-field-crews",
+     "label": "Field crews",
+     "nodeIds": [
+      "dsl-staff"
+     ]
+    }
+   ],
+   "caption": "The rider app, the trip API, the ride worker, and where rides wait.",
+   "edges": [
+    "dsl-worker-queue",
+    "dsl-worker-van",
+    "dsl-worker-mail",
+    "dsl-mail-rider",
+    "dsl-rider-app",
+    "dsl-staff-app",
+    "dsl-app-api",
+    "dsl-api-payments",
+    "dsl-api-db",
+    "dsl-api-queue"
+   ],
+   "parent": "dsl-context",
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "dsl-api-components",
+   "title": "Trip API components",
+   "nodeIds": [
+    "dsl-app",
+    "dsl-finder",
+    "dsl-hire",
+    "dsl-accounts",
+    "dsl-payment-client",
+    "dsl-ride-store",
+    "dsl-db",
+    "dsl-queue",
+    "dsl-payments"
+   ],
+   "containers": [
+    {
+     "id": "dsl-api",
+     "label": "Trip API",
+     "nodeIds": [
+      "dsl-finder",
+      "dsl-hire",
+      "dsl-accounts",
+      "dsl-payment-client",
+      "dsl-ride-store"
+     ]
+    }
+   ],
+   "caption": "Inside the trip API.",
+   "edges": [
+    "dsl-app-accounts",
+    "dsl-app-finder",
+    "dsl-app-hire",
+    "dsl-hire-ride-store",
+    "dsl-hire-payment-client",
+    "dsl-payment-client-payments",
+    "dsl-ride-store-db",
+    "dsl-ride-store-queue",
+    "dsl-finder-db",
+    "dsl-accounts-db"
+   ],
+   "parent": "dsl-containers",
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "puml-components",
+   "title": "Parcel tracking: inside the tracking API",
+   "nodeIds": [
+    "puml-shipper",
+    "puml-courier",
+    "puml-web",
+    "puml-handset",
+    "puml-routes",
+    "puml-tracker",
+    "puml-scans",
+    "puml-db",
+    "puml-notify",
+    "puml-maps",
+    "puml-billing"
+   ],
+   "containers": [
+    {
+     "id": "puml-tracking",
+     "label": "Parcel tracking",
+     "nodeIds": [
+      "puml-web",
+      "puml-handset",
+      "puml-scans",
+      "puml-db"
+     ]
+    },
+    {
+     "id": "puml-api",
+     "label": "Tracking API",
+     "nodeIds": [
+      "puml-routes",
+      "puml-tracker"
+     ],
+     "parent": "puml-tracking"
+    }
+   ],
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "checkout-flowchart",
+   "title": "Checkout, as the payments team drew it",
+   "nodeIds": [
+    "checkout-shopper",
+    "checkout-web",
+    "checkout-api",
+    "checkout-orders",
+    "checkout-bus",
+    "checkout-mailer",
+    "checkout-stock",
+    "checkout-psp"
+   ],
+   "containers": [
+    {
+     "id": "checkout-core",
+     "label": "Order core",
+     "nodeIds": [
+      "checkout-api",
+      "checkout-orders"
+     ]
+    },
+    {
+     "id": "checkout-after",
+     "label": "After the order",
+     "nodeIds": [
+      "checkout-mailer",
+      "checkout-stock"
+     ]
+    }
+   ],
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "meals-context",
+   "title": "Meal planner: who uses it, and what it uses",
+   "nodeIds": [
+    "meals-cook",
+    "meals-guest",
+    "meals-planner",
+    "meals-recipes",
+    "meals-grocer",
+    "meals-mail"
+   ],
+   "containers": [
+    {
+     "id": "meals-company",
+     "label": "Meal planner company",
+     "nodeIds": [
+      "meals-planner",
+      "meals-recipes"
+     ]
+    }
+   ],
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "compose-services",
+   "title": "tea-shop",
+   "nodeIds": [
+    "compose-api",
+    "compose-cache",
+    "compose-db",
+    "compose-mailer",
+    "compose-proxy",
+    "compose-queue",
+    "compose-web",
+    "compose-worker"
+   ],
+   "containers": [
+    {
+     "id": "compose-network-data",
+     "label": "data",
+     "nodeIds": [
+      "compose-cache",
+      "compose-db",
+      "compose-mailer",
+      "compose-queue",
+      "compose-worker"
+     ]
+    },
+    {
+     "id": "compose-network-edge",
+     "label": "edge",
+     "nodeIds": [
+      "compose-proxy",
+      "compose-web"
+     ]
+    }
+   ],
+   "arrange": "flow",
+   "kindsFromLabels": true
+  },
+  {
+   "id": "k8s-cluster",
+   "title": "kubernetes",
+   "nodeIds": [
+    "k8s-deploy-web",
+    "k8s-deploy-api",
+    "k8s-sts-postgres",
+    "k8s-svc-web",
+    "k8s-svc-api",
+    "k8s-svc-postgres",
+    "k8s-ing-tea"
+   ],
+   "containers": [
+    {
+     "id": "k8s-namespace-data",
+     "label": "data",
+     "nodeIds": [
+      "k8s-sts-postgres",
+      "k8s-svc-postgres"
+     ]
+    },
+    {
+     "id": "k8s-namespace-shop",
+     "label": "shop",
+     "nodeIds": [
+      "k8s-deploy-web",
+      "k8s-deploy-api",
+      "k8s-svc-web",
+      "k8s-svc-api",
+      "k8s-ing-tea"
+     ]
+    }
+   ],
+   "arrange": "flow",
+   "kindsFromLabels": true
+  }
+ ]
+}
