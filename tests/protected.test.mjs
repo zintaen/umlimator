@@ -538,3 +538,55 @@ test('jsscan: a / after an operand divides, else starts a regular expression; st
   assert.equal(literal(tokenize("'a\\u0041\\x42\\n'")[0]), 'aAB\n');
   assert.equal(literal(tokenize('`a ${b}`')[0]), null);
 });
+
+test('protect: a file that writes node:test\'s own event frames into its run and exits is reported: a pass counts only when the preload signed it (audit 73)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { readFileSync, realpathSync, writeSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { Serializer } from 'node:v8';\n" +
+    // a frame as node:test's child reporter writes it (0xff 0x0f, a 4-byte length, a v8-serialized event), for the protected test where it is called
+    "const file = realpathSync(fileURLToPath(import.meta.url)), self = readFileSync(file, 'utf8'), at = self.lastIndexOf(\"test('f is one'\");\n" +
+    "const frame = (type, data) => { const s = new Serializer(); s.writeHeader(); s.writeValue({ type, data }); const body = s.releaseBuffer(), m = Buffer.alloc(6 + body.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(body.length, 2); body.copy(m, 6); return m; };\n" +
+    "const pass = () => frame('test:pass', { name: 'f is one', nesting: 0, testNumber: 1, line: self.slice(0, at).split('\\n').length, column: at - self.lastIndexOf('\\n', at - 1), file, details: { duration_ms: 1, type: 'test' } });\n";
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const NOT_RUN = /^f is one: (does not run|could not be checked)/;
+  const forgeries = [
+    // audit 73's repro: a pass frame on stdout, then exit before the test runs
+    'writeSync(1, pass()); process.exit(0);',
+    // with a signature of the preload's words that no key made
+    "writeSync(1, pass()); writeSync(1, frame('test:diagnostic', { message: 'protect-ran ' + 'a'.repeat(64) + ' {\"seq\":0,\"name\":\"f is one\",\"status\":\"ok\"}', nesting: 0, file })); process.exit(0);",
+    // with a test of the same title that really passes, its title built at run time so the scan does not count it, at the top level and in a describe
+    "test(['f is', 'one'].join(' '), () => {});\ntest('stop', () => { writeSync(1, pass()); process.exit(0); });",
+    "describe('g', () => { test(['f is', 'one'].join(' '), () => {}); });\ntest('stop', () => { writeSync(1, pass()); process.exit(0); });",
+    // with a pass the preload signed, its key read out of the preload's memory through node:inspector (which the run denies)
+    String.raw`try {
+  const { Session } = await import('node:inspector'), { hash } = await import('node:crypto'), s = new Session(); s.connect();
+  const post = (m, p) => { let r, err; s.post(m, p, (e, v) => { err = e; r = v; }); if (err) throw err; return r; };
+  const props = id => post('Runtime.getProperties', { objectId: id, ownProperties: true });
+  const fns = post('Runtime.queryObjects', { prototypeObjectId: post('Runtime.evaluate', { expression: 'Function.prototype' }).result.objectId }).objects.objectId;
+  let key = null;
+  for (const p of props(fns).result) {
+    const scopes = p.value?.objectId && (props(p.value.objectId).internalProperties || []).find(i => i.name === '[[Scopes]]');
+    if (scopes) for (const sc of props(scopes.value.objectId).result) if (sc.value?.objectId) for (const v of props(sc.value.objectId).result) if (v.name === 'KEY' && typeof v.value?.value === 'string') key = v.value.value;
+  }
+  const body = JSON.stringify({ seq: 1000, name: 'f is one', status: 'ok' });
+  writeSync(1, frame('test:diagnostic', { message: 'protect-ran ' + hash('sha256', key + hash('sha256', key + body)) + ' ' + body, nesting: 0, file }));
+} catch {}
+writeSync(1, pass()); process.exit(0);`,
+    // the frame written from a test that runs before it, and after the protected test failed (a fail is not taken back by a later pass)
+    "test('stop', () => { writeSync(1, pass()); });",
+  ];
+  for (const forge of forgeries) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + forge + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, forge);
+    assert.match(found[0], forge.startsWith("test('stop'") ? /^f is one: (fails|could not be checked)/ : NOT_RUN, forge);
+    let code = 0;
+    try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; }
+    assert.equal(code, 1, forge);
+  }
+  // the file as recorded, f() right: nothing to say
+  const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+  writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+  assert.deepEqual(await assertLoads(fine), []);
+});

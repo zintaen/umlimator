@@ -311,9 +311,11 @@ const asserting = (scanned, title) => {
 // exit, and says the first change on stderr at once. The file is run by tools/protect-run.mjs with node:test's own run(),
 // whose event stream it reads and signs line by line (audit 72): the file's process is given no report file or path it
 // could name and write a pass into (the TAP file audit 71 used was named on its command line, where process.execArgv read
-// it), and a line it prints that reads as TAP is only its output: [{ file, title, problem }]. A file whose run does not end
-// in the time given is reported too, since what it would have changed was not seen. The files run side by side, `jobs` at
-// a time
+// it), and a line it prints that reads as TAP is only its output. The events still come from the file's own process, on its
+// stdout, where it can write node:test's frames itself (audit 73), so protect-run.mjs counts a pass only where the
+// preload signed one with a key the file cannot read, and a run that reports more is reported: [{ file, title, problem }].
+// A file whose run does not end in the time given is reported too, since what it would have changed was not seen. The
+// files run side by side, `jobs` at a time
 const TIMED = /\(timed\)/;
 // 1-based line and column of an index in a file's text as V8 counts them (and so node:test's events): a line ends at \n,
 // \r\n, a lone \r, U+2028 or U+2029, and a byte order mark at the start is not counted
@@ -349,7 +351,7 @@ export async function assertLoads(root, list = readList(root), { jobs = Math.max
     const child = spawn(process.execPath, [join(here, 'protect-run.mjs'), path, watch, String(timeout)], { cwd: root, env, stdio: ['pipe', 'pipe', 'ignore'] });
     child.stdin.on('error', () => {}).end(key);
     const results = new Map(); // `${title}\0${line}:${column}` -> ['ok' | 'not ok' | 'skip', ...]
-    let out = '', err = '', late = false;
+    let out = '', err = '', late = false, forged = null;
     const timer = setTimeout(() => { late = true; child.kill('SIGKILL'); }, timeout + 30000); // the runner's own stop failed
     child.stdout.setEncoding('utf8').on('data', d => { out += d; });
     child.on('close', () => {
@@ -359,6 +361,7 @@ export async function assertLoads(root, list = readList(root), { jobs = Math.max
         if (sp < 0 || line.slice(0, sp) !== createHmac('sha256', key).update(body).digest('hex')) continue;
         const r = JSON.parse(body);
         if (r.late) late = true;
+        else if (r.forged !== undefined) forged = r.forged;
         else if (r.stderr !== undefined) err += r.stderr;
         else {
           const k = `${r.name}\0${r.line}:${r.column}`;
@@ -369,6 +372,7 @@ export async function assertLoads(root, list = readList(root), { jobs = Math.max
       const said = err.split('\n').find(l => l.startsWith('protect: node:assert changed: '));
       if (said) return done(() => `no longer asserts (${said.slice('protect: '.length)})`);
       if (late) return done(() => `could not be checked: its tests did not end in ${timeout / 1000} s`);
+      if (forged) return done(() => `could not be checked: its run reports what its tests did not do (${forged}): the file writes node:test's events itself?`);
       done(title => ranWhy(results, title, scanned, src, skips));
     });
   });
