@@ -731,6 +731,17 @@ for where, dsl in [("the model", 'workspace {\nmodel {\na = softwareSystem "A"\n
         m, un = {"edges": []}, [repr(e)]
     ok(f"structurizr · this -> x in {where}, where this names no element, is said and skipped; the rest is read (audit 25)",
        [(e["from"], e["to"]) for e in m["edges"]] == [("a", "b")] and un == [(4 if where == "the model" else 5, "this -> a: this names no element here")], (m["edges"], un))
+# audit 68: `x -> this` (this as the destination) said "this is not an element" and dropped the line; inside an element
+# this names it on either side, and outside one it names none and is said
+dsl = ('workspace {\n!identifiers hierarchical\nmodel {\nuser = person "User"\ns = softwareSystem "S" {\nweb = container "Web" {\nuser -> this "Uses"\n'
+       'this -> this "Polls"\n}\ncontainer "Database" {\nweb -> this "Reads" "SQL"\n}\n}\nthis -> user "x"\nuser -> this "y"\ngroup "G" {\nuser -> this "z"\n}\n'
+       'user -> s.web "Visits"\n}\n}')
+m, un = imp.read("structurizr", dsl, "x")
+want = {("user", "web", "Uses"), ("web", "Database", "Reads"), ("user", "web", "Visits")}
+ok("structurizr · x -> this inside an element draws x to it; this -> this is the element to itself; x -> this outside one is said and skipped (audit 68)",
+   want <= {(e["from"], e["to"], e.get("label")) for e in m["edges"]}
+   and (8, "web -> web: a line from a card to itself is not drawn") in un and [u for u in un if "this" in u[1]] == [(14, "this -> user: this names no element here"), (15, "user -> this: this names no element here"), (17, "user -> this: this names no element here")],
+   (m["edges"], un))
 # audit 25: a block-scalar title (title: > or |) was the title '>' or '|', and a plain title over two lines lost its second,
 # with no word; read as js-yaml reads them, as the typed readers' mermaidFrontTitle() does
 fms = ["title: >\n  Orders and\n  payments", "title: |-\n  Orders", "title: Orders\n  and payments", "title: |\n  a\n  b\n", "title: >\n  a\n\n  b\n    deep\n  c",
