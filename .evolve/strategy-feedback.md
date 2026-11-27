@@ -132,6 +132,24 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop reverts 77f6cf09 (fix67-mcp merge 8ad70d46) and 58f84ab8 (fix67-stories commit 25889400); handoff log, 27 Nov 2026, fix round 67 combine.
 - Proposed change: As F9 proposes, and in addition: a lane that changes what a type registers (a type's flowRole, zoneOf or similar entry) or what an entry point accepts runs every suite that greps for that name or calls that entry point, and the lane template lists how to find them (for the MCP server, `tests/cli.py`'s mcp part as well as `tests/mcp.py`).
 
+### F13. F9 a third time: a comment naming an `examples/` file failed the repository-wide guard, and the lane was reverted
+
+- Date: 2026-11-27
+- Round: fix round 68 (combine)
+- Rule: A3.3, A3.4, A8.6 (same as F9 and F12)
+- What happened: fix68-layout pinned its new test on a copy under `tests/fixtures/`, as F9's case taught, but the test's comment said the fixture was a copy of `examples/buy-book-overview.json`. `tests/showcase.test.mjs` matches showcase reads by text, so the comment alone failed it at combine. The lane had run nine suites, not that one. The combine bisected, reverted the merge and returned the lane with its three findings (two crossings and one warning), for a one-line comment change.
+- Evidence: lane commit 51c1a475; audit-loop merge 2c3f373d and its revert b79ac485; handoff log, 27 Nov 2026, fix round 68 combine.
+- Proposed change: F9's proposal, made binding: the lane template names the whole-repository guard suites and the lane runs them before it pushes; combine runs them on each lane branch before merging any lane, so a guard failure returns that lane alone without a bisect or revert. Three rounds in a row lost a lane this way, so this is worth a checklist string in A10.3.
+
+### F14. The example sweep has no recorded command, so every lane and every combine writes its own
+
+- Date: 2026-11-27
+- Round: fix round 68 (combine)
+- Rule: A9.3, A10.6 (bootstrap: the rules file records the example inputs and normalization)
+- What happened: The rules file names no sweep command, output set or normalization, so the four lanes each wrote a sweep script with a different scope (storyFromFlow and storyFromDiff; layout, check() and validate(); layout, describe(), validate() and ER and Mermaid round trips; none), and the combine wrote a fifth. The combine's sweep matched the lanes' lists only after checking by hand which lane's lib reproduced each difference. Two lanes also wrote their scripts to the same scratch folder, and one overwrote the other's mid-run.
+- Evidence: lane notes of fix68-stories, fix68-layout, fix68-uml and fix68-tools; handoff log, 27 Nov 2026, fix round 68 combine.
+- Proposed change: In A10.6, require the rules file to name one sweep command (input globs, the functions it calls, the normalization such as dropping timing fields, and its output format) that lanes and combine both run, so lane notes and the combine diff use the same keys. In A3.3, say that each lane keeps its scratch files in a folder named after its branch.
+
 ## Closed
 
 None.
