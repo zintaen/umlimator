@@ -488,3 +488,30 @@ test('audit 61: one pin of a requirement leaves every label drawn', () => {
   for (const [id, q] of [['range', [2, 3.5]], ['capacity', [1, 3.5]], ['range-ride', [1, 4.5]]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
     assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
 });
+
+// audit 73: laid out down, a «satisfy» that no strict spot took was put on the first relaxed spot, across another satisfy's last
+// run; the reroute round a label could not move that line, its end being behind the label. A late label now takes the first
+// relaxed spot clear of every other line when there is one (src/layout/layered.js placeLabel)
+test('audit 73: a requirement view laid out down puts no relationship label on another relationship\'s line', () => {
+  const Rq = (id, parent) => R(id, 'Requirement ' + id, parent, id.toUpperCase(), 'The system shall ' + id + '.');
+  const nodes = [Rq('k0'), Rq('k0a', 'k0'), Rq('k1'), Rq('k1a', 'k1'), Rq('k2'), Rq('k2a', 'k2'), Rq('k3'),
+    { id: 'b0', type: 'sysml.Block', label: 'Block b0' }, { id: 't0', type: 'sysml.TestCase', label: 'Test t0' }, { id: 't1', type: 'sysml.TestCase', label: 'Test t1' }];
+  const edges = [L('s0', 'Satisfy', 'b0', 'k0'), L('v1', 'Verify', 't1', 'k0'), L('s2', 'Satisfy', 'b0', 'k0a'), L('v3', 'Verify', 't0', 'k0a'), L('s4', 'Satisfy', 'b0', 'k1'),
+    L('v5', 'Verify', 't0', 'k1'), L('s6', 'Satisfy', 'b0', 'k1a'), L('v7', 'Verify', 't0', 'k2'), L('s8', 'Satisfy', 'b0', 'k3'), L('v9', 'Verify', 't1', 'k3')];
+  const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'sysml.requirement', direction: 'down', nodeIds: nodes.map(n => n.id) }] };
+  assert.deepEqual(check(m, 'v').filter(p => !/ cross$/.test(p.message)).map(p => p.message), []);
+  // and a seeded sweep of ordinary views (a parent with two to four children, some nested; blocks satisfy, test cases verify,
+  // derives between siblings), right and down: no finding but crossings
+  let seed = 2; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>>0) / 2 ** 32, ri = n => Math.floor(rnd() * n), pick = a => a[ri(a.length)], left = [];
+  for (let it = 0; it < 120; it++) {
+    const ns = [Rq('top')], es = [], kids = [];
+    for (let i = 0, nk = 2 + ri(3); i < nk; i++) { ns.push(Rq('k' + i, 'top')); kids.push('k' + i); if (rnd() < .5) { ns.push(Rq('k' + i + 'a', 'k' + i)); kids.push('k' + i + 'a'); } }
+    const bs = ['b0', 'b1'].slice(0, 1 + ri(2)), ts = ['t0', 't1'].slice(0, 1 + ri(2)); bs.forEach(b => ns.push({ id: b, type: 'sysml.Block', label: 'Block ' + b })); ts.forEach(t => ns.push({ id: t, type: 'sysml.TestCase', label: 'Test ' + t }));
+    let n = 0; for (const k of kids) { if (rnd() < .6) es.push(L('s' + n++, 'Satisfy', pick(bs), k)); if (rnd() < .6) es.push(L('v' + n++, 'Verify', pick(ts), k)); }
+    for (let i = 0, nd = ri(3); i < nd; i++) { const a = pick(kids), b = pick(kids); if (a !== b && !a.startsWith(b) && !b.startsWith(a)) es.push(L('d' + n++, 'DeriveReqt', a, b)); }
+    const mm = { schemaVersion: 2, nodes: ns, edges: es, views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ns.map(x => x.id) }] };
+    if (validate(mm).some(p => p.level === 'error')) continue;
+    for (const direction of ['right', 'down']) { mm.views[0].direction = direction; left.push(...check(mm, 'v').filter(p => / lies on edge /.test(p.message)).map(p => `${it} ${direction}: ${p.message}`)); }
+  }
+  assert.deepEqual(left, []);
+});

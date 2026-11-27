@@ -1085,7 +1085,17 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
       for (const so of fits(o, was.text, 0)) { if (moves >= moveCap) break; moves++; put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
-    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    // a typed view's late label that no strict pass placed: before the relaxed passes' first spot, which may lie on another
+    // line (check() names it), the first of their spots clear of every other line routed, of up to 48 a pass (audit 73: a
+    // requirement view laid out down put a «satisfy» on another satisfy's last run, which the reroute below cannot move,
+    // the label being in front of that line's end)
+    let looked = !late || map;
+    const clearOf = b => { const r = { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }; return !routed.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, q]) => segHitsRect(a, q, r))); };
+    const clearSpot = () => { for (const pass of [3, 5]) for (const text of tries) { let k = 0; for (const c of fits(e, text, pass)) { if (++k > 48) break; if (clearOf(c.box)) return c; } } return null; };
+    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) {
+      if (!looked && (pass === 3 || pass === 5)) { looked = true; if ((s = clearSpot())) return put(e, s, full); }
+      if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    }
   }
   // moves: the searches placeLabel's moved labels took in this pass (ms.moves), at most LABEL_TRIES, or a test's own bound (LABEL_CAP)
   let stats = {}, moves = 0; const moveCap = dg[LABEL_CAP] ?? LABEL_TRIES;

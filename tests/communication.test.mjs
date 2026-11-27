@@ -533,3 +533,30 @@ test('apply() hide of a call the view lists by id takes its reply with it, so th
     }
   }
 });
+
+// audit 73: a self connector listed after another connector leaving the same lifeline: its loop ran past the next lifeline and
+// back over the whole picture, across that connector. Drawn as a small loop beside its own lifeline and its stack, in any
+// connector order and every direction; a lifeline whose other connectors come into the side the loop would take tries the
+// loop's other ways (two parallel lines between the lifeline and its stack, or round the other way)
+test('audit 73: a self connector is a small loop beside its lifeline that crosses nothing, whatever order the connectors are listed in', () => {
+  const mk = (names, conns, msgs, direction) => { const cs = conns.map(([a, b], i) => ({ id: 'k' + i, type: 'uml.Connector', from: a, to: b }));
+    const ms = msgs.map(([a, b, l], i) => ({ id: 'm' + i, type: 'uml.Message', from: a, to: b, label: l, props: { sort: 'call' } }));
+    return { schemaVersion: 2, title: 't', root: 'v', nodes: names.map(id => ({ id, type: 'uml.Lifeline', label: id })), edges: [...cs, ...ms],
+      views: [{ id: 'v', diagram: 'uml.communication', title: 'C', nodeIds: names, ...(direction && { direction }), edges: [...cs, ...ms].map(e => e.id) }] }; };
+  const cases = [
+    [['ctl', 'svc'], [['ctl', 'svc'], ['ctl', 'ctl']], [['ctl', 'svc', 'load()'], ['ctl', 'ctl', 'validate()'], ['svc', 'ctl', 'result']]], // the audit's
+    [['client', 'server', 'db'], [['client', 'server'], ['server', 'db'], ['server', 'server']], [['client', 'server', 'request()'], ['server', 'server', 'validate()'], ['server', 'db', 'query()']]],
+    [['ctl', 'svc'], [['ctl', 'ctl'], ['ctl', 'svc']], [['ctl', 'svc', 'load()'], ['ctl', 'ctl', 'validate()']]],
+    [['l0', 'l1', 'l2'], [['l0', 'l1'], ['l1', 'l1'], ['l2', 'l1']], [['l1', 'l0', 'a()'], ['l1', 'l1', 'b()'], ['l1', 'l2', 'c()']]], // a hub: down, both neighbours into the side the loop took
+    [['l0', 'l1', 'l2', 'l3'], [['l1', 'l0'], ['l2', 'l2'], ['l2', 'l1'], ['l2', 'l3']], [['l1', 'l0', 'a()'], ['l2', 'l2', 'b()'], ['l2', 'l3', 'c()']]],
+  ];
+  for (const [names, conns, msgs] of cases) for (let k = 0; k < conns.length; k++) for (const dir of [undefined, 'right', 'down']) {
+    const order = [...conns.slice(k), ...conns.slice(0, k)], m = mk(names, order, msgs, dir), tag = `${order.map(c => c.join('-')).join(',')} ${dir || 'default'}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], tag);
+    const g = layout(m, 'v');
+    g.edges.filter(e => e.from === e.to).forEach(e => { const own = [g.byId[e.from], ...e.stack.map(id => g.byId[id])], x0 = Math.min(...own.map(n => n.x)), y0 = Math.min(...own.map(n => n.y));
+      const x1 = Math.max(...own.map(n => n.x + n.w)), y1 = Math.max(...own.map(n => n.y + n.h));
+      assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${tag}: ${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
+      assert.deepEqual(outsideStack(g, e), [], `${tag}: ${e.id} is not tied in a knot`); });
+  }
+});
