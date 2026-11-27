@@ -390,7 +390,6 @@ const CM_SORT = { key: 'sort', label: 'Sort', kind: 'enum', options: CM_SORTS };
 const COMM_TYPE = registerDiagramType('uml.communication', {
   untyped: 'Lifeline', word: () => 'Lifeline', // every element it shows is a lifeline, as named, whatever its type (audit 30)
   title: 'communication diagram',
-  behaviour: true, // behaviour with no main flow, as the state machine's (validate(), audit 68)
   // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
   drawsOnly: ['uml.Connector', 'uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
