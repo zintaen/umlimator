@@ -277,8 +277,8 @@ export async function fuzz({ module = DEFAULT_MODULE, names, budgetMs = 60000, h
 }
 
 export async function main(argv = process.argv.slice(2)) {
-  const { flags } = parseArgs(argv, ['list']);
   try {
+    const { flags } = parseArgs(argv, ['list'], ['targets-module', 'hang', 'repro', 'target', 'seed', 'out', 'targets', 'budget', 'shrink', 'scripts']);
     const module = typeof flags['targets-module'] === 'string' ? resolve(flags['targets-module']) : DEFAULT_MODULE;
     const hangMs = duration(flags.hang, 5000);
     if (flags.list) {

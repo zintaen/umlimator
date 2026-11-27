@@ -182,9 +182,9 @@ export function digest({ audits: auditsDir, fixes: fixesDir, repo = process.cwd(
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const { flags } = parseArgs(argv);
-  let md;
+  let md, flags;
   try {
+    ({ flags } = parseArgs(argv, [], ['audits', 'fixes', 'repo', 'date', 'days', 'trend', 'gaps', 'tune', 'out']));
     if (typeof flags.audits !== 'string') throw new Error('usage: digest.mjs --audits <folder> [--fixes <folder>] [--repo <folder>] [--date YYYY-MM-DD] [--days 7] [--trend 8] [--gaps <file>] [--tune <folder>] [--out <file>]');
     md = digest({ audits: flags.audits, fixes: typeof flags.fixes === 'string' ? flags.fixes : undefined, repo: typeof flags.repo === 'string' ? resolve(flags.repo) : process.cwd(),
       date: typeof flags.date === 'string' ? flags.date : undefined, days: flags.days ? Number(flags.days) : 7, trend: flags.trend ? Number(flags.trend) : 8,

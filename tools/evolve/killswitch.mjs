@@ -5,7 +5,8 @@
 //   node tools/evolve/killswitch.mjs --file <path>                      look for a kill-switch file beside the lease instead
 //
 // Exit 0: no kill switch, go on. Exit 1: the kill switch is set (its text is printed) or the place could not be read,
-// so the session stops (a hotfix or release pull already pending is the only work allowed). Exit 2: usage error.
+// so the session stops (a hotfix or release pull already pending is the only work allowed). Exit 2: usage error (an option
+// it does not know, or --file, --ref or --repo with no value or an empty one: audit 72).
 // Every session and scheduled job runs it first, and the orchestrator again before every step.
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -16,7 +17,8 @@ export const STOP = '.evolve/STOP';
 
 // { stopped, reason, text }
 export function killSwitch({ repo = '.', ref = 'origin/main', file } = {}) {
-  if (file) {
+  if (file !== undefined) {
+    if (!file) return { stopped: true, reason: 'no kill-switch file named: treated as stopped' };
     if (!existsSync(file)) return { stopped: false, reason: `no kill switch at ${file}` };
     return { stopped: true, reason: `kill switch set: ${file}`, text: readFileSync(file, 'utf8') };
   }
@@ -29,8 +31,10 @@ export function killSwitch({ repo = '.', ref = 'origin/main', file } = {}) {
 }
 
 export function main(argv, out = console.log) {
-  const { flags, rest } = parseArgs(argv);
-  if (rest.length || flags.file === true || flags.ref === true || flags.repo === true) {
+  let flags, rest, why;
+  try { ({ flags, rest } = parseArgs(argv, [], ['file', 'ref', 'repo'])); } catch (e) { why = e.message; }
+  if (why || rest.length) {
+    if (why) out(`killswitch: ${why}`);
     out('usage: killswitch.mjs [--ref origin/main] [--repo .] | --file <path>');
     return 2;
   }
