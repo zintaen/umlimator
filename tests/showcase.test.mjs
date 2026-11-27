@@ -1,7 +1,8 @@
 // The showcase: examples/ (each type's example, its variants and the atlases) is what the gallery and the site show, so
 // tests only smoke-check it here: every model validates with no error and every view lays out. Tests pin content on their
 // own models: tests/fixtures/ (the integration fixture, tests/fixtures/integration.json, among them) and the per-type
-// tests/*-minimal.json and *-stress.json; the bench reads bench/models/ (the maintainer's decision, 20 Nov 2026).
+// tests/*-minimal.json and *-stress.json; the bench's geometry hashes read bench/models/ (the maintainer's decision, 20 Nov
+// 2026), while the layout score's fixed corpus (bench/score.mjs) also reads every examples/*.json, as examples/README.md says.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -25,6 +26,24 @@ test('every showcase model validates with no error, and each of its views lays o
       assert.doesNotThrow(() => { g = layout(m, v.id); }, `${f}: view ${v.id}`);
       assert.ok(g && Array.isArray(g.nodes), `${f}: view ${v.id} gave no layout`);
     }
+  }
+});
+
+// examples/README.md says which bench reads the showcase: the layout score's fixed corpus does (bench/score.mjs reads
+// examples/*.json and bench/score-expected.json pins their views, the atlas's among them), and the README said none did
+// (audit 70): read both and hold the README to them
+test('examples/README.md tells the truth about the bench: the layout score reads the showcase, the atlas included (audit 70)', () => {
+  const read = f => readFileSync(new URL(f, root), 'utf8');
+  const readme = read('examples/README.md'), at = readme.indexOf('## Why the Umlimator atlas'), section = readme.slice(at, readme.indexOf('\n## ', at + 1));
+  const reads = /json\('examples'\)/.test(read('bench/score.mjs'));
+  const pinned = Object.keys(JSON.parse(read('bench/score-expected.json')).views).filter(k => k.startsWith('examples/'));
+  assert.ok(at >= 0, 'the section is there');
+  assert.equal(reads, pinned.length > 0, 'score.mjs reads examples/ exactly when score-expected.json pins its views');
+  if (reads) {
+    assert.match(section, /bench\/score\.mjs/, 'the README names the score that reads examples/');
+    assert.match(section, /bench\/score-expected\.json/, 'the README names the file that pins their scores');
+    assert.doesNotMatch(section, /stays out of the bench and every/, 'no claim that the atlas is in no bench');
+    if (pinned.some(k => k.startsWith('examples/umlimator-atlas/'))) assert.match(section, /the atlas's included/, 'the README says the atlas is scored');
   }
 });
 
