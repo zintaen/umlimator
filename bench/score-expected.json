@@ -1,9 +1,9 @@
 {
- "commit": "f1ca2829",
+ "commit": "095a117c",
  "corpus": "fixed",
  "total": {
   "views": 263,
-  "score": 615720.05
+  "score": 615660.05
  },
  "views": {
   "a8/dsl-context": {
@@ -1873,10 +1873,10 @@
    "hard": 0,
    "cross": 149,
    "through": null,
-   "labels": 1,
+   "labels": 0,
    "straight": null,
    "reverse": null,
-   "score": 24899.64
+   "score": 24839.64
   },
   "tests/internal-block-minimal/v": {
    "hard": 0,
