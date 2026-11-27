@@ -150,6 +150,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: lane notes of fix68-stories, fix68-layout, fix68-uml and fix68-tools; handoff log, 27 Nov 2026, fix round 68 combine.
 - Proposed change: In A10.6, require the rules file to name one sweep command (input globs, the functions it calls, the normalization such as dropping timing fields, and its output format) that lanes and combine both run, so lane notes and the combine diff use the same keys. In A3.3, say that each lane keeps its scratch files in a folder named after its branch.
 
+### F15. Open entries F8, F11 and F14 recurred unchanged, because nothing carries an open entry's workaround into the next round's task text
+
+- Date: 2026-11-27
+- Round: fix round 69 (combine)
+- Rule: A12, C3 step 3, A1 (Gate), A9.3 (same cases as F8, F11 and F14)
+- What happened: The round 69 combine task again ran the kill switch from the main checkout, where `tools/evolve/killswitch.mjs` is missing and node exits 1 (F11); again named `python3`, which is 3.14 here and fails the audit 20 deep-JSON check in `tests/cli.py` at the baseline as well as after the lanes (F8), so the gate was rerun with Python 3.12 as CI pins; and again had no sweep command, so the combine wrote its own sweep (F14). Each workaround was already known and recorded, but the next round paid for it again, and read literally two of them say "stop" or "merge no lanes".
+- Evidence: audit-loop baseline 7108d2b5 and merges ccdfb0ee and 8c72d43a; origin/main 4230e050; handoff log, 27 Nov 2026, fix round 69 combine.
+- Proposed change: In A12, say that while an entry is open the orchestrator puts its workaround in the task text of every later round it applies to (for example "run the kill switch from the integration worktree", "run the Python checks with the CI version"), and lists the open entries it applied in the round's handoff entry, so a known strategy gap costs one round, not every round until the batch.
+
 ## Closed
 
 None.
