@@ -106,13 +106,18 @@ function mapContext(model, opts = {}) {
   const viewsWith = nid => views.filter(v => (v.nodeIds || []).includes(nid));
   const kidsOf = id => views.filter(x => (x.parent || null) === id);
   const chain = vid => { const out = []; let c = V[vid]; const seen = new Set(); while (c && !seen.has(c.id)) { seen.add(c.id); out.unshift(c.id); c = V[c.parent]; } return out; };
+  // the model's lines by id, the first of an id as find() took it, built again when the list changes (a linear find for each
+  // listed id was quadratic in the view's list, audit cf1)
+  let lineList = null, lineLen = -1, lineById = null;
+  const lineOf = id => { const L = D.edges || []; if (L !== lineList || L.length !== lineLen) { lineList = L; lineLen = L.length; lineById = new Map();
+    for (const x of L) if (x && !lineById.has(x.id)) lineById.set(x.id, x); } return lineById.get(id); };
   const viewEdges = (v, say) => { // an edge's ends are cards of the view or its containers; say: warn of one left out for joining a box and what it holds
     const ids = new Set([...(v.nodeIds || []), ...(v.containers || []).map(c => c && c.id).filter(Boolean)]);
     const list = Array.isArray(v.edges) ? v.edges : (D.edges || []).filter(e => ids.has(e.from) && ids.has(e.to));
     const once = new Set(); // a line id listed twice is one line, drawn once (audit 7)
     const inside = boxHolds(v), apart = e => { const b = inside(e.from, e.to) ? e.from : inside(e.to, e.from) ? e.to : null;
       if (b != null && say) warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${b}" and something inside it`); return b == null; };
-    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to) && apart(e));
+    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? lineOf(e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to) && apart(e));
   };
   /* ---------- reading order: every view runs left → right ----------
      The trigger sits at the far left; each next step or callee goes one column to the right, branches
@@ -1126,7 +1131,13 @@ function mapContext(model, opts = {}) {
     if (T) return typedWay(vid), T.layout.pins === false || T.layout.rank === false ? null : v.layout ? fillTyped(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid));
     return planOf(vid).hub ? null : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)); }
   const homeOf = (vid, id) => { const bx = ownLayout(vid) ? boxesOf(vid) : arrOf(V[vid].containers).filter(b => b && b.id != null), b = bx.filter(x => x.id !== id && arrOf(x.nodeIds).includes(id)).pop(); return b ? b.id : null; };
-  const flowKeys = (vid, id) => viewEdges(V[vid]).filter(e => e.flow !== 'dep' && e.from !== e.to && (e.from === id || e.to === id)).map(e => e.from + '\u0000' + e.to).sort().join('\u0001');
+  // a card's flow lines by their ends, for every card of a view in one pass over its lines (once per card was cards x lines, audit cf1)
+  // kept while what viewEdges reads is the same (an unfold sets a view's edges)
+  const flowCache = O();
+  const flowKeys = (vid, id) => { const v = V[vid], E = D.edges || [], at = [v, v.edges, v.nodeIds, v.containers, E, E.length]; let c = flowCache[vid];
+    if (!c || c.at.some((x, i) => x !== at[i])) { const m = new Map(), add = (k, e) => { let a = m.get(k); if (!a) m.set(k, a = []); a.push(e.from + '\u0000' + e.to); };
+      viewEdges(v).forEach(e => { if (e.flow === 'dep' || e.from === e.to) return; add(e.from, e); add(e.to, e); }); c = flowCache[vid] = { at, m }; }
+    return [...(c.m.get(id) || [])].sort().join('\u0001'); };
   const softCache = O(), stableAt = O(), picked = O();
   function softOf(vid) { if (Object.hasOwn(softCache, vid)) return softCache[vid]; softCache[vid] = null;
     const B = baseOf(), v = V[vid], w = B && B.V[vid];

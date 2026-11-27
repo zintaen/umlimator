@@ -159,3 +159,30 @@ test('a stable layout of a card named like an Object.prototype member with no fr
     assert.deepEqual(xy(layout(m, 'v', { stableFrom: m })), xy(fresh), `${a}, ${b}`);
     const d = diff(m, m); assert.deepEqual(xy(layout(d.model, 'v', { stableFrom: d.stableFrom })), xy(fresh), `${a}, ${b}: diff`); }
 });
+
+// audit cf1: a view's listed line ids are found through one table of the model's lines by id, and a card's flow lines (what
+// a stable layout compares) for every card of the view in one pass. Before: a linear find for each id, in each of a dozen
+// callers (16,000 ids over 16,000 lines 1.9 s), and the lines again for each card shared with the base (8,000 7.4 s).
+// Timed by growth against a quarter, CPU, best of two
+test('audit cf1: a view listing thousands of line ids over thousands of lines lays out in near linear time, stable or not (timed)', () => {
+  const cpuOf = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const growth = (n, f) => { const q = Math.min(cpuOf(() => f(n / 4)), cpuOf(() => f(n / 4))), ms = Math.min(cpuOf(() => f(n)), cpuOf(() => f(n))); return [ms, q]; };
+  // ids that name no line (missed), and ids that name lines whose ends are not on the view
+  const plain = (n, hit) => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: Array.from({ length: n }, (_, i) => ({ id: 'e' + i, from: hit ? 'zz' : 'a', to: 'b' })),
+    views: [{ id: 'v', nodeIds: ['a', 'b'], edges: Array.from({ length: n }, (_, i) => (hit ? 'e' : 'x') + i) }] });
+  const chain = (C, n) => { const nodes = Array.from({ length: C }, (_, i) => ({ id: 'c' + i, label: 'C' + i })), edges = [], list = [];
+    for (let i = 0; i + 1 < C; i++) { edges.push({ id: 'k' + i, from: 'c' + i, to: 'c' + (i + 1) }); list.push('k' + i); }
+    for (let i = 0; i < n; i++) { edges.push({ id: 'p' + i, from: 'zz', to: 'zz' }); list.push('x' + i); }
+    if (n) nodes.push({ id: 'new', label: 'N' }); return { nodes, edges, views: [{ id: 'v', nodeIds: nodes.map(x => x.id), edges: list }] }; };
+  const before = chain(40, 0), runs = [['missed', 16000, n => layout(plain(n, false), 'v')], ['off the view', 16000, n => layout(plain(n, true), 'v')],
+    ['stable', 8000, n => layout(chain(40, n), 'v', { stableFrom: before })]];
+  for (const [name, n, f] of runs) { const [ms, q] = growth(n, f); // the finds were about 16x a quarter
+    assert.ok(ms < 400 || ms / Math.max(q, 1) < 8, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`); }
+  // the lines the view lists still resolve as before: the first line of an id, once for an id listed twice, none for one that names no line
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }],
+    edges: [{ id: 'e', from: 'a', to: 'b', label: 'first' }, { id: 'e', from: 'b', to: 'c', label: 'second' }, { id: 'f', from: 'b', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['e', 'e', 'nope', 'f'] }] };
+  assert.deepEqual(layout(m, 'v').edges.map(e => [e.from, e.to]).sort(), [['a', 'b'], ['b', 'c']]);
+  const lay = layout(m, 'v', { stableFrom: { ...m, views: [{ ...m.views[0], nodeIds: ['a', 'b'] }] } });
+  assert.deepEqual(lay.edges.map(e => [e.from, e.to]).sort(), [['a', 'b'], ['b', 'c']]);
+});

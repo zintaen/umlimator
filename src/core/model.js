@@ -137,6 +137,7 @@ const noTextIn = x => { if (typeof x === 'symbol') return true; if (x === null |
     // throws, its toString fine, threw out of the class writer's parameters and validate()'s parent (audit 32)
     if (typeof p === 'function' || typeof v === 'function' && !STOCK.has(v)) void ('' + x);
     return false; } catch { return true; } };
+const INDEX = /^(?:0|[1-9]\d*)$/; // a list's entry, not a key a host put on the list (which is left out as an object's is)
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
   // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
@@ -152,13 +153,17 @@ function unreadable(model) {
     while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o); if (!fix && !bare && noText(o)) bare = true;
       // keys that cannot be read: said at the object's own path (the copy holds it as one more left-out value: copyOf)
       const list = Array.isArray(o); let keys; try { keys = Object.keys(o); } catch { at.push(p); if (!fix) thrown.add(p); continue; }
+      const drop = []; // a list's left-out indices, falling: the list is rebuilt once after its keys (a splice each was quadratic, audit cf1)
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k; let x, gone = false;
         try { x = o[k]; } catch { gone = true; }
         const map = !list && (BY_ID.has(k) || role === 'tags' || (role === 'part' && k === 'ports'));
         // in the copy, what the model's walk found (a class's instance whose toString throws is a plain object there)
         const odd = fix ? mute.has(q) : !gone && x !== GONE && !map && !bad(x) && noTextIn(x);
-        if (gone || x === GONE || bad(x) && !map || odd) { at.push(q); if (gone && !fix) thrown.add(q); if (odd && !fix) mute.add(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
-        else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); } }
+        if (gone || x === GONE || bad(x) && !map || odd) { at.push(q); if (gone && !fix) thrown.add(q); if (odd && !fix) mute.add(q); if (fix && list && INDEX.test(k)) drop.push(+k); else if (fix) delete o[k]; }
+        else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); }
+      if (drop.length) { drop.reverse(); let w = 0, d = 0; // a hole stays a hole, as splice kept it
+        for (let r = 0; r < o.length; r++) if (d < drop.length && drop[d] === r) d++; else { if (r in o) o[w] = o[r]; else delete o[w]; w++; }
+        o.length = w; cut.set(p, drop); } }
     return at; };
   const same = path => path;
   if (!model || typeof model !== 'object') return { paths: [], model, back: same, thrown, mute };
@@ -166,8 +171,11 @@ function unreadable(model) {
   if (!paths.length && !bare) return { paths, model, back: same, thrown, mute };
   const copy = copyOf(model, GONE); walk(copy, true);
   // each [n] in turn, under the path before it as the model has it: the n-th entry of that list the copy kept
-  const back = path => typeof path !== 'string' || !cut.size ? path : path.replace(/\[(\d+)\]/g, (w, n, i, s) => { const gone = cut.get(back(s.slice(0, i)));
-    if (!gone) return w; let j = +n; for (const g of gone) if (g <= j) j++; else break; return `[${j}]`; });
+  // left to right, the prefix as the model has it carried along: once each (back() of each prefix again was 2^depth, audit cf1)
+  const back = path => { if (typeof path !== 'string' || !cut.size) return path; let out = '', last = 0;
+    for (const m of path.matchAll(/\[(\d+)\]/g)) { out += path.slice(last, m.index); last = m.index + m[0].length; const gone = cut.get(out);
+      let j = +m[1]; if (gone) for (const g of gone) if (g <= j) j++; else break; out += gone ? `[${j}]` : m[0]; }
+    return out + path.slice(last); };
   return { paths: paths.sort(), model: copy, back, thrown, mute };
 }
 // a value as text, read as the model unreadable() gives back reads it: one it would leave out reads as no value

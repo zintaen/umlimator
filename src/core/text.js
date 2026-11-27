@@ -166,4 +166,4 @@ const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
 /* s without its leading and trailing '-', by index: `.replace(/^-+|-+$/g, '')` retries `-+$` at each dash of an inner run the slug
    kept, so a typed name of 200k dashes froze an add for 16 s (audit 54) */
 const trimDash = s => { let i = 0, j = s.length; while (i < j && s[i] === '-') i++; while (j > i && s[j - 1] === '-') j--; return s.slice(i, j); };
-export { trimDash, measureText, measured, esc, XML_BAD, inline, md, firstSentence, unstop, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, joinWords, wrapLines, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+export { trimDash, measureText, measured, esc, XML_BAD, inline, md, firstSentence, unstop, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, joinWords, wrapLines, wrap2, clauseFit, fit, lastOk, glyph, EDGE_BREAK, EDGE_LH };
