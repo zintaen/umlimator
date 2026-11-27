@@ -25,6 +25,7 @@ import { join, dirname, relative, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tokenize, significant, lineCol } from '../jsscan.mjs';
 import { duration } from './args.mjs';
+import { isMain } from '../main.mjs';
 
 const FLIP = { '<': '>=', '>': '<=', '<=': '>', '>=': '<', '===': '!==', '!==': '===', '==': '!=', '!=': '==' };
 const SWAP = { '&&': '||', '||': '&&', '+': '-', '-': '+', '*': '/', '/': '*' };
@@ -241,4 +242,4 @@ async function main(argv) {
   return r.error ? 1 : 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = await main(process.argv.slice(2));
+if (isMain(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
