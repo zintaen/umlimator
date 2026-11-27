@@ -186,6 +186,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: origin/audit-loop 0747dab1 and 12214584 against the old local heads 77a86495 and eef9ae8c; audit-loop merge 3b5bdfc6 (fix72-misc) and its revert 6c2273f3; lane head d795dcbb; handoff log, 27 Nov 2026, fix round 72 combine.
 - Proposed change: In A3.4's first step, say what to do when the integration worktree's branch is not an ancestor of the remote one: if its tree equals a commit on the remote branch, or every commit it has is patch-equal to one there, reset it to the remote branch and record that; otherwise stop and report, since local work would be lost. In A3.3, a lane runs tests/timed-titles.test.mjs and the other repository-wide guard tests (the rules file lists them) before it pushes, whatever its own suites are. In A10.6, a docs line that a test requires to name the latest round is updated by the combine step only, never by lanes.
 
+### F19. The baseline was red only because the local python3 is newer than CI's, and the "red after merging main" rule gives no way to tell that from a real break
+
+- Date: 2026-11-27
+- Round: fix round 73 (combine)
+- Rule: C4 step 4, A3.4 (step 1: red after merging main), C9 (and F8 and F10 again, as F15 describes)
+- What happened: At the baseline (audit-loop with main merged, main's only new commit a README line), `python3 tests/cli.py` failed one check: the audit 20 deep-JSON case, because Python 3.14.8's json reads 100000 nested arrays without a RecursionError, so umlimator.py says "its JSON is not an object" instead of "nests too deep to read". The same check fails on 61238eda, before main was merged, and passes under Python 3.12, the version CI pins. Read literally, A3.4 says a gate check that fails right after merging main stops the combine with no lane merged. The combine instead ran tests/cli.py under Python 3.12 for both the baseline and the final gate (459 and 462 checks, none failing) and merged all four lanes. All four lanes again edited the same opening line of docs/module-api.md's unreleased section (F10 again); two of the merges conflicted on the appended lines and were resolved by keeping both sides.
+- Evidence: audit-loop 5da02190 (main merged), lane merges 9e6feed9, 63410b0e, faa54d4f, 69cf453e; handoff log, 27 Nov 2026, fix round 73 combine.
+- Proposed change: In C9, name the interpreter the local gate runs Python suites with: the version CI pins (check.yml), or the oldest supported one, never whatever `python3` resolves to. In A3.4's first step, say that a check failing at the baseline that also fails on the previous audit-loop head, and passes under CI's pinned toolchain, is recorded as an environment finding for the next audit rather than stopping the combine. Separately, the deep-JSON message itself is a umlimator bug under Python 3.14 and belongs in the next audit's input.
+
 ## Closed
 
 None.
