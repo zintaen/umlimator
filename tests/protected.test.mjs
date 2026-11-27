@@ -590,3 +590,70 @@ writeSync(1, pass()); process.exit(0);`,
   writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
   assert.deepEqual(await assertLoads(fine), []);
 });
+
+test('protect: a pass is read only from the protected test itself: a test of its title elsewhere (a subtest, in a describe, at the top level) does not stand for it when the file rewrites its own event frames (audit 74)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { readFileSync, realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { Serializer, DefaultDeserializer } from 'node:v8';\n";
+  // audit 74's repro: the file filters its own stdout, where node:test's child reporter writes its frames (0xff 0x0f, a
+  // 4-byte length, a v8-serialized event): the pass of the other test of the protected title is dropped, and the
+  // protected test's fail (whose error does not deserialize here, so it is found by its bytes) becomes a pass where it is called
+  const TRICK = String.raw`const file = realpathSync(fileURLToPath(import.meta.url)), self = readFileSync(file, 'utf8'), line = self.slice(0, self.lastIndexOf("test('f is one'")).split('\n').length;
+const frame = item => { const s = new Serializer(); s.writeHeader(); s.writeValue(item); const b = s.releaseBuffer(), m = Buffer.alloc(6 + b.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(b.length, 2); b.copy(m, 6); return m; };
+const write = process.stdout.write.bind(process.stdout);
+let buf = Buffer.alloc(0), at = null;
+process.stdout.write = (chunk, ...rest) => {
+  buf = Buffer.concat([buf, Buffer.from(chunk)]);
+  const out = [];
+  while (buf.length >= 6 && buf[0] === 0xff && buf[1] === 0x0f && buf.length >= 6 + buf.readUInt32BE(2)) {
+    const n = buf.readUInt32BE(2), raw = buf.subarray(0, 6 + n), body = buf.subarray(6, 6 + n); buf = buf.subarray(6 + n);
+    let it = null;
+    try { const d = new DefaultDeserializer(body); d.readHeader(); it = d.readValue(); } catch { if (at && body.includes('test:fail') && body.includes('f is one')) it = { type: 'test:fail', data: { ...at } }; }
+    if (!it) { out.push(raw); continue; }
+    const mine = it.data?.name === 'f is one' && it.data.line === line;
+    if (it.type === 'test:enqueue' && mine) at = { ...it.data };
+    if (it.type === 'test:pass' && it.data?.name === 'f is one' && !mine) continue;
+    if (it.type === 'test:fail' && mine) { it.type = 'test:pass'; it.data = { ...it.data, details: { duration_ms: 1, type: 'test' } }; }
+    out.push(frame(it));
+  }
+  if (buf.length && !(buf[0] === 0xff && buf[1] === 0x0f)) { out.push(buf); buf = Buffer.alloc(0); }
+  return out.length ? write(Buffer.concat(out), ...rest) : true;
+};
+process.on('exit', () => { process.exitCode = 0; });
+`;
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const decoys = [
+    // a subtest of the protected title, which the preload signed as passing (the repro)
+    "test('helper', async (t) => { await t.test('f is one', () => {}); });",
+    // one in a describe, its title built at run time so the scan does not count it
+    "describe('g', () => { test(['f is', 'one'].join(' '), () => {}); });",
+    // one at the top level, called on another line
+    "test(['f is', 'one'].join(' '), () => {});",
+    // one called where the protected test is called, by code run under the file's name, and an exit before the protected
+    // test runs (once the run has reported the other)
+    "globalThis.made = test; (await import('node:vm')).runInThisContext('\\n'.repeat(line - 1) + \"made('f is one', () => {});\", { filename: import.meta.url });\ntest('stop', () => new Promise(() => { setTimeout(() => process.exit(0), 300); }));",
+  ];
+  for (const decoy of decoys) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + TRICK + decoy + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, decoy);
+    assert.match(found[0], /^f is one: (fails|does not run|could not be checked)/, decoy);
+  }
+  // the same file with f() right, and the same decoys left honest: nothing to say
+  for (const decoy of decoys.slice(0, 3)) {
+    const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+    writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+    edit(fine, () => HEAD + decoy + '\n' + CORE);
+    assert.deepEqual(await assertLoads(fine), [], decoy);
+  }
+  // the titles around a test are read where they are literal, and a protected test in a describe and a test is read as it runs there
+  const NESTED = HEAD + "describe('d', () => {\n  test('t', async () => {\n    test('f is one', () => {\n      assert.equal(f(), 1);\n    });\n  });\n});\ndescribe(`${'e'}`, () => { test('g', () => { assert.ok(f()); }); });\n";
+  const { tests } = scan(NESTED);
+  assert.deepEqual([...tests.values()].map(x => x.path), ['d > t', 'd > t > f is one', null]);
+  for (const [right, found] of [[1, []], [2, ['f is one: fails: node --test of its file ran it and it did not pass']]]) {
+    const dir = repo(NESTED, ['f is one', 'g']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), `export const f = () => ${right};\n`);
+    assert.deepEqual((await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`), found);
+  }
+});

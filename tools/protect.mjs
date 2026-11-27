@@ -155,7 +155,7 @@ export function scan(src) {
   }
   // why the call whose name is at j would not run as a test, or null when it runs: node --test runs a test written as a
   // statement at the top level or in the callback of a describe, suite, test or it that is not skipped
-  const off = j => {
+  const off = (j, path = []) => { // path: the titles of the calls around it, outermost first (null where one is no literal)
     for (;;) {
       const why = rebound(sig[j].text);
       if (why) return why;
@@ -189,6 +189,7 @@ export function scan(src) {
       for (let k = c + 1; k < close(c); k++) if (options(k)) {
         if ((sig[k].text === 'skip' || sig[k].text === 'todo') && sig[k + 1]?.text !== '(' && !(sig[k + 1]?.text === ':' && ['false', 'undefined', 'null', '0', "''", '""'].includes(sig[k + 2]?.text))) return `inside ${sig[n].text}(..., { ${sig[k].text} })`;
       }
+      path.unshift(literal(sig[c + 1]));
       j = n;
     }
   };
@@ -204,7 +205,8 @@ export function scan(src) {
       const end = close(p);
       let key = title;
       for (let n = 2; tests.has(key); n++) key = `${title} #${n}`;
-      tests.set(key, { name: title, at: sig[p - 1].start, off: off(j), body: normalized(toks, t.k, sig[end].k), asserts: sig.slice(p, end).filter((x, i, a) => x.type === 'id' && x.text === 'assert' && a[i - 1]?.text !== '.').length, refs: refs(j, end) });
+      const path = [], why = off(j, path);
+      tests.set(key, { name: title, path: path.includes(null) ? null : [...path, title].join(' > '), at: sig[p - 1].start, off: why, body: normalized(toks, t.k, sig[end].k), asserts: sig.slice(p, end).filter((x, i, a) => x.type === 'id' && x.text === 'assert' && a[i - 1]?.text !== '.').length, refs: refs(j, end) });
       continue;
     }
     if (depthAt[j] !== 0) continue;
@@ -313,7 +315,9 @@ const asserting = (scanned, title) => {
 // could name and write a pass into (the TAP file audit 71 used was named on its command line, where process.execArgv read
 // it), and a line it prints that reads as TAP is only its output. The events still come from the file's own process, on its
 // stdout, where it can write node:test's frames itself (audit 73), so protect-run.mjs counts a pass only where the
-// preload signed one with a key the file cannot read, and a run that reports more is reported: [{ file, title, problem }].
+// preload signed one with a key the file cannot read, for the test itself: its title, full name and the line and column
+// of its call, as the preload saw them (audit 74: a passing subtest of its title stood for it), and a run whose signed
+// results are wrong is reported: [{ file, title, problem }].
 // A file whose run does not end in the time given is reported too, since what it would have changed was not seen. The
 // files run side by side, `jobs` at a time
 const TIMED = /\(timed\)/;
@@ -330,12 +334,13 @@ const v8At = (src, index) => {
 };
 // why a protected title did not pass in a run's results, or null. Results are keyed by the test's title and where its
 // test() is called (audit 72), so a title the scanner numbered ("doubles #2") is read only from its own call, and the
-// first of two tests of one title is not reported for the second's failure. A test node:test skipped as it ran (a skip
+// first of two tests of one title is not reported for the second's failure; a signed result also names the titles around
+// the test, which must be the ones the scan sees around the call where they are literal (audit 74). A test node:test skipped as it ran (a skip
 // option or t.skip(), as bpmn-xml's tests do where bpmn-moddle is not installed) is reported where `skips` is false, as in
 // CI (CI=true), where every protected test runs
 const ranWhy = (results, title, scanned, src, skips) => {
   if (TIMED.test(title)) return null; // not run here (see above)
-  const t = scanned.tests.get(title), seen = (t && results.get(`${t.name}\0${v8At(src, t.at)}`)) || [];
+  const t = scanned.tests.get(title), seen = ((t && results.get(`${t.name}\0${v8At(src, t.at)}`)) || []).filter(r => r.path === undefined || t.path === null || r.path === t.path).map(r => r.status);
   if (!seen.length) return 'does not run: node --test of its file did not run it (the file exits or stops before it?)';
   if (seen.includes('not ok')) return 'fails: node --test of its file ran it and it did not pass';
   return seen.every(r => r === 'skip') && !skips ? 'does not run: node --test of its file skipped it' : null;
@@ -350,7 +355,7 @@ export async function assertLoads(root, list = readList(root), { jobs = Math.max
     const path = join(root, file), src = readFileSync(path, 'utf8'), scanned = scan(src), key = randomBytes(32).toString('hex');
     const child = spawn(process.execPath, [join(here, 'protect-run.mjs'), path, watch, String(timeout)], { cwd: root, env, stdio: ['pipe', 'pipe', 'ignore'] });
     child.stdin.on('error', () => {}).end(key);
-    const results = new Map(); // `${title}\0${line}:${column}` -> ['ok' | 'not ok' | 'skip', ...]
+    const results = new Map(); // `${title}\0${line}:${column}` -> [{ status: 'ok' | 'not ok' | 'skip', path }, ...]
     let out = '', err = '', late = false, forged = null;
     const timer = setTimeout(() => { late = true; child.kill('SIGKILL'); }, timeout + 30000); // the runner's own stop failed
     child.stdout.setEncoding('utf8').on('data', d => { out += d; });
@@ -366,7 +371,7 @@ export async function assertLoads(root, list = readList(root), { jobs = Math.max
         else {
           const k = `${r.name}\0${r.line}:${r.column}`;
           if (!results.has(k)) results.set(k, []);
-          results.get(k).push(r.status);
+          results.get(k).push({ status: r.status, path: r.path });
         }
       }
       const said = err.split('\n').find(l => l.startsWith('protect: node:assert changed: '));

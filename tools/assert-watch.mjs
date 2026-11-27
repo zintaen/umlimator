@@ -16,9 +16,20 @@
 // each test adds a diagnostic to that test's report, { seq, name, status }, signed with the key: protect-run.mjs counts a
 // pass only where a signed one stands for it. The functions it signs and reports with are taken as it loads (the context's
 // getters as the first hook runs, before any of the file's hooks), so a file that replaces them later changes nothing here.
+//
+// What a signed diagnostic says is the test itself (audit 74), not only its title: a file that added a passing subtest of
+// a protected test's title got an 'ok' signed for that title, and rewrote its own frames so that the protected test's
+// fail read as a pass where it is called. So the diagnostic also holds the test's full name (its describes' and parent
+// tests' titles), and the file, line and column of the call that made it (test(), it(), t.test()), as this preload saw
+// them on the stack when node:test made the test (an async hook on each Test, node:test's async resource, as it is made):
+// { seq, name, path, file, line, column, script, scripts, status }, where script is V8's id of the script that made the
+// call and scripts how many scripts made tests under that file's name by then, so a call made from code evaluated under
+// the file's name (eval with a sourceURL, vm with a filename) is told apart from the file's own, also when it runs first.
 import { createHook } from 'node:async_hooks';
 import { readFileSync, unlinkSync, writeSync } from 'node:fs';
 import { hash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { getCallSites } from 'node:util';
 import { before, beforeEach, afterEach } from 'node:test';
 
 const MARK = 'protect: node:assert changed: ', write = writeSync, Is = Object.is;
@@ -67,15 +78,41 @@ const KEY = (() => {
   try { return readFileSync(at, 'utf8'); } catch { return null; } finally { try { unlinkSync(at); } catch {} }
 })();
 const apply = Reflect.apply, stringify = JSON.stringify, getOwn = Object.getOwnPropertyDescriptor, protoOf = Object.getPrototypeOf;
-let ctx = null, seq = 0; // TestContext's name and passed getters and its diagnostic(), as the first hook saw them
-const take = t => { if (!ctx) { const p = protoOf(t); ctx = { name: getOwn(p, 'name').get, passed: getOwn(p, 'passed').get, diagnostic: p.diagnostic }; } };
+const sites = getCallSites, toPath = fileURLToPath, SELF = import.meta.url, startsWith = String.prototype.startsWith;
+// where each test was made: node:test's Test is an async resource, so this hook sees each one as it is made, with the call
+// that made it on the stack; the first frame that is neither node's own nor this preload's is that call
+const made = [], at = new WeakMap(), wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set; // [Test, where], then by the Test's signal
+const scripts = { __proto__: null }; // file -> { n, ids }: how many scripts made tests under that name so far
+const made1 = (id, type, trigger, test) => {
+  if (KEY === null || type !== 'Test') return;
+  let where = null;
+  try {
+    const frames = sites(64);
+    for (let i = 0; i < frames.length; i++) {
+      const f = frames[i], s = f.scriptName;
+      if (typeof s !== 'string' || s === SELF || apply(startsWith, s, ['node:'])) continue;
+      where = { file: apply(startsWith, s, ['file:']) ? toPath(s) : s, line: f.lineNumber, column: f.column, script: String(f.scriptId) };
+      const seen = scripts[where.file] ??= { n: 0, ids: { __proto__: null } };
+      if (!seen.ids[where.script]) { seen.ids[where.script] = true; seen.n++; }
+      break;
+    }
+  } catch {}
+  made[made.length] = [test, where];
+};
+let ctx = null, seq = 0; // TestContext's getters and its diagnostic(), as the first hook saw them
+const take = t => { if (!ctx) { const p = protoOf(t); ctx = { name: getOwn(p, 'name').get, fullName: getOwn(p, 'fullName').get, passed: getOwn(p, 'passed').get, signal: getOwn(p, 'signal').get, diagnostic: p.diagnostic }; } };
 const sign = t => {
   if (KEY === null) return;
   take(t);
-  const name = apply(ctx.name, t, []), body = stringify({ __proto__: null, seq: seq++, name: typeof name === 'string' ? name : '', status: apply(ctx.passed, t, []) === true ? 'ok' : 'not ok' });
+  const name = apply(ctx.name, t, []), path = apply(ctx.fullName, t, []), signal = apply(ctx.signal, t, []);
+  for (let i = 0; i < made.length; i++) if (made[i][0].signal) apply(wmSet, at, [made[i][0].signal, made[i]]); // made by now
+  made.length = 0;
+  const found = (signal && apply(wmGet, at, [signal])) || null, test = found && found[0], where = found && found[1]; // the Test this context runs (each has its own signal)
+  const status = test?.skipped === true ? 'skip' : apply(ctx.passed, t, []) === true ? 'ok' : 'not ok';
+  const body = stringify({ __proto__: null, seq: seq++, name: typeof name === 'string' ? name : '', path: typeof path === 'string' ? path : '', file: where?.file ?? null, line: where?.line ?? null, column: where?.column ?? null, script: where?.script ?? null, scripts: where ? scripts[where.file].n : 0, status });
   apply(ctx.diagnostic, t, [`protect-ran ${hash('sha256', KEY + hash('sha256', KEY + body))} ${body}`]);
 };
-createHook({ before: look }).enable();
+createHook({ before: look, init: made1 }).enable();
 before(t => { take(t); });
 beforeEach(t => { take(t); look(); running = t.name; });
 afterEach(t => { sign(t); look(); last = t.name; running = null; });
