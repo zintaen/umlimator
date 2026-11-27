@@ -249,7 +249,9 @@ test('add (§4.3): a stereotype, a metaclass or an enumeration goes into the pro
 
 test('connect (§4.3): an extension from a stereotype to a metaclass, an application from a package to a profile, a generalization between stereotypes; any other is refused in the rule\'s words', () => {
   const c = (from, to, t) => T.edits.connect(PROFILE, V, from, to, null, { type: 'uml.' + t });
-  assert.equal(c('column', 'mc-class', 'Extension'), null); assert.equal(c('sales', 'conventions', 'ProfileApplication'), null);
+  assert.equal(c('column', 'mc-class', 'Extension'), null); assert.deepEqual(c('sales', 'conventions', 'ProfileApplication'), { error: 'sales applies BookshopConventions already' }); // audit 68
+  const bare = structuredClone(PROFILE); bare.edges = bare.edges.filter(e => e.id !== 'sales-applies-conventions');
+  assert.equal(T.edits.connect(bare, bare.views[0], 'sales', 'conventions', null, { type: 'uml.ProfileApplication' }), null, 'a package that does not apply it yet');
   assert.deepEqual(c('conventions', 'conventions', 'ProfileApplication'), { error: 'A profile application runs from a package to a profile other than itself' });
   const two = structuredClone(PROFILE); two.nodes.push(N('p2', 'Profile', 'Other'));
   assert.equal(T.edits.connect(two, V, 'p2', 'conventions', null, { type: 'uml.ProfileApplication' }), null, 'a profile is a package');
@@ -661,4 +663,20 @@ test('a class pinned out of its package\'s column keeps every box clear of the o
   const two = { schemaVersion: 2, root: 'v', nodes: ['Alpha', 'Beta', 'Gamma'].map(l => ({ id: l.toLowerCase(), type: 'uml.Class', label: l })), edges: [],
     views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['alpha', 'beta', 'gamma'], layout: { alpha: [1, 0], beta: [1, 0] } }] };
   assert.deepEqual(bad(two, 'v'), [], 'two pins on one cell');
+});
+
+test('audit 68: a second application of a profile a package applies already counts once, so its stereotypes stay resolved, and connect refuses it', () => {
+  const viewOf = m => m.views[0], lines = d => d.split('\n').filter(l => !/Profile application|a profile diagram of/.test(l)); // the second line itself is drawn and said
+  // resolution: a duplicate model line, or a model line and a view's own one, read as one application
+  const say = m => [layout(m, V.id).nodes.map(n => n.aria).join('\n'), lines(describe(m, V.id)), validate(m).filter(p => /stereotype|tag/.test(p.rule)).map(p => p.message)];
+  const want = say(PROFILE);
+  assert.match(want[0], /«aggregateRoot»/, 'the example draws stereotypes');
+  const dup = structuredClone(PROFILE); dup.edges.push(L('sales-applies-conventions-2', 'ProfileApplication', 'sales', 'conventions'));
+  const mixed = structuredClone(PROFILE); viewOf(mixed).edges = [...(viewOf(mixed).edges || []), L('own-app-2', 'ProfileApplication', 'sales', 'conventions')];
+  assert.deepEqual(say(dup), want, 'no stereotype is ambiguous with itself');
+  const [aria, , probs] = say(mixed); assert.deepEqual([aria, probs], [want[0], want[2]], 'a view\'s own line (which draws that view\'s lines alone) counts once too');
+  // connect: refused against a model line (the connect test above), and against a view's own line
+  const own = structuredClone(PROFILE); own.edges = own.edges.filter(e => e.id !== 'sales-applies-conventions');
+  viewOf(own).edges = [L('own-app', 'ProfileApplication', 'sales', 'conventions')];
+  assert.deepEqual(T.edits.connect(own, viewOf(own), 'sales', 'conventions', null, { type: 'uml.ProfileApplication' }), { error: 'sales applies BookshopConventions already' });
 });

@@ -62,6 +62,9 @@ function erRef(t, I, was) {
     if (q ? a === qa && b === qb : a !== '' && t.length === a.length + 1 + b.length && t.startsWith(a) && t[a.length] === '.' && t.endsWith(b)) hit.push(id); });
   return hit.length === 1 ? hit[0] : I.col.has(t) ? t : null;
 }
+const erQuoted = t => /^"((?:[^"\\]|\\.)*)"$/.exec(t);
+// a type printed bare when the row reads it back as it is: its words split as written, none a flag, no NOT NULL, not one quoted token
+const erBareType = d => { const t = erTokens(d); return !!t && t.length > 0 && t.join(' ') === d && !t.some(erFlag) && !t.some((x, i) => /^not$/i.test(x) && /^null$/i.test(t[i + 1] ?? '')) && !(t.length === 1 && erQuoted(t[0])); };
 // a row's name: its first word, or "in quotes" when it has a space, a quote or a bracket, \" and \\ inside (printColumn writes it so)
 function parseColumn(text, I, was) {
   const s = String(text ?? '').trim(), q = /^"((?:[^"\\]|\\.)*)"(?=\s|$)/.exec(s), t = erTokens(q ? s.slice(q[0].length) : s), fail = why => ({ error: `"${s}" is not a column: ${why}` });
@@ -70,7 +73,8 @@ function parseColumn(text, I, was) {
   const label = q ? q[1].replace(/\\(.)/g, '$1') : t.shift(), props = {}, type = [];
   const notNull = () => /^not$/i.test(t[0]) && /^null$/i.test(t[1] ?? ''); let not = false; // SQL's NOT NULL: not nullable, the default
   while (t.length && !erFlag(t[0]) && !notNull()) type.push(t.shift()); // a type of several words: "double precision", "timestamp with time zone"
-  if (type.length) props.dataType = type.join(' ');
+  // a type "in quotes", one token, \" and \\ inside: one a bare row would misread (a flag word, NOT NULL, a lone quote, an outer space), printColumn writes so (audit 68)
+  if (type.length) { const u = type.length === 1 && erQuoted(type[0]); props.dataType = u ? u[1].replace(/\\(.)/g, '$1') : type.join(' '); }
   while (t.length) { if (notNull()) { t.splice(0, 2); if (not || props.nullable) return fail('NULL is written twice'); not = true; continue; }
     const k = t.shift(), f = erFlag(k) && ER_FLAG[k.toLowerCase()];
     if (!f) return fail(`"${k}" is left over: write name type [PK] [FK table.column] [UK] [NULL]`);
@@ -82,7 +86,7 @@ function parseColumn(text, I, was) {
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
   const ref = r && !/\s/.test(pair) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
-  return [q(erName(c)), ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
+  return [q(erName(c)), ER_HAS(p.dataType) && (d => (erBareType(d) ? d : `"${d.replace(/["\\]/g, '\\$&')}"`))(String(p.dataType)), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
 }
 
 /* ---- the entity (§7.1): its name in a 24 px header, then its key columns, a divider, the rest; each row its marks (PK, FK,
