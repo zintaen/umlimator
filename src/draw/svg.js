@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { EDGE_BREAK, EDGE_LH, clauseFit, esc, firstSentence, fit, glyph, mdPlain, measureText, sansW, textW, unstop, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
-import { SHAPE, cardLook, drawnPts, markShape, r2, sidePorts, tabLine } from './shapes.js';
+import { SHAPE, cardLook, drawnPts, markShape, num, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
 import { WIRES, badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { KIND, SIGIL, hasKey } from '../map/kinds.js';
@@ -131,10 +131,13 @@ function svgOf(geo, opts = {}) {
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
   s += '</g>' + (tour ? `<g class="tour" aria-hidden="true"><circle r="5.5" class="tour-dot"><animateMotion path="${tour.d}" dur="${TOUR}s" repeatCount="indefinite"/></circle></g>` : '') + '<g class="nodes">';
-  nodes.forEach(n => {
+  // a card's box and name tag as numbers (num): layout gives them, and a string from the model never reaches an attribute (audit cf1)
+  const box = o => ({ ...o, x: num(o.x), y: num(o.y), w: num(o.w), h: num(o.h) });
+  nodes.forEach(n0 => {
+    const n = box(n0); if (n.tag && typeof n.tag === 'object') n.tag = box(n.tag); // a typed card's tag is its text
     if (!map && hasKey(SHAPE, n.shape) && SHAPE[n.shape].draw) { s += marked(n, SHAPE[n.shape].draw(n, col(n.k), fill(n.k))); return; } // a typed view's own shape: a class box (1.5), a note (1.9)
     const c = col(n.k), f = fill(n.k), removed = lc(n) === 'removed', planned = lc(n) === 'planned';
-    const L = looks.get(n) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
+    const L = looks.get(n0) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
     const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb';
     const dash = removed || ext || planned || (map && n.k === 'external'); // an external card is dashed (the legend says so)
     const rx = verb ? n.h / 2 : map ? 10 : 9;
@@ -192,7 +195,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
     if (map && n.step) { const t = String(n.step), sw = Math.max(20, sansW(t, 9.5, .9) + 10), sy = L ? Math.max(n.y, Math.min(ty, L.portL - 16)) : ty;
       parts.push(`<g class="step"><title>Step ${esc(t)}</title><rect x="${n.x - 10}" y="${sy - 10}" width="${sw}" height="20" rx="10" class="stp"/><text x="${n.x - 10 + sw / 2}" y="${sy + 3.5}" text-anchor="middle" class="stp-tx">${esc(t)}</text></g>`);
       said.push(`(step) ${t}`); }
-    if (n.tag) { // author name tag under the card: a bigger headshot + @handle (avatar inlined by render)
+    if (n.tag && typeof n.tag === 'object') { // author name tag under the card: a bigger headshot + @handle (avatar inlined by render)
       const T = n.tag, cxp = T.x + 11, cyp = T.y + 11, cid = 'av-' + id + '-' + String(n.id).replace(/[^\w-]/g, '_');
       const ini = T.img ? '' : [...String(n.author || '?').split(/[\s_-]+/).map(w => [...w][0]).join('')].slice(0, 2).join('').toUpperCase();
       parts.push(`<g class="ntag"><title>${esc(T.name ? 'by ' + T.name + ' (@' + n.author + ')' : n.author ? '@' + n.author : 'author unknown')}</title><rect x="${T.x}" y="${T.y}" width="${T.w}" height="${T.h}" rx="${T.h / 2}" class="ntag-bg"/>`
@@ -242,7 +245,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
   const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria + lnWord(e)
     : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${lnWord(e)}${wtWord(e) ? ', ' + wtWord(e) : ''}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
   s += '</g><g class="keys">' + (!map && Array.isArray(geo.order) ? geo.order.map(id => { const n = hasKey(geo.byId || {}, id) && geo.byId[id], i = edges.findIndex(e => e.id === id);
-    return n ? ring(` node-key" data-node="${esc(id)}`, String(n.aria || n.label || id) + chWord(n), `M${n.x} ${n.y}h${n.w}v${n.h}h${-n.w}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
+    return n ? ring(` node-key" data-node="${esc(id)}`, String(n.aria || n.label || id) + chWord(n), `M${num(n.x)} ${num(n.y)}h${num(n.w)}v${num(n.h)}h${-num(n.w)}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
   s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';
   edges.forEach((e, i) => {
     if (T) s += T.labels(i);

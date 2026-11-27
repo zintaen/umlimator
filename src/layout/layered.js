@@ -367,14 +367,17 @@ function layoutGraph(dg, map) {
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
   const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
+  const size = x => typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0; // a card's w or h that is no finite positive number is the default: a string went into the markup as it was (audit cf1)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
   const C = map ? 16 : 12, STUB = dg.mainSteps ? C : C + 6, SEP = 10; // maps: 16 px clear of other nodes
   const lim = (dg.nodes || []).length + 64, cl = v => Math.max(-lim, Math.min(lim, v)); // a pin far off the grid (1e6, 1e308) is held at its edge: the column and row loops walk every index between
   const nodes = (dg.nodes || []).map((n, i) => {
     const k = kindOf(n.kind, map);
-    const w = n.w || (map ? mapNodeW(n) : NW);
-    return { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: n.h || NH };
+    const w = size(n.w) || (map ? mapNodeW(n) : NW);
+    const o = { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: size(n.h) || NH };
+    if (map) delete o.tag; // a map card's name tag is layout's own (below), never the model's: its fields go into the markup as they are (audit cf1)
+    return o;
   });
   const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n]))); // a card named constructor is found only if drawn
   const cols = dg.abs ? [] : [...new Set(nodes.map(n => n.col))].sort((a, b) => a - b);
