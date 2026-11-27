@@ -109,8 +109,12 @@ const INTERACTION_RULES = {
 };
 function interactionProblems(model, view) {
   const w = interactionWalk(model, view), ms = w.occ.filter(o => o.message), byId = new Map(ms.map(m => [m.id, m])), replies = new Map(), out = [];
-  const nm = m => `${m.id}${m.el.label != null && m.el.label !== '' ? ` ("${m.el.label}")` : ''}`, touches = (m, t) => m.from === t || m.to === t;
+  const nm = m => `${m.id}${m.el.label != null && m.el.label !== '' ? ` ("${m.el.label}")` : ''}`;
   const say = (rule, m, at, ids, msg, level = 'error') => out.push({ level, rule, path: m.path + at, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
+  // each lifeline's messages in row order (ms is), a message's place among its receiver's, and its first create: create-once and
+  // delete-once look at the receiver's earlier or later messages alone, not every message (audit 68: linear in creates and deletes)
+  const along = new Map(), place = new Map(), firstMade = new Map(), put = (k, m) => { if (!along.has(k)) along.set(k, []); along.get(k).push(m); };
+  ms.forEach(m => { put(m.from, m); if (m.to !== m.from) put(m.to, m); place.set(m, along.get(m.to).length - 1); if (m.sort === 'create' && !firstMade.has(m.to)) firstMade.set(m.to, m); });
   ms.forEach(m => {
     const raw = IA_OBJ(m.el.props) ? m.el.props.sort : undefined, c = byId.get(m.replyTo);
     if (!SORTS.includes(raw)) say('sort', m, '.props.sort', [m.id], `${nm(m)} has ${raw === undefined ? 'no sort' : `sort ${jsonText(raw)}`}, not one of ${SORTS.join(', ')}: it is drawn as a call`, 'warning');
@@ -125,10 +129,10 @@ function interactionProblems(model, view) {
     // one alt's operands exclude each other, as for reply-once, and a break what follows it; but the head is drawn at the first create, so nothing reaches
     // the lifeline before that, in any operand (audit 10)
     if ((m.sort === 'create' || m.sort === 'delete') && m.to != null && m.from === m.to) say(m.sort + '-once', m, '', [m.id, m.to], `${nm(m)} ${m.sort}s ${m.to}, its own sender: a lifeline does not ${m.sort} itself`);
-    else if (m.sort === 'create' && m.to != null) { const head = !ms.some(o => o.r < m.r && o.sort === 'create' && o.to === m.to);
-      const e = ms.find(o => o.r < m.r && touches(o, m.to) && (head || !apart(w, o.parent, m.parent)));
+    else if (m.sort === 'create' && m.to != null) { const head = firstMade.get(m.to) === m, L = along.get(m.to), p = place.get(m);
+      let e; for (let k = 0; k < p && !e; k++) if (head || !apart(w, L[k].parent, m.parent)) e = L[k];
       if (e) say('create-once', m, '', [m.id, m.to, e.id], e.sort === 'create' && e.to === m.to ? `${m.to} is created twice, by ${nm(e)} and ${nm(m)}` : `${nm(m)} creates ${m.to}, but ${nm(e)} reaches it first`); }
-    else if (m.sort === 'delete' && m.to != null) { const e = ms.find(o => o.r > m.r && touches(o, m.to) && !apart(w, m.parent, o.parent));
+    else if (m.sort === 'delete' && m.to != null) { const L = along.get(m.to); let e; for (let k = place.get(m) + 1; k < L.length && !e; k++) if (!apart(w, m.parent, L[k].parent)) e = L[k];
       if (e) say('delete-once', m, '', [m.id, m.to, e.id], e.sort === 'delete' && e.to === m.to ? `${m.to} is deleted twice, by ${nm(m)} and ${nm(e)}` : `${nm(m)} deletes ${m.to}, but ${nm(e)} reaches it later`); }
   });
   return out;
