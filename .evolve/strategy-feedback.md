@@ -195,6 +195,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop 5da02190 (main merged), lane merges 9e6feed9, 63410b0e, faa54d4f, 69cf453e; handoff log, 27 Nov 2026, fix round 73 combine.
 - Proposed change: In C9, name the interpreter the local gate runs Python suites with: the version CI pins (check.yml), or the oldest supported one, never whatever `python3` resolves to. In A3.4's first step, say that a check failing at the baseline that also fails on the previous audit-loop head, and passes under CI's pinned toolchain, is recorded as an environment finding for the next audit rather than stopping the combine. Separately, the deep-JSON message itself is a umlimator bug under Python 3.14 and belongs in the next audit's input.
 
+### F20. A lane ended with its fixes uncommitted and unpushed, and lanes sharing one scratchpad overwrote each other's base copies
+
+- Date: 2026-11-28
+- Round: fix round 74 (combine)
+- Rule: C4 step 4, A3.3 (lane finish), A3.4 (combine), C9 (and F10 and F19 again)
+- What happened: fix74-python (audit 74 findings 4 and 6) returned with its changes uncommitted in its worktree and no branch on origin, because its suites were still running in a background chain when the lane's run ended; its note lists the steps "a resumed run should" take. The combine merges only pushed lanes, so both findings go back unfixed to the next audit, and the strategy says nothing about resuming such a lane or who does it. The fix74-layout and fix74-comm lanes each report that another lane's files replaced theirs in the shared session scratchpad (a base copy of lib/ and sweep scripts), and fix74-layout redid its comparisons. Three lanes again edited the opening line of docs/module-api.md's unreleased section to say "audits 63 to 74" (F10 again; two merges conflicted and were resolved by keeping both sides). `python3` is 3.14 and again failed the audit 20 deep-JSON check in tests/cli.py at the baseline; the gate ran tests/cli.py under Python 3.12, CI's pin, for the baseline and the final gate (F19 again).
+- Evidence: lane heads c9a7778b, a42a96f9, 12f217a2, 0fc8a1ce; audit-loop merges cbb2cc4d and 1060a6b6 (changelog conflicts); no origin/fix74-python; handoff log, 28 Nov 2026, fix round 74 combine.
+- Proposed change: In A3.3, a lane does not return while a suite it started is still running: it waits for it, or commits and pushes what passed with the unrun suites named, so the combine can decide. Name an owner for an unpushed lane (the orchestrator resumes it before the combine, or the combine reports it and the next round's lanes take the findings first). In C9, each lane uses its own subfolder of the scratchpad named after its branch and never writes outside it.
+
 ## Closed
 
 None.
