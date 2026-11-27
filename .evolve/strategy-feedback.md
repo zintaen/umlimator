@@ -114,6 +114,24 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop merge 15541b84 (fix66-types) and revert aeb9a846; handoff log, 27 Nov 2026, fix round 66 combine.
 - Proposed change: In A3.4, "keep both sides" applies only to hunks where each side adds lines and neither changes or removes a line both sides share. A conflict where both sides edit the same existing line of an append-only file is treated as a code conflict: the later lane is returned as not merged, reason `conflict`, and the conflict-retry lane of the next round merges it.
 
+### F11. The kill-switch check ran from a stale checkout, crashed, and its crash exits with the same code as "stop"
+
+- Date: 2026-11-27
+- Round: fix round 67 (combine)
+- Rule: C3 step 3, A7.4 (kill switch), the combine task's step 0
+- What happened: The combine task runs `node tools/evolve/killswitch.mjs --ref origin/main` in the main checkout after `git fetch`. That checkout's working tree sat at an old commit of main (6b285001) that has no `tools/evolve/killswitch.mjs`, so node stopped with MODULE_NOT_FOUND and exit code 1. Exit 1 is also the script's "the kill switch exists" answer, so read literally the round had to stop although origin/main (4230e050) has no `.evolve/STOP`. The combine ran the same script from the integration worktree instead, which answered "no .evolve/STOP" with exit 0.
+- Evidence: origin/main 4230e050; handoff log, 27 Nov 2026, fix round 67 combine.
+- Proposed change: In C3 step 3, check the kill switch without depending on any working tree: `git fetch` then `git cat-file -e <main ref>:.evolve/STOP` (present means stop), or run the checker from the integration worktree. Give the checker a distinct exit code for its own failure (for example 3) and say in C3 step 3 that a checker failure is reported and retried from a fresh checkout, never read as "stop" or "go".
+
+### F12. F9 again: two lanes broke checks outside their own suites, and both were reverted at combine
+
+- Date: 2026-11-27
+- Round: fix round 67 (combine)
+- Rule: A3.3, A3.4, A8.6 (same as F9, and F7 for the revert)
+- What happened: fix67-stories registered flow roles for `uml.interaction-overview`, and `tests/flow-defaults.test.mjs` (which checks that `umlimator.py`'s FLOW_TYPES lists every type with flowRole or zoneOf) failed at combine; the lane had run nine suites but not that one. fix67-mcp turned NaN and Infinity tool arguments into a -32700 parse error, and the existing audit 37 check in `tests/cli.py`, which expects those arguments to reach the tool and be refused there, failed; the lane ran `tests/mcp.py` only. Both lanes' own tests did fail without their fixes. The combine reverted both, five findings in all (2, 3, 4, 7, 8). fix67-stories had fast-forwarded the integration branch, so its revert was a plain revert, as F7 describes.
+- Evidence: audit-loop reverts 77f6cf09 (fix67-mcp merge 8ad70d46) and 58f84ab8 (fix67-stories commit 25889400); handoff log, 27 Nov 2026, fix round 67 combine.
+- Proposed change: As F9 proposes, and in addition: a lane that changes what a type registers (a type's flowRole, zoneOf or similar entry) or what an entry point accepts runs every suite that greps for that name or calls that entry point, and the lane template lists how to find them (for the MCP server, `tests/cli.py`'s mcp part as well as `tests/mcp.py`).
+
 ## Closed
 
 None.
