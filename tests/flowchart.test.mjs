@@ -467,3 +467,29 @@ test('zoneOf: the start terminal first, an end terminal last, a data or document
   const g = layout(m, 'v'), at = id => g.byId[id];
   assert.ok(['db', 'doc'].every(d => at(d).row > at('p').row), 'laid out down, the stores in the band beside the flow');
 });
+
+// audit 70: a long chain was cubic in its steps: the repair passes asked routeAudit about one line at a time, and each ask still
+// walked every pair of lines (1,000 steps 8 s, 14 s arranged flow). Timed by growth against a quarter, the quarter's best of two
+const fcView = (nodes, edges, more) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'flowchart', nodeIds: nodes.map(n => n.id), ...more }] });
+const fcGrowth = (make, n) => { const time = m => { const t = performance.now(), g = layout(m, 'v'); return [performance.now() - t, g]; };
+  const q = Math.min(time(make(n / 4))[0], time(make(n / 4))[0]), [ms, g] = time(make(n)); return [ms, q, g]; };
+test('a long flowchart chain, plain and arranged flow, lays out in near-quadratic time (audit 70) (timed)', () => {
+  const chain = (n, more) => { const nodes = [{ id: 's', type: 'flow.Terminator', label: 'Start' }], edges = [];
+    for (let i = 0; i < n; i++) { nodes.push({ id: 'p' + i, type: 'flow.Process', label: 'Step ' + i }); edges.push({ id: 'f' + i, type: 'flow.Flow', from: i ? 'p' + (i - 1) : 's', to: 'p' + i }); }
+    nodes.push({ id: 'e', type: 'flow.Terminator', label: 'End' }); edges.push({ id: 'fe', type: 'flow.Flow', from: 'p' + (n - 1), to: 'e' }); return fcView(nodes, edges, more); };
+  for (const [name, more] of [['plain', {}], ['arranged flow', { arrange: 'flow' }]]) { // cubic was about 43x a quarter, here about 13x
+    const [ms, q, g] = fcGrowth(n => chain(n, more), 1000);
+    assert.ok(ms < 300 || ms / Math.max(q, 1) < 25, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+    assert.ok(g.edges.length === 1001 && g.edges.every(e => e.pts && e.pts.length >= 2), `${name}: every line drawn`);
+  }
+});
+
+// audit 70: a decision's labelled exits were cubic in their number: each spot of each label tested every card, label and line,
+// and a label near another tried each of that one's spots (400 exits 52 s)
+test('a decision with many labelled exits lays out in near-quadratic time, every exit labelled (audit 70) (timed)', () => {
+  const fan = n => { const nodes = [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'd', type: 'flow.Decision', label: 'Which?' }], edges = [{ id: 'f0', type: 'flow.Flow', from: 's', to: 'd' }];
+    for (let i = 0; i < n; i++) { nodes.push({ id: 'c' + i, type: 'flow.Connector', label: 'C' + i }); edges.push({ id: 'x' + i, type: 'flow.Flow', from: 'd', to: 'c' + i, label: 'k' + i }); } return fcView(nodes, edges); };
+  const [ms, q, g] = fcGrowth(fan, 200); // cubic was about 22x a quarter, here about 11x
+  assert.ok(ms < 300 || ms / Math.max(q, 1) < 16, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  assert.ok(g.edges.filter(e => e.label).every(e => e.lbl && e.pts.length >= 2), 'every exit drawn and labelled');
+});
