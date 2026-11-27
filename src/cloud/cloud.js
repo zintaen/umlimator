@@ -304,6 +304,8 @@ function clDef(pack, F) {
     lines: [{ type: F.line[0], label: F.line[1] }],
     // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
     drawsOnly: [F.line[0]],
+    // a line's label names what goes along it ("paid order", "/api"), never a verb: a story says "A to B (paid order)" (audit 69)
+    storyNouns: true,
     props: { [F.group]: [kindField], ...Object.fromEntries(Object.keys(F.items).map(t => [t, [iconField]])), ...(F.user ? { [F.user]: [] } : {}), [F.line[0]]: [] },
     layout: clGeo(F),
     flowRole: (e, model, view) => clFlowRole(F, e, model, view),

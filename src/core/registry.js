@@ -22,6 +22,8 @@ function registerDiagramType(name, def = {}) {
    a model node never has a parent other views lack */
 const R_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), R_ARR = x => (Array.isArray(x) ? x : []);
 function ownMerge(model, views) {
+  // no view with own nodes: the model as it is, read in no time, as a type's hook asks it once a line (audit 69)
+  if (!views.some(v => R_ARR(R_OBJ(v) ? v.nodes : null).length)) return { model, at: [], k: R_ARR(R_OBJ(model) ? model.nodes : null).length };
   const base = R_ARR(R_OBJ(model) ? model.nodes : null), ids = new Set(base.filter(R_OBJ).map(n => n.id)), add = [], at = [], all = R_ARR(R_OBJ(model) ? model.views : null);
   views.forEach(v => { const vi = all.indexOf(v); R_ARR(R_OBJ(v) ? v.nodes : null).forEach((n, j) => { if (R_OBJ(n) && typeof n.id === 'string' && !ids.has(n.id)) { ids.add(n.id); add.push(n); at.push([vi, j]); } }); });
   return { model: add.length ? { ...model, nodes: [...base, ...add] } : model, at, k: base.length };
@@ -144,7 +146,9 @@ function withOwnNodes(def) {
    field and the view does not say zones: false. rankFlip(line, model, view): the model and view are passed too. Audit 68's:
    storyOn(model, view) -> { starts, ends, carry }, the cards a story from the main flow is told from and to (storyFromFlow
    carries the main flow back to a start and on to an end along the view's flow lines) and links it may walk that no line
-   draws ([from, to]: a flowchart's on-page connector pair). */
+   draws ([from, to], or { from, to }: each card of from to each of to but itself, a flowchart's on-page connectors of one
+   label, audit 69). Audit 69's: storyNouns true, a type whose line labels name what goes along a line, never a verb (the cloud
+   family's): a story from the main flow says "A to B (label)" for each. */
 
 /* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
    first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26

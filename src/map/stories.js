@@ -22,6 +22,7 @@ const storyPlain = s => { const t = String(s).replace(/\[([^\]]*)\]\([^)]*\)/g, 
   const m = /^(.+?[.!?])(\s|$)/.exec(t); return (m ? m[1] : t).replace(/[.!?]+$/, ''); };
 const storyA = w => (/^(?!u[sm]|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "an er view", "a uml.class view" (audit 67)
 const storyUpper = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const storyPut = (m, k, x) => { const l = m.get(k); if (l) l.push(x); else m.set(k, [x]); }; // an index of lists by key
 
 /* the view as a story reads it: its lines as drawn, which of them are dependencies and which close a loop, its cards'
    names and what a line says (storyFromFlow and storyFromDiff) */
@@ -49,19 +50,22 @@ function storyView(model, viewId) {
   // else a typed view's type as the layout reads it (its flowRole: a DFD flow to or from a store, a comment link), else a
   // map line's kind as drawn (state, guard)
   const bpmn = !!T && /^bpmn/.test(String(v.diagram)), TF = T ? ctx.storyFlow(viewId) : null;
-  const dep = e => STORY_ROLES.includes(e.flow) ? e.flow === 'dep' : bpmn ? !STORY_SEQ_FLOW.test(String(e.type || '')) : TF ? TF.dep(e) : !T && ['state', 'guard'].includes(e.drawn.wk);
-  const cards = [...arrOf(v.nodeIds), ...Object.keys(byId)].filter((id, i, a) => byId[id] && a.indexOf(id) === i);
-  // the lines that close a loop: marked loop, else found depth-first from the cards no line comes into (as the layout reads them)
-  const back = new Set(), st = new Map(); lines.forEach((e, k) => { if (e.loop) back.add(k); });
-  const dfs = u => { const fr = [[u, 0]]; st.set(u, 1);
-    while (fr.length) { const f = fr[fr.length - 1]; if (f[1] === lines.length) { fr.pop(); st.set(f[0], 2); continue; }
-      const k = f[1]++, e = lines[k]; if (e.from !== f[0] || e.from === e.to || e.loop || dep(e)) continue; if (st.get(e.to) === 1) back.add(k); else if (!st.get(e.to)) { st.set(e.to, 1); fr.push([e.to, 0]); } } };
-  [...cards.filter(c => !lines.some(e => e.to === c && e.from !== c && !e.loop && !dep(e))), ...cards].forEach(c => { if (!st.get(c)) dfs(c); });
+  // read once a line: a typed view's rule asks its type, so a story asks it once, not once a card (audit 69)
+  const depOnce = new WeakMap(), dep = e => { if (!depOnce.has(e)) depOnce.set(e, STORY_ROLES.includes(e.flow) ? e.flow === 'dep' : bpmn ? !STORY_SEQ_FLOW.test(String(e.type || '')) : TF ? TF.dep(e) : !T && ['state', 'guard'].includes(e.drawn.wk)); return depOnce.get(e); };
+  const cards = [...new Set([...arrOf(v.nodeIds), ...Object.keys(byId)])].filter(id => byId[id]);
+  // the lines that close a loop: marked loop, else found depth-first from the cards no line comes into (as the layout reads them),
+  // each card's lines out read from an index, never a scan of every line (audit 69)
+  const back = new Set(), st = new Map(), outK = new Map(), into = new Set(); lines.forEach((e, k) => { if (e.loop) back.add(k); storyPut(outK, e.from, k); if (e.from !== e.to && !e.loop && !dep(e)) into.add(e.to); });
+  const dfs = u => { const fr = [[u, outK.get(u) || [], 0]]; st.set(u, 1);
+    while (fr.length) { const f = fr[fr.length - 1]; if (f[2] === f[1].length) { fr.pop(); st.set(f[0], 2); continue; }
+      const k = f[1][f[2]++], e = lines[k]; if (e.from === e.to || e.loop || dep(e)) continue; if (st.get(e.to) === 1) back.add(k); else if (!st.get(e.to)) { st.set(e.to, 1); fr.push([e.to, outK.get(e.to) || [], 0]); } } };
+  [...cards.filter(c => !into.has(c)), ...cards].forEach(c => { if (!st.get(c)) dfs(c); });
   const idOf = e => e.id != null ? String(e.id) : e._id;
   // a line's words: a map line's or a relationship's label is a verb ("charges"); a flow's, a path's or a data flow's names
-  // what goes along it or when ("yes", "HTTPS", "priced order"), as does a label that starts with a capitalised short word
+  // what goes along it or when ("yes", "HTTPS", "priced order"), as does any line's of a type that says so (storyNouns: the
+  // cloud family's, audit 69) and a label that starts with a capitalised short word
   const words = e => e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : null;
-  const verbal = e => { const w = words(e); return !!w && !/^[A-Z0-9]{2,}\b/.test(w) && !(T && /(Flow|Path|Transition|Message)$/.test(String(e.type || ''))); };
+  const verbal = e => { const w = words(e); return !!w && !/^[A-Z0-9]{2,}\b/.test(w) && !(T && (T.storyNouns === true || /(Flow|Path|Transition|Message)$/.test(String(e.type || '')))); };
   const verb = w => /^[A-Z][a-z]/.test(w) ? w[0].toLowerCase() + w.slice(1) : w;
   const lineSays = e => { if (e.what != null && String(e.what).trim()) return storyPlain(e.what);
     const w = words(e); if (!w) return `${name(e.from)} leads to ${name(e.to)}`;
@@ -78,11 +82,13 @@ export function storyFromFlow(model, viewId, options = {}) {
   const title = typeof options.title === 'string' && options.title.trim() ? options.title : `${String(labelOr(v.title, viewId))}: the main flow`;
   const audience = typeof options.audience === 'string' && options.audience.trim() ? options.audience.trim() : null, brief = !!audience && /^business$/i.test(audience);
   const caption = (n, head, body, deps) => { let s = `${n}. ${head}: ${body}`; if (deps.length) s += '; ' + deps.join(', '); return /[.!?]$/.test(s) ? s : s + '.'; };
-  const depsOf = c => brief ? [] : lines.filter(e => dep(e) && e.from !== e.to && (e.from === c || e.to === c)).map(e => { const w = words(e), o = e.from === c ? e.to : e.from, x = name(o);
+  // a card's dependency lines, from an index read once (after the main flow is carried), never a scan of every line a card (audit 69)
+  let depBy = null; const depLines = c => { if (!depBy) { depBy = new Map(); lines.forEach(e => { if (dep(e) && e.from !== e.to) { storyPut(depBy, e.from, e); storyPut(depBy, e.to, e); } }); } return depBy.get(c) || []; };
+  const depsOf = c => brief ? [] : [...new Set(depLines(c).map(e => { const w = words(e), o = e.from === c ? e.to : e.from, x = name(o);
     // a note (a comment, a text annotation) is no store a step reads: its words, said as a note (audit 68)
     if (/^(uml\.Comment|bpmn\.TextAnnotation)$/.test(String((ctx.nodeIn(o, viewId) || {}).type || ''))) return `note: ${storyPlain(x)}`;
     if (verbal(e)) return e.from === c ? `${verb(w)} ${x}` : `${verb(w)} from ${x}`;
-    return e.from === c ? `${w ? w + ' to' : 'uses'} ${x}` : `${w ? w + ' from' : 'takes from'} ${x}`; }).filter((x, i, a) => a.indexOf(x) === i);
+    return e.from === c ? `${w ? w + ' to' : 'uses'} ${x}` : `${w ? w + ' from' : 'takes from'} ${x}`; }))];
   // one step: card c, reached by line e from card p (none for the first)
   const stepOf = (n, c, e, p) => { const s = { view: viewId };
     if (mine.has(c)) s.select = c;
@@ -98,8 +104,10 @@ export function storyFromFlow(model, viewId, options = {}) {
   let on = null; if (T && typeof T.storyOn === 'function') try { on = T.storyOn(model, v); } catch { on = null; }
   // a sequence view: its messages in the order the view lists them
   if (T && /sequence$/.test(String(v.diagram))) {
+    // a message's place: the first of the view's edges that is it or names it, from a map read once (audit 69)
+    const pos = new Map(); arrOf(v.edges).forEach((x, k) => { if (x) (typeof x === 'object' ? [x.id] : [x, undefined]).forEach(i => { if (!pos.has(i)) pos.set(i, k); }); });
     const msgs = lines.filter(e => e.from != null).sort((a, b) => order(a) - order(b));
-    function order(e) { const k = arrOf(v.edges).findIndex(x => x && (x === e.id || x.id === e.id)); return k < 0 ? 1e9 : k; }
+    function order(e) { return pos.has(e.id) ? pos.get(e.id) : 1e9; }
     msgs.forEach((e, k) => { const s = { view: viewId, select: idOf(e), highlight: [idOf(e)] };
       if (e.from !== e.to && mine.has(e.from) && mine.has(e.to) && joined(e.from, e.to)) s.tour = [e.from, e.to];
       const head = e.label != null && String(e.label).trim() ? String(e.label).replace(/\s+/g, ' ').trim() : 'Message';
@@ -112,7 +120,8 @@ export function storyFromFlow(model, viewId, options = {}) {
   // view lists them; a step selects the message, lights it and the cards it joins, and rides the connector that carries it
   if (T && /communication$/.test(String(v.diagram))) {
     const listed = arrOf(v.edges).map(x => x && typeof x === 'object' ? x.id : x), rows = Object.values(byId).filter(n => n && n.shape === 'message-row' && n.id != null);
-    const at = n => { const k = listed.indexOf(n.id); return k < 0 ? 1e9 : k; }, says = { call: 'calls', async: 'signals', reply: 'replies to', create: 'creates', delete: 'deletes' };
+    const first = new Map(); listed.forEach((x, k) => { if (!first.has(x)) first.set(x, k); });
+    const at = n => first.has(n.id) ? first.get(n.id) : 1e9, says = { call: 'calls', async: 'signals', reply: 'replies to', create: 'creates', delete: 'deletes' };
     rows.sort((a, b) => at(a) - at(b)).forEach(r => { const e = modelLine.get(r.id) || {}, f = e.from, t = e.to, self = f === t;
       const s = { view: viewId, select: r.id, highlight: [r.id, ...[f, t].filter((x, i, a) => mine.has(x) && a.indexOf(x) === i)] };
       if (!self && mine.has(f) && mine.has(t) && joined(f, t)) s.tour = [f, t];
@@ -128,35 +137,46 @@ export function storyFromFlow(model, viewId, options = {}) {
     // its lines the drawn line that stands for it; BPMN's is its type's main path (bzMain: the start event whose path is
     // longest, a collaboration's main process, not the first-listed pool's; audit 67). A type with no flowRole (a use case,
     // a class view) reads none
-    const M = TF.main, ks = [];
-    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1];
-      const k = lines.findIndex(e => e.from === a && e.to === b && lid != null && idOf(e) === String(lid)), j = k >= 0 ? k : lines.findIndex(e => e.from === a && e.to === b && !dep(e));
-      ks.push(j); });
+    const M = TF.main, ks = [], outs = new Map(); lines.forEach((e, k) => storyPut(outs, e.from, k)); // each card's lines out, read once (audit 69)
+    if (M && M.cards.length) M.lineIds.forEach((lid, i) => { const a = M.cards[i], b = M.cards[i + 1], ab = (outs.get(a) || []).filter(k => lines[k].to === b);
+      const k = ab.find(k => lid != null && idOf(lines[k]) === String(lid)), j = k !== undefined ? k : ab.find(k => !dep(lines[k]));
+      ks.push(j !== undefined ? j : -1); });
     if (M && M.cards.length && ks.every(k => k >= 0)) main = { cards: M.cards, lines: ks };
   }
   if (!main && bpmn) { // no main path its type reads: the path from the start event, each node's default flow out (props.default) else its first, never coming back
     const node = id => ctx.N[id] || {}, start = [...(TF && TF.main ? TF.main.cards.slice(0, 1) : []), ...cards].find(c => STORY_START.test(String(node(c).type || ''))); // bzMain's start, not the first-listed pool's (audit 68)
     const dflt = id => { const p = node(id).props; return p && typeof p === 'object' && typeof p.default === 'string' ? p.default : null; };
-    if (start != null) { const flows = lines.map((e, k) => [e, k]).filter(([e, k]) => !back.has(k) && !dep(e) && e.from !== e.to && STORY_SEQ_FLOW.test(String(e.type || '')));
+    if (start != null) { const flows = new Map(); lines.forEach((e, k) => { if (!back.has(k) && !dep(e) && e.from !== e.to && STORY_SEQ_FLOW.test(String(e.type || ''))) storyPut(flows, e.from, [e, k]); });
       const seen = new Set([start]), ks = []; let at = start;
-      for (;;) { const d = dflt(at), out = flows.filter(([e]) => e.from === at && !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
+      for (;;) { const d = dflt(at), out = (flows.get(at) || []).filter(([e]) => !seen.has(e.to)), nx = (d != null && out.find(([e]) => idOf(e) === d)) || out[0]; if (!nx) break; ks.push(nx[1]); seen.add(nx[0].to); at = nx[0].to; }
       if (ks.length) main = { cards: [start, ...ks.map(k => lines[k].to)], lines: ks }; }
   } else if (!main && !T) { // mainFlow over the drawn lines, as the layout reads the view's lines (layered.js)
     main = mainFlow(lines, { back, dep, cards, run: v.render === 'sequence' });
   }
   // a type's own story reading (storyOn: a flowchart's): the main flow carried back to a start and on to an end along the
   // view's flow lines, across the links it names that no line draws (an on-page connector pair) (audit 68)
+  // its links by the card they leave, each a list of cards: a [from, to] pair, or a group { from, to } (each card of from to
+  // each of to but itself: a flowchart's connectors of one label), read as one list, never one line a pair (audit 69)
+  const links = new Map(), drawnOut = new Map(), made = new Map(); if (on) arrOf(on.carry).forEach(l => {
+    if (Array.isArray(l)) { if (at(l[0]) && at(l[1]) && l[0] !== l[1]) storyPut(links, l[0], [l[1]]); }
+    else if (l && typeof l === 'object') { const to = arrOf(l.to).filter(x => at(x)); if (to.length) arrOf(l.from).forEach(a => { if (at(a)) storyPut(links, a, to); }); } });
+  // the flow lines as drawn by the card they leave, closing no loop; a link a line once the story takes it (made)
+  lines.forEach((e, k) => { if (!back.has(k) && !dep(e) && e.from !== e.to) storyPut(drawnOut, e.from, k); });
+  const linkLine = (a, b) => { let m = made.get(a); if (!m) made.set(a, m = new Map()); if (!m.has(b)) { m.set(b, lines.length); lines.push({ from: a, to: b, carry: true }); } return m.get(b); };
   if (on && main && main.cards.length) main = carried(main, on);
   if (!main || !main.cards.length) throw new Error(`umlimator: view ${jsonText(viewId)} has no main flow: ${T && !TF && !bpmn ? `${storyA(String(v.diagram))} view reads none` : 'no flow line joins two of its cards'}`);
   const onMain = new Set(main.cards), mainKs = new Set(main.lines);
   // the main flow with the shortest way from a start to its first card before it, and from its last card to an end after it,
   // each along flow lines (and links) that close no loop, never through a main card
+  // breadth first over the index of lines and links, each link list read once a search (a card it reaches the first time is
+  // reached, from any card of the list): linear in the lines and links (audit 69)
   function carried(M, o) {
-    arrOf(o.carry).forEach(l => { if (Array.isArray(l) && at(l[0]) && at(l[1]) && l[0] !== l[1]) lines.push({ from: l[0], to: l[1], carry: true }); });
-    const walk = lines.map((e, k) => [e, k]).filter(([e, k]) => !back.has(k) && !dep(e) && e.from !== e.to), mc = new Set(M.cards);
-    const way = (from, goal) => { const prev = new Map([[from, null]]), q = [from];
-      while (q.length) { const c = q.shift(); if (c !== from && goal(c)) { const ks = []; for (let x = c; prev.get(x) != null; x = lines[prev.get(x)].from) ks.unshift(prev.get(x)); return ks; }
-        walk.forEach(([e, k]) => { if (e.from === c && !prev.has(e.to) && (!mc.has(e.to) || goal(e.to))) { prev.set(e.to, k); q.push(e.to); } }); }
+    const mc = new Set(M.cards);
+    const way = (from, goal) => { const prev = new Map([[from, null]]), q = [from], read = new Set(), ok = x => !prev.has(x) && (!mc.has(x) || goal(x));
+      for (let h = 0; h < q.length; h++) { const c = q[h];
+        if (c !== from && goal(c)) { const ks = []; for (let x = c; prev.get(x) != null;) { const p = prev.get(x), k = typeof p === 'number' ? p : linkLine(p.from, x); ks.unshift(k); x = lines[k].from; } return ks; }
+        (drawnOut.get(c) || []).forEach(k => { const x = lines[k].to; if (ok(x)) { prev.set(x, k); q.push(x); } });
+        (links.get(c) || []).forEach(l => { if (read.has(l)) return; read.add(l); l.forEach(x => { if (x !== c && ok(x)) { prev.set(x, { from: c }); q.push(x); } }); }); }
       return null; };
     const first = M.cards[0], last = M.cards[M.cards.length - 1], starts = arrOf(o.starts), ends = new Set(arrOf(o.ends));
     let head = null; if (!starts.includes(first)) for (const s of starts) { if (mc.has(s)) continue; const ks = way(s, c => c === first); if (ks) { head = [s, ks]; break; } }
@@ -167,11 +187,15 @@ export function storyFromFlow(model, viewId, options = {}) {
   main.cards.forEach((c, i) => { const e = i ? lines[main.lines[i - 1]] : null; out.steps.push(stepOf(i + 1, c, e, i ? main.cards[i - 1] : null)); });
   // branches: from each main card, each flow line off the main flow to a card off it, followed while it stays off it
   if (options.chapters !== false) {
-    const flowOut = (c, seen) => lines.map((e, k) => [e, k]).filter(([e, k]) => e.from === c && !mainKs.has(k) && !back.has(k) && !dep(e) && e.from !== e.to && !seen.has(e.to));
+    // a card's flow lines out, then its links, off the main flow (first: the first of them only); from the indexes (audit 69)
+    const flowOut = (c, seen, first) => { const r = [];
+      for (const k of drawnOut.get(c) || []) if (!mainKs.has(k) && !seen.has(lines[k].to)) { r.push(lines[k]); if (first) return r; }
+      for (const l of links.get(c) || []) for (const x of l) if (x !== c && !seen.has(x)) { const k = linkLine(c, x); if (!mainKs.has(k)) { r.push(lines[k]); if (first) return r; } }
+      return r; };
     const taken = new Set();
-    main.cards.forEach((c, i) => flowOut(c, new Set()).forEach(([e0]) => { if (onMain.has(e0.to) || taken.has(e0.to)) return;
+    main.cards.forEach((c, i) => flowOut(c, new Set()).forEach(e0 => { if (onMain.has(e0.to) || taken.has(e0.to)) return;
       const seen = new Set(main.cards), chain = []; let e = e0, p = c;
-      while (e && !onMain.has(e.to) && !seen.has(e.to)) { chain.push([e, p]); seen.add(e.to); p = e.to; const nx = flowOut(p, seen)[0]; e = nx ? nx[0] : null; }
+      while (e && !onMain.has(e.to) && !seen.has(e.to)) { chain.push([e, p]); seen.add(e.to); p = e.to; e = flowOut(p, seen, true)[0] || null; }
       if (!chain.length) return; chain.forEach(([x]) => taken.add(x.to));
       const n = out.chapters.length + 1;
       out.chapters.push({ id: `${id}-branch-${n}`, title: `Branch from ${name(c)} to ${name(chain[0][0].to)}`, ...(audience ? { audience } : {}), at: i,
