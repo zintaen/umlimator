@@ -86,6 +86,14 @@ test('arrange on a type that reads no flow (an ER, a class, an information flow 
   assert.deepEqual(at(fc, 'views[0].arrange'), []);
 });
 
+// audit 68: a state machine and a communication view draw behaviour, not structure; arrange on them still warns that it
+// changes nothing, in words that do not call them structure (copies of the examples, kept in tests/fixtures/)
+test('arrange on a state machine or a communication view warns that it reads no main flow, not that it draws structure', () => {
+  for (const [f, d] of [['order-states.json', 'uml.state-machine'], ['uml-communication.json', 'uml.communication']]) {
+    const m = JSON.parse(readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8')), i = m.views.findIndex(v => v.diagram === d); m.views[i].arrange = 'flow';
+    assert.deepEqual(at(m, `views[${i}].arrange`), [`warning: ${d} draws behaviour with no main flow to read: arrange "flow" changes nothing`], f); }
+});
+
 // step 4 (section 5) gives arranged map views their dependency lines; tests/flow-layout.test.mjs holds what they do, and step
 // 10 the typed types that read the flow (flowRole, zoneOf), each type's test file what its own do. The rest reads the fields
 // still not: a view of a type with neither, and a map view with no dependency line, draw as with the fields taken out
