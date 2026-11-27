@@ -550,25 +550,40 @@ function mapContext(model, opts = {}) {
   /* An arranged view of a type that reads the flow, laid out as bestFlow lays out a map: as arranged, without the snake where
      it snakes, and without its default zones where it has some, keeping the first that draws the fewest problems (bad), so a
      snake or a default never makes it worse to read (audit 66: an activity's lanes set each node's row, so the snake's runs
-     ran back up the lanes, 0 layout check problems ranked and 3 arranged). flatWay: the views kept without the snake.
-     ponytail: up to three layouts of the type more (a type routes each once, where bestFlow routes a map a few ways), so only
-     up to twice FLOW_CAP cards */
+     ran back up the lanes, 0 layout check problems ranked and 3 arranged), and ranked, kept only where every arranged way
+     draws more (audit 71). flatWay: the views kept without the snake; those kept ranked hold RANKED in plainMain (ranked).
+     ponytail: up to six layouts of the type more (a type routes each once, where bestFlow routes a map a few ways), so only
+     up to twice FLOW_CAP cards; a larger view takes two, arranged and ranked */
   const flatWay = new Set();
+  /* A view that says arrange "flow" but was kept laid out ranked, as without arrange (no main flow, no zones, no dependency
+     lines): a typed view by bestTyped (audit 71), a boxed map view by bestBlock (RANKED_GAIN). One mark for both, plainMain
+     RANKED, which plainOf hands an update's base (basePlain). arranged: whether a view lays out arranged; laidView: the view
+     as its type lays it out, without its arrange when kept ranked (a type may read it itself: C4's zones, BPMN's lanes) */
+  const RANKED = 'ranked', ranked = vid => plainMain.get(vid) === RANKED;
+  const arranged = vid => (V[vid] || {}).arrange === 'flow' && !ranked(vid);
+  const laidView = vid => { const v = V[vid]; if (!ranked(vid)) return v; const { arrange, ...o } = v; return o; };
   function bestTyped(vid, T, one) {
-    const v = V[vid], L = T.layout; flatWay.delete(vid); const p0 = one();
-    if (arrOf(v.nodeIds).length > 2 * FLOW_CAP) return p0;
-    const snakes = !!snakeOf(vid), ways = [[false, p0]], seen = new Set([JSON.stringify(p0)]), add = (flat, o) => { if (flat) flatWay.add(vid); else flatWay.delete(vid);
+    // the way a layout of the view is taken in: the snake left out (flat true) or ranked (flat RANKED)
+    const wayOf = flat => { setPlain(vid, flat === RANKED && RANKED); if (flat === true) flatWay.add(vid); else flatWay.delete(vid); };
+    const v = V[vid], L = T.layout; wayOf(false); const p0 = one();
+    // a larger view (ponytail: twice FLOW_CAP cards) is laid out only as arranged and ranked (below)
+    const big = arrOf(v.nodeIds).length > 2 * FLOW_CAP, snakes = !big && !!snakeOf(vid), ways = [[false, p0]], seen = new Set([JSON.stringify(p0)]), add = (flat, o) => { if (flat) flatWay.add(vid); else flatWay.delete(vid);
       const p = one(o), k = flat + JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push([flat, p]); } };
-    if (snakes) add(true); if (zoneDefaults(vid)) { add(false, { bare: true }); if (snakes) add(true, { bare: true }); }
-    // and with each branch's side chosen by its span too (sidesOf, audit 69: a fork nested in a fork, both branches below the
-    // main row, drew the outer branch's line across the inner one's), kept only where it draws fewer problems
-    add(false, { spans: true }); if (snakes) add(true, { spans: true });
+    if (!big) { if (snakes) add(true); if (zoneDefaults(vid)) { add(false, { bare: true }); if (snakes) add(true, { bare: true }); }
+      // and with each branch's side chosen by its span too (sidesOf, audit 69: a fork nested in a fork, both branches below the
+      // main row, drew the outer branch's line across the inner one's), kept only where it draws fewer problems
+      add(false, { spans: true }); if (snakes) add(true, { spans: true }); }
+    // and last, ranked: as the view lays out without arrange "flow" (no main flow, no zones, no dependency lines), kept only
+    // where every arranged way draws more problems (audit 71: a decision's [no] line straight to its merge crossed the two
+    // branches of a fork in its [yes] branch, 2 crossings arranged down and none ranked)
+    wayOf(RANKED); ways.push([RANKED, one()]); wayOf(false);
     let best = null;
-    if (ways.length > 1) ways.forEach(([flat, pos]) => { if (best && !best.b) return; if (flat) flatWay.add(vid); else flatWay.delete(vid); const FL = flowMarks(vid), memo = { flow: FL };
-      let g = null; try { [g] = held(() => L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo })); } catch { g = null; } if (!g) return;
-      (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
+    ways.forEach(([flat, pos]) => { if (best && !best.b) return; wayOf(flat);
+      const FL = flat === RANKED ? null : flowMarks(vid), memo = FL ? { flow: FL } : {}, lv = laidView(vid);
+      let g = null; try { [g] = held(() => L.run ? L.run(D, lv, { measure: M, pos, memo }) : L({ model: D, view: lv, pos, memo })); } catch { g = null; } if (!g) return;
+      if (FL) (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
       let b; try { b = bad({ g }); } catch { return; } if (!best || b < best.b) best = { flat, pos, b }; });
-    if (best && best.flat) flatWay.add(vid); else flatWay.delete(vid); return best ? best.pos : p0; }
+    wayOf(best ? best.flat : false); return best ? best.pos : p0; }
   const memos = opts.memos || Object.create(null); // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
   /* A small plain view is routed a few ways and keeps the one the layout check scores best: cards level with their
@@ -599,7 +614,7 @@ function mapContext(model, opts = {}) {
      the column their lines come down into clear of cards or in the column of their cards' median (still), and, when its zones
      come from the defaults (section 7.3), without them too, as bestFlow does a plain view. A store under a box's flow whose
      line has to pass the cards beside it, or a last card whose column the main row's lines have to cross, read worse than
-     ranked (the imported maps of .evolve/decisions.md D13). And laid out ranked, as without arrange (plainMain 'ranked'), which
+     ranked (the imported maps of .evolve/decisions.md D13). And laid out ranked, as without arrange (ranked, above), which
      it keeps only when that draws no more problems (bad) than its best arranged way and section 4's score puts it lower by more
      than RANKED_GAIN: the import fixtures' boxed C4 views (bench a8's dsl-containers, dsl-api-components and puml-components)
      drew 5 to 12 percent worse arranged than ranked, with layout check problems the ranked layout lacks */
@@ -619,9 +634,6 @@ function mapContext(model, opts = {}) {
      differs, with the longest path that takes no zone into account (plain): a flow kept off the stores can leave a branch
      whose lines cross the ones into them (integration.dsl's containers view: the ride worker's) that the plain flow has not */
   const plainMain = new Map(), setPlain = (vid, on) => { if (on) plainMain.set(vid, on); else plainMain.delete(vid); };
-  /* an arranged view as it is laid out: arrange "flow", unless bestBlock kept its ranked way (plainMain 'ranked'), which lays it
-     out as without arrange: no main flow, no zones, no dependency lines */
-  const arranged = vid => (V[vid] || {}).arrange === 'flow' && plainMain.get(vid) !== RANKED, RANKED = 'ranked';
   const blockWays = vid => { const opts = [{}, { still: true }, ...(zoneDefaults(vid) ? [{ bare: true }, { bare: true, still: true }] : [])], seen = new Set(), out = [];
     const keyOf = () => { const M = mainOf(vid); return M ? M.cards.join('>') : ''; };
     setPlain(vid, false); const k0 = keyOf(); setPlain(vid, true); const k1 = keyOf(); setPlain(vid, false);
@@ -656,7 +668,7 @@ function mapContext(model, opts = {}) {
      of a last one, or a line to or from an under card (its own zone, else its type's), is no candidate unless it says main, so
      a person called back by the system does not end the flow (C4's rankFlip did this before zones) nor a flowchart's flow into
      its document. null as mainOf's */
-  const typedMain = (vid, any) => { const v = V[vid] || {}, T = flowT(vid); if (!any && v.arrange !== 'flow' || !T) return null; // any: an arranged view's or not (storyFlow)
+  const typedMain = (vid, any) => { const v = V[vid] || {}, T = flowT(vid); if (!any && !arranged(vid) || !T) return null; // any: an arranged view's or not (storyFlow)
     const dep = depRule(v, T); if (!flowing(vid, dep)) return null;
     const lp = loopsOf(v), lines = lp.edges.map(e => !FLOW_ROLES.includes(e.flow) && roleIn(T, e, v) === 'main' ? { ...e, flow: 'main' } : e);
     const zr = O(), zone = i => { if (!(i in zr)) { const n = nodeIn(i, vid); let z = ZONES.includes(n.zone) ? n.zone : null;
@@ -848,8 +860,8 @@ function mapContext(model, opts = {}) {
     return best; };
   // a typed line that marks an exception (section 6.2), its branch above the main row: kind guard, or a decision's "no" (its label)
   const typedGuard = e => e.kind === 'guard' || /^\s*(no|false)\s*$/i.test(String(e.label ?? ''));
-  const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e, D, V[vid]) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
-  const flips = (vid, flip) => !!flip && viewEdges(V[vid] || {}).some(e => flip(e, D, V[vid])); // a type's rankFlip turns a line of the view round
+  const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e, D, laidView(vid)) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
+  const flips = (vid, flip) => !!flip && viewEdges(V[vid] || {}).some(e => flip(e, D, laidView(vid))); // a type's rankFlip turns a line of the view round
   function flowPos(vid, o = {}) {
     const v = flipView(vid, o.flip), dep = depOf(vid), M = !flips(vid, o.flip) && (ownLayout(vid) ? typedMain(vid) : mainOf(vid)), onMain = new Set(M ? M.cards : []);
     const lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && !dep(e));
@@ -1151,14 +1163,14 @@ function mapContext(model, opts = {}) {
       if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       // an arranged view of a type that reads the flow: its main and dependency lines, by model line id, for layoutTyped (memo.flow)
-      const FL = flowT(vid) && v.arrange === 'flow' ? flowMarks(vid) : null; if (FL) memo.flow = FL; else delete memo.flow;
-      const run = (pos, memo) => { if (FL) memo.flow = FL; return L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo }); };
+      const FL = flowT(vid) && arranged(vid) ? flowMarks(vid) : null; if (FL) memo.flow = FL; else delete memo.flow;
+      const lv = laidView(vid), run = (pos, memo) => { if (FL) memo.flow = FL; return L.run ? L.run(D, lv, { measure: M, pos, memo }) : L({ model: D, view: lv, pos, memo }); };
       let g; // a pinned view's warnings held back: pinsClear may drop the layout that gave them, and only the one kept says its own (audit 59)
       if (!override && v.layout && L.pins !== false) { let said; [g, said] = held(() => run(pos, memo)); [g, said] = pinsClear(vid, v, L, g, memo, said, run); said.forEach(warn); } else g = run(pos, memo);
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
       // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
       // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
-      if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true, ...(FL && { flow: FL }) }, g2 = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 });
+      if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true, ...(FL && { flow: FL }) }, g2 = L.run ? L.run(D, lv, { measure: M, pos, memo: m2 }) : L({ model: D, view: lv, pos, memo: m2 });
         // a line on another or along a border counts before crossings (audit 38: the try without the swap, one shared line for
         // four crossings, was kept)
         const said = h => { const is = routeAudit(h, ''); return [g.nested || g2.nested ? is.filter(s => !/ cross$/.test(s)).length : 0, is.length]; }, a = said(g2), b = said(g);
