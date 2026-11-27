@@ -18,8 +18,8 @@
 // 1: refused (held by another owner, not yours, or check failed); 2: a usage error.
 import { readFileSync, writeFileSync, mkdirSync, rmdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs, duration, instant } from './args.mjs';
-import { isMain } from '../main.mjs';
 
 export const TTL = 60 * 60e3;
 const LOCK_STALE = 30e3, LOCK_WAIT = 5e3;
@@ -136,4 +136,4 @@ export function main(argv = process.argv.slice(2)) {
   return r.ok ? 0 : 1;
 }
 
-if (isMain(import.meta.url)) process.exitCode = main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main();

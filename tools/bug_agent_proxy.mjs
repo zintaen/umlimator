@@ -12,7 +12,7 @@
 import { createServer } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { request as httpRequest } from 'node:http';
-import { isMain } from './main.mjs';
+import { pathToFileURL } from 'node:url';
 
 const PATHS = new Set(['/v1/messages', '/v1/messages/count_tokens']);
 const MAX_BODY = 32 * 1024 * 1024;
@@ -115,7 +115,7 @@ export function createProxy({ key, upstream = 'https://api.anthropic.com' }) {
   });
 }
 
-if (isMain(import.meta.url)) {
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const port = Number(process.argv[2]);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) { console.error('usage: bug_agent_proxy.mjs <port>'); process.exit(2); }
   const key = process.env.BUG_AGENT_KEY || '';

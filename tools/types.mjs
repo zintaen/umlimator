@@ -15,7 +15,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isMain } from './main.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
@@ -69,7 +68,7 @@ export function problems(type, m = model(type), T = spec().types[type]) {
   return out;
 }
 
-if (isMain(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { validate, check } = await import(new URL('lib/umlimator-all.js', ROOT).href);
   const args = process.argv.slice(2), html = !args.includes('--no-html'), names = args.filter(a => !a.startsWith('--'));
   const S = spec(), all = typeIds(), want = names.length ? names : all;

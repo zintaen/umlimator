@@ -17,9 +17,10 @@
 //
 // Prints each trigger and a verdict: `stop` when any breaker trips, else `continue`. Exit 0: continue; 1: stop; 2: a
 // usage error.
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from './args.mjs';
 import { loadAudits, counts, titleKey, findingFiles, symptom } from './records.mjs';
-import { isMain } from '../main.mjs';
 
 const cause = f => String(f.verdict?.cause ?? f.cause ?? '').toLowerCase() || null;
 
@@ -107,4 +108,4 @@ export function main(argv = process.argv.slice(2)) {
   return r.verdict === 'stop' ? 1 : 0;
 }
 
-if (isMain(import.meta.url)) process.exitCode = main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main();

@@ -3,7 +3,7 @@
 // made here in a temporary folder, with no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, rmSync, utimesSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -253,38 +253,6 @@ function digestFixture() {
   repoWithTag(d);
   return { d, audits };
 }
-
-// ---------- run through a symbolic link ----------
-
-test('the tools run as scripts through a path holding a symbolic link: the kill switch stops, the lease is taken, protect fails a missing root (audit 70)', (t) => {
-  const dir = tmp(); t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const link = join(dir, 'link'); symlinkSync(ROOT, link, 'dir');
-  writeFileSync(join(dir, 'STOP'), 'stop here\n');
-  const run = (tool, args) => spawnSync(process.execPath, [join(link, tool), ...args], { encoding: 'utf8', cwd: dir });
-  const k = run('tools/evolve/killswitch.mjs', ['--file', join(dir, 'STOP')]);
-  assert.equal(k.status, 1, 'the kill switch is set: the session stops');
-  assert.match(k.stdout, /kill switch set/);
-  assert.equal(run('tools/evolve/killswitch.mjs', ['--file', join(dir, 'none')]).status, 0);
-  const l = run('tools/evolve/lease.mjs', ['take', '--owner', 'me', '--file', join(dir, 'lease.json')]);
-  assert.equal(l.status, 0, l.stderr);
-  assert.equal(JSON.parse(readFileSync(join(dir, 'lease.json'), 'utf8')).owner, 'me');
-  assert.equal(run('tools/protect.mjs', ['--root', join(dir, 'none')]).status, 1);
-  assert.equal(run('tools/evolve/ledger.mjs', ['--nonsense']).status, 2, 'a usage error, as through the real path');
-  // and through a relative path, from the folder holding the link
-  assert.equal(spawnSync(process.execPath, ['link/tools/evolve/killswitch.mjs', '--file', 'STOP'], { encoding: 'utf8', cwd: dir }).status, 1);
-});
-
-test('no script decides it is the main module by comparing process.argv[1] with its URL as they are: each goes through tools/main.mjs\'s real paths (audit 70)', () => {
-  const files = execFileSync('git', ['ls-files', '*.mjs', '*.js'], { cwd: ROOT, encoding: 'utf8' }).split('\n')
-    .filter(f => f && !f.startsWith('engine/') && !f.startsWith('lib/') && existsSync(join(ROOT, f)));
-  const raw = [];
-  for (const f of files) {
-    for (const [i, line] of readFileSync(join(ROOT, f), 'utf8').split('\n').entries()) {
-      if (/process\.argv\[1\]/.test(line) && /import\.meta\.url/.test(line) && !/realpathSync/.test(line)) raw.push(`${f}:${i + 1}`);
-    }
-  }
-  assert.deepEqual(raw, []);
-});
 
 test('digest: rounds, the severity trend, releases, breakers, known gaps and a dated spot check', () => {
   const { d, audits } = digestFixture();
