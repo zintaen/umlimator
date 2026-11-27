@@ -395,7 +395,7 @@ function mapContext(model, opts = {}) {
       if (S) { const F = foldOf(S, c => rk[c]), off = ids.filter(i => !depOnly.has(i) && !onMain.has(i)), side = O(), runAt = i => F.run(rk[i]);
         cardPart = snakeParts(S, off, i => F.col(rk[i]), runAt, first);
         off.forEach(i => { side[i] = cardPart[i] <= (S.branch[i] ? S.branch[i].run : runAt(i)) ? -1 : 1; }); return side; }
-      return sidesOf(ids.filter(i => !depOnly.has(i)), flowL, onMain, rk, first, T ? typedGuard : e => wireKind(e, opts.kinds || v.kindsFromLabels) === 'guard'); })() : null;
+      return sidesOf(ids.filter(i => !depOnly.has(i)), flowL, onMain, rk, first, T ? typedGuard : e => wireKind(e, opts.kinds || v.kindsFromLabels) === 'guard', o.spans ? O() : null); })() : null;
     const sideOf = x => isId.has(x) ? cardSide[x] : cardSide[ids.filter(i => holds(x, i) && cardSide[i] != null).sort((a, b) => first(a) - first(b))[0]];
     const sink = x => ids.includes(x) && isState(x) && !fwd.some(e => e.from === x); // state that leads nowhere goes last
     // a main flow that leaves a box for one item beside it (a card, or a box that holds no other main card) and comes back
@@ -557,8 +557,11 @@ function mapContext(model, opts = {}) {
     const snakes = !!snakeOf(vid), ways = [[false, p0]], seen = new Set([JSON.stringify(p0)]), add = (flat, o) => { if (flat) flatWay.add(vid); else flatWay.delete(vid);
       const p = one(o), k = flat + JSON.stringify(p); if (!seen.has(k)) { seen.add(k); ways.push([flat, p]); } };
     if (snakes) add(true); if (zoneDefaults(vid)) { add(false, { bare: true }); if (snakes) add(true, { bare: true }); }
+    // and with each branch's side chosen by its span too (sidesOf, audit 69: a fork nested in a fork, both branches below the
+    // main row, drew the outer branch's line across the inner one's), kept only where it draws fewer problems
+    add(false, { spans: true }); if (snakes) add(true, { spans: true });
     let best = null;
-    if (ways.length > 1) ways.forEach(([flat, pos]) => { if (flat) flatWay.add(vid); else flatWay.delete(vid); const FL = flowMarks(vid), memo = { flow: FL };
+    if (ways.length > 1) ways.forEach(([flat, pos]) => { if (best && !best.b) return; if (flat) flatWay.add(vid); else flatWay.delete(vid); const FL = flowMarks(vid), memo = { flow: FL };
       let g = null; try { [g] = held(() => L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo })); } catch { g = null; } if (!g) return;
       (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
       let b; try { b = bad({ g }); } catch { return; } if (!best || b < best.b) best = { flat, pos, b }; });
@@ -674,15 +677,27 @@ function mapContext(model, opts = {}) {
      flow lines off the main flow joins) keeps to one side, so its lines never cross the main row: above when one of its lines
      is a guard (an exception), else below; when one side of a column it sits in already holds BRANCH_BALANCE more cards than
      the other, the other side. Branches in the order the view first mentions them */
-  const sidesOf = (ids, fwd, onMain, rank, seen, guard) => { const side = O(), root = O(), find = i => root[i] === i ? i : (root[i] = find(root[i]));
+  const sidesOf = (ids, fwd, onMain, rank, seen, guard, spans = null) => { const side = O(), root = O(), find = i => root[i] === i ? i : (root[i] = find(root[i]));
     const off = ids.filter(i => !onMain.has(i)); off.forEach(i => { root[i] = i; });
     fwd.forEach(e => { if (e.from in root && e.to in root) root[find(e.from)] = find(e.to); });
     const groups = O(); off.forEach(i => (groups[find(i)] ||= []).push(i));
-    const count = O(), held = (c, s) => (count[c] || O())[s] || 0;
+    const count = O(), held = (c, s) => (count[c] || O())[s] || 0, span = O();
     Object.values(groups).map(g => g.sort((a, b) => seen(a) - seen(b))).sort((a, b) => seen(a[0]) - seen(b[0])).forEach(g => {
       const has = new Set(g), up = fwd.some(e => (has.has(e.from) || has.has(e.to)) && guard(e));
       let s = up ? -1 : 1; if (!up && g.some(i => held(rank[i], s) - held(rank[i], -s) >= BRANCH_BALANCE)) s = -s;
+      // spans (bestTyped's way, audit 69): a branch whose span on the main row (the ranks of the cards its lines join) overlaps
+      // one on its side and none on the other takes the other side, so a branch nested in another's span (a fork in a fork)
+      // does not sit across the outer one's lines
+      const ends = fwd.filter(e => has.has(e.from) !== has.has(e.to)).map(e => rank[has.has(e.from) ? e.to : e.from]).filter(r => r != null);
+      const lo = Math.min(...ends), hi = Math.max(...ends), over = t => (span[t] || []).some(([a, b]) => lo < b && a < hi);
+      if (spans && !up && ends.length && over(s) && !over(-s)) s = -s;
+      if (ends.length) (span[s] ||= []).push([lo, hi, g]);
       g.forEach(i => { side[i] = s; const c = count[rank[i]] ||= O(); c[s] = (c[s] || 0) + 1; }); });
+    // and a branch with others nested in its span on its side is drawn past them (spans[card]: how many deep), so its lines
+    // run round theirs
+    if (spans) [-1, 1].forEach(t => { const S = span[t] || [], inside = (x, y) => x !== y && y[0] <= x[0] && x[1] <= y[1] && (y[0] < x[0] || x[1] < y[1]), memo = new Map();
+      const deep = x => { if (!memo.has(x)) { memo.set(x, 0); memo.set(x, Math.max(0, ...S.filter(y => inside(y, x)).map(y => deep(y) + 1))); } return memo.get(x); };
+      S.forEach(x => { const d = deep(x); if (d) x[2].forEach(i => { spans[i] = d; }); }); });
     return side; };
   /* The snake (section 14): an arranged map view whose main flow has more than SNAKE_AT cards, fewer than half of them pinned
      (the view's layout), wraps it onto ceil(n / SNAKE_AT) runs of at most SNAKE_AT cards, each run reading back the other way
@@ -850,7 +865,7 @@ function mapContext(model, opts = {}) {
     const order = rk => { let ck = rk;
       if (S) { const F = foldOf(S, c => rk[c]); ck = O(); ids.forEach(i => { ck[i] = F.col(rk[i]); }); const lo = Math.min(...Object.values(ck)); ids.forEach(i => { ck[i] -= lo; });
         return snakeOrder(ck, i => F.run(rk[i])); }
-      const cols = {}; ids.forEach(i => (cols[ck[i]] ||= []).push(i)); const side = M && sidesOf(flowIds, fwd, onMain, rk, seen, guard);
+      const cols = {}; ids.forEach(i => (cols[ck[i]] ||= []).push(i)); const deep = o.spans ? O() : null, side = M && sidesOf(flowIds, fwd, onMain, rk, seen, guard, deep);
       const ranks = Object.keys(cols).map(Number).sort((a, b) => a - b), mains = ranks.map(c => cols[c].filter(i => !sink(i)).sort((a, b) => seen(a) - seen(b)));
       // a column with no main card in it holds a place on the main row its cards keep clear of (a main line runs through it)
       // or, in a first or last column, the card with a line into the first main card or from the last one; the rest go to the
@@ -861,7 +876,10 @@ function mapContext(model, opts = {}) {
           if (!at.length && (ranks[k] > lo && ranks[k] < hi || ends.length)) { at = [HOLD + ranks[k]]; holds.add(at[0]); }
           at.forEach(i => { if (!onMain.has(i)) anchor[i] = 0; });
           const rest = ends.filter(i => !at.includes(i)), up = i => !fwd.some(e => (e.from === i || e.to === i) && side[e.from === i ? e.to : e.from] === 1);
-          mains[k] = [...m.filter(i => side[i] === -1), ...rest.filter(up), ...at, ...rest.filter(i => !up(i)), ...m.filter(i => side[i] === 1)]; }); }
+          // the spans way's branches with others nested in their span: each held that many rows further from the main row
+          const far = (t, list) => { if (!deep) return list; const l = list.slice().sort((x, y) => (deep[x] || 0) - (deep[y] || 0)); let r = 0;
+            l.forEach(i => { r = Math.max(r + 1, (deep[i] || 0) + 1); if (deep[i]) anchor[i] = t * r; }); return t < 0 ? l.reverse() : l; };
+          mains[k] = [...far(-1, m.filter(i => side[i] === -1)), ...rest.filter(up), ...at, ...rest.filter(i => !up(i)), ...far(1, m.filter(i => side[i] === 1))]; }); }
       untangle(mains, links, undefined, undefined, anchor); return { cols, ranks, mains }; }; // in reading order, unless another order crosses less (#53)
     /* The snake's columns, each split into parts (snakeParts) round its runs' rows: in each, from the top, the cards of part 0,
        the first run's card (or its first card, first; else the place its row holds where the run passes), the cards of part 1,
