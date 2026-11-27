@@ -1,5 +1,5 @@
 # umlimator
-
+[![M8ven Score](https://m8ven.ai/badge/mcp/zintaen-umlimator-gzfncx?v=05ba2c4c6cb70ff8eb39b9d7111cc65a)](https://m8ven.ai/mcp/zintaen-umlimator-gzfncx?s=readme)
 Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types you can click through, from one JSON model.
 
 [![check](https://github.com/zintaen/umlimator/actions/workflows/check.yml/badge.svg)](https://github.com/zintaen/umlimator/actions/workflows/check.yml)
