@@ -14,8 +14,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { parseArgs } from './args.mjs';
+import { isMain } from '../main.mjs';
 
 export const UPSTREAM = 'zintaen/auto-evolve-strategy';
 export const PROJECT_REPO = 'zintaen/umlimator';
@@ -289,4 +289,4 @@ export function main(argv, { client = ghClient(), out = console.log, now } = {})
   return r.code;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = main(process.argv.slice(2));
+if (isMain(import.meta.url)) process.exitCode = main(process.argv.slice(2));
