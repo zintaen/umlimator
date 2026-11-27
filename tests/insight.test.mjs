@@ -175,3 +175,33 @@ test('audit 41: sequenceFromTrace() and drift() name their new lines with ids th
   const got = drift(d, [{ from: 'a', to: 'b', count: 3 }, { from: 'x', to: 'y->z', count: 1 }, { from: 'x->y', to: 'z', count: 1 }]).model;
   assert.deepEqual(errs(got), []); assert.deepEqual(got.edges.map(e => e.id), ['drift:a->b', 'drift:a->b-2', 'drift:x->y->z', 'drift:x->y->z-2']);
 });
+
+// a ladder of `L` layers, two cards each, every card linked to both of the next layer (`back`: and each to both of the layer
+// before, so the lines loop): 2^L paths from a0, which every path walked depth first tried one by one (audit bh1)
+const ladder = (L, back = false) => { const nodes = [], edges = [];
+  for (let i = 0; i < L; i++) for (const s of ['a', 'b']) nodes.push({ id: `${s}${i}`, label: `${s}${i}` });
+  for (let i = 0; i + 1 < L; i++) for (const s of ['a', 'b']) for (const t of ['a', 'b']) {
+    edges.push({ id: `${s}${i}-${t}${i + 1}`, from: `${s}${i}`, to: `${t}${i + 1}`, latency: 1, cost: s === t ? 1 : 2 });
+    if (back) edges.push({ id: `${t}${i + 1}-${s}${i}`, from: `${t}${i + 1}`, to: `${s}${i}`, latency: 1 }); }
+  return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', nodeIds: nodes.map(n => n.id) }] }; };
+const timeOf = f => { let best = Infinity; for (let k = 0; k < 3; k++) { const t = performance.now(); f(); best = Math.min(best, performance.now() - t); } return best; };
+
+test('audit bh1: critical() on a ladder of cards whose lines never loop finds the longest path in time linear in the lines (timed)', { timeout: 120000 }, () => {
+  const run = L => () => { const m = ladder(L), r = critical(m, 'v', { from: 'a0' }), c = critical(m, 'v', { by: 'cost' });
+    assert.equal(r.total, L - 1); assert.equal(c.total, 2 * (L - 1)); assert.equal(r.approximate, undefined);
+    // the first of the longest paths depth first meets: along each card's first line
+    assert.deepEqual(r.refs.filter(x => x.type === 'node').map(x => x.id), Array.from({ length: L }, (_, i) => 'a' + i));
+    assert.equal(critical(m, 'v', { from: 'a0', to: `b${L - 1}` }).total, L - 1); };
+  const quarter = timeOf(run(100)), full = timeOf(run(400)); // 2^100 paths: the walk of every path never ended
+  assert.ok(full < 12 * Math.max(quarter, 2), `four times the cards took ${(full / Math.max(quarter, 2)).toFixed(1)} times as long (${quarter.toFixed(0)} ms, ${full.toFixed(0)} ms)`);
+});
+
+test('audit bh1: critical() on a ladder whose lines loop stops after a budget of steps, the best path it has marked approximate (timed)', { timeout: 120000 }, () => {
+  const run = L => () => { const m = ladder(L, true), r = critical(m, 'v', { from: 'a0' }), ids = r.refs.filter(x => x.type === 'node').map(x => x.id);
+    assert.equal(r.approximate, true); assert.ok(r.total >= L - 1, 'at least the longest path with the loops left out');
+    assert.equal(new Set(ids).size, ids.length, 'never comes back to a card'); assert.equal(ids[0], 'a0'); };
+  const quarter = timeOf(run(40)), full = timeOf(run(160));
+  assert.ok(full < 12 * Math.max(quarter, 2), `four times the cards took ${(full / Math.max(quarter, 2)).toFixed(1)} times as long (${quarter.toFixed(0)} ms, ${full.toFixed(0)} ms)`);
+  // a small view whose lines loop is still walked whole: the exact path, not marked
+  const r = critical(ladder(5, true), 'v', { from: 'a0' }); assert.equal(r.approximate, undefined); assert.equal(r.total, 8);
+});

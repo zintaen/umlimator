@@ -31,6 +31,7 @@ NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's reader
 LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8); a
 # Structurizr DSL, C4-PlantUML or Mermaid text over it (in characters) is not read
 DEEP = 64  # elements nested deeper are read flat from there, so an id (the dotted path) stays short (the module's SZ_DEEP, R2)
+REPORT_MAX = 1000  # what legal() says about a compose or Kubernetes file's keys and values, listed; the rest counted in one (audit bh1)
 VIEW_WORK = 500000  # a DSL's views: elements and relationships walked in all, each view walking every one (the module's SZ_WORK)
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 SELECTS = 1000000  # a Kubernetes file's Service selectors: workloads checked in all, each Service checking those under a label (audit 45)
@@ -425,6 +426,7 @@ def legal(d, say):
     source text (depends_on: [web\\u0002]) reads as the name that key was given, so a reference follows a key kept apart
     (audit 52). One pass over the keys and one over the values, with no recursion."""
     told, top, named, given = set(), [d], {}, set()  # named: a key's source text -> the text it is read as, given those
+    low = {}  # a base text g -> the least n whose g-n may not be given yet: given only grows, so it never goes back
 
     def fix(v):
         if not isinstance(v, str) or not RAW.search(v):
@@ -440,19 +442,29 @@ def legal(d, say):
         that is another's text kept apart, the later taking the first free of key-2, key-3 ... each said (audit 50), as the
         module's readers keep two names that scrub to one text apart. A source text keeps the name it was first given in
         every map it keys (a service and its depends_on map, a selector and the pod labels it picks), and no other source
-        text is given that name, so the same key reads as one name throughout (audit 52). Linear in the keys
-        but for the free-key search."""
+        text is given that name, so the same key reads as one name throughout (audit 52). Linear in the keys: the
+        free-key search starts where the last one for the same text stopped, in this map (used only grows) and in the
+        whole file (given only grows), not at 2 each time (audit bh1: 34,900 keys that read as one took 34 s)."""
         if not any(isinstance(a, str) and RAW.search(a) for a in v):
             return v
-        used, out = set(a for a in v if not (isinstance(a, str) and RAW.search(a))), {}
+        used, out, here = set(a for a in v if not (isinstance(a, str) and RAW.search(a))), {}, {}  # here: g -> least n maybe free in used
         for a, b in v.items():
             if not (isinstance(a, str) and RAW.search(a)):
                 out[a] = b
                 continue
             f = fix(a)
             if f in used or (a not in named and f in given):
-                g, n = RAW.sub("\ufffd", a), 2
-                while f"{g}-{n}" in used or (a not in named and f"{g}-{n}" in given):
+                g, new = RAW.sub("\ufffd", a), a not in named
+                n = here.get(g, 2)
+                while f"{g}-{n}" in used:
+                    n += 1
+                here[g] = n
+                if new:
+                    m = low.get(g, 2)
+                    while f"{g}-{m}" in given:
+                        m += 1
+                    low[g], n = m, max(n, m)
+                while f"{g}-{n}" in used or (new and f"{g}-{n}" in given):
                     n += 1
                 say(None, f"key {g}: another key reads as the same text, so this one is read as {g}-{n}")
                 f = f"{g}-{n}"
@@ -497,6 +509,8 @@ def read(fmt, text, name):
         said = []  # said before reading, then kept in the model's report
         if fmt in ("compose", "kubernetes"):
             d = legal(loads(text), lambda no, msg: said.append((no, msg)))
+            if len(said) > REPORT_MAX:  # what legal() says listed as the module's readers list theirs (BX_MAX): the rest counted in one
+                said[REPORT_MAX:] = [(None, f"{len(said) - REPORT_MAX} more items like these: not listed")]
             m = compose(d, name) if fmt == "compose" else kubernetes(d, name)
         else:
             text = scrub(text, lambda no, msg: said.append((no, msg)))

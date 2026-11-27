@@ -889,3 +889,22 @@ test('a gateway\'s and an activity\'s default flow read as props.default and wri
   assert.deepEqual(wb.report.map(x => `${x.line}: ${x.message}`), ['g: props.default s-t, which is no sequence flow out of it: not written']);
   assert.doesNotMatch(wb.xml, /exclusiveGateway id="g" default/);
 });
+
+test('audit bh1: sub-processes nested over 64 deep and lanes nested 64 deep are read flat from there, said once, every element kept', needs, async () => {
+  const H = '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><collaboration id="c"><participant id="P" processRef="p"/></collaboration><process id="p">';
+  for (const n of [64, 65, 200, 3000]) {
+    const K = Math.min(n, 99), lanes = Array.from({ length: K }, (_, i) => `<lane id="l${i}"><childLaneSet id="cs${i}">`).join('') + '<lane id="last"><flowNodeRef>t</flowNodeRef></lane>' + '</childLaneSet></lane>'.repeat(K);
+    const xml = H + `<laneSet id="ls">${lanes}</laneSet>` + Array.from({ length: n }, (_, i) => `<subProcess id="s${i}">`).join('') + '<task id="t"/>' + '</subProcess>'.repeat(n) + '</process></definitions>';
+    const { model, report } = await read(xml, BpmnModdle()), byId = new Map(model.nodes.map(x => [x.id, x]));
+    const lanesIn = model.nodes.find(x => x.id === 'P').members || [], lane = new Map(lanesIn.map(x => [x.id, x]));
+    const depth = (id, M) => { let d = 0; for (let x = M.get(id); x && x.parent != null && M.has(x.parent); x = M.get(x.parent)) d++; return d; };
+    assert.equal(model.nodes.filter(x => x.type === 'bpmn.SubProcess').length, n, `${n}: every sub-process kept`);
+    assert.ok(byId.has('t') && Math.max(...model.nodes.map(x => depth(x.id, byId))) <= 65, `${n}: at most 64 sub-processes deep, and one more in the last`);
+    assert.ok(Math.max(...lanesIn.map(x => depth(x.id, lane))) <= 63, `${n}: lanes at most 64 deep`);
+    const flat = report.filter(r => r.status === 'approximated');
+    assert.deepEqual(flat.map(r => r.message), [
+      ...(K >= 64 ? ['lane l63 is nested 64 deep: the lanes it holds are read flat from there'] : []),
+      ...(n > 64 ? ['sub-process s64 is nested over 64 deep: what it holds is read flat from there'] : [])], `${n}: said once each`);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], `${n}: the model read validates`);
+  }
+});
