@@ -1,0 +1,284 @@
+[
+ {
+  "schemaVersion": 2,
+  "nodes": [
+   {
+    "id": "p0",
+    "type": "uml.Package",
+    "label": "sales"
+   },
+   {
+    "id": "p1",
+    "type": "uml.Package",
+    "label": "catalog"
+   },
+   {
+    "id": "p2",
+    "type": "uml.Package",
+    "label": "payments",
+    "parent": "p0"
+   },
+   {
+    "id": "c0",
+    "type": "uml.Interface",
+    "label": "Order0"
+   },
+   {
+    "id": "c1",
+    "type": "uml.Class",
+    "label": "Book1",
+    "parent": "p0"
+   },
+   {
+    "id": "c2",
+    "type": "uml.Class",
+    "label": "Payment2"
+   },
+   {
+    "id": "c3",
+    "type": "uml.Interface",
+    "label": "Customer3",
+    "parent": "p2"
+   },
+   {
+    "id": "c4",
+    "type": "uml.Interface",
+    "label": "Line4"
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "type": "uml.Association",
+    "from": "c0",
+    "to": "c1"
+   },
+   {
+    "id": "e1",
+    "type": "uml.Association",
+    "from": "c0",
+    "to": "c1",
+    "label": "uses"
+   },
+   {
+    "id": "e2",
+    "type": "uml.Dependency",
+    "from": "c4",
+    "to": "c0",
+    "label": "uses"
+   },
+   {
+    "id": "e3",
+    "type": "uml.Generalization",
+    "from": "c0",
+    "to": "c2"
+   },
+   {
+    "id": "e4",
+    "type": "uml.Association",
+    "from": "c4",
+    "to": "c2",
+    "label": "uses"
+   },
+   {
+    "id": "e5",
+    "type": "uml.Generalization",
+    "from": "c1",
+    "to": "c2",
+    "label": "uses"
+   },
+   {
+    "id": "e6",
+    "type": "uml.Generalization",
+    "from": "c4",
+    "to": "c2",
+    "label": "uses"
+   },
+   {
+    "id": "e7",
+    "type": "uml.Dependency",
+    "from": "c0",
+    "to": "c3"
+   },
+   {
+    "id": "e8",
+    "type": "uml.Dependency",
+    "from": "c0",
+    "to": "c1"
+   },
+   {
+    "id": "e9",
+    "type": "uml.Generalization",
+    "from": "c0",
+    "to": "c3",
+    "label": "uses"
+   }
+  ],
+  "views": [
+   {
+    "id": "v",
+    "diagram": "uml.class",
+    "nodeIds": [
+     "p0",
+     "p1",
+     "p2",
+     "c0",
+     "c1",
+     "c2",
+     "c3",
+     "c4"
+    ],
+    "direction": "right"
+   }
+  ]
+ },
+ {
+  "schemaVersion": 2,
+  "nodes": [
+   {
+    "id": "p0",
+    "type": "uml.Package",
+    "label": "sales"
+   },
+   {
+    "id": "c0",
+    "type": "uml.Class",
+    "label": "Order0",
+    "parent": "p0"
+   },
+   {
+    "id": "c1",
+    "type": "uml.Class",
+    "label": "Book1",
+    "parent": "p0",
+    "members": [
+     {
+      "id": "c1.a",
+      "type": "uml.Property",
+      "label": "total",
+      "props": {
+       "valueType": "Money"
+      }
+     }
+    ]
+   },
+   {
+    "id": "c2",
+    "type": "uml.Class",
+    "label": "Payment2",
+    "parent": "p0"
+   },
+   {
+    "id": "c3",
+    "type": "uml.Interface",
+    "label": "Customer3",
+    "parent": "p0"
+   },
+   {
+    "id": "c4",
+    "type": "uml.Interface",
+    "label": "Line4"
+   },
+   {
+    "id": "c5",
+    "type": "uml.Class",
+    "label": "Money5",
+    "members": [
+     {
+      "id": "c5.a",
+      "type": "uml.Property",
+      "label": "total",
+      "props": {
+       "valueType": "Money"
+      }
+     }
+    ]
+   },
+   {
+    "id": "c6",
+    "type": "uml.Class",
+    "label": "Cart6",
+    "parent": "p0",
+    "members": [
+     {
+      "id": "c6.a",
+      "type": "uml.Property",
+      "label": "total",
+      "props": {
+       "valueType": "Money"
+      }
+     }
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "type": "uml.Dependency",
+    "from": "c6",
+    "to": "c0"
+   },
+   {
+    "id": "e1",
+    "type": "uml.Association",
+    "from": "c4",
+    "to": "c5"
+   },
+   {
+    "id": "e2",
+    "type": "uml.Generalization",
+    "from": "c5",
+    "to": "c0"
+   },
+   {
+    "id": "e3",
+    "type": "uml.Association",
+    "from": "c4",
+    "to": "c5"
+   },
+   {
+    "id": "e4",
+    "type": "uml.Generalization",
+    "from": "c2",
+    "to": "c1",
+    "label": "uses"
+   },
+   {
+    "id": "e5",
+    "type": "uml.Association",
+    "from": "c1",
+    "to": "c4",
+    "label": "uses"
+   },
+   {
+    "id": "e6",
+    "type": "uml.Dependency",
+    "from": "c4",
+    "to": "c0"
+   },
+   {
+    "id": "e7",
+    "type": "uml.Association",
+    "from": "c5",
+    "to": "c4"
+   }
+  ],
+  "views": [
+   {
+    "id": "v",
+    "diagram": "uml.class",
+    "nodeIds": [
+     "p0",
+     "c0",
+     "c1",
+     "c2",
+     "c3",
+     "c4",
+     "c5",
+     "c6"
+    ],
+    "direction": "down"
+   }
+  ]
+ }
+]

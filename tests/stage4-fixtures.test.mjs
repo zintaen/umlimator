@@ -272,3 +272,12 @@ test('audit 62: one Alt + Right on a use case of the gallery example never draws
   const [c, r] = at(ex, 'pay'), q = at(apply(ex, [{ op: 'set', view: vid, path: ['layout', 'pay'], value: [c + 1, r] }]), 'pay');
   assert.ok(q[0] >= c + 1, JSON.stringify([[c, r], q]));
 });
+
+// audit 74: a small plain use case view drew two associations of different actors on one track (check(): "share a line"), and
+// one laid out down with two subjects drew an association over a subject's title. tests/fixtures/use-case-share.json holds the
+// three views the audit found; each, laid out right and down, leaves check() nothing but crossings
+test('audit 74: a small use case view draws no two lines on one track and no line over a subject\'s title, either way', () => {
+  const U = JSON.parse(readFileSync(new URL('./fixtures/use-case-share.json', import.meta.url), 'utf8'));
+  U.forEach((m, k) => { for (const d of ['right', 'down'])
+    assert.deepEqual(check(turned(m, 'v', d), 'v').map(p => p.message).filter(s => !/ cross$/.test(s)), [], `view ${k}, ${d}`); });
+});

@@ -1,0 +1,314 @@
+[
+ {
+  "schemaVersion": 2,
+  "root": "v",
+  "nodes": [
+   {
+    "id": "a0",
+    "type": "uml.Actor",
+    "label": "Customer"
+   },
+   {
+    "id": "a1",
+    "type": "uml.Actor",
+    "label": "Clerk"
+   },
+   {
+    "id": "a2",
+    "type": "uml.Actor",
+    "label": "Manager"
+   },
+   {
+    "id": "a3",
+    "type": "uml.Actor",
+    "label": "Bank"
+   },
+   {
+    "id": "u0",
+    "type": "uml.UseCase",
+    "label": "Place an order"
+   },
+   {
+    "id": "u1",
+    "type": "uml.UseCase",
+    "label": "Process a return"
+   },
+   {
+    "id": "u2",
+    "type": "uml.UseCase",
+    "label": "Browse the catalog"
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "type": "uml.Association",
+    "from": "a0",
+    "to": "u0"
+   },
+   {
+    "id": "e1",
+    "type": "uml.Association",
+    "from": "a1",
+    "to": "u2"
+   },
+   {
+    "id": "e2",
+    "type": "uml.Association",
+    "from": "a1",
+    "to": "u0"
+   },
+   {
+    "id": "e3",
+    "type": "uml.Association",
+    "from": "a1",
+    "to": "u1"
+   },
+   {
+    "id": "e4",
+    "type": "uml.Association",
+    "from": "a2",
+    "to": "u1"
+   },
+   {
+    "id": "e5",
+    "type": "uml.Association",
+    "from": "a2",
+    "to": "u0"
+   },
+   {
+    "id": "e6",
+    "type": "uml.Association",
+    "from": "a3",
+    "to": "u1"
+   },
+   {
+    "id": "e7",
+    "type": "uml.Association",
+    "from": "a3",
+    "to": "u0"
+   }
+  ],
+  "views": [
+   {
+    "id": "v",
+    "diagram": "uml.use-case",
+    "nodeIds": [
+     "a0",
+     "a1",
+     "a2",
+     "a3",
+     "u0",
+     "u1",
+     "u2"
+    ]
+   }
+  ]
+ },
+ {
+  "schemaVersion": 2,
+  "root": "v",
+  "nodes": [
+   {
+    "id": "A0",
+    "type": "uml.Actor",
+    "label": "Actor 0"
+   },
+   {
+    "id": "A1",
+    "type": "uml.Actor",
+    "label": "Actor 1"
+   },
+   {
+    "id": "A2",
+    "type": "uml.Actor",
+    "label": "Actor 2"
+   },
+   {
+    "id": "U0",
+    "type": "uml.UseCase",
+    "label": "Use case 0 wwwwwwwwwwwww"
+   },
+   {
+    "id": "U1",
+    "type": "uml.UseCase",
+    "label": "Use case 1 wwwwwwww"
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "type": "uml.Association",
+    "from": "A0",
+    "to": "U0"
+   },
+   {
+    "id": "e1",
+    "type": "uml.Association",
+    "from": "A1",
+    "to": "U1"
+   },
+   {
+    "id": "e2",
+    "type": "uml.Association",
+    "from": "A1",
+    "to": "U0"
+   },
+   {
+    "id": "e3",
+    "type": "uml.Association",
+    "from": "A2",
+    "to": "U1"
+   },
+   {
+    "id": "e4",
+    "type": "uml.Association",
+    "from": "A2",
+    "to": "U0"
+   }
+  ],
+  "views": [
+   {
+    "id": "v",
+    "diagram": "uml.use-case",
+    "nodeIds": [
+     "A0",
+     "A1",
+     "A2",
+     "U0",
+     "U1"
+    ]
+   }
+  ]
+ },
+ {
+  "schemaVersion": 2,
+  "root": "v",
+  "nodes": [
+   {
+    "id": "S0",
+    "type": "uml.Subject",
+    "label": "The online system number 0 long title long title"
+   },
+   {
+    "id": "S1",
+    "type": "uml.Subject",
+    "label": "The online system number 1 "
+   },
+   {
+    "id": "A0",
+    "type": "uml.Actor",
+    "label": "Actor 0"
+   },
+   {
+    "id": "A1",
+    "type": "uml.Actor",
+    "label": "Actor 1"
+   },
+   {
+    "id": "A2",
+    "type": "uml.Actor",
+    "label": "Actor 2"
+   },
+   {
+    "id": "U0",
+    "type": "uml.UseCase",
+    "label": "Use case 0 wwww",
+    "parent": "S1"
+   },
+   {
+    "id": "U1",
+    "type": "uml.UseCase",
+    "label": "Use case 1 wwwwwwwww",
+    "parent": "S1"
+   },
+   {
+    "id": "U2",
+    "type": "uml.UseCase",
+    "label": "Use case 2 wwwwwwwwwwwwwwww"
+   },
+   {
+    "id": "U3",
+    "type": "uml.UseCase",
+    "label": "Use case 3 wwwwwwwwwwwwwww",
+    "parent": "S0"
+   },
+   {
+    "id": "U4",
+    "type": "uml.UseCase",
+    "label": "Use case 4 wwwwwwww",
+    "parent": "S1"
+   },
+   {
+    "id": "U5",
+    "type": "uml.UseCase",
+    "label": "Use case 5 wwwwww",
+    "parent": "S1"
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "type": "uml.Association",
+    "from": "A0",
+    "to": "U0"
+   },
+   {
+    "id": "e1",
+    "type": "uml.Association",
+    "from": "A1",
+    "to": "U5"
+   },
+   {
+    "id": "e2",
+    "type": "uml.Association",
+    "from": "A2",
+    "to": "U2"
+   },
+   {
+    "id": "e3",
+    "type": "uml.Association",
+    "from": "A2",
+    "to": "U0"
+   },
+   {
+    "id": "e4",
+    "type": "uml.Association",
+    "from": "A2",
+    "to": "U4"
+   },
+   {
+    "id": "e5",
+    "type": "uml.Include",
+    "from": "U2",
+    "to": "U5"
+   },
+   {
+    "id": "e6",
+    "type": "uml.Generalization",
+    "from": "A1",
+    "to": "A0"
+   }
+  ],
+  "views": [
+   {
+    "id": "v",
+    "diagram": "uml.use-case",
+    "direction": "down",
+    "nodeIds": [
+     "S0",
+     "S1",
+     "A0",
+     "A1",
+     "A2",
+     "U0",
+     "U1",
+     "U2",
+     "U3",
+     "U4",
+     "U5"
+    ]
+   }
+  ]
+ }
+]
