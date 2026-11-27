@@ -7,7 +7,6 @@
 // What a registered type's props
 // name comes from its own declaration (the registry's `refs`); model.md's hand list covers the fields no declaration covers.
 import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { typedProblems } from '../../../src/core/model.js';
 import { diagramOf } from '../../../src/core/registry.js';
 import '../../../src/uml/class.js'; // registers uml.class
@@ -24,6 +23,7 @@ import '../../../src/uml/timing.js'; // registers uml.timing
 import '../../../src/mindmap/mindmap.js'; // registers mindmap (4a.7)
 import '../../../src/cloud/cloud.js'; // registers gcp and azure; aws only under CLOUD_AWS (4a.7)
 import '../../../src/bpmn/process.js'; // registers bpmn (4b.5)
+import { isMain } from '../../../tools/main.mjs';
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -87,7 +87,7 @@ export function check(model, expected) {
   return out;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const all = targets(), files = all.map(([f]) => f);
   let bad = 0;
   for (const [f, url] of all) {

@@ -14,8 +14,8 @@
 
    The editor is lib/umlimator-all.js, the file the page inlines, imported with the names its build keeps inside (it
    exports the public API only). Standard library only; nothing is fetched. */
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const LIB = new URL('./lib/umlimator-all.js', import.meta.url);
 const u = await import('data:text/javascript;base64,' + Buffer.from(readFileSync(LIB, 'utf8')
@@ -389,4 +389,10 @@ async function main() {
 }
 
 export { written };
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.stdout.write(JSON.stringify(await main()));
+
+// run as a script: process.argv[1] and this module's URL compared as real paths, since the URL has symbolic links
+// resolved and argv[1] keeps them (a checkout under macOS /tmp or /var), as tools/main.mjs does (audit 70)
+function isMain() {
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+if (isMain()) process.stdout.write(JSON.stringify(await main()));

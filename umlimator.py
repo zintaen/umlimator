@@ -1451,7 +1451,7 @@ def size(s):
 
 def port(s):
     """--port, 0 to 65535 (0: any free one)."""
-    if not (s.isdigit() and int(s) <= 65535):
+    if not (s.isascii() and s.isdigit() and int(s) <= 65535):  # ASCII: isdigit() takes ², which int() does not (audit 70)
         raise argparse.ArgumentTypeError(f"{s!r} is not a port, 0 to 65535")
     return int(s)
 

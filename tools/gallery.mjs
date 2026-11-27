@@ -18,9 +18,9 @@
 // this writes, and when a link, picture or frame names a file the site does not serve. `node tools/gallery.mjs --docs-of
 // <model>` prints the docs page a model's rendered page links back to (docsOf).
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
 import { spec as typeSpec, model as typeModel, families } from './types.mjs';
+import { isMain } from './main.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
@@ -289,7 +289,7 @@ const model = file => {
   return file;
 };
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   try {
     if (process.argv[2] === '--docs-of') console.log(docsOf(model(process.argv[3])));
     else {
