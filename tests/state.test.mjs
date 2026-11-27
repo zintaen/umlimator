@@ -989,3 +989,29 @@ test('audit 61: a region\'s initial pseudostate pinned outside its composite lea
   for (const q of [[7, 2], [5, 2]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'payment-start'], value: q }]);
     assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], JSON.stringify(q)); }
 });
+
+// audit 71: laid out down, a region with three transitions between its two states fanned them out across the pair, labels and
+// all, and grew its box over its sibling region's initial pseudostate; a typed box took any card it lay over for its own
+// (layered.js owns), so the two regions were never moved apart (check(): R1 over R2's card, the two regions overlap). A typed
+// box holds only its own cards: none of these, nor of generated composites of two or three regions, overlaps another
+test('audit 71: regions never overlap, a region with three labelled transitions between two states, laid out each way', () => {
+  const T3 = (id, from, to, props) => ({ id, type: 'uml.Transition', from, to, props });
+  const nodes = [{ id: 's3', type: 'uml.State', label: 'State s3', members: [{ id: 's3.r1', type: 'uml.Region', label: 'R1' }, { id: 's3.r2', type: 'uml.Region', label: 'R2' }] },
+    { id: 's6', type: 'uml.State', label: 'State s6', parent: 's3.r1' }, { id: 's7', type: 'uml.State', label: 'State s7', parent: 's3.r1' },
+    { id: 's3.r2i', type: 'uml.Pseudostate', parent: 's3.r2', props: { kind: 'initial' } }];
+  const edges = [T3('e12', 's6', 's7', {}), T3('e16', 's7', 's6', { trigger: 'timeout', guard: 'ok' }), T3('e17', 's6', 's7', { trigger: 'timeout', guard: 'ok', effect: 'act' })];
+  const view = direction => [{ id: 'v', diagram: 'uml.state-machine', title: 'U', nodeIds: nodes.map(n => n.id), direction }];
+  for (const direction of ['down', 'right', 'up', 'left']) assert.deepEqual(check({ schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: view(direction) }, 'v').map(p => p.message), [], direction);
+  let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, pick = a => a[Math.floor(rnd() * a.length)], bad = [];
+  const labs = [{}, { trigger: 'timeout', guard: 'ok' }, { trigger: 'timeout', guard: 'ok', effect: 'act' }, { trigger: 'go' }, { trigger: 'a longer trigger name', effect: 'log it' }];
+  for (let it = 0; it < 40; it++) {
+    const R = 2 + Math.floor(rnd() * 2), ns = [{ id: 's', type: 'uml.State', label: 'S', members: [...Array(R)].map((_, i) => ({ id: 's.r' + i, type: 'uml.Region', label: 'R' + i })) }], es = []; let c = 0;
+    for (let r = 0; r < R; r++) { const k = Math.floor(rnd() * 3) + 1, ids = [];
+      if (rnd() < 0.6) { ns.push({ id: 'i' + r, type: 'uml.Pseudostate', parent: 's.r' + r, props: { kind: 'initial' } }); ids.push('i' + r); }
+      for (let q = 0; q < k; q++) { const id = 'x' + r + q; ns.push({ id, type: 'uml.State', label: 'State ' + id, parent: 's.r' + r }); ids.push(id); }
+      const st = ids.filter(i => i[0] === 'x'); if (ids[0][0] === 'i') es.push(T3('e' + c++, ids[0], st[0], {}));
+      const m = Math.floor(rnd() * 4); for (let q = 0; q < m && st.length > 1; q++) { const a = pick(st), b = pick(st.filter(x => x !== a)); es.push(T3('e' + c++, a, b, { ...pick(labs) })); } }
+    for (const direction of ['down', 'right']) { const m = { schemaVersion: 2, title: 't', root: 'v', nodes: ns, edges: es, views: [{ id: 'v', diagram: 'uml.state-machine', title: 'U', nodeIds: ns.map(n => n.id), direction }] };
+      check(m, 'v').filter(p => / overlap$| lies over /.test(p.message)).forEach(p => bad.push(`#${it} ${direction}: ${p.message}`)); } }
+  assert.deepEqual(bad, []);
+});

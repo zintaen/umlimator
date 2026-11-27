@@ -152,6 +152,11 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
     const m = arranged(read(f)), store = new Set(m.nodes.filter(n => /DataStore$/.test(n.type)).map(n => n.id));
     for (const v of m.views) { const want = drawnMain(m, v.id); let got;
       try { got = U.storyFromFlow(m, v.id).steps.map(x => x.select); } catch (e) { assert.match(e.message, /has no main flow/); assert.deepEqual(want, [], `${f} ${v.id}`); continue; }
+      // a view whose arranged picture drew more layout problems than ranked is kept ranked (audit 71) and draws no main line:
+      // its story is the one it tells unarranged
+      if (!want.length) { const r = structuredClone(m); delete r.views.find(x => x.id === v.id).arrange;
+        assert.deepEqual(got, U.storyFromFlow(r, v.id).steps.map(x => x.select), `${f} ${v.id}: kept ranked, the story it tells unarranged`);
+        assert.ok(!got.some(c => store.has(c)), `${f} ${v.id}: no data store is a step`); continue; }
       // a flowchart's story is the drawn main flow carried back to its start terminal and on to its end (audit 68)
       if (v.diagram === 'flowchart') { const at = got.indexOf(want[0]); assert.ok(at >= 0, `${f} ${v.id}`); got = got.slice(at, at + want.length); }
       assert.deepEqual(got, want, `${f} ${v.id}: the story's steps are the drawn main flow`);
