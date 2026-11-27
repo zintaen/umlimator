@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -2722,6 +2722,39 @@ if part("audit 74"):
         said = str(e.code)
     ok("js · the module failing in Node is said in one line, its error and message, with no stack, script or path (audit 74)",
        said is not None and said.startswith("TypeError: ") and "\n" not in said and "file://" not in said and str(ROOT) not in said, said)
+if part("audit 75 node errors"):
+    # audit 75 #1 and #4: node_error matched only a plain "Name: " header, so Node's coded errors ("TypeError [ERR_X]: "),
+    # a subclass's "FooBar [Error]: ", a thrown string or object and an out-of-memory abort were said as stderr's last line:
+    # Node's version banner, or a native stack frame with the path of a system library
+    def said(code, *flags):
+        r = subprocess.run(["node", *flags, "--input-type=module", "-e", code], capture_output=True, text=True)
+        return r.returncode, u.node_error(r.stderr, r.returncode)
+    shapes = {"import fs from 'fs'; fs.readFileSync(null)": 'TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string',
+              "Buffer.alloc(-1)": 'RangeError [ERR_OUT_OF_RANGE]: The value of "size" is out of range.',
+              "await import('nonexistent-pkg-umlimator')": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nonexistent-pkg-umlimator'",
+              "class FooBar extends Error {}; throw new FooBar('x')": "FooBar [Error]: x",
+              "Promise.reject(5)": "UnhandledPromiseRejection: ", "throw 'boom'": "Uncaught boom", "throw {a: 1}": "Uncaught { a: 1 }",
+              "throw new Error('two\\nlines')": "Error: two lines", "new URL('x')": "TypeError: Invalid URL",
+              "process.stderr.write('/a/path/x\\nsomething odd\\n'); process.exit(2)": "Node failed (exit status 2): something odd",
+              "process.exit(7)": "Node failed (exit status 7) and said nothing"}
+    got = {c: said(c) for c in shapes}
+    bad = {c: g for c, (st, g) in got.items() if st == 0 or not g.startswith(shapes[c]) or "\n" in g or "Node.js v" in g or "file:" in g or " at " in g
+           or "[eval" in g or os.getcwd() in g or str(ROOT) in g}
+    ok("node_error · a coded error, a subclass's, a thrown string or object, an unhandled rejection and an unknown failure are each said in one line, never Node's version, a frame or a path (audit 75)",
+       not bad, bad)
+    try:  # a broken install: the module js() runs is missing
+        u.js("diff", {}, {}, module=Path(tempfile.gettempdir()) / "no-such-umlimator" / "umlimator-all.js"); gone = None
+    except SystemExit as e:
+        gone = str(e.code)
+    ok("js · a missing module is said as Node's ERR_MODULE_NOT_FOUND and its message, with no stack and not as Node's version (audit 75)",
+       gone is not None and gone.startswith("Error [ERR_MODULE_NOT_FOUND]: Cannot find module ") and "\n" not in gone and "Node.js v" not in gone, gone)
+    with tempfile.TemporaryDirectory() as t:  # Node out of memory: a memory-capped Node on an ordinary model
+        a, b = Path(t) / "a.json", Path(t) / "b.json"
+        a.write_text((ROOT / "tests" / "fixtures" / "c4-gallery.json").read_text()); b.write_text(a.read_text().replace('"label": "', '"label": "x', 1))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", str(a), str(b), "--out", str(Path(t) / "o.html")], capture_output=True, text=True,
+                           env={**os.environ, "NODE_OPTIONS": "--max-old-space-size=8"})
+        ok("diff · Node out of memory is said as that in one line, never a native stack frame or a path (audit 75)",
+           r.returncode == 1 and r.stderr.startswith("Node ran out of memory") and r.stderr.count("\n") <= 1 and "0x" not in r.stderr and "/" not in r.stderr.split("NODE_OPTIONS")[0], r.stderr[-500:])
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
