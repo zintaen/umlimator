@@ -514,6 +514,9 @@ const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const ST_PARTS = [['trigger', 'Trigger'], ['guard', 'Guard'], ['effect', 'Effect']].map(([key, label]) => ({ key, label, kind: 'text' }));
 const ST_TYPE = registerDiagramType('uml.state-machine', {
   title: 'state machine diagram',
+  // behaviour with no main flow (no flowRole, no zoneOf): arrange "flow" changes nothing, and validate() says so without
+  // calling it structure (audit 68)
+  behaviour: true,
   // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
   drawsOnly: ST_LINES,
   elements: [{ type: 'uml.State', label: 'State' },

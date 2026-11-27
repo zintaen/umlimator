@@ -1,6 +1,6 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
+import { MAIN_SIDE, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -69,10 +69,12 @@ function layoutTyped(dg0, memo) {
   // laid out without those turns too, and that one kept when check() has less to say of it (audit 40: laid out right, the turns
   // of two lines into a composite crossed the lines between its state and the state beside it, twice)
   // a layout with a box side grown over its title (layoutPass, audit 44) is laid out without that too, and kept only when check()
-  // has less to say of it
+  // has less to say of it; one whose main line kept its side of a card one port high (layoutPass, audit 68) is laid out with the
+  // main line moved as before too, and that one kept when check() has less to say of it
   const best = u => { let g = lay(u), tried = false;
     if (g.grew) { const v = { ...u, [SPAN]: true }, h = lay(v); if (!less(said(g), said(h))) { g = h; u = v; } }
     if (g.turns) { const v = { ...u, [TURNS]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
+    if (g.kept) { const v = { ...u, [MAIN_SIDE]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
     if (g.nested) { const a0 = said(g);
       const judged = (v, h = lay(v), b = said(h)) => { if (!memo || v.noSwap || !h.rr || (h.nodes || []).length > 30) return [h, b, false];
         const h2 = lay({ ...v, noSwap: true }), b2 = said(h2); return less(b2, b) ? [h2, b2, true] : [h, b, true]; };
