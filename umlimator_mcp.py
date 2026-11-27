@@ -1136,7 +1136,8 @@ def result(method, p):
     meta = p.get("_meta")
     asked = meta.get("io.modelcontextprotocol/protocolVersion") if isinstance(meta, dict) else None
     if asked is not None and asked not in VERSIONS:
-        raise RpcError(-32022, "Unsupported protocol version", {"supported": VERSIONS, "requested": asked})
+        # a NaN or 1e400 asked went back bare, which is not JSON: echoed only when JSON can carry it (audit 68)
+        raise RpcError(-32022, "Unsupported protocol version", {"supported": VERSIONS, **({"requested": asked} if finite(asked) else {})})
     if method == "initialize":  # the versions before 2026-07-28: the client's own, if it is one of them, else the latest
         v = p.get("protocolVersion")
         return {"protocolVersion": v if v in VERSIONS[1:] else VERSIONS[1], "capabilities": {"tools": {}}, "serverInfo": SERVER, "instructions": HELLO}
@@ -1225,6 +1226,19 @@ def reply(msg):
         return failure(msg["id"], -32603, f"Internal error: {e}")
 
 
+def wire(said):
+    """A reply (or a batch's replies) as the line written back: JSON with no bare NaN or Infinity, which JSON has not, so a
+    client's JSON.parse would lose the line. A reply that would hold one (a path that echoes what was asked, say) is an
+    internal error instead, with its id when that is JSON (audit 68)."""
+    def one(r):
+        try:
+            return json.dumps(r, allow_nan=False)
+        except ValueError:
+            rid = r.get("id") if isinstance(r, dict) else None
+            return json.dumps(failure(rid if finite(rid) else None, -32603, "Internal error: the reply holds NaN, Infinity or a number out of range"))
+    return ("[" + ", ".join(map(one, said)) + "]" if isinstance(said, list) else one(said)).encode() + b"\n"
+
+
 def serve(model, port):
     global MODEL, URL, HOSTS, ORIGINS, HELLO, MAPID
     MODEL = Path(model).resolve()
@@ -1253,5 +1267,5 @@ def serve(model, port):
     out, sys.stdout = sys.stdout.buffer, sys.stderr  # stdout carries the protocol only: a stray print goes to the log
     for line in sys.stdin.buffer:
         if line.strip() and (said := answer(line)) is not None:
-            out.write(json.dumps(said).encode() + b"\n")
+            out.write(wire(said))
             out.flush()
