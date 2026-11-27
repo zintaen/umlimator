@@ -47,8 +47,24 @@ function refuseBlocks(content, where, inResult = false) {
 }
 
 export function refuseBody(text) {
+  return checkBody(text).why;
+}
+
+// The checked body: { why } when it may not go on, else { why: '', bytes } where bytes are the parsed object written out
+// again. Those bytes, never the ones received, go upstream, so what the API reads is exactly the object checked here: a
+// duplicated key (a server tool first, an empty list last) or invalid UTF-8 cannot show the API something else.
+export function checkBody(raw) {
+  let text = raw;
+  if (typeof raw !== 'string') {
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(raw); } catch { return { why: 'the body is not UTF-8' }; }
+  }
   let b;
-  try { b = JSON.parse(text); } catch { return 'the body is not JSON'; }
+  try { b = JSON.parse(text); } catch { return { why: 'the body is not JSON' }; }
+  const why = refuseParsed(b);
+  return why ? { why } : { why: '', bytes: Buffer.from(JSON.stringify(b), 'utf8') };
+}
+
+function refuseParsed(b) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return 'the body is not an object';
   for (const k of ['mcp_servers', 'container']) if (k in b) return k + ' is not allowed';
   if (b.tools != null) {
@@ -94,8 +110,7 @@ export function createProxy({ key, upstream = 'https://api.anthropic.com' }) {
     let size = 0;
     req.on('data', c => { size += c.length; if (size > MAX_BODY) { req.destroy(); } else chunks.push(c); });
     req.on('end', () => {
-      const body = Buffer.concat(chunks);
-      const why = refuseBody(body.toString('utf8'));
+      const { why, bytes: body } = checkBody(Buffer.concat(chunks));
       if (why) return deny(403, why);
       const headers = {};
       for (const [k, v] of Object.entries(req.headers)) if (PASS.has(k)) headers[k] = v;

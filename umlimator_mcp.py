@@ -169,6 +169,36 @@ MODEL = URL = HELLO = MAPID = None  # MAPID: the model file's own id, which its 
 # (an image, a script, a frame), which cannot read the page, is no page, whatever headers its browser sends (audit 24)
 TOKEN = secrets.token_urlsafe(24)
 HOSTS, ORIGINS = set(), set()
+# KEY: the page's own, in the URL the tools and the log hand out (URL = BASE/?k=KEY) and nowhere the server serves: GET /
+# needs it, so a process on this machine that was not given the URL (another account's) reads neither the model nor the
+# TOKEN, and posts nothing (audit cf1). The same for one model on each run, so an open page follows its server's restarts
+BASE = KEY = None
+KEYS = Path(os.environ.get("UMLIMATOR_MCP_KEYS") or Path.home() / ".cache" / "umlimator" / "mcp-key")  # the secret each model's KEY is made from
+
+
+def page_key(model):
+    """The model's page KEY: an HMAC of its path under a secret kept in KEYS (made on first use, readable by its owner
+    only), so it is the same on each run; a secret of this run's when that file cannot be kept or is not private."""
+    secret = None
+    try:
+        KEYS.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            fd = os.open(KEYS, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        except FileExistsError:
+            pass
+        else:
+            with os.fdopen(fd, "w", encoding="ascii") as f:
+                f.write(secrets.token_urlsafe(32))
+        st = os.lstat(KEYS)
+        if not KEYS.is_symlink() and KEYS.is_file() and (os.name == "nt" or (st.st_uid == os.getuid() and not st.st_mode & 0o077)):
+            secret = KEYS.read_text(encoding="ascii").strip() or None
+        else:
+            print(f"{KEYS} is not a private file of yours: the page's URL holds a key of this run's only", file=sys.stderr)
+    except (OSError, ValueError) as e:
+        print(f"cannot keep the page's key in {KEYS} ({getattr(e, 'strerror', None) or e}): the page's URL holds a key of this run's only", file=sys.stderr)
+    return hmac.new((secret or secrets.token_urlsafe(32)).encode(), str(model).encode(), hashlib.sha256).hexdigest()[:32]
+
+
 lock, rendering = threading.Lock(), threading.Lock()
 told = threading.Condition(lock)  # a page reported what it shows
 # What the assistant asked the page to show, the latest of each, folded from the page tools' commands. view: a view's id;
@@ -958,7 +988,7 @@ function listen() {
   const es = new EventSource(`/events?page=${encodeURIComponent(page)}&map=${MAP}&token=${TOKEN}`);
   es.onmessage = e => { const c = JSON.parse(e.data); queue = queue.then(() => apply(c)); };
   // refused: another map's server took the port, or this map's server ran again, with a new TOKEN: then the page reloads
-  es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch('/', { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => t.includes(MAP)
+  es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch(location.href, { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => t.includes(MAP)
     ? location.reload() : banner("This page's server now serves another map: this page no longer follows the assistant.")); };
   post({});
 }
@@ -976,7 +1006,7 @@ const MAP = '__MAP__', es = new EventSource('/events?map=__MAP__&token=__TOKEN__
 es.onmessage = e => { if (JSON.parse(e.data).model) location.reload(); };
 // refused: this map's server ran again, with a new TOKEN, so the page reloads and takes it; or another map's server has the
 // port (audit 25: the page stopped listening for good, as the map page did before round 24)
-es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch('/', { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => { if (t.includes(MAP)) location.reload();
+es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch(location.href, { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => { if (t.includes(MAP)) location.reload();
   else document.querySelector('p').textContent = "This page's server now serves another map: this page no longer follows the assistant."; }); };
 </script>
 """
@@ -1024,7 +1054,7 @@ class Page(http.server.BaseHTTPRequestHandler):
         site = self.headers.get("Sec-Fetch-Site")
         opened = self.command == "GET" and urllib.parse.urlsplit(self.path).path == "/" and self.headers.get("Sec-Fetch-Dest") == "document" \
             and self.headers.get("Sec-Fetch-Mode") == "navigate"
-        return self.headers.get("Host") in HOSTS and self.headers.get("Origin", URL) in ORIGINS and (site in (None, "same-origin", "none") or opened)
+        return self.headers.get("Host") in HOSTS and self.headers.get("Origin", BASE) in ORIGINS and (site in (None, "same-origin", "none") or opened)
 
     def token(self, given):
         """Whether a request names this run's TOKEN, which only the page it serves holds."""
@@ -1043,6 +1073,9 @@ class Page(http.server.BaseHTTPRequestHandler):
             return self.events((asked.get("page") or [""])[0][:64])
         if at.path != "/":
             return self.send_error(404)
+        given = urllib.parse.parse_qs(at.query).get("k") or [""]
+        if len(given) != 1 or not hmac.compare_digest(given[0].encode(), KEY.encode()):  # never the page, or its TOKEN, without the URL's key
+            return self.send_error(403, explain="open the page at the URL the map's tools give: it holds this server's key")
         try:
             shown, broken = page()
         except Fail as e:
@@ -1052,6 +1085,7 @@ class Page(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")  # the address holds the key
         self.end_headers()
         self.wfile.write(body)
 
@@ -1275,7 +1309,7 @@ def wire(said):
 
 
 def serve(model, port):
-    global MODEL, URL, HOSTS, ORIGINS, HELLO, MAPID
+    global MODEL, URL, BASE, KEY, HOSTS, ORIGINS, HELLO, MAPID
     MODEL = Path(model).resolve()
     MAPID = hashlib.sha256(str(MODEL).encode()).hexdigest()[:16]
     os.environ["UMLIMATOR_OFFLINE"] = "1"  # the page's render fetches no logo: the server reaches nothing beyond 127.0.0.1
@@ -1292,7 +1326,9 @@ def serve(model, port):
                 raise
             print(f"port {p} is taken", file=sys.stderr)
     port = httpd.server_address[1]
-    URL, HOSTS = f"http://127.0.0.1:{port}", {f"127.0.0.1:{port}", f"localhost:{port}"}
+    BASE, HOSTS = f"http://127.0.0.1:{port}", {f"127.0.0.1:{port}", f"localhost:{port}"}
+    KEY = page_key(MODEL)
+    URL = f"{BASE}/?k={KEY}"
     ORIGINS = {f"http://{h}" for h in HOSTS}
     HELLO = (f"The architecture map in {MODEL} (the server runs in {Path.cwd()}). The read tools answer from the file as it is "
              f"at each call; the page tools drive the map's interactive page at {URL}, which the user opens in a browser. The edit "

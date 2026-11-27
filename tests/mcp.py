@@ -605,7 +605,7 @@ def state():
     return {"model": {}, "asked": {}, **s, "pages": s.get("pages") or [{}]}
 
 
-url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+url = re.search(r"http://127\.0\.0\.1:\d+/\?k=\w+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                                                "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
 # m8ven.ai's quality report: no tool said whether it reads, writes or destroys; a directory (OpenAI's) refuses a tool without all four hints
 HINTED = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
@@ -656,7 +656,7 @@ try:
     said = tool("show_view", view="trips")
     ok("a page tool with no page open says so, with the URL", said.startswith("No page is connected") and url in said, said)
     tool("highlight", refs=["fare", "lifecycle"])
-    tab, sid = chrome.open(url + "/")
+    tab, sid = chrome.open(url)
     got = until(lambda: (lambda s: s if s and s["view"] == "trips" and "mcp" in s["overlays"] else None)(chrome.eval(sid, LOOK)))
     ok("mcp-latest-command#1 · a page that opens late shows the view, then the highlight on it", got and got["lit"] == ["fare", "lifecycle"]
        and got["dimmed"] == 10, got)
@@ -711,7 +711,7 @@ try:
     ok("mcp-sse-clients#1 · a closed tab is not counted", said.startswith("No page is connected"), said)
 
     # a tour that has ended is not played again for a page that opens later
-    tab, sid = chrome.open(url + "/")
+    tab, sid = chrome.open(url)
     until(lambda: chrome.eval(sid, "!!(window.umlimatorMap && window.umlimatorMap.view === 'trips')"))
     until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected
     # as C10's highlight (#252): ask again until the server counts the stream. A loaded runner's page may take longer than
@@ -790,7 +790,7 @@ try:
     model.write_text(json.dumps(smaller), encoding="utf-8")
 
     # this server stops, and another model's server takes its port: the tab stays the moped share, and says so
-    port = int(url.rsplit(":", 1)[1])
+    port = int(re.search(r":(\d+)/", url).group(1))
     srv.stdin.close()
     srv.wait(timeout=30)
     shop = work / "shop.json"
@@ -812,16 +812,16 @@ try:
         srv.wait(timeout=30)
         srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(late), "--port", str(port)], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-        return re.search(r"127\.0\.0\.1:(\d+)", rpc("server/discover")["result"]["instructions"]).group(1)
+        return re.search(r"http://127\.0\.0\.1:(\d+)/\?k=\w+", rpc("server/discover")["result"]["instructions"])
     first = again()
-    tab2, sid2 = chrome.open(url + "/")
+    tab2, sid2 = chrome.open(first.group(0))  # late.json's page, at its own address and key (audit cf1)
     waits = until(lambda: chrome.eval(sid2, "document.title") == "The map does not render yet")
     second = again()
     time.sleep(1)  # the page's stream is refused by the new run before the model renders again
     late.write_text(json.dumps(fixture), encoding="utf-8")
     drawn = until(lambda: tool("show_view", view="system") and (chrome.eval(sid2, "document.title") or "").endswith("Moped share, an example"), 30)
     ok("audit 25 · the page shown while the model does not render follows its server across a restart, and draws the map once it renders",
-       first == second == str(port) and waits and drawn, (first, second, waits, chrome.eval(sid2, "document.title")))
+       first.group(0) == second.group(0) and first.group(1) == str(port) and waits and drawn, (first.group(0), second.group(0), waits, chrome.eval(sid2, "document.title")))
 finally:
     chrome.quit()
     srv.stdin.close()
@@ -937,7 +937,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
     stop = threading.Timer(300, srv.kill); stop.daemon = True; stop.start()
     chrome = Chrome()
     try:
-        url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+        url = re.search(r"http://127\.0\.0\.1:\d+/\?k=\w+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                                                      "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
         views = json.loads(tool("list_views"))
         said = tool("describe_view", view=view)
@@ -949,7 +949,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         if f == "checkout-sequence":  # paths() in time order (C10): the messages that carry the shopper's checkout on to the receipt
             got = [r.get("id") or r["ids"][0] for r in json.loads(tool("paths", view=view, **{"from": "lifeline-shopper", "to": "receipt"}))]
             ok("C10 · checkout-sequence: paths runs in time order, message after message", got[5:] == ["m1", "m2", "m4", "m5", "m6"], got)
-        tab, sid = chrome.open(url + "/")
+        tab, sid = chrome.open(url)
         drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: the page draws the diagram: {cards} elements and {boxes} boxes (packages, a subject, composite states and their regions, components, nodes, a collaboration)", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
         until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
