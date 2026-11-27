@@ -442,9 +442,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
   const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
   // nor does a typed box hold a card of a box beside it in the same box (sibling: audit 71, a state's region grown over its
-  // sibling region's card by fanned transitions, laid out down, so the two regions were never moved apart). Only boxes of one
-  // parent: a top-level box over another stack's card keeps it (tests/deployment-stress.json's all, which moved apart drew more crossings)
-  const sibling = (f, id) => !!dg.typed && f.parent != null && (boxesOf.get(id) || []).some(b => b !== f.id && upOf.get(b) === f.parent);
+  // sibling region's card by fanned transitions, laid out down, so the two regions were never moved apart). From the second pass
+  // of the box gaps below (deep), nor a card of a box in one, at any depth, top-level boxes too (audit 72: two top-level
+  // composite states laid out down, and a region over a composite nested in its sibling region, overlapped). The first pass
+  // keeps audit 71's rule: a box over such a card only for a pass moved apart there drew more crossings (tests/deployment-stress.json's all)
+  let deep = false; const sibling = (f, id) => !!dg.typed && (deep || f.parent != null) && (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = deep ? upOf.get(b) : null, k++) if (b !== f.id && upOf.get(b) === f.parent) return true; return false; });
   const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !sibling(f, n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !byTitle.has(f.id) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
@@ -500,6 +502,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // Boxes keep apart: a column (row) gap widens wherever a box would come within 32 px of another box, or of a card outside
   // it, so their borders never touch and a line can run between them. Frames are measured again until nothing is too close.
   if (!dg.abs && familyDefs.length) for (let pass = 0, BOXGAP = 32; pass < 4; pass++) {
+    deep = pass > 0;
     const span = ns => ns.length ? { c0: Math.min(...ns.map(n => n.col)), c1: Math.max(...ns.map(n => n.col)), r0: Math.min(...ns.map(n => n.row)), r1: Math.max(...ns.map(n => n.row)) } : null;
     const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => owns(f, n))) })).filter(f => f.s);
     const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]), n }));
@@ -528,7 +531,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       fr.forEach(A => { if (owns(A, n) || !hit(A, B, 32)) return; const a = A.s, b = B.s;
         if (a.c1 < b.c0 || b.c1 < a.c0) { if (b.c1 < a.c0) { const k = Math.floor(b.c1); want(wantX, k, (B.x + B.w + 32 - A.x) / (Math.min(1, a.c0 - k) - b.c1 + k)); } }
         else if (a.r1 < b.r0 && hit(A, B, 8)) want(wantY, at(a.r1), A.y + A.h + 8 - B.y); }); });
-    if (!Object.keys(wantX).length && !Object.keys(wantY).length) break;
+    if (!Object.keys(wantX).length && !Object.keys(wantY).length) { if (deep) break; continue; } // nothing too close by audit 71's rule: once more by the deep one
     Object.entries(wantX).forEach(([k, v]) => { extraX[k] = (extraX[k] || 0) + v; }); Object.entries(wantY).forEach(([k, v]) => { extraY[k] = (extraY[k] || 0) + v; });
     place();
   }

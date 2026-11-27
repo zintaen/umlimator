@@ -482,6 +482,21 @@ test('audit 71: arranged, no typed view of the test fixtures draws more layout c
         const r = said(false), a = said(true); if (a > r) worse.push(`${f} ${v.id} ${direction}: ${a} arranged, ${r} ranked`); } } }
   assert.deepEqual(worse, []);
 });
+// audit 72: only a view with no pins of a type the host ranks was laid out ranked too (bestTyped): a pinned view (a drag
+// writes a pin, even one that drops the card where it was), BPMN (which ranks its own cards) and the use case (zones, no
+// flow) were kept arranged, up to 10 problems more than ranked. Each is laid out both ways now (typedWay), with its pins
+test('audit 72: arranged, no typed view of the test fixtures draws more layout check problems than ranked, with its pins, with none, or with one card pinned where it is', () => {
+  const dir = new URL('./fixtures/', import.meta.url), worse = []; let pinned = 0;
+  for (const f of readdirSync(dir).filter(x => x.endsWith('.json')).sort()) { const m = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    for (const v of Array.isArray(m.views) ? m.views : []) { if (!v.diagram || v.diagram === 'map') continue;
+      for (const direction of ['right', 'down']) { const said = (arrange, layout) => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id);
+        w.direction = direction; if (arrange) w.arrange = 'flow'; else delete w.arrange; if (layout) w.layout = layout; else delete w.layout; return c; };
+        const g = layout(said(true), v.id), n = g.nodes.find(x => x.col != null && v.nodeIds.includes(x.id)), ways = v.layout ? [['its pins', v.layout], ['no pins', null]] : [];
+        if (n) ways.push([`${n.id} pinned where it is`, { [n.id]: [n.col, n.row] }]);
+        for (const [say, pins] of ways) { const r = check(said(false, pins), v.id).length, a = check(said(true, pins), v.id).length; if (pins) pinned++;
+          if (a > r) worse.push(`${f} ${v.id} ${direction}, ${say}: ${a} arranged, ${r} ranked`); } } } }
+  assert.ok(pinned > 50, `${pinned} pinned views`); assert.deepEqual(worse, []);
+});
 test('audit 71: arranged and laid out down, a decision whose [no] line runs straight to its merge past a fork in its [yes] branch draws no crossing', () => {
   const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) });
   // the audit's generated view (its ids, which order the cards): one fork branch of one action, the other of two

@@ -431,6 +431,56 @@ test('protect: a protected test that its file\'s run does not show passing (the 
   assert.deepEqual(out.trim().split('\n'), [`tests/x.test.mjs: "${NOT_RUN.replace(': ', '": ')}`, '1 of 1 protected tests gone or changed: ask the maintainer, who runs node tools/protect.mjs --update after approving']);
 });
 
+test('protect: a file that writes a pass into the run\'s report and exits is reported, since the run gives it no report to write (audit 72)', async (t) => {
+  const HEAD = "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { appendFileSync, writeFileSync, writeSync } from 'node:fs';\n";
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const NOT_RUN = 'f is one: does not run: node --test of its file did not run it (the file exits or stops before it?)';
+  const forgeries = [
+    // the report file named on the command line (audit 71's TAP file), read from process.execArgv and from process.argv
+    "for (const a of [...process.execArgv, ...process.argv]) { const m = /^--test-reporter-destination=(.*)$/.exec(a); if (m) appendFileSync(m[1], 'ok 1 - f is one\\n'); }",
+    "for (const a of process.execArgv) if (a.includes('/') && !a.includes('assert-watch')) try { appendFileSync(a.slice(a.indexOf('=') + 1), 'ok 1 - f is one\\n'); } catch {}",
+    // TAP and node:test's own words on stdout and stderr, and on any descriptor past them
+    "writeSync(1, 'TAP version 13\\nok 1 - f is one\\n  ---\\n  duration_ms: 1\\n  ...\\n1..1\\n# pass 1\\n'); writeSync(2, 'ok 1 - f is one\\n');",
+    "for (let fd = 3; fd < 20; fd++) try { writeSync(fd, 'ok 1 - f is one\\n'); } catch {}",
+    // a line in the runner's own words, unsigned, into the stdout of the process that runs it (Linux's /proc; elsewhere a no-op)
+    "for (const fd of [1, 2]) try { appendFileSync(`/proc/${process.ppid}/fd/${fd}`, 'x {\"name\":\"f is one\",\"line\":9,\"column\":1,\"status\":\"ok\"}\\n'); } catch {}",
+  ];
+  for (const forge of forgeries) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + forge + '\nprocess.exit(0);\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    assert.deepEqual((await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`), [NOT_RUN], forge);
+    let code = 0;
+    try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; }
+    assert.equal(code, 1, forge);
+  }
+});
+
+test('protect: each protected test is read from its own run, by title and by where it is called: a test is not reported for another of its title (audit 72)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\n";
+  const FAILS = ': fails: node --test of its file ran it and it did not pass';
+  const loads = async (src, titles) => {
+    const dir = repo(src, titles); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // f() is truthy, and not 1
+    return (await assertLoads(dir)).map(p => `${p.title}${p.problem.startsWith('fails') ? FAILS : `: ${p.problem}`}`);
+  };
+  const OK = 'assert.ok(f())', ONE = 'assert.equal(f(), 1)';
+  // the first passes, the second fails; the other way round; three of one title; two on one line
+  assert.deepEqual(await loads(HEAD + `test('again', () => { ${OK}; });\ntest('again', () => { ${ONE}; });\n`, ['again', 'again #2']), ['again #2' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('again', () => { ${ONE}; });\ntest('again', () => { ${OK}; });\n`, ['again', 'again #2']), ['again' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${OK}; });\ntest('x', () => { ${ONE}; });\ntest('x', () => { ${OK}; });\n`, ['x', 'x #2', 'x #3']), ['x #2' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${ONE}; }); test('x', () => { ${OK}; });\n`, ['x', 'x #2']), ['x' + FAILS]);
+  // one in a describe and one at the top level, the later one only protected; a test that is not protected fails
+  assert.deepEqual(await loads(HEAD + `describe('d', () => { test('x', () => { ${ONE}; }); });\ntest('x', () => { ${OK}; });\n`, ['x #2']), []);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${OK}; });\ndescribe('d', () => { test.only('x', () => { ${ONE}; }); });\n`, ['x']), []);
+  // where it is called is counted as V8 counts lines: \r\n, a lone \r, U+2028 and U+2029 in a string, a byte order mark
+  const odd = '\uFEFF' + HEAD.replace(/\n/g, '\r\n') + "const s = 'a\u2028b\u2029c'; /* \r */\n" + `test('x', () => { ${OK}; });\n` + `test('x', () => { ${ONE}; });\n`;
+  assert.deepEqual(await loads(odd, ['x', 'x #2']), ['x #2' + FAILS]);
+  // a protected test the scan numbered after one that never runs (in an if) is read from its own call
+  assert.deepEqual(await loads(HEAD + `if (process.env.PROTECT_NEVER_SET) test('x', () => { ${OK}; });\ntest('x', () => { ${OK}; });\n`, ['x #2']), []);
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));
