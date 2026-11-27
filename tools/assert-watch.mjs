@@ -9,9 +9,17 @@
 // change made in a describe's beforeEach and put back in its afterEach is seen before the test's own code goes on), and
 // at exit. What it says it writes with the stderr descriptor it held from the start, so an exit listener placed ahead of
 // its own, which puts node:assert back before exit, comes too late.
+//
+// What each test did (audit 73): node:test's child process reports its events on its own stdout, where the file can write
+// event frames of its own (a pass for a test that never ran). So when tools/protect-run.mjs names a key file in
+// PROTECT_KEY_FILE, this preload reads the key and removes the file and the variable before the file loads, and after
+// each test adds a diagnostic to that test's report, { seq, name, status }, signed with the key: protect-run.mjs counts a
+// pass only where a signed one stands for it. The functions it signs and reports with are taken as it loads (the context's
+// getters as the first hook runs, before any of the file's hooks), so a file that replaces them later changes nothing here.
 import { createHook } from 'node:async_hooks';
-import { writeSync } from 'node:fs';
-import { beforeEach, afterEach } from 'node:test';
+import { readFileSync, unlinkSync, writeSync } from 'node:fs';
+import { hash } from 'node:crypto';
+import { before, beforeEach, afterEach } from 'node:test';
 
 const MARK = 'protect: node:assert changed: ', write = writeSync, Is = Object.is;
 const roots = [['assert', process.getBuiltinModule('node:assert')], ['assert/strict', process.getBuiltinModule('node:assert/strict')]];
@@ -52,7 +60,23 @@ const look = () => {
     if (why) { said = true; write(2, `${MARK}${why} ${where()}\n`); process.exitCode = 1; }
   } finally { busy = false; }
 };
+const KEY = (() => {
+  const at = process.env.PROTECT_KEY_FILE;
+  if (!at) return null;
+  delete process.env.PROTECT_KEY_FILE;
+  try { return readFileSync(at, 'utf8'); } catch { return null; } finally { try { unlinkSync(at); } catch {} }
+})();
+const apply = Reflect.apply, stringify = JSON.stringify, getOwn = Object.getOwnPropertyDescriptor, protoOf = Object.getPrototypeOf;
+let ctx = null, seq = 0; // TestContext's name and passed getters and its diagnostic(), as the first hook saw them
+const take = t => { if (!ctx) { const p = protoOf(t); ctx = { name: getOwn(p, 'name').get, passed: getOwn(p, 'passed').get, diagnostic: p.diagnostic }; } };
+const sign = t => {
+  if (KEY === null) return;
+  take(t);
+  const name = apply(ctx.name, t, []), body = stringify({ __proto__: null, seq: seq++, name: typeof name === 'string' ? name : '', status: apply(ctx.passed, t, []) === true ? 'ok' : 'not ok' });
+  apply(ctx.diagnostic, t, [`protect-ran ${hash('sha256', KEY + hash('sha256', KEY + body))} ${body}`]);
+};
 createHook({ before: look }).enable();
-beforeEach(t => { look(); running = t.name; });
-afterEach(t => { look(); last = t.name; running = null; });
+before(t => { take(t); });
+beforeEach(t => { take(t); look(); running = t.name; });
+afterEach(t => { sign(t); look(); last = t.name; running = null; });
 process.on('exit', () => { look(); if (said) process.exitCode = 1; });
