@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readMermaidEr as read, writeMermaidEr as write } from '../src/readers/mermaid-er.js';
-import { validate } from '../lib/umlimator-all.js';
+import { layout, validate } from '../lib/umlimator-all.js';
 
 const json = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const every = readFileSync(new URL('import/er.mmd', import.meta.url), 'utf8');
@@ -456,4 +456,16 @@ test('a %% comment line inside a "label" or "comment" over lines is taken out, a
   assert.deepEqual(r.model.edges.map(e => e.label), ['first\n  second']);
   assert.deepEqual(r.model.nodes.find(n => n.id === 'C').members.map(m => m.ext.mermaid.comment), ['the\n    key']);
   assert.deepEqual(r.report.filter(x => x.message.startsWith('a %%')).map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [7, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+// audit 70: many relationships among a few tables laid out in about the cube of their number, or worse: with repair off, every
+// two lines between one pair of tables that crossed swapped their ports and were routed again, unbounded (160 among five tables
+// 25 s). Timed by growth against a quarter, the quarter's best of two
+test('a file of 160 relationships among five tables lays out in near-quadratic time (audit 70) (timed)', () => {
+  const make = n => { let s = 'erDiagram\n'; for (const t of 'ABCDE') s += `  ${t} { int id PK }\n`;
+    for (let i = 0; i < n; i++) s += `  ${'ABCDE'[i % 5]} ||--o{ ${'ABCDE'[(i * 3 + 1) % 5]} : r${i}\n`; return read(s).model; };
+  const time = m => { const t = performance.now(), g = layout(m, m.views[0].id); return [performance.now() - t, g]; };
+  const q = Math.min(time(make(40))[0], time(make(40))[0]), [ms, g] = time(make(160)); // was about 80x a quarter, here about 24x
+  assert.ok(ms < 300 || ms / Math.max(q, 1) < 45, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
+  assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 160, 'every relationship drawn');
 });

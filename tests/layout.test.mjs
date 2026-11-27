@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { layout, check, history, validate } from '../lib/umlimator.js';
-import { leaveIssues } from '../src/layout/audit.js';
+import { leaveIssues, routeAudit } from '../src/layout/audit.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
 
@@ -800,4 +800,18 @@ test('audit 43: a card with no pin whose clean auto-layout slot runs its lines b
   const N = 40, h = { nodes: Array.from({ length: N }, (_, i) => ({ id: 'n' + i, label: 'n' + i })), edges: Array.from({ length: N - 1 }, (_, i) => ({ id: 'e' + i, from: 'n' + i, to: 'n' + (i + 1) })),
     views: [{ id: 'v', nodeIds: Array.from({ length: N }, (_, i) => 'n' + i), layout: Object.fromEntries(Array.from({ length: N / 2 }, (_, k) => ['n' + 2 * k, [N - 2 * k, 0]])) }] };
   const g = layout(h, 'v'); assert.equal(new Set(g.nodes.map(n => n.x + ',' + n.y)).size, N);
+});
+
+// audit 70: routeAudit about some lines (the repair passes ask so once a line) takes just the pairs with an end among them, not
+// every pair; what it says must stay what the whole audit says of those lines, in the whole audit's order
+test('routeAudit about some lines says what the whole audit says of them, in its order, and nothing more (audit 70)', () => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647, at = () => Math.round(rnd() * 20) * 10, card = k => ({ id: 'n' + k, label: 'N' + k });
+  const edges = Array.from({ length: 40 }, (_, k) => { const x0 = at(), y0 = at(), x1 = at(), y1 = at();
+    return { s: card(k), t: card(k + 1), from: 'n' + k, to: 'n' + (k + 1), pts: [[x0, y0], [x1, y0], [x1, y1]], ...(k % 3 ? {} : { lbl: { x: x1 - 15, y: (y0 + y1) / 2 - 8, w: 30, h: 16, text: 'L' + k } }), ...(k % 7 ? {} : { fixed: true }) }; });
+  const refs = [], all = routeAudit({ edges }, 'v', null, refs);
+  assert.ok(all.some(s => / cross$/.test(s)) && all.some(s => / share a line$/.test(s)) && all.some(s => /^v: label /.test(s)), 'crossings, shared runs and labels on lines');
+  for (const only of [[edges[0]], [edges[5], edges[6]], [edges[39], edges[1], edges[14]], [edges[7], edges[14]], [], edges]) {
+    const set = new Set(only), r = [], said = routeAudit({ edges }, 'v', set, r);
+    assert.deepEqual(said.map((s, k) => [s, r[k]]), all.flatMap((s, k) => refs[k].some(x => set.has(x)) ? [[s, refs[k]]] : []), `about ${only.length} lines`);
+  }
 });
