@@ -88,7 +88,7 @@ function withOwnNodes(def) {
   else if (R_OBJ(L) && typeof L.run === 'function') out.layout = { ...L, run: ownWrap('run', L.run, f => (model, view, o) => f(M(model, view), view, o)) };
   // flowRole(line, model, view) and zoneOf(node, model, view): the view's own nodes too (layout-flow.md section 3)
   ['flowRole', 'zoneOf'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap(k, def[k], f => (x, model, view) => f(x, R_OBJ(view) && R_OBJ(model) ? M(model, view) : model, view)); });
-  ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
+  ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys', 'storyOn'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
   if (typeof def.word === 'function') out.word = ownWrap('word', def.word, f => (model, id, view) => f(view ? M(model, view) : all(model).model, id));
   // the Owner field: a view's own owners too, for what one view alone holds; never for a model element (ownGuard's rule)
@@ -141,7 +141,10 @@ function withOwnNodes(def) {
    Layout by business flow's (docs/diagrams/notes/layout-flow.md sections 3 and 7.2, section 12 step 10), read only in a view
    with arrange "flow": flowRole(line, model, view) -> 'main', 'branch', 'dep' or null (a flow line), a line's part where it
    has no flow field; zoneOf(node, model, view) -> 'first', 'last', 'under' or null, a node's zone where it has no zone
-   field and the view does not say zones: false. rankFlip(line, model, view): the model and view are passed too. */
+   field and the view does not say zones: false. rankFlip(line, model, view): the model and view are passed too. Audit 68's:
+   storyOn(model, view) -> { starts, ends, carry }, the cards a story from the main flow is told from and to (storyFromFlow
+   carries the main flow back to a start and on to an end along the view's flow lines) and links it may walk that no line
+   draws ([from, to]: a flowchart's on-page connector pair). */
 
 /* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
    first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26
