@@ -806,12 +806,32 @@ def icon_table(models):
 
 
 def node_error(err, status=1):
-    """What a Node run that failed said, in short: its error and message (an uncaught error's lines from `Error: ` to its
-    stack), never the stack, the inline script or the paths Node prints with them, which diff --base wrote into the
-    summary, the diff Action's pull request comment (audit 74); else its last line."""
-    at = [m.start() for m in re.finditer(r"^\w*Error: ", err, re.M)]
-    said = re.split(r"\n\s+at |\n\s*\nNode\.js v", err[at[-1]:])[0] if at else (err.strip().splitlines() or [""])[-1]
-    return said.strip()[:2000] or f"Node failed (exit status {status}) and said nothing"
+    """What a Node run that failed said, in short and in one line: its error and message (an uncaught error's lines from
+    its header, `TypeError: `, `Error [ERR_X]: `, `FooBar [Error]: `, to its stack), or the value it threw, never the
+    stack, the inline script or the paths Node prints with them, which diff --base wrote into the summary, the diff
+    Action's pull request comment (audit 74). Node out of memory says so; a failure in no form known says Node failed,
+    with its exit status and at most its first line that is no stack frame, path or version banner, never its last line,
+    which is Node's version or a native frame with the path of a system library (audit 75)."""
+    how = f"exit status {status}" if status >= 0 else f"signal {-status}"
+    if re.search(r"heap out of memory|^FATAL ERROR: .*out of memory|Fatal (?:JavaScript|process) out of memory", err, re.M | re.I):
+        return f"Node ran out of memory ({how}): the model is too large for Node's heap; NODE_OPTIONS=--max-old-space-size=MB gives it more"
+    head = r"^(?:Uncaught )?(?:\w*(?:Error|Exception|Rejection)(?: \[\w+\])?|\w+ \[\w*Error\])(?:: |:?$)"
+    at = [m.start() for m in re.finditer(head, err, re.M)]
+    caret = list(re.finditer(r"^\s*\^+\s*$\n?", err, re.M))
+    end = r"\n\s+at |\n\s*\nNode\.js v|\n\(Use `node |\nThrown at:| \{\n  (?:code|\[\w+\]|\w+):"
+    if at:
+        said = re.split(end, err[at[-1]:])[0]
+        if said.startswith("Error [ERR_MODULE_NOT_FOUND]"):  # the folder Node ran in, no part of the error
+            said = re.sub(r" imported from \S.*$", "", said.strip(), flags=re.S)
+    elif caret:  # a thrown string or object: Node prints its source line, a caret, then the value
+        said = re.split(r"\n\s*\n|\n\(Use `node |\nThrown at:", err[caret[-1].end():])[0].strip()
+        said = said and "Uncaught " + said
+    else:
+        noise = re.compile(r"^\s*(?:at |\d+: 0x|\^|\[\d+:0x|<--- |----- |Node\.js v)|node:|file:|(?:^|[\s\[(])(?:/|[A-Za-z]:\\)|\[eval")
+        first = next((x.strip() for x in err.splitlines() if x.strip() and not noise.search(x)), "")
+        return f"Node failed ({how})" + (f": {first[:300]}" if first else "" if err.strip() else " and said nothing")
+    said = re.sub(r"\s*\n\s*", " ", said.strip())[:2000]
+    return said or f"Node failed ({how}) and said nothing"
 
 
 def js(fn, *args, module=LIB):
