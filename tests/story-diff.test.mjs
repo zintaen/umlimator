@@ -58,3 +58,14 @@ test('lib/umlimator.js has storyFromDiff too, and lib/umlimator.d.ts types it', 
   const dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
   assert.match(dts, /export function storyFromDiff\(before: MapModel, after: MapModel, viewId: string, options\?: \{ id\?: string; title\?: string; audience\?: string; on\?: 'after' \| 'diff' \}\): Story;/);
 });
+
+// audit 68: a line drawn to a box (a package, a component drawn as a frame) is a line the story tells: a package taken out of
+// the view is told by the lines to it that go with it, where the story said the view showed no change
+test('a box taken out of a view is told by its lines that go with it', () => {
+  const m = JSON.parse(readFileSync(new URL('./fixtures/uml-package.json', import.meta.url), 'utf8')), b = structuredClone(m), v = b.views.find(x => x.id === 'packages');
+  v.nodeIds = v.nodeIds.filter(id => id !== 'shared');
+  const s = U.storyFromDiff(m, b, 'packages', { on: 'diff' }), into = m.edges.filter(e => e.to === 'shared' || e.from === 'shared').map(e => e.id);
+  assert.ok(into.length >= 2);
+  assert.deepEqual(s.steps.map(x => x.select).filter(x => into.includes(x)).sort(), [...into].filter(id => m.views.find(x => x.id === 'packages').nodeIds.includes(m.edges.find(e => e.id === id)[m.edges.find(e => e.id === id).to === 'shared' ? 'from' : 'to'])).sort());
+  assert.ok(s.steps.every(x => /^\d+\. Removed: /.test(x.caption)), s.steps.map(x => x.caption).join('\n'));
+});

@@ -152,6 +152,8 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
     const m = arranged(read(f)), store = new Set(m.nodes.filter(n => /DataStore$/.test(n.type)).map(n => n.id));
     for (const v of m.views) { const want = drawnMain(m, v.id); let got;
       try { got = U.storyFromFlow(m, v.id).steps.map(x => x.select); } catch (e) { assert.match(e.message, /has no main flow/); assert.deepEqual(want, [], `${f} ${v.id}`); continue; }
+      // a flowchart's story is the drawn main flow carried back to its start terminal and on to its end (audit 68)
+      if (v.diagram === 'flowchart') { const at = got.indexOf(want[0]); assert.ok(at >= 0, `${f} ${v.id}`); got = got.slice(at, at + want.length); }
       assert.deepEqual(got, want, `${f} ${v.id}: the story's steps are the drawn main flow`);
       assert.ok(!got.some(c => store.has(c)), `${f} ${v.id}: no data store is a step`); } }
   // an activity whose comment is linked to its first action: the story starts at the initial node, the comment named in the caption
@@ -170,7 +172,8 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
 // audit 67: a BPMN collaboration (a customer's pool and the shop's, each with a start event) tells the main flow its picture
 // draws, the start event whose path is longest (bzMain), not the first-listed pool's; arranged or not, the same story
 test('a BPMN collaboration tells the main process the arranged picture draws, not the first-listed start event\'s path', () => {
-  for (const [f, vid] of [['./fixtures/bookshop-order-to-shipment.json', 'order-to-shipment'], ['./fixtures/bpmn-gallery.json', 'order-to-shipment'], ['./fixtures/integration.json', 'repair-process']]) {
+  for (const [f, vid] of [['./fixtures/bookshop-order-to-shipment.json', 'order-to-shipment'], ['./fixtures/bpmn-gallery.json', 'order-to-shipment'], ['./fixtures/integration.json', 'repair-process'],
+    ['./fixtures/bpmn-gallery.json', 'order-to-shipment-expanded']]) { // audit 68: the main process through an expanded sub-process, its box a step
     const m = read(f), a = arranged(m), want = drawnMain(a, vid);
     assert.ok(want.length > 3, `${f} ${vid}: the picture draws a main flow`);
     const firstStart = m.views.find(v => v.id === vid).nodeIds.find(id => m.nodes.find(n => n.id === id)?.type === 'bpmn.StartEvent');
@@ -199,4 +202,57 @@ test('storyFromFlow\'s refusal is grammatical: an er view, a uml.use-case view',
   const er = read('./er-minimal.json');
   assert.throws(() => U.storyFromFlow(er, er.views[0].id), /has no main flow: an er view reads none$/);
   assert.throws(() => U.storyFromFlow(read('./fixtures/use-case-shop.json'), 'shopping'), /has no main flow: a uml\.use-case view reads none$/);
+});
+
+// audit 68: a main path through an expanded sub-process tells the box as a step, in one pool as in a collaboration; with no
+// main path its type reads, BPMN's own path starts at the main process's start event, never the first-listed pool's
+test('a BPMN main flow through an expanded sub-process is told, the box a step', () => {
+  const N = (id, type, extra = {}) => ({ id, type, parent: 'pool', label: id.toUpperCase(), ...extra }), S = (id, from, to) => ({ id, type: 'bpmn.SequenceFlow', from, to });
+  const m = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Pool' }, N('s', 'bpmn.StartEvent'), N('sp', 'bpmn.SubProcess'),
+    N('in', 'bpmn.StartEvent', { parent: 'sp' }), N('t', 'bpmn.Task', { parent: 'sp' }), N('out', 'bpmn.EndEvent', { parent: 'sp' }), N('e', 'bpmn.EndEvent')],
+  edges: [S('f1', 's', 'sp'), S('f2', 'sp', 'e'), S('g1', 'in', 't'), S('g2', 't', 'out')],
+  views: [{ id: 'v', diagram: 'bpmn', title: 'T', nodeIds: ['pool', 's', 'sp', 'in', 't', 'out', 'e'] }] };
+  for (const x of [m, arranged(m)]) { const s = U.storyFromFlow(x, 'v');
+    assert.deepEqual(s.steps.map(st => st.select), ['s', 'sp', 'e']);
+    assert.equal(s.steps[1].caption, '2. SP: S leads to SP.'); assert.deepEqual(s.steps[1].tour, ['s', 'sp']);
+    assert.deepEqual(storyProblems(x, s), []); }
+});
+
+// audit 68: a step names an unnamed control node by its kind, as describe() and its accessible name do, never by its id; a
+// comment linked to a step is said as a note, not named as a store the step takes from
+test('storyFromFlow names an unnamed initial, merge, fork, join or final node by its kind, and a comment as a note', () => {
+  for (const [f, vid] of [['./fixtures/integration.json', 'hire-overview'], ['./fixtures/integration.json', 'swap-battery'], ['./fixtures/fulfil-activity.json', 'take-payment'], ['./fixtures/fulfil-activity.json', 'fulfil']]) {
+    const m = read(f), byId = new Map(m.nodes.map(n => [n.id, n])), s = U.storyFromFlow(m, vid), caps = [...s.steps, ...s.chapters.flatMap(c => c.steps)].map(x => x.caption);
+    // the unnamed control nodes the picture draws no name on (an activity's diamond draws its id, audit 39: named as drawn)
+    const drawn = new Map(U.layout(m, vid).nodes.map(n => [n.id, n]));
+    const bare = m.views.find(v => v.id === vid).nodeIds.filter(id => byId.has(id) && !String(byId.get(id).label ?? '').trim() && /(Initial|Final|Merge|Fork|Join|Decision)Node$/.test(byId.get(id).type) && drawn.has(id) && !drawn.get(id).label);
+    assert.ok(bare.length >= 2, `${f} ${vid}: unnamed control nodes`);
+    for (const c of caps) for (const id of bare) assert.ok(!new RegExp(`(^|[ :.])${id}([ :.;,]|$)`).test(c), `${f} ${vid}: ${id} in ${c}`);
+    assert.match(s.steps[0].caption, /^1\. The initial node: the initial node starts the flow/); }
+  // the BPMN gallery's text annotation on Take payment
+  const b = U.storyFromFlow(read('./fixtures/bpmn-gallery.json'), 'order-to-shipment');
+  assert.match(b.steps[1].caption, /^2\. Take payment: .*, note: Card details go straight to the provider; the shop never sees them\.$/);
+  assert.ok(!b.steps.some(x => /takes from Card details/.test(x.caption)));
+});
+
+// audit 68: a flowchart's story is told from its start terminal to an end one: the drawn main flow carried back across the
+// data symbols' band to the start and on to the end, and on through an on-page connector pair (A ... a), as describe() reads it
+test('a flowchart story runs from its start terminal to its end, through the data symbols\' band', () => {
+  const r = read('./fixtures/returns-flowchart.json');
+  for (const x of [r, arranged(r)]) { const s = U.storyFromFlow(x, 'returns');
+    assert.deepEqual(s.steps.map(st => st.select), ['return-arrives', 'slip', 'key-in', 'inspect', 'resaleable', 'refund', 'wait', 'restock', 'stock-records', 'join', 'end']);
+    assert.equal(s.steps[0].caption, '1. Returned parcel arrives: Returned parcel arrives starts the flow.');
+    assert.deepEqual(storyProblems(x, s), []); }
+});
+test('a flowchart story carries on through an on-page connector pair, as describe() and the reachable rule do', () => {
+  const n = (id, t, label) => ({ id, type: 'flow.' + t, label }), fl = (id, from, to) => ({ id, type: 'flow.Flow', from, to });
+  const m = { schemaVersion: 2, nodes: [n('s', 'Terminator', 'Start'), n('p1', 'Process', 'Pick the books'), n('p2', 'Process', 'Pack the books'), n('ca', 'Connector', 'A'),
+    n('cb', 'Connector', 'a '), n('p3', 'Process', 'Label the parcel'), n('p4', 'Process', 'Hand to courier'), n('e', 'Terminator', 'Done')],
+  edges: [fl('f1', 's', 'p1'), fl('f2', 'p1', 'p2'), fl('f3', 'p2', 'ca'), fl('f4', 'cb', 'p3'), fl('f5', 'p3', 'p4'), fl('f6', 'p4', 'e')],
+  views: [{ id: 'v', diagram: 'flowchart', title: 'Ship', nodeIds: ['s', 'p1', 'p2', 'ca', 'cb', 'p3', 'p4', 'e'] }] };
+  assert.deepEqual(U.validate(m), []);
+  for (const x of [m, arranged(m)]) { const s = U.storyFromFlow(x, 'v');
+    assert.deepEqual(s.steps.map(st => st.select), ['s', 'p1', 'p2', 'ca', 'cb', 'p3', 'p4', 'e']);
+    assert.equal(s.steps[4].caption, '5. a: the flow carries on from A.'); assert.equal(s.steps[4].tour, undefined); assert.deepEqual(s.steps[4].highlight, ['cb']);
+    assert.deepEqual(storyProblems(x, s), []); }
 });

@@ -117,7 +117,7 @@ function fcIndex(model, view) {
   const gone = goneIn(view, id => N.get(id)), liveIn = new Map(), liveOut = new Map();
   flows.forEach(e => { if (liveLine(e, gone)) { add(liveIn, e.to, e); add(liveOut, e.from, e); } });
   const said = id => (gone(id) ? { i: inBy, o: outBy } : { i: liveIn, o: liveOut });
-  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, said };
+  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, said, pair, carry };
 }
 const fcName = elName;
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
@@ -254,6 +254,15 @@ function fcZoneOf(x, model, view) {
   return out && !inn ? 'first' : inn && !out ? 'last' : null;
 }
 
+/* A story's reading of the view (storyFromFlow, audit 68): its start and end terminals, which the story is told from and to
+   (the main flow the arranged picture draws, carried back to its start and on to its end, a data symbol's band and all), and
+   each on-page connector pair as a link from the connector with no flow out to each of its label with no flow in, as fcIndex's
+   walk and the reachable rule follow it */
+function fcStoryOn(model, view) {
+  const I = fcIndex(model, view);
+  return { starts: I.starts, ends: I.ends, carry: I.ids.filter(id => I.pair(id) && !I.outs(id).length).flatMap(id => (I.carry.get(I.pair(id)) || []).filter(x => x !== id).map(x => [id, x])) };
+}
+
 /* ---- the type ---- */
 const FC_TYPE = registerDiagramType('flowchart', {
   untyped: 'Node', // an element of no type (or ""): a node, as named (audit 30)
@@ -263,6 +272,7 @@ const FC_TYPE = registerDiagramType('flowchart', {
   layout: fcGeo,
   flowRole: fcFlowRole,
   zoneOf: fcZoneOf,
+  storyOn: fcStoryOn,
   validate: fcProblems,
   rules: FC_RULES,
   describe: fcDescribe,
