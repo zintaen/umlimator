@@ -213,6 +213,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: origin/fixcf1-xss 4861b375, origin/fixcf1-perf 1e759b9d, no origin/fixcf1-tools; audit-loop merge 27a7c869; handoff log, 28 Nov 2026, fix round cf1 combine.
 - Proposed change: Carry out F20's proposals (no lane returns while a suite it started is running; an owner for an unpushed lane; one scratchpad subfolder per lane, named after its branch, and nothing deleted outside it). In C9, list the environment a project's gate needs for its optional tools (here UMLIMATOR_BPMN_MODDLE pointing at a scratch `npm install --no-save bpmn-moddle`) next to the gate commands, so baseline and final counts have no skips that CI would run.
 
+### F22. Three combines shared one integration worktree at once, and two lanes of one round edited the same function
+
+- Date: 2026-11-28
+- Round: fix round bh1 (combine)
+- Rule: C4 step 4, A3.4 (step 1: work only in the integration worktree), A3.2 (lane split), C9 (and F17 again)
+- What happened: The combines for rounds cf1, bh1 and a third round ran at the same time, each told to work only in the one audit-loop worktree. While the bh1 baseline gate ran there, the cf1 combine merged fixcf1-xss and fixcf1-perf into the same checkout and wrote its F21 entry uncommitted, so the bh1 baseline measured a tree that changed under it (one smoke test failed on a browser teardown). The bh1 combine dropped those numbers, made a detached worktree of its own from origin/audit-loop, ran the baseline there, merged the cf1 push (830ad70a) when it landed, merged its lanes and pushed by fast-forward only. Separately, fixbh1-mcp and fixbh1-render both changed the signature of `render_model` in umlimator.py (one added `**bound`, the other `base_near`), so under the no-hand-resolution rule fixbh1-render (audit bh1 findings 0 and 1) conflicted with fixbh1-mcp and was returned (F17 again). All three merged lanes again conflicted on the end of docs/module-api.md's unreleased list, resolved by keeping both sides.
+- Evidence: origin/audit-loop 830ad70a (cf1) and the bh1 merges 2dffd6fe, 2af66fb8, e98f8a16; lane heads cabf630c, 4a2bbd3d, 28104cfa, 6d6e4544; handoff log, 28 Nov 2026, fix round bh1 combine.
+- Proposed change: In A3.4, either combines run one at a time (the orchestrator holds a lease, as tools/evolve/lease.mjs does for lanes) or each combine works in its own worktree named after its round, detached at origin/audit-loop, and pushes by fast-forward, merging origin/audit-loop again (and gating again) when the push is refused. In A3.2, findings whose fixes name the same function (here render_model) go to one lane even when they come from different areas.
+
 ## Closed
 
 None.
