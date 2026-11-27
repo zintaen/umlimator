@@ -14,7 +14,8 @@ import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '..
    comments; realizations, component realizations, usages (a socket at a ball, else «use»), assembly and delegation
    connectors (a delegation from a box's port inward is an inner line, §5), dependencies, manifestations and comment links.
    Laid out by layoutTyped from the type's own ranking (cpPlace), a usage of a ball turned so the ball comes before its requirers: gap 48, labelGaps
-   and cut 280 (§8), a box with ports 48 px of padding (§7), repair and reroute off (§14). Every port is a node of the
+   and cut 280 (§8), a box with ports 48 px of padding (§7), repair and reroute off (§14), the class view's box pass on (shutBoxes 2: a line through a box
+   holding neither end weighs more than a crossing, audit 70). Every port is a node of the
    picture, with its owner's id (owner), which the layout check passes half inside it (decision 22). Ships in
    lib/umlimator-all.js only. */
 
@@ -231,7 +232,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
     return { id: l.e.id, _id: l.e.id, type: l.e.type, from: l.f.at, to: l.t.at, ...end(l, 'from'), ...end(l, 'to'), ...(l.inner ? { inner: l.inner } : {}),
       ...(l.f.port || l.t.port ? { portRank: l.f.port && l.t.port ? r : r[l.f.port ? 0 : 1] } : {}), label: label || undefined, ...(label ? { cut: 280 } : {}),
       end: CP_LOOK[l.kind][0], aria: cpLineName(pic, l), ...(CP_OBJ(l.e.style) || typeof l.e.style === 'string' ? { style: l.e.style } : {}) }; });
-  const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
+  const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo));
   // on a copy (stage 4 §2.4): every port as a node, and its name; a node that could not hold a port with no line grows and is laid
   // out once more while one is still held (portRoom, audit 52; portsHeld, audit 53). ponytail: that view lays out more than once each time, as its memo holds the last layout's key
   const ports = shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) }));

@@ -203,7 +203,7 @@ function ovGeo({ model, view, pos, memo }) {
   // ponytail: one gap for every column, so one long guard widens them all (to ~612 px at the 280 px cut); room only where a
   // labelled flow runs needs a per-column gap from layoutGraph (it has gapAfter inside, no option for it). Less than twice drops guards
   const wide = Math.max(0, ...edges.filter(e => e.label).map(labelW)), gap = wide ? Math.ceil(Math.max(64, 2 * ((down ? 18 : wide) + OV_GAP))) : 64;
-  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap, rgap: 56, repair: false, reroute: false }, memo); // P1 on a shared CI runner (§17)
+  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap, rgap: 56, repair: false, reroute: false, sideSwap: true }, memo); // P1 on a shared CI runner (§17)
   // reading order (§14): by rank (the layout's column, then its row), then the lines
   const order = I.ids.filter(id => g.byId[id]).sort((a, b) => g.byId[a].col - g.byId[b].col || g.byId[a].row - g.byId[b].row);
   return { ...g, nodes: order.map(id => g.byId[id]), order: [...order, ...g.edges.map(e => e.id)], legend: ovLegendOf(g.edges, g.nodes) };

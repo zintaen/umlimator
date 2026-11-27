@@ -191,7 +191,7 @@ function actGeo({ model, view, pos, memo }) {
   // widest label and 40 px for its stubs laid out right, as the class type does, and by 48 px laid out down, where a label
   // lies across its line. ponytail: one gap for every column; a gap per column needs labelRoom for typed views (the core's)
   const wide = edges.some(e => e.label) ? (down ? 48 : Math.ceil(Math.max(...edges.filter(e => e.label).map(labelW))) + 40) : 0;
-  const g = layoutTyped({ nodes, edges, ...(I.boxes.length ? { containers: I.boxes } : {}), direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false }, memo);
+  const g = layoutTyped({ nodes, edges, ...(I.boxes.length ? { containers: I.boxes } : {}), direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false, sideSwap: true }, memo); // sideSwap: layered.js, audit 70
   return acFinish(model, g, I, down);
 }
 

@@ -180,6 +180,10 @@ function portsDrawn(g, ports, held0 = null) {
   // a line that names no port ends on its owner's side too: a port with no line keeps off its end (0.22.0, 5.8's fixtures)
   SN_ARR(g.edges).forEach(e => e.pts && [[e.fromPort, e.from, e.fs, e.pts[0]], [e.toPort, e.to, e.ts, e.pts[e.pts.length - 1]]].forEach(([q, id, s, p]) => {
     if (q == null && s && p) boxesOn(id, s).push({ x: p[0] - 1, y: p[1] - 1, w: 2, h: 2 }); }));
+  // and off where a line crosses a box's side (audit 70: a line from inside a box out ran over a port with no line on its border)
+  fams.forEach(f => ['L', 'R', 'T', 'B'].forEach(s => { const v = s === 'L' || s === 'R', c = s === 'L' ? f.x : s === 'R' ? f.x + f.w : s === 'T' ? f.y : f.y + f.h, lo = v ? f.y : f.x, hi = lo + (v ? f.h : f.w);
+    edges.forEach(e => e.pts && e.pts.slice(1).forEach((q, k) => { const p = e.pts[k], i = v ? 0 : 1, t = p[1 - i]; if (p[1 - i] !== q[1 - i] || t <= lo || t >= hi || Math.min(p[i], q[i]) >= c || Math.max(p[i], q[i]) <= c) return;
+      boxesOn(f.id, s).push(v ? { x: c - 1, y: t - 1, w: 2, h: 2 } : { x: t - 1, y: c - 1, w: 2, h: 2 }); })); }));
   // the ports with no line, side by side: evenly over the span in members order, then pushed forwards and, at the span's end,
   // back, 20 px centre to centre (12 + 8), each past a port with lines it would come within 8 px of; a side too short for them
   // narrows the gaps down to 4 px (§4.4, step 3), and what still does not fit is held at the span's start, marked over
