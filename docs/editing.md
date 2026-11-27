@@ -495,7 +495,7 @@ gestures (1.7), with each type's hooks:
 
 | Type | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|---|
-| ER (`er`) | a column, its type and flags | the panel's Members, one row per column | Enter; the row's text `name type [PK] [FK table.column] [UK] [NULL]` | the type's member hook: `add` or `set` of the column's label and props; `FK` names the referenced column by its table's and its own labels (or its id) and resolves it to `references` |
+| ER (`er`) | a column, its type and flags | the panel's Members, one row per column | Enter; the row's text `name type [PK] [FK table.column] [UK] [NULL]`; a name or a type that would read as a flag (`null`, `pk`) is written in quotes, `\"` and `\\` inside | the type's member hook: `add` or `set` of the column's label and props; `FK` names the referenced column by its table's and its own labels (or its id) and resolves it to `references` |
 | | a relationship | the handle or a drag between two tables | `L`, the other table, Enter | `add` of an `er.Relationship`, `1` to `0..*`, non-identifying; one from or to anything but a table is refused |
 | | a relationship's ends and identifying | the properties panel | | `set props.identifying`, `set props.ends.<from\|to>.multiplicity` |
 | | a column deleted | the ✕ on its Members row in the properties panel | | `delete` of the column's id; a column that referenced it loses `references` (the type's `refs`) |

@@ -515,3 +515,15 @@ test('FK table.column names a column whose table label holds a dot, bare or with
   assert.deepEqual(parseColumn('y int FK x.b', I).props.references, 'x.b');
   assert.equal(printColumn(C('y', 'y', { dataType: 'int', foreignKey: true, references: 'x.b' }), I), 'y int FK x.b');
 });
+
+test('audit 68: a type a bare row would misread (a flag word, NOT NULL, a lone quote, an outer space, one quoted token) is printed in quotes and read back as it was; every other type prints bare', () => {
+  const I = { col: new Map() }, row = (dataType, more = {}) => printColumn({ id: 't.c', type: 'er.Column', label: 'c', props: { dataType, ...more } }, I);
+  for (const [d, printed] of [['null', 'c "null"'], ['NULL', 'c "NULL"'], ['pk', 'c "pk"'], ['uk', 'c "uk"'], ['fk', 'c "fk"'], ['NOT NULL', 'c "NOT NULL"'], ['int not null', 'c "int not null"'],
+    ['int pk', 'c "int pk"'], ['x"y', 'c "x\\"y"'], [' int', 'c " int"'], ['int ', 'c "int "'], ['a  b', 'c "a  b"'], ['"quoted"', 'c "\\"quoted\\""'], ['a\\b"', 'c "a\\\\b\\""'],
+    ['int', 'c int'], ['int not', 'c int not'], ['timestamp with time zone', 'c timestamp with time zone'], ['enum("a b", "c")', 'c enum("a b", "c")'], ['char(1) check (a not null)', 'c char(1) check (a not null)'], ['nullable', 'c nullable']]) {
+    assert.equal(row(d), printed, d);
+    assert.deepEqual(parseColumn(printed, I), { label: 'c', props: { dataType: d } }, printed);
+    const flags = row(d, { primaryKey: true, unique: true, nullable: true });
+    assert.deepEqual(parseColumn(flags, I), { label: 'c', props: { dataType: d, primaryKey: true, unique: true, nullable: true } }, flags); }
+  assert.deepEqual(parseColumn('c "int" PK', I), { label: 'c', props: { dataType: 'int', primaryKey: true } }, 'a quoted type is read without its quotes');
+});
