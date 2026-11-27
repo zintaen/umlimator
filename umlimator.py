@@ -345,12 +345,29 @@ def cannot_write(path, e):
     return f"cannot write {path} ({why}): name a file in a folder you can write"
 
 
+def linked_on_way(out):
+    """The first folder that is a symbolic link among `out` and the folders above it below the top of the checkout around
+    the cwd (else the cwd), as diff --base's inside() walks them; `out` itself is looked at wherever it is. None if none."""
+    out = Path(os.path.abspath(out))  # not resolved: a link on the way is what is looked for
+    top = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
+    tops = {Path(os.path.abspath(top or os.getcwd()))}
+    tops.add(tops.copy().pop().resolve())  # the top as the cwd or git names it, and as the disk does (/tmp, /private/tmp)
+    for x in [out, *out.parents]:
+        if x in tops:
+            break
+        if x.is_symlink() and (x == out or any(x.is_relative_to(t) for t in tops)):
+            return x
+    return None
+
+
 def make_folder(out):
     """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21).
-    A folder that is a symbolic link is refused: what is written in it would land in the link's target, outside --out, as
-    a committed link in a checkout could aim it (audit cf1)."""
-    if out.is_symlink():
-        sys.exit(f"{out} is a symbolic link: name a folder of its own")
+    A folder that is a symbolic link is refused, `out` or any folder on its way down from the checkout's top (the cwd's,
+    else the cwd): what is written in it would land in the link's target, outside --out, as a committed link in a
+    checkout (docs/ for --out docs/stills) could aim it (audit cf1)."""
+    linked = linked_on_way(out)
+    if linked is not None:
+        sys.exit(f"{linked} is a symbolic link: name a folder of its own")
     try:
         out.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -1736,6 +1753,8 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     stills_folder(out, "--out")  # before Chrome is looked for
     if (out / ".stills").is_symlink():  # its key files are replaced in place: through a link, in the link's target (audit cf1)
         sys.exit(f"{out / '.stills'} is a symbolic link: name a folder of its own for the stills")
+    # each file is then written as a new one beside its name and renamed over it (replacing()): a link at a file's name is
+    # replaced, never written through
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped, names = [], {}, [], still_names(views_of(page))
