@@ -324,20 +324,6 @@ def history():
     return {"done": [], "undone": []}
 
 
-def kept_history():
-    """history(), for a tool that writes: refused (Fail) before anything is written when a change in it is not an object, or
-    holds a text that is not a string, which kept() and undo() could not read, so no write is left half done (audit 72)."""
-    h = history()
-    for k in ("done", "undone"):
-        for i, c in enumerate(h[k]):
-            why = "is not an object" if not isinstance(c, dict) else next(
-                (f'its "{f}" is not text' for f in ("before", "after") if c.get(f) is not None and not isinstance(c.get(f), str)), None)
-            if why:
-                raise Fail(f"the undo history {history_file().name} cannot be read: change {i + 1} of its {k!r} list {why}; "
-                           f"nothing written. Mend that file, or remove it to start a new undo history")
-    return h
-
-
 def sha(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -479,12 +465,12 @@ def commit(out):
                    + "; ".join(f"{p.get('path')}: {p.get('message')}" for p in bad[:8]) + ". preview() shows the whole change.")
     if not out["commands"]:
         raise Fail("nothing to change; nothing written")
-    h = kept_history()  # read before the model is written: a history it cannot keep refuses the change whole
     with rendering:  # one writer at a time, and the page is not drawn from a file half written
         now, form = model_file()
         if now != out["before"]:
             raise Fail("the model file changed while the change was made (another editor wrote it); nothing written: call it again")
         write(MODEL, out["text"], form)
+    h = history()
     h["done"].append({"before": out["before"], "form": form, "after_sha": sha(out["text"]), "summary": out["summary"], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
     h["undone"] = []
     try:
@@ -498,7 +484,7 @@ def commit(out):
 def undo(redo=False):
     """undo(): the model file as it was before the last change the edit tools wrote; redo(): that change again. Each only
     when the file is as that change left it, so a change another editor wrote since is never lost."""
-    h = kept_history()
+    h = history()
     stack, other = (h["undone"], h["done"]) if redo else (h["done"], h["undone"])
     if not stack:
         raise Fail(f"nothing to {'redo' if redo else 'undo'}: " + ("undo() has taken back no change since the last one written" if redo else "the edit tools have written no change to this model"))
@@ -519,7 +505,7 @@ def undo(redo=False):
         write(history_file(), kept(h))
     except OSError:
         pass
-    return {"written": True, "undone" if not redo else "redone": c.get("summary"), "left": len(stack), "page": tell_pages()}
+    return {"written": True, "undone" if not redo else "redone": c["summary"], "left": len(stack), "page": tell_pages()}
 
 
 def tell_pages():

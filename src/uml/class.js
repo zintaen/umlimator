@@ -623,9 +623,6 @@ function classField(model, view, id, path, value) {
   const e = es.find(x => x.id === t) || (es.filter(x => String(x.label ?? '') === t).length === 1 ? es.find(x => String(x.label ?? '') === t) : null);
   if (!e) return { error: `association-class: no association has the id or the one name ${JSON.stringify(t)}` };
   if (e.from === id || e.to === id) return { error: 'association-class: a class is not the association class of an association it is an end of' };
-  // another class already names it, which the rule counts (a class of the model's, at neither end): an association has one class (audit 72)
-  const other = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id !== id && (n.type || 'uml.Class') === 'uml.Class' && UML_OBJ(n.props) && n.props.associationClass === e.id && n.id !== e.from && n.id !== e.to);
-  if (other) return { error: `association-class: association ${e.id} has its class already (${JSON.stringify(nameOfEl(other))}), and an association has one class` };
   return [{ op: 'set', id, path: 'props.associationClass', value: e.id }];
 }
 /* ---- a line that would close a cycle (connect, audit 36): a generalization from `from` to `to` closes one when `from` is

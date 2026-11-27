@@ -44,11 +44,10 @@ import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay
      writes dotted, at the top, a namespace whose id is its parent's dotted path (what the reader makes of `A.B`). Mermaid
      splits any namespace's name at its dots, in backticks too, so a dotted id written otherwise (in braces, or at the top
      under a parent the view does not show, which its `%% not written:` line then says Mermaid draws) gives Mermaid a
-     namespace the reader does not. Namespaces nest MC_DEEP deep at most: one deeper is read beside the one MC_DEEP deep (flat, in its parent), reported once;
+     namespace the reader does not;
    - notes are comments, `note for` a comment with its line; `direction TB` is down (the default),
      `LR` right; a %%{ ... }%% directive, on one line or several, is passed over. */
 const MC_LIMIT = 1 << 20; // characters; a class diagram a person writes is a few kilobytes
-const MC_DEEP = 64; // namespaces nest MC_DEEP deep at most (by braces or dots): a deeper one is read beside the one MC_DEEP deep, as the Structurizr reader's SZ_DEEP (R2, audit 72)
 const MC_DOTS = 32; // a dotted namespace name's parts: each is a namespace whose id is its path, so a name of n parts costs n * n (R2)
 const mcTable = o => Object.assign(Object.create(null), o); // a lookup table: "constructor" or "__proto__" finds nothing in it
 // the words the reader dispatches on at a line's start: a class so named is written in backticks
@@ -287,7 +286,6 @@ function readMermaidClass(text) {
     if (!classes.has(name)) { const rec = { kind: 'class', name, no, node: { id: undefined, type: 'uml.Class', label: name }, anns: [], raw: [] }; classes.set(name, rec); order.push(rec); }
     return classes.get(name);
   };
-  let flatSaid = false; // namespaces past MC_DEEP, reported once
   const where = () => { for (let k = stack.length - 1; k >= 0; k--) if (stack[k].kind === 'package') return stack[k]; return null; };
   const annotate = (rec, s) => { const e = s.indexOf('>>', 2); rec.anns.push((e < 0 ? s.slice(2) : s.slice(2, e)).trim()); return e < 0 ? s.length : e + 2; };
   const generic = (rec, g, no, again) => { // a class's ~generic~ in its label, once (its class line's, else the first that names it)
@@ -397,12 +395,9 @@ function readMermaidClass(text) {
       let parent = where(), path = '';
       for (const seg of segs) {
         path = path ? `${path}.${seg}` : seg;
-        if (parent && parent.depth >= MC_DEEP) { // deeper than MC_DEEP: beside the one MC_DEEP deep, in its parent
-          parent = parent.pkg;
-          if (!flatSaid) { flatSaid = true; say(no, 'approximated', `namespace ${path} is nested over ${MC_DEEP} deep: it and the namespaces deeper still are read flat, ${MC_DEEP} deep, in ${parent ? parent.name : 'the top'}`); } }
         const kids = parent ? (parent.kids ??= new Map()) : topNs;
         if (!kids.has(seg)) {
-          const rec = { kind: 'package', name: path, no, pkg: parent, depth: (parent ? parent.depth : 0) + 1, node: { id: undefined, type: 'uml.Package', label: seg } };
+          const rec = { kind: 'package', name: path, no, pkg: parent, node: { id: undefined, type: 'uml.Package', label: seg } };
           kids.set(seg, rec); packages.push(rec); order.push(rec);
         }
         parent = kids.get(seg);

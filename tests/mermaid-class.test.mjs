@@ -430,7 +430,7 @@ test('a namespace is known by its parent and its name, as Mermaid qualifies one 
   assert.deepEqual(read('classDiagram\nnamespace A {\nnote "n"\n}').report, [{ line: 3, status: 'approximated', message: 'a note in namespace A is read outside it' }]);
 });
 
-test('deep namespaces read in linear time: braces at any depth, past 64 read flat, a dotted name of over 32 parts as one name (R2) (timed)', () => {
+test('deep namespaces read in linear time: braces at any depth, a dotted name of over 32 parts as one name (R2) (timed)', () => {
   const dots = 'a.'.repeat(32) + 'a', d = read(`classDiagram\nnamespace ${dots} {\nclass C\n}`);
   assert.deepEqual([d.model.nodes.map(n => [n.id, n.parent]), d.report.map(x => x.message)], [[[dots, undefined], ['C', dots]], [`namespace ${dots}: over 32 dotted parts, so read as one name`]]);
   assert.equal(read(`classDiagram\nnamespace ${'a.'.repeat(31)}a {\n}`).model.nodes.length, 32);
@@ -439,9 +439,7 @@ test('deep namespaces read in linear time: braces at any depth, past 64 read fla
   assert.equal(big.model.nodes.length, 1);
   const t1 = performance.now(), deep = read('classDiagram\n' + 'namespace a {\n'.repeat(70000));
   assert.ok(performance.now() - t1 < 3000, `${performance.now() - t1} ms`);
-  // past 64 deep each namespace is read beside the 64th (audit 72), so the 69,936 deeper ones, all named a, are that one
-  assert.equal(new Set(deep.model.nodes.map(n => n.id)).size, 64);
-  assert.deepEqual(deep.report[0], { line: 66, status: 'approximated', message: 'namespace a is nested over 64 deep: it and the namespaces deeper still are read flat, 64 deep, in a' });
+  assert.equal(new Set(deep.model.nodes.map(n => n.id)).size, 70000);
 });
 
 test('the writer names an owner it does not write: one the view does not show, one the model does not have, a note\'s', () => {
@@ -477,20 +475,12 @@ test('the writer is linear in a namespace\'s dotted children, and writes a model
   const t0 = performance.now(), wide = write({ schemaVersion: 2, nodes, views: [] });
   assert.ok(performance.now() - t0 < 1500, `${performance.now() - t0} ms`);
   assert.ok(wide.includes('\nnamespace P.c39999 {\n')); // over 1 MiB: unindented
-  // one repeated name, 5000 deep: the reader keys each by its parent, and reads past 64 deep flat, beside the 64th (audit 72),
-  // so the model is 64 deep, C in the 64th; it is written, and reads back as it was
+  // one repeated name, 5000 deep: the reader keys each by its parent, so the model is 5000 deep; it is written, indented 32
+  // deep at most, and reads back as it was
   const text = 'classDiagram\n' + 'namespace a {\n'.repeat(5000) + 'class C\n' + '}\n'.repeat(5000), m = read(text).model;
-  assert.equal(m.nodes.find(n => n.id === 'C').parent, 'a-64');
+  assert.equal(m.nodes.find(n => n.id === 'C').parent, 'a-5000');
   const back = read(write(m));
   assert.deepEqual([back.report, back.model.nodes], [[], m.nodes]);
-  // a model 5000 deep, which no reader makes: written, indented 32 deep at most, every namespace once
-  const deep = [{ id: 'a', type: 'uml.Package', label: 'a' }];
-  for (let k = 2; k <= 5000; k++) deep.push({ id: `a-${k}`, type: 'uml.Package', label: 'a', parent: k === 2 ? 'a' : `a-${k - 1}` });
-  deep.push({ id: 'C', type: 'uml.Class', label: 'C', parent: 'a-5000' });
-  const t1 = performance.now(), dt = write({ schemaVersion: 2, nodes: deep, views: [] });
-  assert.ok(performance.now() - t1 < 1500, `${performance.now() - t1} ms`);
-  assert.equal(dt.split('\n').filter(l => /^\s*namespace a(-\d+\["a"\])? \{$/.test(l)).length, 5000);
-  assert.ok(!dt.includes(' '.repeat(2 * 33) + 'namespace'), 'indented 32 deep at most');
 });
 
 test('labels with #, a backslash, a leading <<, « or spaces at their ends round-trip (audit 1)', () => {
@@ -528,11 +518,10 @@ test('the writer is linear in notes and in a view that lists its edges by id (au
   assert.ok(performance.now() - t0 < 1500, `edges by id: ${performance.now() - t0} ms`);
 });
 
-test('a class model of 20000 nested namespaces, once written, reads again: unindented over the limit (audit 2), past 64 deep read flat (audit 72)', () => {
-  const nodes = Array.from({ length: 20000 }, (_, i) => ({ id: `n${i}`, type: 'uml.Package', label: `n${i}`, ...(i ? { parent: `n${i - 1}` } : {}) }));
-  nodes.push({ id: 'X', type: 'uml.Class', label: 'X', parent: 'n19999' });
-  const back = read(write({ schemaVersion: 2, nodes, views: [] }));
-  assert.deepEqual([back.report.map(x => x.message), back.model.nodes.length], [['namespace n64 is nested over 64 deep: it and the namespaces deeper still are read flat, 64 deep, in n62'], 20001]);
+test('a class file of 20000 nested namespaces that the reader read, once written, reads again: unindented over the limit (audit 2)', () => {
+  const m = read('classDiagram\n' + Array.from({ length: 20000 }, (_, i) => `namespace n${i} {`).join('\n') + '\nclass X\n' + '}\n'.repeat(20000)).model;
+  const back = read(write(m));
+  assert.deepEqual([back.report, back.model.nodes.length], [[], 20001]);
 });
 
 test('a %% id: that is taken or above a line that takes none is reported; a class with no label is named not written (audit 3)', () => {
@@ -1023,38 +1012,4 @@ test('a " inside a backtick class name is a plain character: the statements afte
   const back = read(write(m));
   assert.deepEqual([back.model.nodes.flatMap(n => (n.members || []).map(c => c.id)), back.model.edges.map(e => e.id)], [['Pipe 5".d', 'Valve.state-id'], ['feeds']]);
   assert.deepEqual(back.report, []);
-});
-
-test('namespaces nested by braces past 64 deep are read flat, 64 deep, reported once (audit 72)', () => {
-  const deep = d => 'classDiagram\n' + Array.from({ length: d }, (_, i) => `namespace N${i} {`).join('\n') + '\nclass X\n' + '}\n'.repeat(d);
-  const depth = (m, id) => { const at = new Map(m.nodes.map(n => [n.id, n])); let k = 0; for (let p = at.get(id); p && p.parent; p = at.get(p.parent)) k++; return k; };
-  const at64 = read(deep(64)); assert.deepEqual(at64.report, []); assert.equal(depth(at64.model, 'X'), 64);
-  const r = read(deep(70)), parent = id => r.model.nodes.find(n => n.id === id).parent;
-  assert.deepEqual(r.report, [{ line: 66, status: 'approximated', message: 'namespace N64 is nested over 64 deep: it and the namespaces deeper still are read flat, 64 deep, in N62' }]);
-  assert.deepEqual(['N63', 'N64', 'N65', 'N69', 'X'].map(parent), ['N62', 'N62', 'N62', 'N62', 'N69']);
-  assert.equal(depth(r.model, 'X'), 64);
-  const back = read(write(r.model)); assert.deepEqual([back.report, depth(back.model, 'X')], [[], 64], 'read flat once, it reads back with nothing to say');
-  assert.equal(r.model.nodes.length, 71, 'every namespace kept');
-  assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
-  // dotted names count each part as a level
-  const dots = k => Array.from({ length: 30 }, (_, i) => k + i).join('.');
-  const d = read(`classDiagram\nnamespace ${dots('A')} {\nnamespace ${dots('B')} {\nnamespace ${dots('C')} {\nclass Y\n}\n}\n}`);
-  assert.equal(depth(d.model, 'Y'), 64); assert.equal(d.report.length, 1);
-});
-
-// validate() of a model nested n deep walked every element's whole owner chain (src/uml/owners.js chain(), and the deployment
-// view's names looked through the whole model for each node): 4,000 deep took 6 s, quadratic. Timed by growth against a
-// quarter on the worst inputs: the reader's, and models past any reader, a class view, and a deployment view of nodes and of packages
-test('validate() of namespaces and nodes thousands deep grows about linearly (audit 72)', () => {
-  const time = m => { const t = performance.now(); validate(m); return performance.now() - t; };
-  const chainOf = (type, diagram) => n => { const nodes = Array.from({ length: n }, (_, i) => ({ id: 'p' + i, type, label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
-    nodes.push({ id: 'x', type: 'uml.Class', label: 'X', parent: 'p' + (n - 1) });
-    return { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram, nodeIds: nodes.map(x => x.id) }] }; };
-  const makes = { reader: n => read('classDiagram\n' + Array.from({ length: n }, (_, i) => `namespace N${i} {`).join('\n') + '\nclass X\n' + '}\n'.repeat(n)).model,
-    class: chainOf('uml.Package', 'uml.class'), deploymentNodes: chainOf('uml.Node', 'uml.deployment'), deploymentPackages: chainOf('uml.Package', 'uml.deployment') };
-  for (const [what, make] of Object.entries(makes)) {
-    const small = make(1000), big = make(4000);
-    const q = Math.min(time(small), time(small)), ms = time(big); // quadratic was about 16x a quarter, here about 4x
-    assert.ok(ms < 300 || ms / Math.max(q, 1) < 8, `${what}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
-  }
 });

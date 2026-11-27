@@ -457,18 +457,6 @@ except mcp.Fail as e:
     raced = str(e)
 ok("edit · a change is not written over a file another editor wrote meanwhile", raced and raced.startswith("the model file changed while the change was made")
    and '"Client"' in mcp.MODEL.read_text(encoding="utf-8") and '"Purchase"' not in mcp.MODEL.read_text(encoding="utf-8"), raced)
-# audit 72: an undo history holding a change that is not an object (or a text that is not a string), a hand-edited or
-# half-merged file, refuses each edit tool before the model is written, in words that name the file; undo and redo too
-bad_h = []
-for hist in ({"done": [1], "undone": []}, {"done": [], "undone": ["x"]}, {"done": [{"before": 7, "after_sha": "", "summary": []}], "undone": []},
-             {"done": [None, {"before": "{}"}], "undone": []}):
-    edit_on("class.json", CLASS)
-    mcp.history_file().write_text(json.dumps(hist), encoding="utf-8")
-    said = [ed("rename", id="order", label="Purchase"), ed("undo"), ed("redo")]
-    bad_h.append((said, mcp.MODEL.read_text(encoding="utf-8") == first, json.loads(mcp.history_file().read_text(encoding="utf-8")) == hist))
-ok("edit · an undo history holding a change that is not an object, or a text that is not a string, refuses the change before anything is written, naming the file (audit 72)",
-   all(all(isinstance(x, str) and x.startswith("FAIL the undo history class.json.undo cannot be read") and "nothing written" in x for x in said) and same and kept_as
-       for said, same, kept_as in bad_h), bad_h)
 # audit 65: a model file in UTF-8 with a BOM, UTF-16 or UTF-32 (a Windows editor, PowerShell 5.1) keeps its encoding and BOM
 # through an edit, and undo() puts it back byte for byte, redo() writes the edit's bytes again
 enc_got = {}

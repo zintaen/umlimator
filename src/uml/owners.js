@@ -48,25 +48,10 @@ function ownIndex(model, members = []) {
   const at = new Map(), up = new Map(), mems = new Set(), put = (x, p) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); up.set(x.id, p); return true; } };
   OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => OWN_OBJ(n) && put(n, n.parent)); // a null in nodes is validate's error, not a throw
   if (members.length) [...at.values()].forEach(n => OWN_ARR(n.members).forEach(m => { if (OWN_OBJ(m) && members.includes(m.type) && put(m, n.id)) mems.add(m.id); }));
-  // the ids on a cycle, found once, each id walked once (audit 72: chain() found them again for every id, so a model nested
-  // n deep cost n * n to validate)
-  const cyc = new Set(), state = new Map(); // 1: on the walk now; 2: done
-  for (const id0 of at.keys()) { if (state.has(id0)) continue; const path = []; let p = id0;
-    while (p != null && at.has(p) && !state.has(p)) { state.set(p, 1); path.push(p); p = up.get(p); }
-    if (p != null && state.get(p) === 1) for (let k = path.indexOf(p); k < path.length; k++) cyc.add(path[k]);
-    path.forEach(x => state.set(x, 2)); }
-  // walk(id, f): its owners nearest first, to the first one f takes (returned), or to the top (undefined); as chain() lists them
-  const walk = (id, f) => { if (cyc.has(id)) return undefined;
-    for (let p = up.get(id); p != null && at.has(p); p = up.get(p)) { if (f(p)) return p; if (cyc.has(p)) return undefined; }
-    return undefined; };
-  const chain = id => { const out = []; walk(id, p => { out.push(p); }); return out; };
-  // firstUp(f): id => walk(id, f), each id's answer kept, so asking every id costs the model once (f the same for every id)
-  const firstUp = f => { const memo = new Map();
-    return id => { if (cyc.has(id)) return undefined; const path = []; let ans;
-      for (let x = id; ; ) { if (memo.has(x)) { ans = memo.get(x); break; } const p = up.get(x); path.push(x);
-        if (p == null || !at.has(p) || f(p)) { ans = p != null && at.has(p) ? p : undefined; break; } if (cyc.has(p)) break; x = p; }
-      path.forEach(x => memo.set(x, ans)); return ans; }; };
-  return { at, chain, walk, firstUp, up, mems };
+  const chain = id => { const out = [], seen = new Set([id]);
+    for (let p = up.get(id); p != null && at.has(p); p = up.get(p)) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }
+    return out; };
+  return { at, chain, up, mems };
 }
 
 /* A view's picture of its owners: { ids, owner(id), holds(o), boxes, name(id), full(id) }. ids: the nodes it shows; owner(id): an
@@ -83,20 +68,20 @@ function ownIndex(model, members = []) {
    kind(x), the type boxTypes and qualifyBy test x as, its own by default (the component view's element of no type: a component, audit 31) */
 function ownersOn(model, view, look = {}) {
   const { boxTypes = OWN_BOXES, qualify = true, qualifyBy = null, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package'), kind = x => x.type } = look;
-  const { at, chain, walk, firstUp, up, mems } = ownIndex(model, members), ids = [...new Set(OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null))].filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
-  const live = new Set(!mems.size ? [] : ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
+  const { at, chain, up, mems } = ownIndex(model, members), ids = [...new Set(OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null))].filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
+  const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
-  const boxy = p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p)))), gh = typeof look.ghost === 'function' ? id => look.ghost(id, at.get(id)) : null, boxUp = firstUp(boxy);
-  const ow = new Map(all.filter(id => !gh || !gh(id)).map(id => [id, boxUp(id) ?? null])), owner = id => ow.get(id) ?? null;
+  const boxy = p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p)))), gh = typeof look.ghost === 'function' ? id => look.ghost(id, at.get(id)) : null;
+  const ow = new Map(all.filter(id => !gh || !gh(id)).map(id => [id, chain(id).find(boxy) ?? null])), owner = id => ow.get(id) ?? null;
   // look.ghost(id, x): a card diff() draws back removed (C4's), which opens no box: in the nearest one something live opens, else
   // at the top, so its owner is drawn as the model after draws it (audit 54: a deployment node holding only a removed instance
   // was drawn a box, and the implied line the model after draws from it could not be)
-  if (gh) { const opened = new Set(ow.values()); all.forEach(id => { if (gh(id)) ow.set(id, walk(id, p => boxy(p) && opened.has(p)) ?? null); }); }
-  const over = (id, stop, by) => { const out = []; walk(id, p => { if (p === stop || (by && !by.includes(kind(at.get(p) || {})))) return true; out.push(p); return false; });
-    return out; }; // the owners a name is qualified by, nearest first: to its stop, or to the first owner not of a `by` type
+  if (gh) { const opened = new Set(ow.values()); all.forEach(id => { if (gh(id)) ow.set(id, chain(id).find(p => boxy(p) && opened.has(p)) ?? null); }); }
+  const over = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
+    return c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)); }; // the owners a name is qualified by, nearest first
   const upTo = (id, stop, by) => [...over(id, stop, by).reverse(), id].map(x => ownName(ownAt(at, x))).join('::');
-  const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null, stopOf = id => { const o = owner(id); return o != null ? o : subject != null && walk(id, p => p === subject) !== undefined ? subject : null; };
+  const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null, stopOf = id => { const o = owner(id); return o != null ? o : chain(id).includes(subject) ? subject : null; };
   const name = id => (!qualify ? ownName(ownAt(at, id)) : upTo(id, stopOf(id), qualifyBy));
   // the owners the drawn name is written through, which the view does not draw (audit 48: a shape's reads, so the diff page
   // marks a class whose package was renamed)
@@ -114,9 +99,7 @@ function ownersOn(model, view, look = {}) {
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id), n = counted(id).length;
     return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p), ...(rd.length ? { reads: rd } : {}),
       aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}${n ? `, holding ${n} element${n === 1 ? '' : 's'}` : ''}` }); });
-  // under(x, p): p owns x, at any depth, found by walking up from x only as far as p (audit 72)
-  const under = (x, p) => walk(x, q => q === p) !== undefined;
-  return { ids, owner, holds, boxes, name, full, via, open, chain, under, at, gone, counted };
+  return { ids, owner, holds, boxes, name, full, via, open, chain, at, gone, counted };
 }
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order
@@ -127,7 +110,7 @@ function readingOrder(pic) {
 }
 
 // a line between a package and something it holds, at any depth, or from a box to itself (§7): a, b node ids
-const holdsLine = (pic, a, b) => (a === b && pic.open.has(a)) || [[a, b], [b, a]].some(([p, x]) => OWN_BOXES.includes((pic.at.get(p) || {}).type) && pic.under(x, p));
+const holdsLine = (pic, a, b) => (a === b && pic.open.has(a)) || [[a, b], [b, a]].some(([p, x]) => OWN_BOXES.includes((pic.at.get(p) || {}).type) && pic.chain(x).includes(p));
 
 // the Owner field (registry.js owners): every package and profile of the model by its name from the top, for an element a
 // package may own; a stereotype's and a metaclass's: every profile (notes/stage-6.md §4.2)
