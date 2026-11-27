@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -1632,7 +1632,8 @@ if part("mcp"):
 
 
     hello = rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/cli.py", "version": "0"}}).get("result", {})
-    url = re.search(r"http://127\.0\.0\.1:(\d+)", hello.get("instructions", ""))
+    url = re.search(r"http://127\.0\.0\.1:(\d+)/\?k=(\w+)", hello.get("instructions", ""))  # the page's address holds its key (audit cf1)
+    home = f"/?k={url.group(2)}" if url else "/"
     ok("mcp · initialize answers with the client's version (2025-11-25), the tools and the page's URL",
        hello.get("protocolVersion") == "2025-11-25" and "tools" in hello.get("capabilities", {}) and url, hello)
     mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")  # unanswered: rpc() checks the next line's id
@@ -1705,7 +1706,17 @@ if part("mcp"):
     said, err = tool("show_view", view="trips")
     ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)
     web = lambda: http.client.HTTPConnection("127.0.0.1", int(url.group(1)), timeout=60)
-    c = web(); c.request("GET", "/"); served = c.getresponse().read().decode()
+    # audit cf1: the page, and with it the TOKEN, went to any local client that asked for /: only the address the tools
+    # give, with its key, gets it; another process on the machine (another account's), with or without browser headers, does not
+    keyless = {}
+    for name, path in [("no key", "/"), ("an empty key", "/?k="), ("a wrong key", "/?k=" + url.group(2)[:-1] + ("0" if url.group(2)[-1] != "0" else "1")),
+                       ("the key and another", f"/?k=x&k={url.group(2)}"), ("the key in another field", f"/?key={url.group(2)}"), ("the key as a path", "/" + url.group(2))]:
+        for headers in ({}, {"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}):
+            c = web(); c.request("GET", path, headers=headers); r = c.getresponse(); body = r.read().decode(errors="replace")
+            keyless[name, bool(headers)] = (r.status, "TOKEN" in body or "umlimatorMap" in body or "Fare calculator" in body)
+    c = web(); c.request("GET", home); r = c.getresponse(); served = r.read().decode()
+    ok("mcp · the page is served only at the address with its key: without it, or with a wrong one, a local client gets 403 and no model or TOKEN (audit cf1)",
+       all(v == (404 if name == "the key as a path" else 403, False) for (name, _), v in keyless.items()) and r.status == 200 and r.getheader("Referrer-Policy") == "no-referrer" and "TOKEN = '" in served, keyless)
     token = re.search(r"TOKEN = '([^']+)'", served).group(1)  # this run's, in the page it serves: its requests carry it (audit 24)
     c = web(); c.request("GET", f"/events?page=t1&token={token}"); stream = c.getresponse()  # a page, as the served script names itself
     sent = []
@@ -1735,23 +1746,23 @@ if part("mcp"):
        all(err is True and "in the model" in said for said, err in bad), bad)
     said, err = tool("highlight", refs=[{"type": "node", "id": "trips", "view": "nope"}])
     ok("mcp · highlight: a Ref whose view names no view is a tool error, as show_view's is (audit 13)", err is True and said.startswith("no view 'nope'"), said)
-    c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
+    c = web(); c.request("GET", home); r = c.getresponse(); page = r.read().decode()
     ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
        r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
     c = web(); c.request("POST", "/state", "{}", {"Content-Type": "application/json", "Origin": "https://attacker.example"})
     ok("mcp · another site's page posts nothing", c.getresponse().status == 403)
-    c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
+    c = web(); c.request("GET", home, headers={"Host": f"attacker.example:{url.group(1)}"})
     ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
     # audit 22: another site's image, script or frame naming /events sends no Origin, and was counted as an open page, so the
     # page tools waited for it and said it did not show the command
     fetched = {}
     for name, path, how in [("an image", "/events?page=x-site", ("cross-site", "no-cors", "image")), ("a script", "/events?page=x-site", ("same-site", "no-cors", "script")),
-                            ("a frame", "/", ("cross-site", "navigate", "iframe")), ("a post", "/state", ("cross-site", "cors", "empty"))]:
+                            ("a frame", home, ("cross-site", "navigate", "iframe")), ("a post", "/state", ("cross-site", "cors", "empty"))]:
         c = web(); c.request("POST" if path == "/state" else "GET", path, json.dumps({"page": "x-site"}) if path == "/state" else None,
                              {"Content-Type": "application/json", "Sec-Fetch-Site": how[0], "Sec-Fetch-Mode": how[1], "Sec-Fetch-Dest": how[2]})
         fetched[name] = c.getresponse().status; c.close()
-    c = web(); c.request("GET", "/", headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); opened = c.getresponse(); opened.read()
-    c = web(); c.request("GET", "/", headers={"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); typed = c.getresponse(); typed.read()
+    c = web(); c.request("GET", home, headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); opened = c.getresponse(); opened.read()
+    c = web(); c.request("GET", home, headers={"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); typed = c.getresponse(); typed.read()
     said, err = tool("page_state")
     ok("mcp · another site's image, script, frame or post naming the server gets nothing and is no page; a link to the page, or its address typed, opens it (audit 22)",
        set(fetched.values()) == {403} and opened.status == 200 and typed.status == 200 and "x-site" not in said, (fetched, opened.status, typed.status, said))
@@ -2775,6 +2786,94 @@ if part("audit 75 node errors"):
                            env={**os.environ, "NODE_OPTIONS": "--max-old-space-size=8"})
         ok("diff · Node out of memory is said as that in one line, never a native stack frame or a path (audit 75)",
            r.returncode == 1 and r.stderr.startswith("Node ran out of memory") and r.stderr.count("\n") <= 1 and "0x" not in r.stderr and "/" not in r.stderr.split("NODE_OPTIONS")[0], r.stderr[-500:])
+if part("audit cf1"):
+    # audit cf1 #6: render's guard on meta.root looked at the checkout around the cwd, visual.py records the one around the
+    # model: a model in another tree, rendered into a page in this one, recorded ../../home/<name>/proj in a shared page
+    def root_of(f):  # the page's meta.root, from its data
+        d = re.search(r'<script id="visual-data" type="application/json">(.*?)</script>', f.read_text(encoding="utf-8"), re.S) if f.is_file() else None
+        return json.loads(d.group(1).replace("<\\/", "</")).get("meta", {}).get("root") if d else None
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        for d in ("site", "home/alice/proj", "loose/alice"):
+            (t / d).mkdir(parents=True)
+        for d in ("site", "home/alice/proj"):
+            subprocess.run(["git", "init", "-q"], cwd=t / d, capture_output=True)
+        for name in ("bookshop-c4", "uml-class"):
+            shutil.copy(ROOT / "tests/fixtures" / f"{name}.json", t / "home/alice/proj" / f"{name}.json")
+        shutil.copy(ROOT / "tests/fixtures/integration.json", t / "home/alice/proj/integration.json")
+        shutil.copy(ROOT / "tests/fixtures/integration.json", t / "loose/alice/integration.json")
+        shutil.copy(ROOT / "tests/fixtures/integration.json", t / "site/integration.json")
+        go = lambda model, out, cwd: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", model, "--out", out, "--no-check"], cwd=cwd, capture_output=True, text=True)
+        said = {}
+        for name in ("bookshop-c4", "uml-class", "integration"):  # from another checkout, into a page in this one: relative and absolute
+            r = go(f"../home/alice/proj/{name}.json", f"public/{name}.html", t / "site")
+            said[name] = (r.returncode, root_of(t / "site/public" / f"{name}.html"))
+        r = go(str(t / "loose/alice/integration.json"), "public/loose.html", t / "site")  # from a folder in no checkout
+        said["loose"] = (r.returncode, root_of(t / "site/public/loose.html"))
+        r = go("integration.json", "public/own.html", t / "site")  # the model in this checkout: its root is recorded, as before
+        said["own"] = (r.returncode, root_of(t / "site/public/own.html"))
+        r = go(str(t / "home/alice/proj/integration.json"), str(t / "home/alice/proj/docs/map.html"), t / "site")  # into the model's own checkout, from elsewhere
+        said["theirs"] = (r.returncode, root_of(t / "home/alice/proj/docs/map.html"))
+        ok("render · a model from another tree, rendered into a page in the cwd's checkout, records no path to it; a page in the model's own checkout records its root (audit cf1)",
+           said == {"bookshop-c4": (0, ""), "uml-class": (0, ""), "integration": (0, ""), "loose": (0, ""), "own": (0, ".."), "theirs": (0, "..")}, said)
+    # audit cf1 #7: stills followed a symbolic link at --out, or at --out/.stills, and replaced <view>.svg, .png and .json in
+    # its target; diff --base's --out and diff's and drift's --stills the same: each is refused, and the target left as it was
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        page = t / "map.html"
+        made = go(str(ROOT / "tests/fixtures/integration.json"), str(page), t)
+        far = t / "far"; far.mkdir(); (far / "system.svg").write_text("ORIG"); (far / "system.json").write_text('{"dummy":1}')
+        (t / "linked").symlink_to(far, target_is_directory=True)
+        (t / "real" ).mkdir(); (t / "real" / ".stills").symlink_to(far, target_is_directory=True)
+        (t / "docs").symlink_to(far, target_is_directory=True)  # a linked parent: --out docs/stills, made in the link's target
+        # another checkout (a pull request's clone) holding a committed link, named from a folder in no checkout
+        (t / "clone").mkdir(); subprocess.run(["git", "init", "-q"], cwd=t / "clone", capture_output=True)
+        (t / "clone" / "docs").symlink_to(far, target_is_directory=True); (t / "elsewhere").mkdir()
+        m = ROOT / "tests/fixtures/integration.json"
+        runs = {
+            "stills --out link": [sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", str(t / "linked"), "--views", "system"],
+            "stills --out with .stills a link": [sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", str(t / "real"), "--views", "system"],
+            "stills --out under a linked folder": [sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", "docs/stills", "--views", "system"],
+            "stills --out under a linked folder, absolute": [sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", str(t / "docs" / "a" / "stills"), "--views", "system"],
+            "diff --stills under a linked folder": [sys.executable, str(ROOT / "umlimator.py"), "diff", str(m), str(m), "--out", str(t / "d.html"), "--stills", "docs/x"],
+            "diff --stills link": [sys.executable, str(ROOT / "umlimator.py"), "diff", str(m), str(m), "--out", str(t / "d.html"), "--stills", str(t / "linked")],
+            "drift --stills link": [sys.executable, str(ROOT / "umlimator.py"), "drift", str(m), str(m), "--out", str(t / "dr.html"), "--stills", str(t / "linked")],
+        }
+        res = {k: subprocess.run(c, cwd=t, capture_output=True, text=True) for k, c in runs.items()}
+        res["stills --out under a link in another checkout"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", "../clone/docs/stills",
+                                                                              "--views", "system"], cwd=t / "elsewhere", capture_output=True, text=True)
+        g = t / "g"; g.mkdir(); sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+        (g / "a.json").write_text(m.read_text()); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "a.json").write_text(m.read_text().replace('"Moped share, an example"', '"Moped share, edited"', 1)); (g / "out").symlink_to(far, target_is_directory=True)
+        res["diff --base --out link"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "out"], cwd=g, capture_output=True, text=True)
+        res["diff --base --out under a linked folder"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "out/maps"], cwd=g, capture_output=True, text=True)
+        res["diff --base --out under a link in another checkout"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "../clone/docs/maps"], cwd=g, capture_output=True, text=True)
+        ok("stills, diff and drift · an output folder, a folder above it in this checkout or another, or a stills key folder, that is a symbolic link is refused in one line, and its target is left as it was (audit cf1)",
+           made.returncode == 0 and all(r.returncode == 1 and "is a symbolic link" in r.stderr and "Traceback" not in r.stderr for r in res.values())
+           and sorted(x.name for x in far.iterdir()) == ["system.json", "system.svg"] and (far / "system.svg").read_text() == "ORIG"
+           and (far / "system.json").read_text() == '{"dummy":1}' and not (t / "d.html").exists() and not (t / "dr.html").exists(),
+           (made.stderr[-300:], {k: (r.returncode, r.stderr[-300:]) for k, r in res.items()}, sorted(x.name for x in far.iterdir())))
+    # audit cf1 #8: the page's key is the same for a model on each run (an open page follows its server's restarts), another
+    # model's differs, and a key file others can read (or a link) is not trusted: that run's key is its own
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        def address(model, keys):
+            p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, env={**os.environ, "UMLIMATOR_MCP_KEYS": str(keys)})
+            p.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}) + "\n"); p.stdin.flush()
+            said = p.stdout.readline(); p.stdin.close(); p.wait(timeout=30)
+            k = re.search(r"http://127\.0\.0\.1:\d+/\?k=(\w+)", said)
+            return k and k.group(1), p.stderr.read()
+        a, b = ROOT / "tests/fixtures/integration.json", ROOT / "tests/fixtures/uml-class.json"
+        keys = t / "deep" / "mcp-key"
+        runs = [address(a, keys), address(a, keys), address(b, keys)]
+        mode = keys.stat().st_mode & 0o777 if keys.is_file() else None
+        keys.chmod(0o644); loose = [address(a, keys), address(a, keys)]
+        (t / "link").symlink_to(keys); linked = [address(a, t / "link"), address(a, t / "link")]
+        ok("mcp · the page's key is the same for a model on each run and another for another model; a key file others can read, or a link, is not trusted (audit cf1)",
+           runs[0][0] and runs[0][0] == runs[1][0] != runs[2][0] and len(runs[0][0]) == 32 and mode == 0o600
+           and all(k and k != runs[0][0] for k, _ in loose + linked) and loose[0][0] != loose[1][0] and linked[0][0] != linked[1][0]
+           and all("is not a private file of yours" in e for _, e in loose + linked), (runs, mode, loose, linked))
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench

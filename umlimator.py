@@ -348,8 +348,32 @@ def cannot_write(path, e):
     return f"cannot write {path} ({why}): name a file in a folder you can write"
 
 
+def linked_on_way(out):
+    """The first folder that is a symbolic link among `out` and the folders above it, where the folder holding the link is
+    in a checkout (any: the cwd's, or another, --out ../their-clone/docs/stills) or under the cwd, as diff --base's
+    inside() walks them: a committed link could aim what is written there anywhere. A link in a folder outside every
+    checkout and above the cwd (the system's /tmp, say) is a way there, not one a checkout put there; `out` itself is
+    looked at wherever it is. None if none."""
+    out = Path(os.path.abspath(out))  # not resolved: a link on the way is what is looked for
+    top = lambda at: os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=at, capture_output=True).stdout.strip())
+    here = Path(top(None) or os.getcwd()).resolve()
+    for x in [out, *out.parents]:
+        try:
+            if x.is_symlink() and (x == out or x.parent.resolve().is_relative_to(here) or top(x.parent)):
+                return x
+        except (OSError, RuntimeError):  # a loop of links on the way: refused as one
+            return x
+    return None
+
+
 def make_folder(out):
-    """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21)."""
+    """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21).
+    A folder that is a symbolic link is refused, `out` or any folder on its way down from the checkout's top (the cwd's,
+    else the cwd): what is written in it would land in the link's target, outside --out, as a committed link in a
+    checkout (docs/ for --out docs/stills) could aim it (audit cf1)."""
+    linked = linked_on_way(out)
+    if linked is not None:
+        sys.exit(f"{linked} is a symbolic link: name a folder of its own")
     try:
         out.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -598,7 +622,12 @@ def page_model(model_path, out, source=None):
     # bytes, as the file system names the folder: a locale's code page (Latin-1) read a checkout path's letters as mojibake (audit 74)
     root = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
     base = Path(root or os.getcwd()).resolve()
-    if not Path(out).resolve().is_relative_to(base):
+    # the root visual.py records is the model's own (load_map: the checkout around the model's folder, else that folder),
+    # not the one around the cwd: a model in another tree, rendered into a page in this one, recorded a path up through
+    # the folders above both (../../home/<name>/proj, audit cf1)
+    mdir = Path(model_path).resolve().parent
+    mtop = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=mdir, capture_output=True).stdout.strip())
+    if not Path(out).resolve().is_relative_to(Path(mtop or mdir).resolve()):
         m.setdefault("meta", {}).setdefault("root", "")
     table = {**icon_table([m]), **packs().table([m])}  # pack keys hold a `/`, logos' never
     if table:  # only this table: own_media dropped the model's own, whose entries name what a page draws through <image> (audit 19)
@@ -1755,6 +1784,10 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
     A file another run, or a person, changed since is drawn again, never trusted."""
     stills_folder(out, "--out")  # before Chrome is looked for
+    if (out / ".stills").is_symlink():  # its key files are replaced in place: through a link, in the link's target (audit cf1)
+        sys.exit(f"{out / '.stills'} is a symbolic link: name a folder of its own for the stills")
+    # each file is then written as a new one beside its name and renamed over it (replacing()): a link at a file's name is
+    # replaced, never written through
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped, names = [], {}, [], still_names(views_of(page))
@@ -1768,6 +1801,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
                 continue
         except (OSError, ValueError, KeyError, TypeError):
             pass  # no key file, or one cut short: drawn again
+        make_folder(out)  # again before this view's files: a link put on the way since is refused, not written through (audit cf1)
         try:
             dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={urllib.parse.quote(v, safe='')}&scale={scale}&theme={theme}" + ("&reader=1" if reader else ""))
             meta = re.search(r'data-still="([^"]+)"', dom)
@@ -1785,7 +1819,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
         except (ChromeError, OSError) as e:  # OSError: a file this view's pictures cannot be written to
             failed[v] = str(e)
             continue
-        rec.parent.mkdir(exist_ok=True)
+        make_folder(rec.parent)  # .stills: a link is refused, as out itself, never written through (audit cf1)
         write(rec, json.dumps({"key": keys.get(v), **{k: sha(f) for k, f in files.items()}}))
         done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(files["png"])})
     (out / ".stills.json").unlink(missing_ok=True)  # the one shared record before 0.14.0

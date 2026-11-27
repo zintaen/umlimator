@@ -76,7 +76,7 @@ To measure how well an assistant turns a request into these calls, `tests/fixtur
 ## How it behaves
 
 - The read tools run the module's own functions in Node on the model file, read again at each call, so edits show up, the edit tools' and anyone else's.
-- The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391` (`--port N`, or another port when that one is taken). Open it in a browser.
+- The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391/?k=<key>` (`--port N`, or another port when that one is taken). Open the address the tools give in a browser: the key in it is the page's, and the server answers `/` with nothing but 403 without it, so another process or account on the machine that was not given the address reads neither the model nor the page's state. The key is the same for a model on each run, made from a secret in `~/.cache/umlimator/mcp-key` (or the file `UMLIMATOR_MCP_KEYS` names) that only you can read; anything running as you can read it too, as it can read the model.
   - A tool answers "shown" once a page has shown it, or says why none did: the page's own error, or a tab in the background that didn't finish in time. With no page open, it gives the URL.
   - A page that opens later shows what the assistant built: the view, with the highlight on it, and a tour or story still under way.
   - The assistant's highlight is a layer of its own (`mcp`): off on another view, back on its own.

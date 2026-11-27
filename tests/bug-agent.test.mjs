@@ -528,6 +528,50 @@ test('bug agent proxy: the real key goes upstream, the placeholder and other cre
   }
 });
 
+test('bug agent proxy: the API gets the object the proxy checked, never other bytes (duplicate keys, bad UTF-8)', async () => {
+  const seen = [];
+  const upstream = createServer((req, res) => {
+    const parts = [];
+    req.on('data', c => parts.push(c));
+    req.on('end', () => { seen.push(Buffer.concat(parts)); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });
+  });
+  await new Promise(ok => upstream.listen(0, '127.0.0.1', ok));
+  const proxy = createProxy({ key: 'sk-real-key-0123456789', upstream: `http://127.0.0.1:${upstream.address().port}` });
+  await new Promise(ok => proxy.listen(0, '127.0.0.1', ok));
+  const base = `http://127.0.0.1:${proxy.address().port}`;
+  const raw = (path, body) => fetch(base + path, { method: 'POST', body, headers: { 'content-type': 'application/json' } });
+  try {
+    const server = '{"type":"web_search_20250305","name":"web_search"}';
+    for (const [name, body] of [
+      ['a server tool hidden by a later empty tools', `{"model":"m","tools":[${server}],"messages":[{"role":"user","content":"hi"}],"tools":[]}`],
+      ['a server tool hidden in a nested duplicate', `{"model":"m","messages":[],"tools":[{"type":"web_search_20250305","type":"custom","name":"x","input_schema":{}}]}`],
+      ['a block type hidden by a later text type', '{"model":"m","messages":[{"role":"user","content":[{"type":"web_fetch_tool_result_X","type":"text","text":"x"}]}]}'],
+    ]) {
+      for (const path of ['/v1/messages', '/v1/messages/count_tokens']) {
+        const before = seen.length;
+        const r = await raw(path, body);
+        if (r.status === 403) continue;
+        assert.equal(r.status, 200, name);
+        assert.equal(seen.length, before + 1, name);
+        const sent = seen.at(-1).toString('utf8');
+        assert.doesNotMatch(sent, /web_search_20250305|web_fetch_tool_result_X/, name + ': the bytes upstream carry what was checked');
+        assert.deepEqual(JSON.parse(sent), JSON.parse(body), name);
+      }
+    }
+    // a body that is not UTF-8 is refused, not decoded with replacement characters
+    const before = seen.length;
+    const bad = Buffer.concat([Buffer.from('{"model":"m","messages":[{"role":"user","content":"'), Buffer.from([0xff, 0xfe]), Buffer.from('"}]}')]);
+    assert.equal((await raw('/v1/messages', bad)).status, 403);
+    assert.equal(seen.length, before);
+    // an ordinary body still goes through with the same meaning
+    const plain = { model: 'm', max_tokens: 10, temperature: 0.7, messages: [{ role: 'user', content: 'h\u00e9llo \ud83d\ude00' }], tools: [{ name: 'Bash', input_schema: {} }] };
+    assert.equal((await raw('/v1/messages', JSON.stringify(plain))).status, 200);
+    assert.deepEqual(JSON.parse(seen.at(-1).toString('utf8')), plain);
+  } finally {
+    proxy.close(); upstream.close();
+  }
+});
+
 test('bug agent: the issue template asks for a minimal model and the steps', () => {
   const t = read('.github/ISSUE_TEMPLATE/bug_report.yml');
   assert.match(t, /label: Minimal model/);
