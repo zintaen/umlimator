@@ -204,6 +204,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: lane heads c9a7778b, a42a96f9, 12f217a2, 0fc8a1ce; audit-loop merges cbb2cc4d and 1060a6b6 (changelog conflicts); no origin/fix74-python; handoff log, 28 Nov 2026, fix round 74 combine.
 - Proposed change: In A3.3, a lane does not return while a suite it started is still running: it waits for it, or commits and pushes what passed with the unrun suites named, so the combine can decide. Name an owner for an unpushed lane (the orchestrator resumes it before the combine, or the combine reports it and the next round's lanes take the findings first). In C9, each lane uses its own subfolder of the scratchpad named after its branch and never writes outside it.
 
+### F21. F20 recurred (a lane stopped uncommitted, a lane deleted a scratchpad folder it did not make), and the local gate skips 39 BPMN XML tests unless an unrecorded variable is set
+
+- Date: 2026-11-28
+- Round: fix round cf1 (combine)
+- Rule: C4 step 4, A3.3 (lane finish), A3.4 (combine), C9 (F20 and F2 again)
+- What happened: fixcf1-tools (audit cf1 findings 5 to 8) was stopped while its render sweep and its second tests/mcp.py run were still going, so it returned uncommitted with no branch on origin, and the combine could not merge it: four findings go back to the next audit, exactly as fix74-python did in F20. fixcf1-xss found a folder `base` in the shared session scratchpad holding a partial lib/, tests/ and tools/ copy, and deleted it before making its own base worktree, not knowing whose it was. At the combine, `node --test tests/*.test.mjs` skipped 39 tests of tests/bpmn-xml.test.mjs (and the two timed ones) because bpmn-moddle is not installed in the worktree: the test names UMLIMATOR_BPMN_MODDLE as the way to point it at a scratch install, but C9's gate commands never set it, so a combine that follows them counts 39 skips, which the strategy says are no pass (F2's rule). This combine set the variable to an existing scratch install for its baseline and final runs. A timed flowchart test (audit 70's labelled exits) also failed once at the baseline under load average 20 to 28 and passed when run alone, which C9's "re-run once alone" covers.
+- Evidence: origin/fixcf1-xss 4861b375, origin/fixcf1-perf 1e759b9d, no origin/fixcf1-tools; audit-loop merge 27a7c869; handoff log, 28 Nov 2026, fix round cf1 combine.
+- Proposed change: Carry out F20's proposals (no lane returns while a suite it started is running; an owner for an unpushed lane; one scratchpad subfolder per lane, named after its branch, and nothing deleted outside it). In C9, list the environment a project's gate needs for its optional tools (here UMLIMATOR_BPMN_MODDLE pointing at a scratch `npm install --no-save bpmn-moddle`) next to the gate commands, so baseline and final counts have no skips that CI would run.
+
 ## Closed
 
 None.
