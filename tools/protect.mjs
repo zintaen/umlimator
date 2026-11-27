@@ -6,8 +6,9 @@
 // runs: node --test runs it only as a statement at the top level or in the callback of a describe, suite, test or it, so
 // one wrapped in a skipped describe, an if, a function or an expression is reported, and so is one whose test (or the describe
 // around it) is bound to anything but node:test's own (import { skip as test } from 'node:test'). A protected test whose
-// assert is not node:assert's own (imported from another module, or patched in the file, assert.equal = ...) asserts nothing
-// and is reported; an entry also records where each name it uses is imported from, and a changed import is a change.
+// assert is not node:assert's own (imported from another module, or patched or handed on in the file, assert.equal = ...,
+// const a = assert) asserts nothing and is reported, also when it asserts through a helper; an entry also records where
+// each name it uses is imported from, and a changed import is a change.
 //
 //   node tools/protect.mjs                          check every entry; exit 1 on a problem
 //   node tools/protect.mjs --list                   print the entries
@@ -58,7 +59,7 @@ export function scan(src) {
   // its default export) or, around it, describe (suite); `import { skip as test } from 'node:test'`, a name imported from
   // another module, or one declared in the file (const test = skip) makes every call of it no test that runs (audit 66).
   // A name the file never binds is a ReferenceError, which fails the run on its own
-  const imports = new Map(), declared = new Set(), sideEffects = [];
+  const imports = new Map(), declared = new Set(), sideEffects = [], importAt = new Set(); // importAt: tokens of import statements
   for (let k = 0; k < sig.length; k++) {
     const t = sig[k];
     if (t.type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text)) continue;
@@ -77,6 +78,7 @@ export function scan(src) {
         } else if (sig[q].text === '*' && sig[q + 1]?.text === 'as') { named.push([sig[q + 2]?.text, '*']); q += 2; }
         else if (sig[q].type === 'id' && sig[q].text !== 'type') named.push([sig[q].text, 'default']);
       }
+      for (let r = k; r <= q + 1 && r < sig.length; r++) importAt.add(r);
       const from = sig[q]?.type === 'str' ? sig[q] : sig[q + 1];
       const module = literal(from) ?? '';
       for (const [local, imported] of named) if (local) imports.set(local, { module, imported });
@@ -100,7 +102,11 @@ export function scan(src) {
   // how the file binds assert: a protected test's assertions assert only through node:assert's own (its default export,
   // strict or the namespace), or through a top-level declaration, which the hash covers as a helper. One imported from
   // another module, used with no binding in the file (a global another module set), or patched in the file
-  // (assert.equal = ..., delete assert.ok, Object.assign(assert, ...)) lets every assertion pass (audit 67)
+  // (assert.equal = ..., delete assert.ok, Object.assign(assert, ...)) lets every assertion pass (audit 67). Patches take
+  // more forms than a list of them can hold ((assert).equal = ..., const a = assert; a.equal = ..., a loop over its keys:
+  // audit 68), so every use of assert is read: it is called (assert(...), assert.equal(...)), declared, named as a
+  // property, or a method read (assert.equal, not assert.strict, which is assert again); any other use hands assert on
+  // where it can be changed
   const ASSERTS = ['node:assert', 'node:assert/strict', 'assert', 'assert/strict'], PATCH = ['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf', 'set', 'deleteProperty', 'method', 'getter', 'setter'];
   let assertWhy = null;
   const a = imports.get('assert');
@@ -108,16 +114,22 @@ export function scan(src) {
     assertWhy = !ASSERTS.includes(a.module) ? `assert is imported from ${a.module || 'elsewhere'}, not node:assert` : `assert is node:assert's ${a.imported}`;
   } else if (!a && !sig.some((x, k) => x.text === 'assert' && depthAt[k] === 0 && DECL.has(sig[k - 1]?.text))) assertWhy = 'assert is not imported from node:assert';
   for (let k = 0; k < sig.length && !assertWhy; k++) {
-    if (sig[k].text !== 'assert' || sig[k].type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text)) continue;
-    let m = k + 1;
+    if (sig[k].text !== 'assert' || sig[k].type !== 'id' || ['.', '?.'].includes(sig[k - 1]?.text) || importAt.has(k)) continue;
+    const line = `line ${src.slice(0, sig[k].start).split('\n').length}`;
+    let m = k + 1, computed = false, last = null;
     for (;;) {
-      if (['.', '?.'].includes(sig[m]?.text) && sig[m + 1]?.type === 'id') m += 2;
-      else if (sig[m]?.text === '[') m = close(m) + 1;
+      if (['.', '?.'].includes(sig[m]?.text) && sig[m + 1]?.type === 'id') { last = sig[m + 1].text; m += 2; }
+      else if (sig[m]?.text === '[') { computed = true; m = close(m) + 1; }
       else break;
     }
     const c = parent[k];
-    if ((m > k + 1 && /^(=|[-+*/%&|^]=|&&=|\|\|=|\?\?=)$/.test(sig[m]?.text ?? '')) || (m > k + 1 && sig[k - 1]?.text === 'delete')
-      || (c === k - 1 && sig[c].text === '(' && PATCH.includes(sig[c - 1]?.text))) assertWhy = `assert is changed in the file (line ${src.slice(0, sig[k].start).split('\n').length})`;
+    if ((m > k + 1 && /^(=|[-+*/%&|^]=|&&=|\|\|=|\?\?=|\+\+|--)$/.test(sig[m]?.text ?? '')) || (m > k + 1 && ['delete', '++', '--'].includes(sig[k - 1]?.text))
+      || (c === k - 1 && sig[c].text === '(' && PATCH.includes(sig[c - 1]?.text))) { assertWhy = `assert is changed in the file (${line})`; continue; }
+    if (sig[m]?.text === '(' || (sig[m]?.text === '?.' && sig[m + 1]?.text === '(')) continue; // a call
+    if (DECL.has(sig[k - 1]?.text) || sig[k - 1]?.text === 'typeof') continue; // its declaration (a top-level one is a helper)
+    if (['{', ','].includes(sig[k - 1]?.text) && sig[k + 1]?.text === ':') continue; // a property's name, { assert: ... }
+    if (m > k + 1 && !computed && last !== 'strict') continue; // a method or class read: assert.equal, assert.AssertionError
+    assertWhy = `assert is handed on in the file, where it can be changed (${line})`;
   }
   // why the call whose name is at j would not run as a test, or null when it runs: node --test runs a test written as a
   // statement at the top level or in the callback of a describe, suite, test or it that is not skipped
@@ -255,8 +267,19 @@ export function check(root, list = readList(root)) {
   return problems;
 }
 
-// why a test that calls assert would pass whatever it asserts, or null
-const asserting = (scanned, title) => scanned.tests.get(title).refs.has('assert') ? scanned.assertWhy : null;
+// why a test that calls assert, itself or through a helper it uses, would pass whatever it asserts, or null (a test that
+// asserts only through a helper was not reported, audit 68)
+const asserting = (scanned, title) => {
+  if (!scanned.assertWhy) return null;
+  const seen = new Set(), todo = [...scanned.tests.get(title).refs];
+  while (todo.length) {
+    const n = todo.pop();
+    if (n === 'assert') return scanned.assertWhy;
+    if (seen.has(n) || !scanned.decls.has(n)) continue;
+    seen.add(n); todo.push(...scanned.decls.get(n).refs);
+  }
+  return null;
+};
 
 export const say = p => `${p.file}: "${p.title}": ${p.problem}`;
 

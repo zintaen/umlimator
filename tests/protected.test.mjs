@@ -255,6 +255,41 @@ test('protect: a protected test whose assert is swapped, rebound or patched to a
   assert.deepEqual(check(lib), []);
 });
 
+test('protect: assert handed on through parentheses, an alias or its keys, or patched when a test asserts only through a helper, is reported (audit 68)', (t) => {
+  const ASSERT = "import assert from 'node:assert/strict';", after = line => s => s.replace(ASSERT, `${ASSERT}\n${line}`);
+  const both = why => [`doubles: no longer asserts (${why})`, `quadruples: no longer asserts (${why})`];
+  const handed = n => `assert is handed on in the file, where it can be changed (line ${n})`;
+  const off = [
+    [after('(assert).equal = () => {};'), handed(3)],
+    [after('const a = assert; a.equal = () => {};'), handed(3)],
+    [after('for (const k of Object.keys(assert)) (assert)[k] = () => {};'), handed(3)],
+    [after('const s = assert.strict;\ns.equal = () => {};'), handed(3)],
+    [after('const { strict } = assert;'), handed(3)],
+    [after('[assert][0].equal = () => {};'), handed(3)],
+    [after('assert[`equal`]++;'), 'assert is changed in the file (line 3)'],
+  ];
+  for (const [change, why] of off) {
+    const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    edit(dir, change);
+    assert.deepEqual(problems(dir), both(why), why);
+    assert.throws(() => update(dir), /"doubles" does not assert/);
+  }
+  // a test that asserts only through a helper: a patch of assert reached it nowhere but in the helper
+  const helped = SRC.replace("const double = x => x * 2;", "const double = x => x * 2;\nfunction same(a, b) { assert.equal(a, b); }")
+    .replace("test(\"quadruples\", () => { assert.equal(twice(1), 4); });", "test(\"quadruples\", () => { same(twice(1), 4); });");
+  const dir = repo(helped); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  assert.deepEqual(problems(dir), []);
+  edit(dir, after('assert.equal = () => {};'));
+  assert.deepEqual(problems(dir), both('assert is changed in the file (line 3)'));
+  // what stays fine: calls, method reads, a property named assert, typeof, and a test that never uses assert
+  const fine = repo(helped.replace(ASSERT, `${ASSERT}\nconst eq = assert.equal, E = assert.AssertionError, o = { assert: 1 }, ty = typeof assert;\nassert?.ok(true); assert['ok'](1);`)
+    + "test('plain', () => { if (1 + 1 !== 2) throw new Error('no'); });\n", ['doubles', 'quadruples', 'plain']);
+  t.after(() => rmSync(fine, { recursive: true, force: true }));
+  assert.deepEqual(problems(fine), []);
+  edit(fine, after('(assert).ok = () => {};'));
+  assert.deepEqual(problems(fine), both(handed(3)), 'plain asserts with no assert, and is not reported');
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));
