@@ -25,6 +25,14 @@ import { fileURLToPath } from "node:url";
 const args = process.argv.slice(2);
 const opt = (name, dflt) => (args.includes(name) ? args[args.indexOf(name) + 1] : dflt);
 const spec = args.find((a, i) => !a.startsWith("--") && !["--repo"].includes(args[i - 1]));
+// an option it does not know, --repo with no folder, or a second spec: a usage error, before anything is installed (audit 71:
+// a mistyped --no-cli ran the CLI step)
+const unknown = args.find((a, i) => (a.startsWith("-") ? !["--repo", "--no-cli"].includes(a) : args[i - 1] !== "--repo" && a !== spec)
+  || (a === "--repo" && (args[i + 1] === undefined || args[i + 1].startsWith("-"))));
+if (unknown !== undefined) {
+  console.log(`::error::smoke: usage: ${unknown === "--repo" ? "--repo takes a folder" : `unknown ${unknown.startsWith("-") ? "option" : "argument"} ${unknown}`}: node tools/smoke.mjs <spec> [--repo <dir>] [--no-cli]`);
+  process.exit(2);
+}
 const repo = resolve(opt("--repo", join(fileURLToPath(import.meta.url), "..", "..")));
 const tries = Number(process.env.SMOKE_TRIES || 6), wait = Number(process.env.SMOKE_WAIT_MS || 20000);
 

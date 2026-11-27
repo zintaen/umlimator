@@ -1746,6 +1746,17 @@ if part("mcp"):
     said, err = tool("page_state")
     ok("mcp · a request with no Fetch Metadata and no Origin, from another site, needs the run's token: without it, it gets nothing and is no page (audit 24)",
        set(fetched.values()) == {403} and "old-browser" not in said and token not in said and len(token) >= 32, (fetched, said))
+    # audit 71: a Content-Length that is no number got no reply, and a traceback in the server's log
+    lengths = {}
+    for length in ("abc", "-5", "+2", "1e3", " 2x", "\u00b2", "9" * 5000, "0", "99999999", "2"):
+        c = web()
+        try:
+            c.request("POST", "/state", "{}", {"Content-Type": "application/json", "X-Umlimator-Token": token, "Content-Length": length}); lengths[length[:12]] = c.getresponse().status
+        except (OSError, http.client.HTTPException) as e:
+            lengths[length[:12]] = type(e).__name__
+        c.close()
+    ok("mcp · a post whose Content-Length is no number gets 400, one too large or 0 gets 413 (audit 71)",
+       lengths == {"abc": 400, "-5": 400, "+2": 400, "1e3": 400, " 2x": 400, "\u00b2": 400, "9" * 12: 413, "0": 413, "99999999": 413, "2": 400}, lengths)
     mcp.stdin.close()
     ok("mcp · exits when its input closes", mcp.wait(timeout=30) == 0)
 

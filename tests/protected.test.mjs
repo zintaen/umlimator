@@ -387,6 +387,50 @@ test('protect: node:assert changed by a name built at run time in an earlier tes
   assert.match(out, /"core": no longer asserts \(node:assert changed: assert\/strict\.equal was changed or deleted while "setup" ran\)/);
 });
 
+test('protect: a protected test that its file\'s run does not show passing (the file exits before it, or it fails) is reported (audit 71)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\n";
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const NOT_RUN = 'f is one: does not run: node --test of its file did not run it (the file exits or stops before it?)';
+  const make = (code = 'export const f = () => 1;\n') => {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), code);
+    return dir;
+  };
+  const loads = async dir => (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+  assert.deepEqual(await loads(make()), [], 'a file that runs its test as recorded');
+  for (const before of ['process.exit(0);', 'process.reallyExit(0);', "process.kill(process.pid, 'SIGKILL');", 'await new Promise(() => {}); // never settles, so node:test never starts',
+    "throw new Error('stop');", "if (!process.env.PROTECT_NEVER_SET) process.exit();"]) {
+    const dir = make('export const f = () => 2;\n'); // the regression the test should catch
+    edit(dir, () => HEAD + before + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    assert.deepEqual(await loads(dir), [NOT_RUN], before);
+  }
+  // a test that runs and fails, one made a skip at run time, one cut short by an exit in an earlier test
+  const fails = make('export const f = () => 2;\n');
+  assert.deepEqual(await loads(fails), ['f is one: fails: node --test of its file ran it and it did not pass']);
+  const skipped = make(); edit(skipped, () => HEAD + "import { beforeEach } from 'node:test';\nbeforeEach(t => t.skip());\n" + CORE);
+  assert.deepEqual((await assertLoads(skipped, undefined, { skips: false })).map(p => `${p.title}: ${p.problem}`), ['f is one: does not run: node --test of its file skipped it'], 'in CI');
+  assert.deepEqual(await assertLoads(skipped, undefined, { skips: true }), [], 'outside CI, where bpmn-xml\'s tests skip with no bpmn-moddle');
+  const early = make(); edit(early, () => HEAD + "test('first', () => { process.exit(0); });\n" + CORE);
+  assert.deepEqual(await loads(early), [NOT_RUN]);
+  // a line printed to stdout that reads as TAP is no pass
+  const forged = make('export const f = () => 2;\n'); edit(forged, () => HEAD + "console.log('ok 1 - f is one');\nprocess.exit(0);\n" + CORE);
+  assert.deepEqual(await loads(forged), [NOT_RUN]);
+  // what stays fine: a protected test in a describe, a title with # and \\ in it, a repeated title (the second one), a timed one (not run here)
+  const NAMES = "describe('group', () => { test('inner # one \\\\ two', () => { assert.equal(f(), 1); }); });\ntest('again', () => { assert.ok(f()); });\ntest('again', () => { assert.equal(f(), 1); });\ntest('slow (timed)', () => { assert.equal(f(), 1); });\n";
+  const fine = repo(HEAD + NAMES, ['inner # one \\ two', 'again #2', 'slow (timed)']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+  writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+  assert.deepEqual(await loads(fine), []);
+  writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 2;\n');
+  assert.deepEqual(await loads(fine), ['inner # one \\ two: fails: node --test of its file ran it and it did not pass', 'again #2: fails: node --test of its file ran it and it did not pass']);
+  // the command says it and exits 1
+  const dir = make('export const f = () => 2;\n'); edit(dir, () => HEAD + 'process.exit(0);\n' + CORE);
+  let out = '', code = 0;
+  try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; out = e.stdout; }
+  assert.equal(code, 1);
+  assert.deepEqual(out.trim().split('\n'), [`tests/x.test.mjs: "${NOT_RUN.replace(': ', '": ')}`, '1 of 1 protected tests gone or changed: ask the maintainer, who runs node tools/protect.mjs --update after approving']);
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));

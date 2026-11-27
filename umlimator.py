@@ -1456,6 +1456,14 @@ def port(s):
     return int(s)
 
 
+def seconds(s):
+    """check --timeout: whole seconds, 1 to 86400 (a day). A larger number overflowed the wait (OverflowError), and 0 or
+    less said Chrome did not finish though it never started (audit 71)."""
+    if not (s.isascii() and s.isdigit() and 1 <= int(s) <= 86400):
+        raise argparse.ArgumentTypeError(f"{s!r} is not a number of seconds, 1 to 86400")
+    return int(s)
+
+
 def at_least_1(s):
     if int(s) < 1:
         raise argparse.ArgumentTypeError(f"{s} is less than 1")
@@ -2025,7 +2033,7 @@ def main():
     pf.add_argument("--accept-terms", metavar="PACK@LABEL", help="with no terminal: the user's yes to the terms printed, for this pack and pin only")
     pk.set_defaults(f=lambda a: packs().main(a))
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
-    c.add_argument("--timeout", type=int, default=600)
+    c.add_argument("--timeout", type=seconds, default=600, help="how long Chrome may take, in seconds, 1 to 86400 (default 600)")
     c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
     c.add_argument("--ignore", help=f"kinds left out of the report: right-to-left, {', '.join(k for k in KINDS if k not in ('rules', 'rightToLeft'))} (comma list)")
     c.set_defaults(f=cmd_check)
