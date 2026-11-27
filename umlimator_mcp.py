@@ -13,7 +13,7 @@ The protocol: JSON-RPC 2.0, one message per line on stdin and stdout; logs go to
 the current specification (per-request `_meta`, server/discover), and the `initialize` handshake of the versions before
 it, which a client sends that predates 2026-07-28 or falls back to it.
 """
-import codecs, hashlib, hmac, html, http.server, itertools, json, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
+import codecs, hashlib, hmac, html, http.server, itertools, json, math, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
 from pathlib import Path
 
 import umlimator as cli
@@ -391,7 +391,7 @@ def checked(name, a, where=""):
         raise Fail(f"{where}{name} needs {', '.join(missing)}")
     if extra := [k for k in a if k not in props]:
         raise Fail(f"{where}{name}: no argument {', '.join(map(str, extra))}; its arguments: {', '.join(props) or 'none'}")
-    if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if not fits(a[k], props[k])]:
+    if wrong := refused(a, props):
         raise Fail(f"{where}{name}: {'; '.join(wrong)}")
     return {k: whole(v) if props[k].get("type") == "integer" else v for k, v in a.items()}
 
@@ -1037,7 +1037,7 @@ class Page(http.server.BaseHTTPRequestHandler):
         if not 0 < size <= 1 << 20:
             return self.send_error(413)
         try:
-            msg = parse(self.rfile.read(size))
+            msg = parse(self.rfile.read(size), strict=True)
         except (ValueError, RecursionError):  # too deep for Python's parser is no message either (audit 20)
             return self.send_error(400)
         if not (isinstance(msg, dict) and isinstance(msg.get("page"), str) and 0 < len(msg["page"]) <= 64):
@@ -1108,6 +1108,24 @@ def fits(v, s):
     return t != "array" or all(fits(x, s.get("items", {})) for x in v)
 
 
+def finite(v):
+    """Whether parsed JSON holds no NaN, Infinity or number out of range (1e400) anywhere: Python's json reads them, but
+    JSON has none, so Node's JSON.parse refuses them and a reply could not carry one back (audit 67)."""
+    todo = [v]  # a loop, not recursion: a message may nest DEEPEST deep, as deep as Python's own recursion limit
+    while todo:
+        x = todo.pop()
+        if isinstance(x, float) and not math.isfinite(x):
+            return False
+        todo.extend(x.values() if isinstance(x, dict) else x if isinstance(x, list) else ())
+    return True
+
+
+def refused(a, props):
+    """Why each argument in a is refused: not of the type its inputSchema gives, or holding a number JSON has not."""
+    return [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" if not fits(a[k], props[k])
+            else f"{k} is not JSON: it holds NaN, Infinity or a number out of range" for k in a if k in props and not (fits(a[k], props[k]) and finite(a[k]))]
+
+
 def failure(rid, code, message, data=None):
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": message, **({"data": data} if data is not None else {})}}
 
@@ -1138,7 +1156,7 @@ def result(method, p):
             props = t["inputSchema"]["properties"]  # a value of another type would fail inside the tool, as an internal error
             if extra := [k for k in a if k not in props]:  # additionalProperties: false; a guessed name was dropped without a word (audit 8)
                 raise Fail(f"{t['name']}: no argument {', '.join(map(str, extra))}; its arguments: {', '.join(props) or 'none'}")
-            if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if k in props and not fits(a[k], props[k])]:
+            if wrong := refused(a, props):
                 raise Fail(f"{t['name']}: {'; '.join(wrong)}")
             a = {k: whole(v) if props[k].get("type") == "integer" else v for k, v in a.items()}  # 2.0 reaches the tool as 2
             said = call(t["name"], a)
@@ -1153,15 +1171,25 @@ TOKENS = re.compile(r'"(?:[^"\\]+|\\.)*"?|[\[\]{}]')  # a string (to its end, if
 STEP = {"[": 1, "{": 1, "]": -1, "}": -1}  # a bracket's step in depth; a string's is 0
 
 
-def parse(data):
-    """A message (bytes or str) as JSON, the same on every Python (audit 67): ValueError for text that is not JSON, for one
-    nested deeper than DEEPEST, and for NaN, Infinity and a number out of range (1e400), which Python's json reads but no
-    reply could carry back: json.dumps writes them as bare NaN and Infinity, and Node's JSON.parse refuses them."""
+def _number(s):
+    """An integer as JavaScript reads it: past 1.8e308, Infinity (float() of the digits)."""
+    x = int(s)
+    return x if abs(x) <= sys.float_info.max else float(s)
+
+
+def parse(data, strict=False):
+    """A message (bytes or str) as JSON, the same on every Python (audit 67): ValueError for text that is not JSON, and for
+    one nested deeper than DEEPEST. NaN, Infinity and a number out of range (1e400) are read as Python's json reads them,
+    to a float that is not finite, so a request's id or a tool's argument holding one is refused as that (reply(),
+    refused()); strict, they are a ValueError (load_json's words), as for the page's /state reports, which JSON.stringify
+    writes."""
     text = data.decode(json.detect_encoding(data), "surrogatepass") if isinstance(data, (bytes, bytearray)) else data
     if text.count("[") + text.count("{") > DEEPEST:  # only then can it nest that deep
         if max(itertools.accumulate(map(STEP.get, TOKENS.findall(text), itertools.repeat(0)))) > DEEPEST:
             raise ValueError(f"it nests deeper than {DEEPEST}")
-    return json.loads(text, parse_float=cli._finite, parse_int=cli._whole, parse_constant=cli._no_constant)
+    if strict:
+        return json.loads(text, parse_float=cli._finite, parse_int=cli._whole, parse_constant=cli._no_constant)
+    return json.loads(text, parse_int=_number)
 
 
 def answer(line):
@@ -1169,7 +1197,7 @@ def answer(line):
     server speaks, has batches), or None for notifications and responses."""
     try:
         msg = parse(line)
-    except (ValueError, RecursionError):  # a line nested too deep ended the server (audit 20); NaN went back bare (audit 67)
+    except (ValueError, RecursionError):  # a line nested too deep ended the server (audit 20), or was a batch (audit 67)
         return failure(None, -32700, "Parse error")
     if isinstance(msg, list):
         return [r for r in map(reply, msg) if r is not None] or None if msg else failure(None, -32600, "Invalid Request")
@@ -1180,6 +1208,8 @@ def reply(msg):
     """The reply to one message: None for a notification, or for a response (this server sends no requests)."""
     if isinstance(msg, dict) and "method" not in msg and ("result" in msg or "error" in msg):
         return None
+    if isinstance(msg, dict) and not finite(msg.get("id")):  # an id of NaN went back as a bare NaN, which is not JSON (audit 67)
+        return failure(None, -32600, "Invalid Request")
     if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0" or not isinstance(msg.get("method"), str):
         return failure(msg.get("id") if isinstance(msg, dict) else None, -32600, "Invalid Request")
     if "id" not in msg:

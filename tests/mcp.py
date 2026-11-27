@@ -62,14 +62,24 @@ deep = mcp.answer(b"[" * 100000 + b"]" * 100000)
 ok("audit 20 · refit() reads a story id that is not a string as no name; a line nested too deep is a parse error, not the server's end",
    said == {"n": 1, "story": "s"} and deep["error"]["code"] == -32700, (said, deep))
 # audit 67: Python 3.14's json reads any depth, so a line nested 100000 deep was a batch (-32600), not a parse error, and
-# one 2000 deep was a batch on every Python; NaN and Infinity (which Python's json reads) went back as a bare NaN id, or
-# reached Node as a raw SyntaxError
-parse67 = [mcp.answer(x) for x in (b"[" * 1001 + b"]" * 1001, b'{"jsonrpc":"2.0","id":NaN,"method":"ping"}', b'{"jsonrpc":"2.0","id":1e400,"method":"ping"}',
-                                    b'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"set_field","arguments":{"id":"a","view":"v","path":"props","value":{"w":-Infinity}}}}')]
-kept67 = [mcp.answer(x) for x in (b"[" * 1000 + b"]" * 1000, b'{"jsonrpc":"2.0","id":"' + b"[{" * 2000 + b'","method":"ping"}')]
-ok("audit 67 · a line nested deeper than 1000, NaN, Infinity or 1e400 is a parse error on every Python; 1000 deep, and brackets in a string, still read",
-   all(r == mcp.failure(None, -32700, "Parse error") for r in parse67) and kept67[0] == [mcp.failure(None, -32600, "Invalid Request")]
-   and kept67[1]["id"] == "[{" * 2000 and "result" in kept67[1], (parse67, kept67[0], str(kept67[1])[:200]))
+# one 2000 deep was a batch on every Python; an id of NaN or Infinity (which Python's json reads) went back as a bare NaN,
+# which is not JSON, and such a tool argument reached Node as a raw SyntaxError
+deep67 = mcp.answer(b"[" * 1001 + b"]" * 1001)
+ids67 = [mcp.answer(b'{"jsonrpc":"2.0","id":%s,"method":"ping"}' % x) for x in (b"NaN", b"-Infinity", b"1e400", b"1" + b"0" * 400)]
+args67 = [mcp.answer(b'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"set_field","arguments":{"id":"a","view":"v","path":"props","value":{"w":%s}}}}' % x)
+          for x in (b"-Infinity", b"NaN", b"1e400")]
+kept67 = [mcp.answer(x) for x in (b"[" * 1000 + b"]" * 1000, b'{"jsonrpc":"2.0","id":"' + b"[{" * 2000 + b'","method":"ping"}', b'{"jsonrpc":"2.0","id":1e300,"method":"ping"}')]
+def wire(r):  # whether a reply is JSON on the wire, with no bare NaN or Infinity
+    try:
+        return bool(json.dumps(r, allow_nan=False))
+    except ValueError:
+        return False
+ok("audit 67 · a line nested deeper than 1000 is a parse error on every Python; an id of NaN, Infinity or 1e400 is an Invalid Request "
+   "with id null, and such an argument the tool's refusal by name; 1000 deep, brackets in a string, and 1e300 still read",
+   all(map(wire, (deep67, *ids67, *args67))) and deep67 == mcp.failure(None, -32700, "Parse error") and all(r == mcp.failure(None, -32600, "Invalid Request") for r in ids67)
+   and all(r["id"] == 1 and r["result"]["isError"] and r["result"]["content"][0]["text"] == "set_field: value is not JSON: it holds NaN, Infinity or a number out of range" for r in args67)
+   and kept67[0] == [mcp.failure(None, -32600, "Invalid Request")] and kept67[1]["id"] == "[{" * 2000 and "result" in kept67[1]
+   and kept67[2]["id"] == 1e300 and "result" in kept67[2], (deep67, ids67, args67, kept67[0], str(kept67[1])[:200]))
 # audit 48: cards that no one view shows (a->b on v1, b->c on v2) are refused as that, not blamed on a line missing from the
 # first view, where c is not even drawn (the tour check fell back to a view when none showed them all)
 with tempfile.TemporaryDirectory() as d48:
