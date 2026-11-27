@@ -23,7 +23,7 @@ BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
 """
-import itertools, json, math, re, sys
+import itertools, json, math, re, sys, unicodedata
 from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
@@ -478,6 +478,17 @@ def legal(d, say):
     return top[0]
 
 
+def natural(s):
+    """A sort key that orders a text's digit runs as numbers (web2 before web10) and never raises: a run is compared by its
+    length and then its digits, with no int(), so a run longer than int()'s 4300 digits sorts, and only the runs of \\d
+    (what isdecimal() takes, any script's 0 to 9) count, not a superscript ² or circled ① that isdigit() takes (audit 70)."""
+    def run(t):
+        t = t if t.isascii() else "".join(str(unicodedata.decimal(c)) for c in t)
+        t = t.lstrip("0")
+        return len(t), t
+    return [run(t) if i % 2 else t for i, t in enumerate(re.split(r"(\d+)", s))]
+
+
 def read(fmt, text, name):
     if len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
         m = Model(name)
@@ -491,7 +502,7 @@ def read(fmt, text, name):
             text = scrub(text, lambda no, msg: said.append((no, msg)))
             m = {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
         m.unread += said
-    return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
+    return m.model(), sorted(m.unread, key=lambda u: natural(str(u[0])))
 
 
 # ---------- Structurizr DSL ----------
