@@ -171,6 +171,10 @@ function unhook(g, stub) {
    - a box's head: px of header room over stage 2's 24, on the side its title is on (the top; laid out down, the left, which
      becomes the top): a second line of title, a keyword above the name (the deployment type's, decision of 13 Nov 2026);
      its two lines go in the box's kw and name, and its title (both lines) is measured at their 12 px (layered.js headW)
+   - a box's fit: the text the box grows to hold where it is not its title (a type that draws a longer header than the box need
+     hold, cut to it: SysML's frame, audit 76); the lines keep clear of the title as drawn, its ports on the title's side are
+     centred past the fit as before unless that puts them under the title, and the box grows for ports on its title's side
+     (layered.js headPorts) so they sit past the title
    - a view's labelGaps: true lays the view out once more where a line's label found no spot, was cut short or sits on a box's
      border, with the column gap it needs widened by the label's width (a map's labelRoom, layered.js; column gaps only, as a
      typed view's rows are of mixed height; laid out down, the picture's row gaps, by the label's height, so fewer labels
@@ -230,14 +234,20 @@ function spreadPorts({ n, side, ends }, turned, placed, plain) {
   (plain ? was : now).forEach(({ g, faces }, j) => { g.faces = faces; groups[j] = g; });
   groups.forEach(g => { g.need = g.port == null ? 2 : 2 + Math.max(...g.faces.map(f => pitch(f) * f.length));
     g.L = g.port == null ? 2 : Math.max(g.need, ...g.ends.map(least)); });
-  let lo = a0 + 8, hi = a0 + len - 8;
+  let lo = a0 + 8, hi = a0 + len - 8, lo0 = lo;
   if (n.box) { const across = turned ? !v : v; // as layoutPass spreads a box's ends: below the title on a side, off the title and corners elsewhere
-    lo = across ? a0 + 40 : Math.max(a0 + 20, turned && side === 'L' ? n.y + n.hd + 16 : -Infinity, ...(side === 'T' ? n.decoT : []).map(([x, w]) => x + w + 8));
-    hi = a0 + len - (across ? 16 : 20); }
-  const sum = groups.reduce((a, g) => a + g.L, 0), k = groups.length - 1, gap = k ? Math.max(4, Math.min(8, (hi - lo - sum) / k)) : 0;
+    const past = (hd, deco) => (across ? a0 + 40 : Math.max(a0 + 20, turned && side === 'L' ? n.y + hd + 16 : -Infinity, ...(side === 'T' ? deco : []).map(([x, w]) => x + w + 8)));
+    lo = past(n.hd, n.decoT); lo0 = n.decoFit ? past(n.hdFit, n.decoFit) : lo;
+    // the side across from the title, of a box grown past its far end for its ports on its title's side: its ports centred on
+    // the side as it was, in line with what the box holds (audit 76)
+    hi = a0 + len - (across ? 16 : 20) - (n.grew > 0 && side === (turned ? 'R' : 'B') ? n.grew : 0); }
+  // a box with a fit (layoutPass's boxEnd): its ports centred past the title it was sized for, as before, unless that puts them
+  // under the title as drawn; then past that (audit 76)
+  const sum = groups.reduce((a, g) => a + g.L, 0), k = groups.length - 1, spread = a => (k ? Math.max(4, Math.min(8, (hi - a - sum) / k)) : 0);
+  let gap = spread(lo0), s = (lo0 + hi - sum - gap * k) / 2;
+  if (s < lo) { gap = spread(lo); s = (lo + hi - sum - gap * k) / 2; }
   if (sum + gap * k > (n.box ? hi - lo : len)) warn(`the ports on the ${Object.keys(PORT_SIDE).find(w => PORT_SIDE[w] === (turned ? SIDE_T[side] : side))} side of "${n.id}" do not fit it: they need ${Math.ceil(sum + gap * k)} px, it has ${Math.floor(n.box ? hi - lo : len)}`);
   const B = side === 'L' ? n.x : side === 'R' ? n.x + n.w : side === 'T' ? n.y : n.y + n.h;
-  let s = (lo + hi - sum - gap * k) / 2;
   groups.forEach(g => { const box = v ? { x: B - 6, y: s, w: 12, h: g.L } : { x: s, y: B - 6, w: g.L, h: 12 };
     g.faces.forEach(face => face.forEach((x, j) => { const c = g.port == null ? s + 1 : s + (g.L - g.need) / 2 + 6 + pitch(face) * j;
       x.e[x.from ? 'p1' : 'p2'] = v ? [B, c] : [c, B]; if (g.port != null) x.e[x.from ? 'fpb' : 'tpb'] = { ...box };

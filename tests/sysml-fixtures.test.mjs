@@ -53,9 +53,8 @@ function clean(m, vid) {
 }
 
 // what each view keeps, laid out right and down, counted: [crossings, check()'s other findings, what clean() calls wrong].
-// The edge-cases views and the minimal ones are clean but for the crossings counted here and one finding: laid out down, a
-// constraint block subject's parameter on the frame's top crosses its header band (M3.5's gap, stated in
-// docs/diagrams/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
+// The edge-cases views and the minimal ones are clean but for the crossings counted here (laid out down, a constraint block
+// subject's parameter on the frame's top crossed its header band, M3.5's gap, till audit 76). The generated views all crowd 60 lines with repair and reroute off (§14): there
 // lines share a track, and labels that found no spot and were left off with nothing said, drawn now on a looser spot (audit 6),
 // lie on lines. Each is stated in its type's conformance note
 const PINNED = {
@@ -66,7 +65,7 @@ const PINNED = {
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [5, 0, 0], down: [20, 1, 0] } }, // fewer since audit 38: lines between two parts keep their ports' order
   'parametric-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [208, 16, 0], down: [201, 18, 0] } },
+  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [208, 16, 0], down: [201, 18, 0] } },
 };
 
 test('every view of the eight fixtures, right and down: a line through a node, an end off its node, a label over a node, a port off its owner\'s border and check()\'s findings, each only as pinned (the stated limits)', () => {
@@ -78,8 +77,9 @@ test('every view of the eight fixtures, right and down: a line through a node, a
     if (vid !== 'all') other.push(...o, ...bad); }
   if (process.env.PIN) console.log(JSON.stringify(counts));
   assert.deepEqual(counts, PINNED);
-  // outside the generated views, no finding but crossings and M3.5's header band
-  assert.deepEqual(other, ['view ec-constraint-block: family "par [ConstraintBlock] Top [A constraint block]": header crossed by edge Top→first : Half']);
+  // outside the generated views, no finding but crossings (laid out down, ec-constraint-block's parameter on the frame's top
+  // crossed its header band till audit 76)
+  assert.deepEqual(other, []);
 });
 
 // audit 34: each note states its generated view's counts as pinned above; the parametric note said 23 findings right after
