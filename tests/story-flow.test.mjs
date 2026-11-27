@@ -179,7 +179,10 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
 test('a BPMN collaboration tells the main process the arranged picture draws, not the first-listed start event\'s path', () => {
   for (const [f, vid] of [['./fixtures/bookshop-order-to-shipment.json', 'order-to-shipment'], ['./fixtures/bpmn-gallery.json', 'order-to-shipment'], ['./fixtures/integration.json', 'repair-process'],
     ['./fixtures/bpmn-gallery.json', 'order-to-shipment-expanded']]) { // audit 68: the main process through an expanded sub-process, its box a step
-    const m = read(f), a = arranged(m), want = drawnMain(a, vid);
+    // the type example's two views draw more layout problems arranged than ranked and are kept ranked (audit 72), drawing no
+    // main line: their story is the one they tell unarranged, which the other two views show is the drawn main flow
+    const m = read(f), a = arranged(m), drawn = drawnMain(a, vid), want = drawn.length ? drawn : U.storyFromFlow(m, vid).steps.map(st => st.select);
+    if (!drawn.length) assert.ok(U.check(a, vid).length <= U.check(m, vid).length && f.endsWith('bpmn-gallery.json'), `${f} ${vid}: kept ranked`);
     assert.ok(want.length > 3, `${f} ${vid}: the picture draws a main flow`);
     const firstStart = m.views.find(v => v.id === vid).nodeIds.find(id => m.nodes.find(n => n.id === id)?.type === 'bpmn.StartEvent');
     assert.notEqual(want[0], firstStart, `${f} ${vid}: the main process is not the first-listed pool's`);
