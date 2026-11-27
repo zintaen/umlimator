@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -2664,6 +2664,64 @@ if part("audit 60 no git"):
         r = go("timelapse", "m.json", "--out", "tl.html")
         ok("timelapse · with no git installed: one line, no traceback (audit 60)",
            r.returncode == 1 and r.stderr.strip() == "timelapse needs git, and none is installed", r.stderr[-600:])
+if part("audit 74"):
+    # audit 74 #4: diff --base read git's paths with the locale's code page: under Latin-1 (or ASCII), a model in a checkout
+    # whose path holds a non-ASCII letter read as removed, and one whose name holds one as not changed; render's root was lost
+    latin = next((x for x in subprocess.run(["locale", "-a"], capture_output=True, text=True).stdout.split() if x.lower().endswith(("iso8859-1", "iso88591"))), None) \
+        if shutil.which("locale") else None
+    locales = [{"LC_ALL": "C", "LANG": "C", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0"}, *([{"LC_ALL": latin, "PYTHONUTF8": "0"}] if latin else [])]
+    with tempfile.TemporaryDirectory() as t:
+        g = Path(t) / "r\u00e9p"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+        m = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+        for f in ("caf\u00e9.json", "shop.json", "docs/m.json"):
+            (g / f).write_text(json.dumps(m), encoding="utf-8")
+        sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        for f in ("caf\u00e9.json", "shop.json"):
+            (g / f).write_text(json.dumps(m | {"nodes": [m["nodes"][0] | {"label": "A2"}, m["nodes"][1]]}), encoding="utf-8")
+        for i, env in enumerate(locales):
+            r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out%d']; u.main()" % i, str(ROOT)],
+                               cwd=g, capture_output=True, env={**os.environ, **env})
+            md = (g / f"out{i}" / "summary.md").read_text(encoding="utf-8") if (g / f"out{i}" / "summary.md").is_file() else ""
+            try:
+                said = [x["file"] for x in json.loads(r.stdout)]
+            except ValueError:
+                said = None
+            ok(f"diff --base · under {env['LC_ALL']}, a checkout path and a model name holding a non-ASCII letter: each edit is said, as under UTF-8 (audit 74)",
+               r.returncode == 0 and md.count("- renames A to A2") == 2 and "**`caf\u00e9.json`**" in md and said == ["caf\u00e9.json", "shop.json"],
+               (r.returncode, md, r.stderr[-400:]))
+            r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", "docs/m.json", "--out", "docs/m.html", "--no-check"],
+                               cwd=g, capture_output=True, env={**os.environ, **env})
+            page = (g / "docs" / "m.html").read_text(encoding="utf-8") if (g / "docs" / "m.html").is_file() else ""
+            ok(f"render · under {env['LC_ALL']}, in a checkout whose path holds a non-ASCII letter: the page records the checkout's root and the model's path in it (audit 74)",
+               r.returncode == 0 and re.search(r'"root": ?"\.\."', page) is not None and re.search(r'"source": ?"docs/m\.json"', page) is not None, r.stderr[-400:])
+            (g / "docs" / "m.html").unlink(missing_ok=True)
+    # audit 74 #6: a model nested about 6,000 deep (any depth on Python 3.14) reached the module in Node, whose stack overflowed,
+    # and diff --base wrote Node's stack trace (its inline script, the checkout's and the temp folder's paths) into summary.md
+    with tempfile.TemporaryDirectory() as t:
+        g = Path(t) / "g"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+        m = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+        (g / "docs" / "a.json").write_text(json.dumps(m)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "docs" / "a.json").write_text(json.dumps(m | {"nodes": [m["nodes"][0] | {"label": "A2"}, m["nodes"][1]]}))
+        for n in (6000, 9000):
+            (g / "docs" / f"deep{n}.json").write_text('{"nodes":[],"views":[{"id":"v","title":"V","x":' + "[" * n + "]" * n + "}]}")
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+        b = [subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(g / "docs" / f"deep{n}.json"), "--out", str(g / f"deep{n}.html"), "--no-check"],
+                            capture_output=True, text=True) for n in (6000, 9000)]
+        ok("diff --base and render · a model nested 6,000 and 9,000 deep is said in one line on every Python, never Node's stack trace (audit 74)",
+           r.returncode == 0 and all(f"**`docs/deep{n}.json`**: cannot be read: it nests too deep to read" in md for n in (6000, 9000)) and "renames A to A2" in md
+           and "file://" not in md and "Error" not in md and str(ROOT) not in md
+           and all(x.returncode == 1 and x.stderr.strip().endswith("nests too deep to read") and "Traceback" not in x.stderr for x in b), (md, r.stderr[-300:], [x.stderr[-300:] for x in b]))
+    try:  # js(): a function of the module's that fails is said as its error, not Node's stack with the module's path and the inline script
+        u.js("noSuchFunction"); said = None
+    except SystemExit as e:
+        said = str(e.code)
+    ok("js · the module failing in Node is said in one line, its error and message, with no stack, script or path (audit 74)",
+       said is not None and said.startswith("TypeError: ") and "\n" not in said and "file://" not in said and str(ROOT) not in said, said)
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
