@@ -1848,7 +1848,7 @@ def cmd_record(a):
 # type that does not rank). Opt-in: on the import fixtures the arranged layout scores worse than the ranked one today
 # (.evolve/decisions.md D13), so a default import lays out as before
 FLOW_TYPES = ("map", "c4.context", "c4.container", "c4.component", "c4.dynamic", "c4.landscape", "flowchart", "dfd", "uml.activity",
-              "uml.use-case", "bpmn", "aws", "azure", "gcp")
+              "uml.interaction-overview", "uml.use-case", "bpmn", "aws", "azure", "gcp")
 
 
 def arranged(m):
