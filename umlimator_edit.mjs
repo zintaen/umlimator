@@ -362,7 +362,7 @@ function written(src, before, after) {
 }
 
 async function main() {
-  let s = ''; for await (const c of process.stdin) s += c;
+  let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c;
   const { model, steps, source } = JSON.parse(s);
   let m = model;
   const done = [];
