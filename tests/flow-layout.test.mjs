@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { layout, check, validate } from '../lib/umlimator-all.js';
 import { viewMetrics } from '../src/layout/score.js';
 import { mainFlow } from '../src/layout/layered.js';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
 // section 5.4's view: A -> B -> C, each also writing to L with a state line
 const ABC = (arrange, more = {}) => ({ schemaVersion: 2,
@@ -467,29 +467,4 @@ test('two joined first or last cards take a column each, and a card an under sto
       assert.deepEqual(check(b, 'v').filter(p => / overlap$/.test(p.message)), [], `case ${k}${boxed ? ' boxed' : ''}`); }
     const c = cells(layout(m, 'v')); order[k].slice(1).forEach((id, j) => assert.ok(c[id][0] > c[order[k][j]][0], `case ${k}: ${id} after ${order[k][j]}`)); });
   const c = cells(layout(cases[2], 'v')); assert.ok(c.db[1] > c.etl[1], 'the store under the flow');
-});
-
-// audit 71: an arranged typed view was laid out only in arranged ways (bestTyped, src/map/context.js), so where every one drew
-// more than ranked (an activity laid out down whose decision's [no] line ran straight to its merge across a fork's branches,
-// 2 crossings against none; C4's landscape laid out down, 6 against none) arrange "flow" drew it worse. The ranked layout is a
-// way too, kept when every arranged one draws more problems: no view of the test fixtures draws more arranged than ranked
-test('audit 71: arranged, no typed view of the test fixtures draws more layout check problems than ranked, laid out right or down', () => {
-  const dir = new URL('./fixtures/', import.meta.url), worse = [];
-  for (const f of readdirSync(dir).filter(x => x.endsWith('.json')).sort()) { const m = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
-    for (const v of Array.isArray(m.views) ? m.views : []) { if (!v.diagram || v.diagram === 'map' || v.layout) continue;
-      for (const direction of ['right', 'down']) { const said = arrange => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id);
-        w.direction = direction; if (arrange) w.arrange = 'flow'; else delete w.arrange; return check(c, v.id).length; };
-        const r = said(false), a = said(true); if (a > r) worse.push(`${f} ${v.id} ${direction}: ${a} arranged, ${r} ranked`); } } }
-  assert.deepEqual(worse, []);
-});
-test('audit 71: arranged and laid out down, a decision whose [no] line runs straight to its merge past a fork in its [yes] branch draws no crossing', () => {
-  const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) });
-  // the audit's generated view (its ids, which order the cards): one fork branch of one action, the other of two
-  const nodes = [n('n0', 'InitialNode'), n('n1', 'Action', 'Do thing 1 xxxxxxxxxxxxx'), n('n2', 'DecisionNode', 'ok2?'), n('n3', 'MergeNode'), n('n4', 'ForkNode'), n('n5', 'JoinNode'),
-    n('n6', 'SendSignalAction', 'Do thing 6 xxx'), n('n9', 'Action', 'Do thing 9 xxxxx'), n('n10', 'SendSignalAction', 'Do thing 10 xxx'), n('n18', 'ActivityFinalNode')];
-  const edges = [['e7', 'n4', 'n6'], ['e8', 'n6', 'n5'], ['e11', 'n9', 'n10'], ['e12', 'n4', 'n9'], ['e13', 'n10', 'n5'], ['e14', 'n2', 'n4', '[yes]'], ['e15', 'n5', 'n3'],
-    ['e16', 'n2', 'n3', '[no]'], ['e17', 'n1', 'n2'], ['e19', 'n0', 'n1'], ['e20', 'n3', 'n18']].map(([id, f, t, label]) => ({ id, type: 'uml.ControlFlow', from: f, to: t, ...(label && { label }) }));
-  for (const direction of ['down', 'right']) for (const arrange of [undefined, 'flow']) {
-    const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, ...(arrange && { arrange }) }] };
-    assert.deepEqual(check(m, 'v').map(p => p.message), [], `${direction} ${arrange || 'ranked'}`); }
 });

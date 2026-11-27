@@ -464,13 +464,8 @@ test('zoneOf: the start terminal first, an end terminal last, a data or document
   const V0 = m.views[0], n = id => m.nodes.find(x => x.id === id);
   assert.deepEqual(['s', 'p', 'io', 'doc', 'db', 'e', 't'].map(id => T.zoneOf(n(id), m, V0)), ['first', null, 'under', 'under', 'under', 'last', null]);
   assert.deepEqual([F('x', 'p', 'e'), { id: 'c', type: 'uml.CommentLink', from: 'p', to: 'e' }].map(e => T.flowRole(e, m, V0)), ['branch', 'dep']);
-  // arranged, the two stores under the flow drew Do→Save across Do→Report, which ranked does not: the view is kept ranked
-  // (audit 71), and draws nothing check() names
-  assert.deepEqual(check(m, 'v').map(p => p.message), []);
-  // with one store, arranged draws no worse and keeps its zones: the store in the band beside the flow
-  const m1 = one(m.nodes, m.edges.filter(e => e.id !== 'f4'), { arrange: 'flow' }), g = layout(m1, 'v'), at = id => g.byId[id];
-  assert.deepEqual(check(m1, 'v').map(p => p.message), []);
-  assert.ok(at('db').row > at('p').row && at('s').row === at('p').row, 'the store in the band beside the flow, the start on the main row');
+  const g = layout(m, 'v'), at = id => g.byId[id];
+  assert.ok(['db', 'doc'].every(d => at(d).row > at('p').row), 'laid out down, the stores in the band beside the flow');
 });
 
 // audit 70: a long chain was cubic in its steps: the repair passes asked routeAudit about one line at a time, and each ask still

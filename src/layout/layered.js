@@ -300,15 +300,14 @@ function pinCells(at, P, up, order = Object.keys(at)) {
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
-  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew, kept = g.kept, side = g.side;
-  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; kept ||= g.kept; side ||= g.side; }
+  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew, kept = g.kept;
+  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; kept ||= g.kept; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
   if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (snaked(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
-    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; kept ||= g2.kept; side ||= g2.side; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; kept ||= g2.kept; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
   if (grew) g.grew = true; // and a side grown over a box's title
   if (kept) g.kept = true; // and a main line that kept its side
-  if (side) g.side = true; // a side swap kept (dg.sideSwap): layoutTyped judges it by check()
   if (rr) g.rr = true; // a typed view's request/reply swap kept: buildGeo (context.js) judges it by the finished picture
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
   // line that closes a loop leaves its source on the far side, out round the map as a loop under the boxes does, and still comes
@@ -437,7 +436,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
   const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !dg.typed && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
   // border. Narrower, the labels found no spot inside and each was set on the other line (audit 26: Mermaid's keyboard example)
@@ -1175,7 +1174,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const routeOne = (e, spare) => { let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320, spare);
     if (!e.pts) { how = 'cross'; e.pts = wide(e, true, spare); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
     e.how = how; routed.push(e); placeLabel(e); return true; };
-  let budget = 2 * free.length, swapped = false, rrSwap = false, sideKept = false;
+  let budget = 2 * free.length, swapped = false, rrSwap = false;
   // a route moved onto its end's new port: its last run follows it
   const moved = (e, k, P) => { const [i, j] = k === 'p1' ? [0, 1] : [P.length - 1, P.length - 2], v = P[i][1] === P[j][1];
     return P.length > 2 && simplify(P.map((p, x) => x === i ? e[k] : x === j ? (v ? [p[0], e[k][1]] : [e[k][0], p[1]]) : p)); };
@@ -1218,7 +1217,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       if (ks.length !== 1) return; const [[ka, kb]] = ks, ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b), other = () => routeAudit({ edges }, '', ab).filter(x => !/ cross$/.test(x)).length, o0 = other();
       const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()];
       ripUp(a); ripUp(b); [a[ka], b[kb]] = [b[kb], a[ka]]; const ma = moved(a, ka, a.pts), mb = moved(b, kb, b.pts); restub(a); restub(b);
-      const keep = () => { const now = issues - was + issueCount(ab); if (now < issues && rims(a, b) <= b0 && other() <= o0) { issues = now; swapped = rrSwap = sideKept = true; return true; } ripUp(a); ripUp(b); return false; };
+      const keep = () => { const now = issues - was + issueCount(ab); if (now < issues && rims(a, b) <= b0 && other() <= o0) { issues = now; swapped = rrSwap = true; return true; } ripUp(a); ripUp(b); return false; };
       if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); if (keep()) return; }
       swapBudget -= 2; routeOne(a, b); routeOne(b); if (keep()) return;
       snap.forEach(([e, p, lb, hw, p1, p2]) => { Object.assign(e, { pts: p, lbl: lb, how: hw, p1, p2 }); restub(e); });
@@ -1470,7 +1469,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
 export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
