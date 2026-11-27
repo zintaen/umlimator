@@ -161,6 +161,8 @@ function prDescribe(model, viewId) {
 /* ---- editing (§4.3) ---- */
 const prNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
+// the metaclass names of one distance in one fixed locale, made once, not the host's (audit 71)
+const PR_NAME_ORDER = new Intl.Collator('en').compare;
 // edit distance, for the metaclass names nearest one typed. ponytail: quadratic in the names' lengths, over about 90 names
 function prDist(a, b) {
   let row = [...Array(b.length + 1).keys()];
@@ -184,7 +186,7 @@ function prAdd(model, view, entry, label, at) {
     return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
   if (nm && CLASSIFIERS.includes(entry.type) && kin.some(n => CLASSIFIERS.includes(n.type) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
   if (entry.type !== 'uml.MetaclassReference' || !nm || metaKnown(nm)) return add(nm);
-  const near = Object.keys(UML_META).sort((a, b) => prDist(lo, a.toLowerCase()) - prDist(lo, b.toLowerCase()) || a.localeCompare(b)).slice(0, 6);
+  const near = Object.keys(UML_META).sort((a, b) => prDist(lo, a.toLowerCase()) - prDist(lo, b.toLowerCase()) || PR_NAME_ORDER(a, b)).slice(0, 6);
   return { pick: near, then: i => add(near[i]) };
 }
 // a stereotype or a classifier renamed (F2, the Name field) to a name a kin of it holds: refused in prAdd's words, as the add is

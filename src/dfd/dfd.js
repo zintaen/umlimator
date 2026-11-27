@@ -20,6 +20,9 @@ import { goneIn, liveLine } from '../typed/draw.js';
 
 const DFD_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), DFD_ARR = x => (Array.isArray(x) ? x : []);
 const DFD_HAS = x => x != null && String(x).trim() !== '';
+// process numbers compared in one fixed locale, made once, as structurizr.js's steps: 2 before 10, and the host's own locale
+// (Swedish puts ä after z) not read (audit 71)
+const DFD_NUM_ORDER = new Intl.Collator('en', { numeric: true }).compare;
 const dfdNum = x => (DFD_OBJ(x && x.props) && DFD_HAS(x.props.number) ? String(x.props.number).trim() : '');
 const dfdPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const DFD_LINES = ['dfd.DataFlow', 'uml.CommentLink'];
@@ -138,7 +141,7 @@ const dfdFlow = e => e.type === 'dfd.DataFlow' || (e.type !== 'uml.CommentLink' 
 const dfdLineName = (I, e) => `${dfdOther(e) ? snKindName(e.type) : e.type === 'uml.CommentLink' ? 'Comment link' : 'Data flow'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
 // reading order: the processes by number, then the stores, the entities and the rest as the view lists them, then the lines
 function dfdOrder(I, ids, lines) {
-  const rank = id => ['dfd.Process', 'dfd.DataStore', 'dfd.ExternalEntity'].indexOf(I.ty(id)) + 1 || 4, byNum = (a, b) => dfdNum(I.at.get(a)).localeCompare(dfdNum(I.at.get(b)), undefined, { numeric: true });
+  const rank = id => ['dfd.Process', 'dfd.DataStore', 'dfd.ExternalEntity'].indexOf(I.ty(id)) + 1 || 4, byNum = (a, b) => DFD_NUM_ORDER(dfdNum(I.at.get(a)), dfdNum(I.at.get(b)));
   return [...[...ids].sort((a, b) => rank(a) - rank(b) || (rank(a) === 1 ? byNum(a, b) : 0)), ...lines.map(e => e.id)];
 }
 
