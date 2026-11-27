@@ -17,10 +17,10 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseArgs, seeded } from './args.mjs';
 import { loadAudits, loadFixes, counts } from './records.mjs';
 import { breakers } from './ledger.mjs';
+import { isMain } from '../main.mjs';
 
 const DAY = 864e5;
 const one = s => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -197,4 +197,4 @@ export function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main();
+if (isMain(import.meta.url)) process.exitCode = main();
