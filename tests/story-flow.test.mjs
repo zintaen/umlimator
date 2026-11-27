@@ -166,3 +166,37 @@ test('a typed view tells the main flow its picture draws, its type\'s dependency
   const uc = read('./fixtures/use-case-shop.json'); // the shop's use case view, kept in tests/fixtures/
   for (const m of [uc, arranged(uc)]) assert.throws(() => U.storyFromFlow(m, 'shopping'), /has no main flow: a uml\.use-case view reads none/);
 });
+
+// audit 67: a BPMN collaboration (a customer's pool and the shop's, each with a start event) tells the main flow its picture
+// draws, the start event whose path is longest (bzMain), not the first-listed pool's; arranged or not, the same story
+test('a BPMN collaboration tells the main process the arranged picture draws, not the first-listed start event\'s path', () => {
+  for (const [f, vid] of [['./fixtures/bookshop-order-to-shipment.json', 'order-to-shipment'], ['./fixtures/bpmn-gallery.json', 'order-to-shipment'], ['./fixtures/integration.json', 'repair-process']]) {
+    const m = read(f), a = arranged(m), want = drawnMain(a, vid);
+    assert.ok(want.length > 3, `${f} ${vid}: the picture draws a main flow`);
+    const firstStart = m.views.find(v => v.id === vid).nodeIds.find(id => m.nodes.find(n => n.id === id)?.type === 'bpmn.StartEvent');
+    assert.notEqual(want[0], firstStart, `${f} ${vid}: the main process is not the first-listed pool's`);
+    for (const x of [a, m]) { const s = U.storyFromFlow(x, vid);
+      assert.deepEqual(s.steps.map(st => st.select), want, `${f} ${vid}: the story's steps are the drawn main flow`);
+      assert.deepEqual(storyProblems(x, s), []); } }
+});
+
+// audit 67: an interaction overview is a control-flow diagram, as the activity: arrange "flow" is no structure warning, and its
+// story is its flow from the initial node to the final one, the main flow an arranged picture draws, its comment no step
+test('an interaction overview reads a main flow: arrange "flow" is not warned of, and its story tells the drawn main flow', () => {
+  const m = read('./fixtures/integration.json'), vid = 'hire-overview', a = arranged(m);
+  const at = `views[${m.views.findIndex(v => v.id === vid)}].arrange`;
+  assert.deepEqual(U.validate(a).filter(p => p.path === at).map(p => p.message), []);
+  const want = drawnMain(a, vid), kind = id => m.nodes.find(n => n.id === id).type;
+  assert.equal(kind(want[0]), 'uml.InitialNode'); assert.match(kind(want[want.length - 1]), /FinalNode$/);
+  for (const x of [a, m]) { const s = U.storyFromFlow(x, vid);
+    assert.deepEqual(s.steps.map(st => st.select), want);
+    assert.ok(!s.steps.some(st => kind(st.select) === 'uml.Comment'));
+    assert.deepEqual(storyProblems(x, s), []); }
+});
+
+// audit 67: the refusal on a type that reads no flow takes "an" before a vowel ("an er view"), "a" before "uml"
+test('storyFromFlow\'s refusal is grammatical: an er view, a uml.use-case view', () => {
+  const er = read('./er-minimal.json');
+  assert.throws(() => U.storyFromFlow(er, er.views[0].id), /has no main flow: an er view reads none$/);
+  assert.throws(() => U.storyFromFlow(read('./fixtures/use-case-shop.json'), 'shopping'), /has no main flow: a uml\.use-case view reads none$/);
+});
