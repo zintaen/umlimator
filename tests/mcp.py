@@ -61,6 +61,54 @@ mcp.want["story"] = None
 deep = mcp.answer(b"[" * 100000 + b"]" * 100000)
 ok("audit 20 · refit() reads a story id that is not a string as no name; a line nested too deep is a parse error, not the server's end",
    said == {"n": 1, "story": "s"} and deep["error"]["code"] == -32700, (said, deep))
+# audit 76: the server's Node runs (script(), node() through it, and change(), the edit tools) said a failure with the
+# pre-audit-75 regex, so a thrown value, a DOMException, a coded error, a broken install and Node out of memory came back as
+# Node's stderr tail (its stack, the source line, file paths, the version banner). Each is one line now, as the CLI says it
+def said76(go):
+    try:
+        go(); return None
+    except mcp.Fail as e:
+        return str(e)
+d76 = Path(tempfile.mkdtemp())
+keep76 = mcp.MODEL, mcp.EDITOR, u.LIB, os.environ.get("NODE_OPTIONS")
+shutil.copy(ROOT / "tests" / "fixtures" / "mcp-class.json", d76 / "model.json")
+mcp.MODEL = d76 / "model.json"
+got76 = {"thrown string": said76(lambda: mcp.script("throw 'the model is odd';")),
+         "thrown object": said76(lambda: mcp.script("throw { why: 'odd' };")),
+         "DOMException": said76(lambda: mcp.script("return structuredClone(() => 1);")),
+         "coded error": said76(lambda: mcp.script("const e = new Error('bad arg'); e.code = 'ERR_X'; throw e;")),
+         "plain TypeError": said76(lambda: mcp.script("null.x;"))}
+for name, body in [("editor throws a string", "throw 'the editor is odd';"),
+                   ("editor DOMException", "structuredClone(() => 1);"),
+                   ("editor coded error", "const e = new Error('bad step'); e.code = 'ERR_STEP'; throw e;"),
+                   ("editor silent", "process.exit(3);")]:
+    (d76 / f"{len(got76)}.mjs").write_text(body)
+    mcp.EDITOR = d76 / f"{len(got76)}.mjs"
+    got76[name] = said76(lambda: mcp.change([]))
+mcp.EDITOR = keep76[1]
+u.LIB = d76 / "lib" / "missing-umlimator.js"  # a broken install: the module file is gone
+got76["broken install (script)"] = said76(lambda: mcp.script("return 1;"))
+got76["broken install (node)"] = said76(lambda: mcp.node("validate", {}))
+u.LIB = keep76[2]
+os.environ["NODE_OPTIONS"] = "--max-old-space-size=16"
+got76["out of memory"] = said76(lambda: mcp.script("const x = []; for (;;) x.push(new Array(1e5).fill(1));"))
+if keep76[3] is None:
+    os.environ.pop("NODE_OPTIONS", None)
+else:
+    os.environ["NODE_OPTIONS"] = keep76[3]
+mcp.MODEL = keep76[0]
+shutil.rmtree(d76, ignore_errors=True)
+want76 = {"thrown string": "Uncaught the model is odd", "thrown object": "Uncaught { why: 'odd' }",
+          "DOMException": "DOMException [DataCloneError]: () => 1 could not be cloned.", "coded error": "Error: bad arg",
+          "plain TypeError": "TypeError: Cannot read properties of null (reading 'x')",
+          "editor throws a string": "Uncaught the editor is odd", "editor DOMException": "DOMException [DataCloneError]: () => 1 could not be cloned.",
+          "editor coded error": "Error: bad step", "editor silent": "the editor ended with no answer"}
+ok("audit 76 · a failed Node run in a tool (script(), node(), change()) is said in one line, as the CLI says it: no stack, banner or path",
+   all(got76.get(k) == v for k, v in want76.items())
+   and all(got76[k] and got76[k].startswith("Error [ERR_MODULE_NOT_FOUND]: Cannot find module ") and "missing-umlimator.js" in got76[k]
+           and " imported from " not in got76[k] for k in ("broken install (script)", "broken install (node)"))
+   and (got76["out of memory"] or "").startswith("Node ran out of memory")
+   and all(v and "\n" not in v and "Node.js v" not in v and " at " not in v and "node:internal" not in v for v in got76.values()), got76)
 # audit 67: Python 3.14's json reads any depth, so a line nested 100000 deep was a batch (-32600), not a parse error, and
 # one 2000 deep was a batch on every Python; an id of NaN or Infinity (which Python's json reads) went back as a bare NaN,
 # which is not JSON, and such a tool argument reached Node as a raw SyntaxError
