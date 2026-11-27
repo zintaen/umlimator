@@ -982,4 +982,131 @@ finally:
 ok("a page tool on a model that has never rendered says it does not render yet, never that the page shows a last version that did (audit 28)",
    said28.startswith("The model does not render yet: ") and "ghost" in said28 and "last version" not in said28
    and ps28["model"].get("shown") is None and ps28["model"].get("renders") is False, (said28, ps28.get("model")))
+
+# audit bh1 5: MODEL.json.undo, which a pull request can commit as a symbolic link (to /dev/zero, /dev/stdin) or which can be
+# a FIFO, was read whatever it was: the server filled its memory or hung on the first page tool. Now only a regular file,
+# never through a link and no larger than SHELF, is read; an edit tool refuses to write over one it will not read
+def server(model):
+    return subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+
+def ask(p, *msgs, lines=1, seconds=60):
+    """msgs sent to server p, then the next `lines` lines it writes (each parsed), or None for each that never came in time."""
+    stop = threading.Timer(seconds, p.kill); stop.daemon = True; stop.start()
+    try:
+        for m in msgs:
+            p.stdin.write(json.dumps(m) + "\n"); p.stdin.flush()
+        got = [p.stdout.readline() for _ in range(lines)]
+        return [json.loads(x) if x else None for x in got]
+    finally:
+        stop.cancel()
+
+
+HI = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/mcp.py", "version": "0"}}}
+call = lambda i, name, **a: {"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": name, "arguments": a}}
+text = lambda r: "".join(c["text"] for c in r["result"]["content"]) if r and "content" in r.get("result", {}) else str(r)
+if hasattr(os, "mkfifo"):
+    got5 = {}
+    for how in ("fifo", "link to a fifo", "link to /dev/stdin"):
+        d = Path(tempfile.mkdtemp())
+        shutil.copy(ROOT / "tests" / "fixtures" / "mcp-class.json", d / "model.json")
+        os.mkfifo(d / "pipe")
+        (d / "model.json.undo").symlink_to("/dev/stdin" if "stdin" in how else d / "pipe") if how != "fifo" else os.mkfifo(d / "model.json.undo")
+        p5 = server(d / "model.json")
+        try:
+            r = ask(p5, HI, call(1, "page_state"), {"jsonrpc": "2.0", "id": 2, "method": "ping"}, lines=3, seconds=45)
+            r += ask(p5, call(3, "add_card", view="sales", label="Invoice"), seconds=45) if all(r) else [None]
+        finally:
+            p5.kill(); p5.wait()
+        got5[how] = {x.get("id"): x for x in r if x}  # by id: a ping may be answered before the page_state sent first
+    def fine5(r):
+        try:
+            return (json.loads(text(r.get(1)))["model"].get("renders") is True and 2 in r and r[3]["result"]["isError"]
+                    and "cannot be read" in text(r[3]) and "nothing written" in text(r[3]))
+        except (ValueError, KeyError, TypeError):
+            return False
+    ok("audit bh1 5 · an undo history that is a FIFO, a link to one or a link to /dev/stdin hangs no page tool; an edit tool refuses to write over it",
+       len(got5) == 3 and all(map(fine5, got5.values())), {k: {i: str(x)[:300] for i, x in v.items()} for k, v in got5.items()})
+keep5 = mcp.MODEL
+d = Path(tempfile.mkdtemp())
+mcp.MODEL = d / "model.json"
+shutil.copy(ROOT / "tests" / "fixtures" / "mcp-class.json", mcp.MODEL)
+(d / "real.undo").write_text(json.dumps({"done": [{"before": "{}", "after_sha": "x"}], "undone": []}), encoding="utf-8")
+devices = {}
+try:  # in this process, only what cannot hang it or fill its memory without the fix: /dev/stdin went through the server above
+    mcp.history_file().symlink_to(d / "real.undo")
+    try:
+        mcp.kept_history(); refused = False
+    except mcp.Fail as e:
+        refused = "cannot be read" in str(e) and "nothing written" in str(e)
+    devices["link to a history"] = (mcp.history(), refused)
+    mcp.history_file().unlink()
+    for dev in ("/dev/zero", "/dev/null"):  # regular() follows a link (the model's), and reads only a regular file
+        try:
+            mcp.regular(dev); devices[dev] = "read"
+        except OSError as e:
+            devices[dev] = e.strerror
+    with open(mcp.history_file(), "wb") as f:  # sparse: larger than the largest history kept() writes, and no disk taken
+        f.truncate(mcp.SHELF + 1)
+    devices["too large"] = mcp.history()
+    mcp.history_file().write_text((d / "real.undo").read_text(encoding="utf-8"), encoding="utf-8")
+    devices["regular"] = len(mcp.history()["done"])
+except Exception as e:
+    devices["error"] = repr(e)
+mcp.MODEL = keep5
+ok("audit bh1 5 · a history that is a link (even to a real history) or larger than any kept() writes is an empty one, and the edit tools "
+   "will not write over it; /dev/zero and /dev/null are not read; a regular history is read",
+   devices.get("link to a history") == ({"done": [], "undone": []}, True) and all(str(devices.get(x, "read")).startswith("not a regular file") for x in ("/dev/zero", "/dev/null"))
+   and devices.get("too large") == {"done": [], "undone": []} and devices.get("regular") == 1, devices)
+# audit bh1 6: the server's Node runs had no time limit and notifications/cancelled was not acted on, on the one thread that
+# reads stdin: a 44 KB model of 200 classes held list_views, and every request after it (a ping too), for minutes. Now each
+# run is stopped after LIMIT s (the element counts after COUNTING s), a tools/call runs off that thread, and a cancel stops it
+import random
+rnd = random.Random(6)
+big = {"schemaVersion": 2, "root": "v0", "nodes": [{"id": f"c{i}", "label": f"C{i}", "type": "uml.Class"} for i in range(200)],
+       "edges": [{"id": f"e{i}", "from": f"c{rnd.randrange(200)}", "to": f"c{rnd.randrange(200)}", "type": "uml.Association"} for i in range(400)],
+       "views": [{"id": f"v{k}", "diagram": "uml.class", "nodeIds": [f"c{i}" for i in range(200)]} for k in range(3)]}
+bigf = Path(tempfile.mkdtemp()) / "big.json"
+bigf.write_text(json.dumps(big), encoding="utf-8")
+p6 = server(bigf)
+try:
+    r6 = ask(p6, HI, call(1, "list_views"), {"jsonrpc": "2.0", "id": 2, "method": "ping"}, lines=2, seconds=60)
+    r6 += ask(p6, {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 1, "reason": "too slow"}},
+              call(3, "validate"), seconds=60) if all(r6) else [None]
+finally:
+    p6.kill(); p6.wait()
+ok("audit bh1 6 · a ping is answered while a long list_views runs; cancelled, it is never answered and the next call is",
+   (r6[0] or {}).get("id") == 0 and (r6[1] or {}).get("id") == 2 and (r6[2] or {}).get("id") == 3 and text(r6[2]).startswith("["), [str(x)[:200] for x in r6])
+keep6 = getattr(mcp, "LIMIT", None), getattr(mcp, "COUNTING", None), mcp.MODEL, mcp.counted[:]  # (none before audit bh1 6)
+mcp.MODEL, mcp.LIMIT, mcp.COUNTING = bigf, 0.001, 0.001  # no Node run ends that soon
+t6 = time.monotonic()
+try:
+    mcp.node("validate", big); late = None
+except mcp.Fail as e:
+    late = str(e)
+try:
+    mcp.call("describe_view", {"view": "v0"}) and None; late2 = None
+except mcp.Fail as e:
+    late2 = str(e)
+counts6 = mcp.element_counts(big)
+took6 = time.monotonic() - t6
+mcp.LIMIT, mcp.COUNTING, mcp.MODEL = keep6[:3]; mcp.counted[:] = keep6[3]
+ok("audit bh1 6 · a Node run past its limit is stopped and said in one line; list_views's element counts past theirs are left out",
+   late and late == late2 and late.startswith("stopped after ") and "\n" not in late and counts6 == {} and took6 < 30, (late, late2, counts6, took6))
+# the page's render ran the engine (a layout in Node) with no limit as well: the 44 KB model held page_state two minutes. A
+# render past LIMIT s is stopped, and the page says why it does not render, once for that version (audit bh1 6)
+keep6r = getattr(mcp, "LIMIT", None), mcp.MODEL, mcp.tried, mcp.why, mcp.drawn[:], mcp.MAPID  # (no LIMIT before audit bh1 6)
+d6 = Path(tempfile.mkdtemp())
+shutil.copy(CLASS, d6 / "model.json")
+mcp.MODEL, mcp.LIMIT, mcp.tried, mcp.MAPID = d6 / "model.json", 0.001, None, mcp.MAPID or "map"
+t6 = time.monotonic()
+try:
+    shown6, why6 = mcp.page()
+except Exception as e:
+    shown6, why6 = None, repr(e)
+took6 = time.monotonic() - t6
+mcp.LIMIT, mcp.MODEL, mcp.tried, mcp.why = keep6r[:4]; mcp.drawn[:] = keep6r[4]; mcp.MAPID = keep6r[5]
+ok("audit bh1 6 · a page render past its limit is stopped, and the page says why the model does not render, in one line",
+   isinstance(why6, str) and why6.startswith("stopped after ") and "\n" not in why6 and took6 < 30, (shown6, why6, took6))
 sys.exit(1 if failed else 0)
