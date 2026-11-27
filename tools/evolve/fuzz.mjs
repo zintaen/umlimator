@@ -28,6 +28,7 @@ import { Worker } from 'node:worker_threads';
 import { resolve, join, relative, basename, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, duration, seeded } from './args.mjs';
+import { isMain } from '../main.mjs';
 
 const HERE = fileURLToPath(new URL('./', import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -311,4 +312,4 @@ export async function main(argv = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main();
+if (isMain(import.meta.url)) process.exitCode = await main();
