@@ -346,16 +346,19 @@ def cannot_write(path, e):
 
 
 def linked_on_way(out):
-    """The first folder that is a symbolic link among `out` and the folders above it below the top of the checkout around
-    the cwd (else the cwd), as diff --base's inside() walks them; `out` itself is looked at wherever it is. None if none."""
+    """The first folder that is a symbolic link among `out` and the folders above it, where the folder holding the link is
+    in a checkout (any: the cwd's, or another, --out ../their-clone/docs/stills) or under the cwd, as diff --base's
+    inside() walks them: a committed link could aim what is written there anywhere. A link in a folder outside every
+    checkout and above the cwd (the system's /tmp, say) is a way there, not one a checkout put there; `out` itself is
+    looked at wherever it is. None if none."""
     out = Path(os.path.abspath(out))  # not resolved: a link on the way is what is looked for
-    top = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
-    tops = {Path(os.path.abspath(top or os.getcwd()))}
-    tops.add(tops.copy().pop().resolve())  # the top as the cwd or git names it, and as the disk does (/tmp, /private/tmp)
+    top = lambda at: os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=at, capture_output=True).stdout.strip())
+    here = Path(top(None) or os.getcwd()).resolve()
     for x in [out, *out.parents]:
-        if x in tops:
-            break
-        if x.is_symlink() and (x == out or any(x.is_relative_to(t) for t in tops)):
+        try:
+            if x.is_symlink() and (x == out or x.parent.resolve().is_relative_to(here) or top(x.parent)):
+                return x
+        except (OSError, RuntimeError):  # a loop of links on the way: refused as one
             return x
     return None
 
@@ -1768,6 +1771,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
                 continue
         except (OSError, ValueError, KeyError, TypeError):
             pass  # no key file, or one cut short: drawn again
+        make_folder(out)  # again before this view's files: a link put on the way since is refused, not written through (audit cf1)
         try:
             dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={urllib.parse.quote(v, safe='')}&scale={scale}&theme={theme}" + ("&reader=1" if reader else ""))
             meta = re.search(r'data-still="([^"]+)"', dom)

@@ -2773,6 +2773,9 @@ if part("audit cf1"):
         (t / "linked").symlink_to(far, target_is_directory=True)
         (t / "real" ).mkdir(); (t / "real" / ".stills").symlink_to(far, target_is_directory=True)
         (t / "docs").symlink_to(far, target_is_directory=True)  # a linked parent: --out docs/stills, made in the link's target
+        # another checkout (a pull request's clone) holding a committed link, named from a folder in no checkout
+        (t / "clone").mkdir(); subprocess.run(["git", "init", "-q"], cwd=t / "clone", capture_output=True)
+        (t / "clone" / "docs").symlink_to(far, target_is_directory=True); (t / "elsewhere").mkdir()
         m = ROOT / "tests/fixtures/integration.json"
         runs = {
             "stills --out link": [sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", str(t / "linked"), "--views", "system"],
@@ -2784,12 +2787,15 @@ if part("audit cf1"):
             "drift --stills link": [sys.executable, str(ROOT / "umlimator.py"), "drift", str(m), str(m), "--out", str(t / "dr.html"), "--stills", str(t / "linked")],
         }
         res = {k: subprocess.run(c, cwd=t, capture_output=True, text=True) for k, c in runs.items()}
+        res["stills --out under a link in another checkout"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "stills", str(page), "--out", "../clone/docs/stills",
+                                                                              "--views", "system"], cwd=t / "elsewhere", capture_output=True, text=True)
         g = t / "g"; g.mkdir(); sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
         (g / "a.json").write_text(m.read_text()); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
         (g / "a.json").write_text(m.read_text().replace('"Moped share, an example"', '"Moped share, edited"', 1)); (g / "out").symlink_to(far, target_is_directory=True)
         res["diff --base --out link"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "out"], cwd=g, capture_output=True, text=True)
         res["diff --base --out under a linked folder"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "out/maps"], cwd=g, capture_output=True, text=True)
-        ok("stills, diff and drift · an output folder, a folder above it in the checkout, or a stills key folder, that is a symbolic link is refused in one line, and its target is left as it was (audit cf1)",
+        res["diff --base --out under a link in another checkout"] = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "../clone/docs/maps"], cwd=g, capture_output=True, text=True)
+        ok("stills, diff and drift · an output folder, a folder above it in this checkout or another, or a stills key folder, that is a symbolic link is refused in one line, and its target is left as it was (audit cf1)",
            made.returncode == 0 and all(r.returncode == 1 and "is a symbolic link" in r.stderr and "Traceback" not in r.stderr for r in res.values())
            and sorted(x.name for x in far.iterdir()) == ["system.json", "system.svg"] and (far / "system.svg").read_text() == "ORIG"
            and (far / "system.json").read_text() == '{"dummy":1}' and not (t / "d.html").exists() and not (t / "dr.html").exists(),
