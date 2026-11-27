@@ -159,6 +159,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop baseline 7108d2b5 and merges ccdfb0ee and 8c72d43a; origin/main 4230e050; handoff log, 27 Nov 2026, fix round 69 combine.
 - Proposed change: In A12, say that while an entry is open the orchestrator puts its workaround in the task text of every later round it applies to (for example "run the kill switch from the integration worktree", "run the Python checks with the CI version"), and lists the open entries it applied in the round's handoff entry, so a known strategy gap costs one round, not every round until the batch.
 
+### F16. A lane's own new test failed on its pushed commit, and only the full gate after the merge found it
+
+- Date: 2026-11-27
+- Round: fix round 70 (combine)
+- Rule: A3.3, A3.4, A8.6 (and F15 for the recurrences)
+- What happened: fix70-tools reported its new tests passing (tests/evolve.test.mjs 33/33), but on its pushed head the test "no script decides it is the main module by comparing process.argv[1] with its URL as they are ... (audit 70)" fails: the header comment on line 1 of its new tools/main.mjs names both process.argv[1] and import.meta.url, and the test's line scan reports it. The lane most likely ran the suite before tools/main.mjs was tracked, since the scan reads git ls-files. A3.4's pre-merge check runs a lane's tests only at the base, where they must fail, and never on the lane's own commit, where they must pass, so the failure surfaced in the full gate after the merge and cost a revert of the whole lane: five findings (6, 8, 9, 10, 11) for a one-line comment. F15 also recurred: the task again ran the kill switch from the main checkout, where it is missing and exits 1; again named python3, which is 3.14 here and fails the audit 20 deep-JSON check in tests/cli.py at the baseline (the gate was rerun with Python 3.13, which passes); and again had no sweep command.
+- Evidence: lane head 85298f21; audit-loop merge bef3d443 and its revert 7b720083; baseline c9cbf79b; handoff log, 27 Nov 2026, fix round 70 combine.
+- Proposed change: In A3.4, before merging a lane, the combine also runs the lane's listed tests on origin/<branch> in a clean worktree, and a lane whose listed test fails there is returned at once, with no merge, bisect or revert. In A3.3, the lane runs its listed tests from a clean checkout of the commit it pushes, not from its working tree.
+
 ## Closed
 
 None.
