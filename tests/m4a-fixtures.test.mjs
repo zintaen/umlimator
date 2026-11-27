@@ -111,6 +111,23 @@ test('every view of the four fixtures and the three examples (cloud views right 
   assert.deepEqual(other, []); // the label "HTTPS" lay on Service 52→Service 5 laid out down till audit 32 placed it again
 });
 
+// audit 74: the Layout limits bullet of the Google Cloud and Azure notes (and the type pages tools/gallery.mjs writes from
+// them) gave the example's crossings from before audit 71's box pass (GCP once each way, Azure 3 times down): each now says
+// what check() counts on the example, right and down, in the sentence's own words (a parenthesis holds the history)
+test('audit 74: the GCP and Azure notes and type pages state the example\'s crossings as check() counts them, right and down', () => {
+  const said = n => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+  for (const [f, vid, page] of [['bookshop-gcp', 'gcp-on-gcp', 'gcp'], ['bookshop-azure', 'az-on-azure', 'azure']]) {
+    const [r, d] = ['right', 'down'].map(dir => quiet(() => check(turned(FIX[f], vid, dir), vid))[0].filter(p => / cross$/.test(p.message)).length);
+    const want = r || d ? `The example crosses ${said(r)} laid out right and ${said(d)} down;` : 'The example lays out with no crossing, right or down;';
+    for (const file of [`../docs/diagrams/conformance/${page}.md`, `../docs/types/${page}.md`]) {
+      const line = readFileSync(new URL(file, import.meta.url), 'utf8').split('\n').find(l => l.startsWith('- The example '));
+      assert.ok(line, `${file}: the example's bullet`);
+      let bare = line.slice(2); for (let k = 0; k < 3; k++) bare = bare.replace(/ \([^()]*\)/g, '');
+      assert.ok(bare.startsWith(want), `${file}: "${bare}" should start "${want}"`);
+    }
+  }
+});
+
 test('the minimal fixtures: one topic; a gcp view of one project and one product, an azure view of one resource group and one service; no problem', () => {
   const mm = FIX['mindmap-minimal'], cl = FIX['cloud-minimal'];
   assert.deepEqual([validate(mm), mm.nodes.map(n => n.type)], [[], ['mindmap.Topic']]);

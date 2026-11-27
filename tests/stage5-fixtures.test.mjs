@@ -107,6 +107,28 @@ test('every view of the six fixtures, right and down: line through a node, port 
   assert.deepEqual(seen, PINNED);
 });
 
+// audit 74: the deployment note (and the type page tools/gallery.mjs writes from it) gave the stress view all's counts from
+// before audit 71's box pass (15 crossings down, a pair of lines sharing a line laid out right): it states what check() finds,
+// the crossings each way and the other findings each way in words, history in parentheses
+test('audit 74: the deployment note and type page state the stress view all\'s crossings and other findings as check() finds them, right and down', () => {
+  const W = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'][n] ?? String(n);
+  const pl = (n, one, many) => (n === 1 ? `a ${one}` : `${W(n)} ${many}`);
+  const got = Object.fromEntries(['right', 'down'].map(dir => [dir, clean(turned(FIX['deployment-stress'], 'all', dir), 'all')]));
+  const kinds = o => ({ share: o.filter(p => / share a line$/.test(p)).length, along: o.filter(p => / runs along the border of /.test(p)).length,
+    labelBorder: o.filter(p => / sits on the border of /.test(p)).length, labelLine: o.filter(p => / lies on edge /.test(p)).length, all: o.length });
+  const k = { right: kinds(got.right.other), down: kinds(got.down.other) };
+  const words = o => [o.along && pl(o.along, 'line along a box\'s border', 'lines along a box\'s border'), o.labelBorder && pl(o.labelBorder, 'label on a box\'s border', 'labels on a box\'s border'),
+    o.share && pl(o.share, 'pair of lines sharing a line', 'pairs of lines sharing a line'), o.labelLine && pl(o.labelLine, 'label on a line', 'labels on a line')].filter(Boolean).join(' and ');
+  for (const dir of ['right', 'down']) assert.equal(k[dir].along + k[dir].labelBorder + k[dir].share + k[dir].labelLine, k[dir].all, `${dir}: every finding is one the note words`);
+  const want = `${got.right.crossings} crossings right and ${got.down.crossings} down; laid out right, ${words(k.right)}; laid out down, ${words(k.down)}.`;
+  for (const file of ['../docs/diagrams/conformance/uml-deployment.md', '../docs/types/uml-deployment.md']) {
+    const line = readFileSync(new URL(file, import.meta.url), 'utf8').split('\n').find(l => l.includes('generated `all` view (50 nodes and artifacts'));
+    assert.ok(line, `${file}: the stress bullet`);
+    let bare = line; for (let n = 0; n < 3; n++) bare = bare.replace(/ \([^()]*\)/g, '');
+    assert.ok(bare.includes(want), `${file}: should say "${want}", says "${bare}"`);
+  }
+});
+
 test('the minimal fixtures: what §13 says each holds, and no problem', () => {
   for (const t of TYPES) assert.deepEqual(said(FIX[`${t}-minimal`]), [], t);
   const c = FIX['component-minimal'], cg = layout(c, 'v');
