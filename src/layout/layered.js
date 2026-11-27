@@ -37,9 +37,10 @@ const SPAN = Symbol('span');
 const MAIN_SIDE = Symbol('main side');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
-// ponytail: the searches a label's spot may take with a label near it moved to each of that label's other spots (placeLabel);
-// 200 is eight times the most a test, example or bench model takes (25, the integration fixture's C4 containers)
-const LABEL_TRIES = 200;
+// ponytail: the searches a label's spot may take with a label near it moved to each of that label's other spots (placeLabel),
+// counted over a layout pass; past them a label goes on to the late tries. 200 is some seven times the most a test, example or
+// bench model takes in a pass (29, bench model b69's back view; audit 71)
+const LABEL_TRIES = 200, LABEL_CAP = Symbol('label tries'); // LABEL_CAP: a test's lower bound in its place, a symbol as TURNS
 // gridRoute's working arrays, kept between its searches and cleared for each: a fresh set for every search (a view of 90 cards
 // makes some 270, on grids of up to 64000 cells) was most of a route's time spent in allocating and collecting them. Kept for
 // grids of up to GR_MAX cells (some 15 MB), and a heap of up to a million items; a bigger one is made for its search alone
@@ -1071,14 +1072,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // lines, and over every line it made the late tries of a large typed view three times as slow)
     const { w: lw, hgt: lh } = sizeOf(e, full), xs = e.pts.map(p => p[0]), ys = e.pts.map(p => p[1]);
     const reach = { x: Math.min(...xs) - lw / 2 - 4, y: Math.min(...ys) - lh / 2 - 4, w: Math.max(...xs) - Math.min(...xs) + lw + 8, h: Math.max(...ys) - Math.min(...ys) + lh + 8 };
-    if (map ? !late : late) for (const o of routed) { if (o === e || !o.lbl || o.lbl.short || o.fixed || !hit(o.lbl, reach)) continue;
+    if (map ? !late : late) for (const o of routed) { if (moves >= moveCap) break; if (o === e || !o.lbl || o.lbl.short || o.fixed || !hit(o.lbl, reach)) continue;
       const was = o.lbl, back = () => put(o, { box: { x: was.x, y: was.y, w: was.w, h: was.h }, grow: { x: was.x - 3, y: was.y - 3, w: was.w + 6, h: was.h + 6 }, lbl: was }, was.text);
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
-      for (const so of fits(o, was.text, 0)) { put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
+      for (const so of fits(o, was.text, 0)) { if (moves >= moveCap) break; moves++; put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
     for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
   }
-  let stats = {};
+  // moves: the searches placeLabel's moved labels took in this pass (ms.moves), at most LABEL_TRIES, or a test's own bound (LABEL_CAP)
+  let stats = {}, moves = 0; const moveCap = dg[LABEL_CAP] ?? LABEL_TRIES;
   free.forEach(e => { // every port's stub is reserved before routing starts
     const st = [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB], en = [e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB];
     e.stubs = [[e.p1, st], [en, e.p2]];
@@ -1469,7 +1471,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
+  __ms.moves = moves;
   return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
+export { CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
