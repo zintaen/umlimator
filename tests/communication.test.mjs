@@ -549,7 +549,13 @@ test('audit 73: a self connector is a small loop beside its lifeline that crosse
     [['ctl', 'svc'], [['ctl', 'ctl'], ['ctl', 'svc']], [['ctl', 'svc', 'load()'], ['ctl', 'ctl', 'validate()']]],
     [['l0', 'l1', 'l2'], [['l0', 'l1'], ['l1', 'l1'], ['l2', 'l1']], [['l1', 'l0', 'a()'], ['l1', 'l1', 'b()'], ['l1', 'l2', 'c()']]], // a hub: down, both neighbours into the side the loop took
     [['l0', 'l1', 'l2', 'l3'], [['l1', 'l0'], ['l2', 'l2'], ['l2', 'l1'], ['l2', 'l3']], [['l1', 'l0', 'a()'], ['l2', 'l2', 'b()'], ['l2', 'l3', 'c()']]],
+    // audit 74: laid out down, cart's loop listed after cart-db ran round stock and onto stock's own loop, end to end
+    [['cart', 'stock', 'db'], [['cart', 'db'], ['stock', 'stock'], ['cart', 'cart']], [['cart', 'db', 'load()'], ['stock', 'stock', 'validate(order)'], ['cart', 'cart', 'validate(order)']]],
+    [['cart', 'db'], [['cart', 'db'], ['cart', 'cart']], [['cart', 'db', 'load()'], ['cart', 'cart', 'validate(order)']]],
   ];
+  // a point of a loop on no card that another line also passes: two lines drawn as one
+  const onCard = (g, [x, y]) => g.nodes.some(n => x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h);
+  const meets = (g, e) => e.pts.filter(p => !onCard(g, p) && g.edges.some(f => f !== e && f.pts.some(q => q[0] === p[0] && q[1] === p[1])));
   for (const [names, conns, msgs] of cases) for (let k = 0; k < conns.length; k++) for (const dir of [undefined, 'right', 'down']) {
     const order = [...conns.slice(k), ...conns.slice(0, k)], m = mk(names, order, msgs, dir), tag = `${order.map(c => c.join('-')).join(',')} ${dir || 'default'}`;
     assert.deepEqual(check(m, 'v').map(p => p.message), [], tag);
@@ -557,6 +563,21 @@ test('audit 73: a self connector is a small loop beside its lifeline that crosse
     g.edges.filter(e => e.from === e.to).forEach(e => { const own = [g.byId[e.from], ...e.stack.map(id => g.byId[id])], x0 = Math.min(...own.map(n => n.x)), y0 = Math.min(...own.map(n => n.y));
       const x1 = Math.max(...own.map(n => n.x + n.w)), y1 = Math.max(...own.map(n => n.y + n.h));
       assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${tag}: ${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
-      assert.deepEqual(outsideStack(g, e), [], `${tag}: ${e.id} is not tied in a knot`); });
+      assert.deepEqual(outsideStack(g, e), [], `${tag}: ${e.id} is not tied in a knot`);
+      assert.deepEqual(meets(g, e), [], `${tag}: ${e.id} meets no other line end to end`); });
   }
+});
+// audit 74: each loop's way is chosen on its own when one way for all of them leaves a loop knotted or crossing
+test('audit 74: two self connectors that each need a different way both get a small clean loop', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: ['L0', 'L1', 'L2', 'L3'].map(id => ({ id, type: 'uml.Lifeline', label: id })),
+    edges: [con('self', 'L1', 'L1'), con('c2', 'L3', 'L3'), con('c1', 'L2', 'L1'), con('o0', 'L3', 'L0'), con('o2', 'L2', 'L3'),
+      ...[['m0', 'L1', 'L1', 'validate(order)'], ['m1', 'L3', 'L3', 'validate(order)'], ['m2', 'L2', 'L1', 'call2()'], ['m3', 'L3', 'L0', 'call3()'], ['m4', 'L2', 'L3', 'call4()']]
+        .map(([id, from, to, label]) => ({ id, type: 'uml.Message', from, to, label, props: { sort: 'call' } }))] };
+  m.views = [{ id: 'v', diagram: 'uml.communication', direction: 'right', nodeIds: m.nodes.map(n => n.id), edges: m.edges.map(e => e.id) }];
+  assert.deepEqual(check(m, 'v').map(p => p.message), []);
+  const g = layout(m, 'v');
+  g.edges.filter(e => e.from === e.to).forEach(e => { const own = [g.byId[e.from], ...e.stack.map(id => g.byId[id])], x0 = Math.min(...own.map(n => n.x)), y0 = Math.min(...own.map(n => n.y));
+    const x1 = Math.max(...own.map(n => n.x + n.w)), y1 = Math.max(...own.map(n => n.y + n.h));
+    assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
+    assert.deepEqual(outsideStack(g, e), [], `${e.id} is not tied in a knot`); });
 });
