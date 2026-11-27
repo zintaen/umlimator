@@ -607,6 +607,21 @@ def state():
 
 url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                                                "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
+# m8ven.ai's quality report: no tool said whether it reads, writes or destroys; a directory (OpenAI's) refuses a tool without all four hints
+HINTED = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
+listed = rpc("tools/list")["result"]["tools"]
+hinted = {t["name"]: t.get("annotations") for t in listed}
+ok("annotations · every tool says all four hints, each a boolean, and no other",
+   len(listed) == 26 and all(isinstance(h, dict) and set(h) == HINTED and all(type(x) is bool for x in h.values()) for h in hinted.values()), hinted)
+ok("annotations · a read (describe_view, preview) writes nothing; a page tool (show_view) changes the page, not the model; add_card adds, "
+   "remove and apply can take away; none reaches past the model, its page and the files it is given",
+   all(hinted[x]["readOnlyHint"] and not hinted[x]["destructiveHint"] for x in ("describe_view", "preview"))
+   and not hinted["show_view"]["readOnlyHint"] and not hinted["show_view"]["destructiveHint"] and hinted["show_view"]["idempotentHint"]
+   and not hinted["tour"]["idempotentHint"]
+   and not hinted["add_card"]["readOnlyHint"] and not hinted["add_card"]["destructiveHint"] and not hinted["add_card"]["idempotentHint"]
+   and not hinted["remove"]["readOnlyHint"] and hinted["remove"]["destructiveHint"]
+   and hinted["apply"]["destructiveHint"] and not hinted["apply"]["idempotentHint"] and not hinted["undo"]["idempotentHint"]
+   and not any(h["openWorldHint"] for h in hinted.values()), hinted)
 LOOK = """(() => { const m = window.umlimatorMap, host = document.querySelector('#m-canvas .umlimator'),
   svg = host && host.shadowRoot && host.shadowRoot.querySelector('svg'), cards = svg ? [...svg.querySelectorAll('.node')] : [];
   return m && { view: m.view, lit: cards.filter(c => !c.getAttribute('opacity')).map(c => c.dataset.id).sort(), dimmed: cards.filter(c => c.getAttribute('opacity')).length,

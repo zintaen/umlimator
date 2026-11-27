@@ -133,6 +133,24 @@ TOOLS += EDITS + [
     tool("undo", "Takes the model file back to before the last change the edit tools wrote, when nothing else has written it since; redo() puts it back."),
     tool("redo", "Writes again the last change undo() took back."),
 ]
+# Each tool's annotations (MCP 2025-03-26 on; an older client ignores them), all four hints said outright, as the handler
+# does it: read-only when it writes nothing and leaves the page as it was; destructive when a write can take away or
+# overwrite what the model held; idempotent when the same call again changes nothing more (an edit that changes nothing
+# is refused, "nothing to change"; a tour or a story starts again from its first step). The world is closed: the model's
+# file, the other model file diff reads, and the page on 127.0.0.1; nothing is fetched (UMLIMATOR_OFFLINE).
+def hints(read_only, destructive, idempotent):
+    return {"readOnlyHint": read_only, "destructiveHint": destructive, "idempotentHint": idempotent, "openWorldHint": False}
+
+
+READS, SHOWS, RESTARTS, ADDS, SETS, CHANGES = hints(True, False, True), hints(False, False, True), hints(False, False, False), \
+    hints(False, False, False), hints(False, True, True), hints(False, True, False)
+HINTS = {**dict.fromkeys(["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "story_from_flow",
+                          "story_from_diff", "page_state", "preview"], READS),
+         **dict.fromkeys(["show_view", "highlight", "clear"], SHOWS), **dict.fromkeys(["tour", "play_story"], RESTARTS),
+         **dict.fromkeys(["add_card", "connect"], ADDS), **dict.fromkeys(["rename", "move_to_box", "set_field", "pin", "remove"], SETS),
+         **dict.fromkeys(["apply", "undo", "redo"], CHANGES)}
+for t in TOOLS:
+    t["annotations"] = dict(HINTS[t["name"]])  # a tool with none is a KeyError here, at import
 TOOL = {t["name"]: t for t in TOOLS}
 PAGE_TOOLS = {"show_view", "highlight", "tour", "play_story", "clear"}
 EDIT_TOOLS = {t["name"] for t in EDITS}

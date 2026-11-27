@@ -47,6 +47,8 @@ An assistant changes the model with the same gestures you make on the page. Each
 | `apply(edits)` | runs a list of steps as one change and writes it |
 | `undo()`, `redo()` | takes the last change back, or writes it again |
 
+Each tool says what it does to its world in its `annotations`, all four hints set: the read tools, `page_state` and `preview` are read-only; the page tools change only what the page shows (`tour` and `play_story` start again on a repeat call); `add_card` and `connect` add; `rename`, `move_to_box`, `set_field`, `pin` and `remove` are destructive and idempotent (the same call again changes nothing); `apply`, `undo` and `redo` are destructive and not idempotent. None is open-world: the server reads the model, the other model file `diff` is given, and talks to its page on 127.0.0.1.
+
 Where the type refuses a gesture, the tool refuses it with the type's own words: "A message flow cannot start at a start event" on a BPMN view, or "a uml.sequence view places its elements itself" for a pin. Where the page would open a picker of the type's own, the tool asks for `choose`, the choice by its label or its place from 0.
 
 A step of `preview` or `apply` is an edit tool's call with its name in `tool`, or an `apply()` command as it is:
