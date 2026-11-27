@@ -20,8 +20,9 @@
 // in that process before the file, signed one: it reads a second key from a file named in PROTECT_KEY_FILE and removes
 // both before the file loads, and adds to each test's report a diagnostic signed with it. A signed diagnostic that is not
 // right (a wrong signature, a number seen before) makes the run { forged }. The file's process runs with node's permission
-// model, every permission granted but the inspector's, so it cannot read the preload's key out of its memory through
-// node:inspector.
+// model, with no inspector (which reads any value of the preload's), no native addons and no WASI (which read the process's
+// memory), and the preload never holds the key as a value of JavaScript's (audit 75: a heap snapshot by node:v8 held it as
+// a string): see tools/assert-watch.mjs. A process the file starts (tests start them) is outside the permission model.
 //
 // Which test passed is read from the signed diagnostic alone (audit 74), never from a test:pass frame: the diagnostic
 // names the test by its title, its full name (the titles of the describes and tests around it) and the file, line and
@@ -31,7 +32,7 @@
 // (a test skipped by its options runs no hook). Tests made under the file's name by two scripts (the file, and code it
 // evaluated with that name: eval with a sourceURL, vm with a filename) make the run { forged } too.
 import { run } from 'node:test';
-import { createHmac, hash, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { realpathSync, readFileSync, writeFileSync, writeSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,11 +40,11 @@ import { join } from 'node:path';
 const [file, watch, ms] = process.argv.slice(2);
 const key = readFileSync(0, 'utf8'), real = realpathSync(file); // node:test names the file by its real path
 const say = o => { const line = JSON.stringify(o); writeSync(1, `${createHmac('sha256', key).update(line).digest('hex')} ${line}\n`); };
-const inner = randomBytes(32).toString('hex'), dir = mkdtempSync(join(tmpdir(), 'umlimator-protect-key-')), keyFile = join(dir, 'key');
+const inner = randomBytes(32), dir = mkdtempSync(join(tmpdir(), 'umlimator-protect-key-')), keyFile = join(dir, 'key');
 writeFileSync(keyFile, inner, { mode: 0o600 });
 const MARK = 'protect-ran ', seqs = new Set(), scripts = new Set(), TWO = 'tests made under its name by more than one script (code it evaluated under its name?)';
 let forged = null;
-const ALLOW = ['--permission', '--allow-fs-read=*', '--allow-fs-write=*', '--allow-child-process', '--allow-worker', '--allow-addons', '--allow-wasi'];
+const ALLOW = ['--permission', '--allow-fs-read=*', '--allow-fs-write=*', '--allow-child-process', '--allow-worker'];
 const stop = new AbortController(), timer = setTimeout(() => stop.abort(), Number(ms));
 try {
   for await (const { type, data } of run({ files: [file], isolation: 'process', execArgv: [...ALLOW, '--import', watch], env: { ...process.env, PROTECT_KEY_FILE: keyFile }, testSkipPatterns: [/\(timed\)/], signal: stop.signal })) {
@@ -51,7 +52,7 @@ try {
     else if (type === 'test:diagnostic' && typeof data.message === 'string' && data.message.startsWith(MARK)) {
       const rest = data.message.slice(MARK.length), sp = rest.indexOf(' '), body = rest.slice(sp + 1);
       let r = null;
-      try { if (sp > 0 && rest.slice(0, sp) === hash('sha256', inner + hash('sha256', inner + body))) r = JSON.parse(body); } catch {}
+      try { if (sp > 0 && rest.slice(0, sp) === createHmac('sha256', inner).update(body).digest('hex')) r = JSON.parse(body); } catch {}
       if (!r || seqs.has(r.seq)) forged ??= 'a signed result that its preload did not sign';
       else {
         seqs.add(r.seq);

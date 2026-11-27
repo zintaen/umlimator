@@ -657,3 +657,62 @@ process.on('exit', () => { process.exitCode = 0; });
     assert.deepEqual((await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`), found);
   }
 });
+
+test('protect: a file cannot sign a pass with the preload\'s key read out of its own process: a heap snapshot, node:crypto patched under the preload, or a hash object of the preload\'s (audit 75)', async (t) => {
+  const HEAD = "import { test, before } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport v8, { Serializer, DefaultDeserializer } from 'node:v8';\nimport C from 'node:crypto';\nimport { syncBuiltinESMExports } from 'node:module';\n";
+  // audit 75's repro, made to check itself: the file filters its own stdout, where node:test's child reporter writes its
+  // frames (0xff 0x0f, a 4-byte length, a v8-serialized event), drops the protected test's fail, and turns the preload's
+  // signed 'not ok' for it into an 'ok' signed with whatever way to sign it found, once that way gives the preload's own
+  // signature of the 'not ok'; with no such way it signs nothing
+  const TRICK = String.raw`const H = C.hash, M = C.createHmac, signers = [];
+const fromKey = k => { signers.push(b => H('sha256', k + H('sha256', k + b)), b => M('sha256', k).update(b).digest('hex')); if (/^[0-9a-f]{64}$/.test(k)) signers.push(b => M('sha256', Buffer.from(k, 'hex')).update(b).digest('hex')); };
+const frame = item => { const s = new Serializer(); s.writeHeader(); s.writeValue(item); const b = s.releaseBuffer(), m = Buffer.alloc(6 + b.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(b.length, 2); b.copy(m, 6); return m; };
+const write = process.stdout.write.bind(process.stdout);
+let buf = Buffer.alloc(0);
+process.stdout.write = (chunk, ...rest) => {
+  buf = Buffer.concat([buf, Buffer.from(chunk)]);
+  const out = [];
+  while (buf.length >= 6 && buf[0] === 0xff && buf[1] === 0x0f && buf.length >= 6 + buf.readUInt32BE(2)) {
+    const n = buf.readUInt32BE(2), raw = buf.subarray(0, 6 + n), body = buf.subarray(6, 6 + n); buf = buf.subarray(6 + n);
+    if (body.includes('test:fail') && body.includes('f is one')) continue;
+    let it = null;
+    try { const d = new DefaultDeserializer(body); d.readHeader(); it = d.readValue(); } catch {}
+    const m = it?.type === 'test:diagnostic' && typeof it.data?.message === 'string' && /^protect-ran (\S+) (.*)$/s.exec(it.data.message);
+    if (m && m[2].includes('"name":"f is one"') && m[2].includes('"status":"not ok"')) {
+      const sign = signers.find(s => { try { return s(m[2]) === m[1]; } catch { return false; } });
+      if (sign) { const ok = m[2].replace('"status":"not ok"', '"status":"ok"'); it.data.message = 'protect-ran ' + sign(ok) + ' ' + ok; out.push(frame(it)); }
+      continue;
+    }
+    out.push(raw);
+  }
+  if (buf.length && !(buf[0] === 0xff && buf[1] === 0x0f)) { out.push(buf); buf = Buffer.alloc(0); }
+  return out.length ? write(Buffer.concat(out), ...rest) : true;
+};
+process.on('exit', () => { process.exitCode = 0; });
+`;
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const ways = [
+    // the repro: every 64-hex string in a heap snapshot of the file's process (the permission model leaves node:v8 open)
+    String.raw`before(async () => { const c = []; for await (const x of v8.getHeapSnapshot({ exposeInternals: true })) c.push(x); for (const k of new Set([...Buffer.concat(c).toString('latin1').matchAll(/"([0-9a-f]{64})"/g)].map(x => x[1]))) fromKey(k); });`,
+    // node:crypto's functions replaced and synced into every module's import of them, the preload's too
+    String.raw`for (const name of ['hash', 'createHmac', 'createHash']) { const was = C[name]; C[name] = function (...a) { if (typeof a[1] === 'string' && a[1].length >= 64) fromKey(a[1].slice(0, 64)); if (name === 'createHmac') { const k = a[1]; signers.push(b => M('sha256', k).update(b).digest('hex')); } return was.apply(this, a); }; }
+syncBuiltinESMExports();`,
+    // a hash object's copy() replaced on its prototype, which hands over every hash object it is called on
+    String.raw`const P = Object.getPrototypeOf(C.createHash('sha256')), copy = P.copy, seen = new Set();
+P.copy = function (...a) { if (!seen.has(this)) { for (const o of seen) for (const [i, j] of [[o, this], [this, o]]) signers.push(b => copy.call(j).update(copy.call(i).update(b).digest()).digest('hex')); seen.add(this); } return copy.apply(this, a); };`,
+  ];
+  for (const way of ways) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + TRICK + way + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, way);
+    assert.match(found[0], /^f is one: (fails|does not run|could not be checked)/, way);
+    // with f() right, the same file reads as recorded
+    const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+    writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+    edit(fine, () => HEAD + TRICK + way + '\n' + CORE);
+    assert.deepEqual(await assertLoads(fine), [], way);
+  }
+});
