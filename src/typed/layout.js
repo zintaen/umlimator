@@ -12,7 +12,7 @@ import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'shutBoxes', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'shutBoxes', 'sideSwap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 

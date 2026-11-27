@@ -58,6 +58,8 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   `reroute: false`), with `gap: 48`, `rgap: 56`, `cut: 280` and `labelGaps` (decision 9). A box whose ports have lines
   takes a 48 px padding.
 - The example lays out clean right and down: no crossing, `check()` finds nothing, every line routed by the grid.
+- A line whose ends are both outside a box is routed round it (the class view's box pass, which here ranks a line through a
+  box above a crossing, audit 70), and a port with no line keeps off where a line crosses its box's border.
 - `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: laid out right two crossings, down one,
   both between lines of the component whose four ports are pinned to the four sides (a pin against the ranking). Ten
   ports on one side of a box: a box is sized by its contents, not its ports (§4.1), so five are held at the start of the

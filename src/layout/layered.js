@@ -1176,6 +1176,19 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
         undo();
       }
     })));
+    // two lines that cross and leave or enter one side of a card side by side (between other cards: a do-while's back line from a
+    // decision, laid out down, left its top left of the line in and turned right over it, audit 70) swap their ports there, each
+    // route's last run moved onto the other's port, else both routed again; kept when the issues drop and none but crossings rise
+    if (issues && dg.sideSwap) free.forEach((a, i) => free.slice(i + 1).forEach(b => { if (!a.pts || !b.pts || !xing(a, b) || [a, b].some(e => e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner)) return;
+      const ks = [...new Set([a.s, a.t])].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
+      if (ks.length !== 1) return; const [[ka, kb]] = ks, ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b), other = () => routeAudit({ edges }, '', ab).filter(x => !/ cross$/.test(x)).length, o0 = other();
+      const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()];
+      ripUp(a); ripUp(b); [a[ka], b[kb]] = [b[kb], a[ka]]; const ma = moved(a, ka, a.pts), mb = moved(b, kb, b.pts); restub(a); restub(b);
+      const keep = () => { const now = issues - was + issueCount(ab); if (now < issues && rims(a, b) <= b0 && other() <= o0) { issues = now; swapped = rrSwap = true; return true; } ripUp(a); ripUp(b); return false; };
+      if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); if (keep()) return; }
+      routeOne(a, b); routeOne(b); if (keep()) return;
+      snap.forEach(([e, p, lb, hw, p1, p2]) => { Object.assign(e, { pts: p, lbl: lb, how: hw, p1, p2 }); restub(e); });
+      routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); }));
   }
   for (let round = 0; issues && dg.repair !== false && round < 8 && budget > 0; round++) {
     let fixed = false; __ms.rounds++;
@@ -1324,9 +1337,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     out.forEach(d => { const f = by.get(d.id), q = d && flip(d); if (f && q && (q.x !== f.x || q.y !== f.y || q.w !== f.w || q.h !== f.h)) m.set(f, { ...f, x: q.x, y: q.y, w: q.w, h: q.h }); }); return m.size ? m : null; })();
   const titles = e => families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)) || (drawnAs && drawnAs.has(f) && segHitsRect(a, b, headRect(drawnAs.get(f)))))).length;
   const boxIn = e => families.filter(f => !holds(boxEnd[f.id], e.s) && !holds(boxEnd[f.id], e.t) && segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, { x: f.x + 1, y: f.y + 1, w: f.w - 2, h: f.h - 2 }))).length;
-  // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each)
+  // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each); with dg.shutBoxes 2 (the
+  // component view, audit 70) [issues other than crossings, boxes run through, all]: a line through a box and its ports is worse than a crossing
   const boxSaid = only => { const ps = routeAudit({ edges, families, byId }, '', only).filter(p => !/ header crossed by /.test(p)), x = ps.filter(p => / cross$/.test(p)).length;
-    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); return [ps.length - x + b, ps.length + b, L.reduce((k, e) => k + boxIn(e), 0)]; };
+    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); return [ps.length - x + b, ps.length + b, L.reduce((k, e) => k + boxIn(e), 0)].map((x, i, a) => (dg.shutBoxes === 2 && i ? a[3 - i] : x)); };
   const lt3 = (u, w) => u[0] < w[0] || (u[0] === w[0] && (u[1] < w[1] || (u[1] === w[1] && u[2] < w[2])));
   const relabel = (e, L) => { e.lbl = L; routed.push(e); if (L) { placed.push(L); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); } };
   // (the pass is kept only when the view as a whole is better for it: a line's move can take a track another line wanted)
@@ -1335,9 +1349,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   let boxBudget = 12;
   // (BOXES) a typed view that asks for this pass alone (dg.shutBoxes, the class view): a line that runs through a box holding
   // neither of its ends, just under its title, read as one along the box's border (a «use» line past a package it has no end in)
+  // A line ending on a port is tried too: that end keeps its side, as one whose side the type gives (audit 70)
   if (BOXES) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
     is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box || r0[k].some(y => y.s === y.t)))) r0[k].forEach(x => bad.add(x)); });
-    const todo = free.filter(e => !e.fixed && !e.inner && e.fromPort == null && e.toPort == null && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
+    const todo = free.filter(e => !e.fixed && !e.inner && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
     const v0 = todo.length ? boxSaid() : null, snap = todo.length ? edges.map(e => [e, e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl, e.stubs]) : null, snapR = todo.length ? [routed.slice(), reserved.slice(), placed.slice()] : null, used0 = used;
     todo.forEach(e => { const k0 = boxSaid(new Set([e])), was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl]; let best = null; ripUp(e);
       for (const [k, fk, n, o, given] of [['p1', 'fs', e.s, e.t, e.fromSide], ['p2', 'ts', e.t, e.s, e.toSide]]) { if (n.box) continue;

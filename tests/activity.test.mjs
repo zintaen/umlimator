@@ -96,7 +96,7 @@ test('shapes: send, accept and the object node have outlines a slid end lies on;
 
 test('example 9: it validates and lays out clean down and right: lanes as bands, every node in its own, no line along a divider for over 24 px', () => {
   assert.deepEqual(validate(EX), []);
-  for (const [d, crossings] of [['down', 2], ['right', 0]]) {
+  for (const [d, crossings] of [['down', 1], ['right', 0]]) { // down 2 before audit 70: the decision's two lines out swap their ports
     const m = dir(EX, d), r = clean(m, 'fulfil');
     assert.deepEqual(r.bad, [], d); assert.deepEqual(r.others, [], `${d}: check() finds nothing but crossings`); assert.deepEqual(r.along, [], d);
     console.log(`# example 9, ${d}: ${r.g.nodes.length} nodes, ${r.g.edges.length} flows, ${r.crossings.length} crossings`);
@@ -708,4 +708,26 @@ test('audit 69: arranged, no generated activity or interaction overview draws mo
           views: [{ id: 'v', diagram: TYPE === 'overview' ? 'uml.interaction-overview' : 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction, ...(arrange && { arrange }) }] }, 'v').length;
         const r = said(false), f = said('flow'); if (f > r) worse.push(`${TYPE} ${seed0}#${it} ${direction}: ${f} arranged, ${r} ranked`); } } }
   assert.deepEqual(worse, []);
+});
+
+// audit 70: laid out down, a do-while loop's back line from the decision left its top beside the line in and turned over it
+// (merge, action, decision back to the merge, for decision names of 9 to 24 characters). Two lines that cross after leaving or
+// entering one side of a card side by side swap their ports there (dg.sideSwap), in the activity and the interaction overview
+test('audit 70: a do-while loop draws no crossing at its decision for any name length, laid out down or right, in an activity and an overview', () => {
+  const n = (id, type, label) => ({ id, type: 'uml.' + type, ...(label ? { label } : {}) }), f = (a, b, g) => ({ id: a + '-' + b, type: 'uml.ControlFlow', from: a, to: b, ...(g ? { props: { guard: g } } : {}) });
+  const words = 'Is there any other book left on the list to pick'.split(' '), bad = [];
+  for (const [diagram, T] of [['uml.activity', 'Action'], ['uml.interaction-overview', 'InteractionUse']]) for (const direction of ['down', 'right'])
+    for (const act of ['Go', 'Pack', 'Pick a book', 'Pick the next book from the shelf']) for (const two of [false, true]) for (let k = 0; k <= words.length; k++) {
+      const lab = k ? words.slice(0, k).join(' ') + '?' : '', last = two ? 'pick2' : 'pick';
+      const nodes = [n('start', 'InitialNode'), n('m', 'MergeNode'), n('pick', T, act), ...(two ? [n('pick2', T, 'Note it')] : []), n('d', 'DecisionNode', lab), n('end', 'ActivityFinalNode')];
+      const edges = [f('start', 'm'), f('m', 'pick'), ...(two ? [f('pick', 'pick2')] : []), f(last, 'd'), f('d', 'm', 'yes'), f('d', 'end', 'no')];
+      const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram, title: 'Loop', nodeIds: nodes.map(x => x.id), direction }] };
+      const g = layout(m, 'v'), into = g.edges.find(e => e._id === last + '-d'), back = g.edges.find(e => e._id === 'd-m');
+      const segs = e => e.pts.slice(1).map((q, i) => [e.pts[i], q]), hit = ([a, b], [c, d]) => { const h = a[1] === b[1], v = c[0] === d[0];
+        if (h === (c[1] === d[1])) return false; const [H, V] = h && v ? [[a, b], [c, d]] : [[c, d], [a, b]], x = V[0][0], y = H[0][1];
+        return x > Math.min(H[0][0], H[1][0]) && x < Math.max(H[0][0], H[1][0]) && y > Math.min(V[0][1], V[1][1]) && y < Math.max(V[0][1], V[1][1]); };
+      if (segs(into).some(s => segs(back).some(t => hit(s, t)))) bad.push(`${diagram} ${direction} ${JSON.stringify(act)}${two ? ' + Note it' : ''} ${JSON.stringify(lab)}`);
+      // a loop of one step draws nothing check() names
+      if (!two && check(m, 'v').length) bad.push(`${diagram} ${direction} ${JSON.stringify(act)} ${JSON.stringify(lab)}: ${check(m, 'v').map(p => p.message)}`); }
+  assert.deepEqual(bad, []);
 });
