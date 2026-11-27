@@ -889,10 +889,11 @@ def quiet(*a, **k):
     pass
 
 
-def render_model(m, near, out, base=None):
+def render_model(m, near, out, base=None, base_near=None):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
     the render, so it is drawn as that file would be. base: the model before an edit, which the page draws it against
-    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8)."""
+    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8). base_near:
+    the before model's own file (default `near`), whose folder its intake logos are read from, as the page's own are."""
     tmp = temp_json(m, near, ".change.json")
     try:
         model = page_model(tmp, out, source=near)
@@ -903,19 +904,21 @@ def render_model(m, near, out, base=None):
     finally:
         untemp(tmp)
     if isinstance(base, dict):
-        with_base(Path(rep["out"]), base)
+        with_base(Path(rep["out"]), base, Path(base_near or near).resolve().parent)
     return rep
 
 
-def with_base(page, base):
+def with_base(page, base, folder):
     """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
     script (every '<' in it escaped by script_json, as the page's own data block is, so no text in the model, such as '<!--'
     then '<script', ends the script or opens a state its </script> no longer closes: audit 8, audit 66). The base goes through own_media as every page
     model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
-    the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
+    the page (risks.md S1, S2, audit 33). Its intake logos are read from `folder`, the before model's own folder, as page_model
+    reads the page's: the page's folder let a before model inline any SVG file under --out's folder (audit bh1). Its notes are
+    not said again: the page's own model said the same ones."""
     base = json.loads(json.dumps(base))
     with contextlib.redirect_stderr(io.StringIO()):
-        own_media(base, page.parent, "base")
+        own_media(base, folder, "base")
     text = page.read_text(encoding="utf-8")
     tag = '<script id="umlimator-base" type="application/json">' + script_json(base) + "</script>\n"
     at = text.find('<script id="visual-data"')
@@ -954,19 +957,20 @@ def cmd_diff(a):
     before, after = map(read_model, a.files)
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
-    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story)
+    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story, before_near=a.files[0])
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False, before_near=None):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
     leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
     stable (the default, layout-flow.md section 12 step 14): the page draws the model after against the model before, so the
     cards the change left alone keep their cells; False draws it fresh.
     story: each view that shows a change gets a story of it (storyFromDiff, told on the diff's model), in the page's Stories
-    menu, and the answer names them."""
+    menu, and the answer names them. before_near: the before model's file when it is not `near` (diff BEFORE AFTER), whose
+    folder the page's base reads its intake logos from."""
     d = js("diff", before, after, {"stable": bool(stable)})
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
@@ -986,7 +990,7 @@ def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True
         if told:
             m["stories"] = [*(m.get("stories") if isinstance(m.get("stories"), list) else []), *told]
     m["title"] = f"{title_of(m, near)}: what changed"
-    rep = render_model(m, near, out, d.get("stableFrom") if stable else None)
+    rep = render_model(m, near, out, d.get("stableFrom") if stable else None, before_near)
     pngs, failed = shots(out, stills, d["views"])
     return {"out": rep["out"], "summary": d["summary"], "views": d["views"], **({"stories": [s["id"] for s in told]} if story else {}),
             "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}

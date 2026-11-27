@@ -16,6 +16,7 @@
 <script type="module">
 import { UmlimatorMap } from '../lib/umlimator-element.js';
 import markdownIt from '../lib/umlimator-markdown-it.js';
+import { render } from '../lib/umlimator.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -135,6 +136,44 @@ try {
   const typedNodes = cls.map ? sr(cls).querySelectorAll('.node').length : 0;
   check('a class diagram\'s model is drawn in its notation: its classes images, none a plain card', typedNodes > 0 && !sr(cls).querySelector('.node[role="button"]') && !!sr(cls).querySelector('.node[role="img"]'), typedNodes);
   cls.remove();
+  // audit bh1: the images a model names (an author's avatar, an icon's src, an intake logo, an example's thumb and full) made
+  // each viewer's browser fetch any address the model gave. Drawn now only as the host's images option allows: data: images
+  // by default, a path on the page's own site with 'local', any http(s) address with 'remote'
+  const leak = k => location.origin + '/__leak-' + k, dot = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E';
+  const hostile = { authors: { bob: { name: 'Bob', avatar: leak('avatar') }, ann: { name: 'Ann', avatar: dot } }, icons: { x: { src: leak('icon') }, y: { src: '__leak-relicon' } },
+    nodes: [{ id: 'a', label: 'A', kind: 'backend', author: 'bob', icon: 'x', examples: [{ title: 'e', thumb: leak('thumb'), full: leak('full') }, { title: 'r', thumb: '__leak-relthumb' }],
+              members: [{ id: 'a.m', label: 'M', examples: [{ title: 'm', thumb: '//' + location.host + '/__leak-member' }] }] },
+            { id: 'b', label: 'B', kind: 'backend', author: 'ann', icon: 'y' }],
+    edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], intake: [{ label: 'in', to: 'a', logo: leak('logo') }, { label: 'ok', to: 'b', logo: dot }] }] };
+  const before = JSON.stringify(hostile), said = [], warn0 = console.warn; console.warn = (...x) => { said.push(x.join(' ')); };
+  const named = (root, m) => [...root.querySelectorAll('image, img')].map(x => x.getAttribute('href') || x.getAttribute('src') || '').filter(u => u.includes('__leak'));
+  const drawnBy = async images => { const box = document.createElement('div'); box.style.cssText = 'width:900px;height:500px'; document.body.append(box);
+    const m = render(box, hostile, { details: true, ...(images ? { images } : {}) }); m.select({ type: 'node', id: 'a' }); await wait(50);
+    const s = box.querySelector('.umlimator').shadowRoot, tab = s.querySelector('[data-tab="examples"]'); if (tab) tab.click(); await wait(50);
+    const ex = s.querySelector('[data-ex]'); if (ex) ex.click(); await wait(50);
+    const r = { dom: named(s).sort(), svg: (m.toSVG().match(/__leak-[\w]+/g) || []).sort(), data: s.querySelectorAll(`image[href^="data:"], img[src^="data:"]`).length };
+    m.destroy(); box.remove(); return r; };
+  try {
+    const none = await drawnBy(null), saidFirst = said.slice(), fetched = () => performance.getEntriesByType('resource').map(e => e.name).filter(u => u.includes('__leak-')), early = fetched();
+    check('a model\'s images: render() draws none that names an address or a path, in the map, the details panel, the example lightbox or toSVG() (audit bh1)', !none.dom.length && !none.svg.length && none.data >= 2 && !early.length, [none, early]);
+    check('…the model the host gave is left as it was', JSON.stringify(hostile) === before);
+    check('…and each one left out is said in the console, once', ['authors.bob.avatar', 'icons.x.src', 'icons.y.src', 'views[0].intake[0].logo', 'nodes[0].examples[0].thumb', 'nodes[0].examples[0].full', 'nodes[0].examples[1].thumb', 'nodes[0].members[0].examples[0].thumb']
+      .every(k => saidFirst.filter(x => x.includes(k + ' is not drawn')).length === 1), saidFirst);
+    const local = await drawnBy('local');
+    check("images: 'local' draws a path on the page's own site, never an address", local.dom.includes('__leak-relicon') && local.dom.includes('__leak-relthumb') && !local.dom.some(u => /^(https?:)?\/\//.test(u)), local);
+    const remote = await drawnBy('remote');
+    check("images: 'remote' draws an http(s) address too, as before", ['avatar', 'icon', 'logo', 'thumb', 'full'].every(k => remote.dom.includes(leak(k))) && remote.svg.includes('__leak-avatar'), remote);
+    await until(() => fetched().some(u => u.endsWith('__leak-avatar')), 2000);
+    check('…which the browser fetches: the check above that the default fetched none can see one', fetched().some(u => u.endsWith('__leak-avatar')), fetched());
+  } finally { console.warn = warn0; }
+  // the element's images attribute is that option (none but data: images unless it is set)
+  const el = document.createElement('umlimator-map'); el.setAttribute('src', 'data:application/json,' + encodeURIComponent(before)); el.style.cssText = 'width:900px;height:400px'; document.body.append(el);
+  await until(() => el.map);
+  const elNone = named(sr(el));
+  el.setAttribute('images', 'remote'); const drawn0 = el.map; await until(() => el.map && el.map !== drawn0);
+  const elRemote = named(sr(el));
+  check('<umlimator-map>: no images attribute draws no address a model names; images="remote" does (audit bh1)', !elNone.length && elRemote.includes(leak('logo')), [elNone, elRemote]);
+  el.remove();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

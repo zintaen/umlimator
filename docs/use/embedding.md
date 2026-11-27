@@ -110,9 +110,9 @@ the map is drawn, and stay where scripts don't run ([`examples/element.html`](..
 | Part | What to know |
 |---|---|
 | **The model** | `src`, a URL resolved as an `<img>`'s is (a `data:` URL too), or the model in a child `<script type="application/json">`. A model of schema version 2, which may hold diagram types, is drawn by `umlimator-all.js`, which the element loads from beside itself only then |
-| **Attributes** | `view`, `minimap`, `controls="false"`, `wheel="ctrl"` (the wheel zooms only with Ctrl or ⌘, and scrolls the page otherwise, as a map in a document should), `height` (a number is pixels; 480 by default, or size it in CSS) and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map again, and removing the element destroys it |
+| **Attributes** | `view`, `minimap`, `controls="false"`, `wheel="ctrl"` (the wheel zooms only with Ctrl or ⌘, and scrolls the page otherwise, as a map in a document should), `images` (`local`: draw a model's avatars, icons, logos and example images from a path on your site; `remote`: from any http(s) address too; without it only `data:` images are drawn), `height` (a number is pixels; 480 by default, or size it in CSS) and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map again, and removing the element destroys it |
 | **Events** | `umlimator:select`, `umlimator:open` (cancel it to stay) and `umlimator:viewchange`, the map's event as `detail`; `load` once it is drawn, `error` when it can't be. `el.map` is the `render()` handle |
-| **Colours** | theme.css, or your own `--um-*` variables. The element fetches nothing but its model |
+| **Colours** | theme.css, or your own `--um-*` variables. Without `images`, the element fetches nothing but its model |
 | **Dark mode** | without `theme`, the map follows the page, a docs site's dark mode included: VitePress's `<html class="dark">` and Docusaurus's `<html data-theme="dark">` |
 
 ## In a docs site

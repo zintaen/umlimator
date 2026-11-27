@@ -540,6 +540,11 @@ export interface RenderOptions {
   /** 'zoom' (the default): the wheel zooms the map, and a trackpad pans it. 'ctrl': only Ctrl or ⌘ with the wheel (and a
    *  trackpad's pinch) zooms, and the wheel otherwise scrolls the page, as a map in a document should. */
   wheel?: 'zoom' | 'ctrl';
+  /** The images a model names (an author's avatar, an icon's src, an intake logo, an example's thumb and full) that the map
+   *  draws, and so the browser fetches. 'data' (the default): data: images only, so a model fetches nothing. 'local': also a
+   *  path on the page's own site (no scheme, no host). 'remote': also any http(s) address, which a model from someone else
+   *  can use to make each viewer's browser call an address it names. One left out is not drawn, and said once (console). */
+  images?: 'data' | 'local' | 'remote';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
   /** The motion speed, from 0.25 to 4: tours, story steps and the flow along lines, together. Default: the model's
@@ -855,4 +860,4 @@ export type Observed = { from: string; to: string; count?: number } | { parent: 
 export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
 export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
-export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
+export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel; images?: 'data' | 'local' | 'remote' }): Handle;

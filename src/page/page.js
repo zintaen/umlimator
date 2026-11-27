@@ -57,7 +57,7 @@ const framed = () => { try { return window.self !== window.top; } catch (e) { re
 export function mountPage(container, model, options = {}) {
   const Q = options.params || new URLSearchParams();
   document.body.classList.add('map-mode');
-  let { D, views, nodes, N, V, rootId, nodeIn: nodeIn0, subjectOf, viewsWith, kidsOf, chain, viewEdges, planCache } = mapContext(model);
+  let { D, views, nodes, N, V, rootId, nodeIn: nodeIn0, subjectOf, viewsWith, kidsOf, chain, viewEdges, planCache } = mapContext(model, { images: options.images }); // render says what it leaves out
   const nodeIn = (nid, vid = cur) => nodeIn0(nid, vid);
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
   const modK = mac ? '⌘K' : 'Ctrl K';
@@ -439,7 +439,7 @@ export function mountPage(container, model, options = {}) {
   const p0 = new URLSearchParams(location.hash.slice(1));
   const v0 = V[p0.get('view')] ? p0.get('view') : rootId;
   const handle = render($('m-canvas'), model, {
-    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined, stableFrom: options.stableFrom || undefined,
+    view: v0, minimap: true, images: options.images, flow: flowPref ? flowPref === '1' : undefined, speed: speed0 ?? undefined, stableFrom: options.stableFrom || undefined,
     on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step, chapter: e.chapter != null }; app.classList.toggle('story', !!told); pc.story(e);
       const sv = told && !told.chapter && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
     _page: {
