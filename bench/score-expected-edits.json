@@ -1,9 +1,9 @@
 {
- "commit": "07effce2",
+ "commit": "aabfac0e",
  "corpus": "edits",
  "total": {
   "views": 236,
-  "score": 315687.75
+  "score": 314130.54
  },
  "views": {
   "edits/a8/dsl-context/1-add-card": {
@@ -55,136 +55,136 @@
    "hard": 0,
    "cross": 1,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 1,
    "moved": 0,
-   "score": 1380.83
+   "score": 1502.25
   },
   "edits/a8/dsl-containers/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
-   "moved": 0.625,
-   "score": 1053.73
+   "moved": 0.125,
+   "score": 826.16
   },
   "edits/a8/dsl-containers/3-rename": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
-   "reverse": 1,
+   "straight": null,
+   "reverse": 0,
    "moved": 0,
-   "score": 1171.53
+   "score": 1037.4
   },
   "edits/a8/dsl-containers/4-add-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
-   "reverse": 2,
+   "straight": null,
+   "reverse": 0,
    "moved": 0,
-   "score": 1464.19
+   "score": 1217.63
   },
   "edits/a8/dsl-containers/5-move-into-box": {
    "hard": 0,
-   "cross": 0,
-   "labels": 1,
-   "straight": 0,
+   "cross": 1,
+   "labels": 0,
+   "straight": null,
    "reverse": 1,
-   "moved": 0.889,
-   "score": 1359.96
+   "moved": 0,
+   "score": 1098.19
   },
   "edits/a8/dsl-api-components/1-add-card": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 1099.82
+   "score": 958.33
   },
   "edits/a8/dsl-api-components/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 4,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 1070.23
+   "score": 731.56
   },
   "edits/a8/dsl-api-components/3-rename": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 919.04
+   "score": 845.47
   },
   "edits/a8/dsl-api-components/4-add-line": {
    "hard": 0,
-   "cross": 2,
+   "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 1211.22
+   "score": 1040.91
   },
   "edits/a8/dsl-api-components/5-move-into-box": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 768.82
+   "score": 653.52
   },
   "edits/a8/puml-components/1-add-card": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
-   "reverse": 1,
+   "straight": null,
+   "reverse": 0,
    "moved": 0,
-   "score": 865.24
+   "score": 712.66
   },
   "edits/a8/puml-components/2-remove-line": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 455.67
+   "score": 566.1
   },
   "edits/a8/puml-components/3-rename": {
    "hard": 0,
    "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 655.37
+   "score": 622.57
   },
   "edits/a8/puml-components/4-add-line": {
    "hard": 0,
-   "cross": 1,
+   "cross": 0,
    "labels": 0,
-   "straight": 0,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 750.41
+   "score": 811.56
   },
   "edits/a8/puml-components/5-move-into-box": {
    "hard": 0,
    "cross": 0,
-   "labels": 0,
-   "straight": 0,
+   "labels": 1,
+   "straight": null,
    "reverse": 0,
    "moved": 0,
-   "score": 605.44
+   "score": 649.98
   },
   "edits/a8/checkout-flowchart/1-add-card": {
    "hard": 0,
