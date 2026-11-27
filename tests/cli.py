@@ -2750,7 +2750,7 @@ if part("audit 75 node errors"):
        gone is not None and gone.startswith("Error [ERR_MODULE_NOT_FOUND]: Cannot find module ") and "\n" not in gone and "Node.js v" not in gone, gone)
     with tempfile.TemporaryDirectory() as t:  # Node out of memory: a memory-capped Node on an ordinary model
         a, b = Path(t) / "a.json", Path(t) / "b.json"
-        a.write_text((ROOT / "examples" / "bookshop-c4.json").read_text()); b.write_text(a.read_text().replace("Shop", "Shopp"))
+        a.write_text((ROOT / "tests" / "fixtures" / "c4-gallery.json").read_text()); b.write_text(a.read_text().replace('"label": "', '"label": "x', 1))
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", str(a), str(b), "--out", str(Path(t) / "o.html")], capture_output=True, text=True,
                            env={**os.environ, "NODE_OPTIONS": "--max-old-space-size=8"})
         ok("diff · Node out of memory is said as that in one line, never a native stack frame or a path (audit 75)",
