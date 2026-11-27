@@ -322,9 +322,9 @@ def replacing(path):
     if path.is_dir():  # before any work is written (render: before the engine runs), not an IsADirectoryError at the end
         sys.exit(f"--out {path} is a folder: name a file")
     stem = path.stem
-    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the probe's, 10 bytes longer, overflows: cut as temp_json cuts (audit 32)
-        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
-    suffix = path.suffix if len(path.suffix.encode()) <= 40 else ""  # a long "suffix" (a.<200 bytes>) is no extension: the probe's name stays short
+    if len(os.fsencode(stem)) > 180:  # a name the disk takes (255 bytes) is one the probe's, 10 bytes longer, overflows: cut as temp_json cuts (audit 32)
+        stem = os.fsdecode(os.fsencode(stem)[:180].decode(errors="ignore").encode()) + "-" + hashlib.sha256(os.fsencode(stem)).hexdigest()[:8]
+    suffix = path.suffix if len(os.fsencode(path.suffix)) <= 40 else ""  # a long "suffix" (a.<200 bytes>) is no extension: the probe's name stays short
     tmp = path.with_name(f".{stem}.{os.urandom(4).hex()}{suffix}")  # not mkstemp: the file takes the usual mode
     try:  # a folder that cannot be written, or a path under a file: one line before any work, never a traceback (audit 21)
         path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
@@ -784,8 +784,9 @@ def temp_json(m, near, suffix):
     """`m` written to a file of its own next to `near` (hidden), so parallel renders never share one. Its name is
     registered before the file exists, so a stop at any moment leaves nothing behind; the caller removes it (untemp)."""
     d, stem = Path(near).resolve().parent, Path(near).stem
-    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the copy's, 25 bytes longer, overflows (audit 31), cut as still_names does
-        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
+    # the name's bytes as the file system holds them: under C on Linux a non-ASCII letter is a surrogate, which UTF-8 refuses
+    if len(os.fsencode(stem)) > 180:  # a name the disk takes (255 bytes) is one the copy's, 25 bytes longer, overflows (audit 31), cut as still_names does
+        stem = os.fsdecode(os.fsencode(stem)[:180].decode(errors="ignore").encode()) + "-" + hashlib.sha256(os.fsencode(stem)).hexdigest()[:8]
     while True:
         tmp = d / f".{stem}.{os.urandom(4).hex()}{suffix}"
         _temps.add(tmp)
