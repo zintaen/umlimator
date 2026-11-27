@@ -275,3 +275,21 @@ test('check.mjs: a type that declares some refs keeps the hand list\'s checks of
   assert.ok(check(m, 'uml.class').includes(`${c.id}.props.associationClass: "nope" is not an element`));
   delete c.type; assert.ok(check(m, 'uml.class').includes(`${c.id}.props.associationClass: "nope" is not an element`));
 });
+
+test('the "Association class of" field refuses an association another class already names, as the rule does, so the edit never leaves validate() failing (audit 72)', () => {
+  const field = diagramOf({ diagram: 'uml.class' }).edits.field, m = model();
+  m.nodes.push({ id: 'contract', type: 'uml.Class', label: 'Contract' }); m.views[0].nodeIds.push('contract');
+  assert.deepEqual(validate(m), []);
+  for (const typed of ['works', 'works for', ' works ']) {
+    const r = field(m, m.views[0], 'contract', 'props.associationClass', typed);
+    assert.equal(r.error, 'association-class: association works has its class already ("Job"), and an association has one class', typed);
+  }
+  // the class that names it may name it again; a second association is free; a class that does not count (an interface) holds nothing
+  assert.deepEqual(field(m, m.views[0], 'job', 'props.associationClass', 'works'), [{ op: 'set', id: 'job', path: 'props.associationClass', value: 'works' }]);
+  const two = model(); two.edges.push({ id: 'owns', type: 'uml.Association', from: 'person', to: 'company', label: 'owns' }); two.nodes.push({ id: 'contract', type: 'uml.Class', label: 'Contract' });
+  const ok = field(two, two.views[0], 'contract', 'props.associationClass', 'owns');
+  assert.deepEqual(ok, [{ op: 'set', id: 'contract', path: 'props.associationClass', value: 'owns' }]);
+  assert.deepEqual(validate(apply(two, ok)).filter(p => p.level === 'error'), []);
+  const kind = model(); kind.nodes[2].type = 'uml.Interface'; kind.nodes.push({ id: 'contract', type: 'uml.Class', label: 'Contract' });
+  assert.ok(Array.isArray(field(kind, kind.views[0], 'contract', 'props.associationClass', 'works')));
+});
