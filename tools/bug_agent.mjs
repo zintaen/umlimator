@@ -219,11 +219,17 @@ export function holdsSecret(secret, texts) {
 }
 
 // The agent's own words, made safe to post: no mentions (they notify), no fences or HTML comments (they could close the
-// quote and write as the workflow), plain length cap.
+// quote and write as the workflow), plain length cap. The agent read the issue, so its words are an outsider's too: they
+// reach GitHub as text, by the rules of the diff Action's flat() (umlimator.py, audit bh1 7): no HTML tag or entity (& and
+// < are escaped, so &#64; stays those five characters), no link, image, emphasis or table (\ * _ [ ] ~ | ! escaped), no
+// address GitHub links by itself (a word joiner after the scheme's colon and inside www.), and no issue reference (a
+// word joiner after a # or GH- before a digit), so the bot's comment cross-references no other issue or repository.
 export function quoteText(s, max = 1500) {
   let t = String(s).replace(/\r/g, '');
-  t = t.replace(/@/g, '(at)').replace(/`/g, "'").replace(/~~~/g, '~ ~ ~').replace(/<!--|-->/g, '');
+  t = t.replace(/@/g, '(at)').replace(/`/g, "'").replace(/<!--|-->/g, '');
   if (t.length > max) t = t.slice(0, max) + '...';
+  t = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/[\\*_[\]~|!]/g, '\\$&');
+  t = t.replace(/(https?|ftp|mailto|xmpp):/gi, '$1:⁠').replace(/w(?=ww\.)/gi, '$&⁠').replace(/(#|\bGH-)(?=\d)/gi, '$1⁠');
   return t.split('\n').map(l => '> ' + l).join('\n');
 }
 

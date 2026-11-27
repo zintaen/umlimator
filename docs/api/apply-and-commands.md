@@ -362,13 +362,10 @@ reach(model, 'system', 'db', { backward: true });
 ## critical
 
 ```ts
-function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number };
+function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number; approximate?: true };
 ```
 
-The path along a view's lines with the highest total of `by` (`latency`, the default, or `cost`), summed over the
-lines' [`latency` or `cost`](./model-and-schema.md#mapedge) (a line without one counts 0), from `from` to `to` (either
-left out: any card), never visiting a card twice. `refs` holds its cards in order, then its lines; no refs and 0 when
-no line leads there.
+The path along a view's lines with the highest total of `by` (`latency`, the default, or `cost`), summed over the lines' [`latency` or `cost`](./model-and-schema.md#mapedge) (a line without one counts 0), from `from` to `to` (either left out: any card), never visiting a card twice. `refs` holds its cards in order, then its lines; no refs and 0 when no line leads there. Where the lines from the start never loop back it takes time linear in the lines; where they loop and there are too many ways between the cards to try them all in about a second, it returns the best path it found with `approximate: true`.
 
 ```js
 const slow = critical(model, 'system', { by: 'latency' });

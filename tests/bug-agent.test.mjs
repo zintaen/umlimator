@@ -190,6 +190,29 @@ test('bug agent: what the agent wrote is posted defused', () => {
   assert.throws(() => message('merge', r, ''), /unknown/);
 });
 
+// audit bh1 7: the agent read the issue, so what it reports may carry an outsider's links, tags and references; the bot
+// posts them as text, by the diff Action's flat() rules
+test('bug agent: the agent\'s words reach GitHub with no link, image, tag, entity or issue reference', () => {
+  const summary = 'Could not reproduce.\n\n</blockquote>\n\n**Maintainer note:** the fix is in [the patched release](https://evil.example/u.tgz). ' +
+    'Related: #1, zintaen/other-repo#2, GH-3, gh-4. <img src="https://evil.example/p.png" width=1> ![i](http://evil.example/i.png) &#64;zintaen &commat;x ' +
+    '<a href="https://evil.example">CONTRIBUTING.md</a> www.evil.example mailto:a(at)b.c xmpp:a login_https://x\nFixes #4\n> quoted | a | b |\n~~~\n\\[esc]';
+  const J = '⁠';
+  for (const kind of ['not-reproduced', 'reproduced', 'pr-body']) {
+    const m = message(kind, { outcome: 'not-reproduced', summary, test: 'node --test tests/issue-9.test.mjs', issue: 9 }, 'https://run');
+    const said = m.slice(m.indexOf('What the agent reported:'), m.indexOf('\n\nRun:') > 0 ? m.indexOf('\n\nRun:') : m.indexOf('\n\nThis was written'));
+    assert.ok(said.split('\n').slice(2).every(l => l.startsWith('> ')), kind);
+    assert.doesNotMatch(said, /<|(?<!\\)\[|(?<!\\)\]\(|(?<!\\)!(?!\\\[)|(?<!\\)\*|(?<!\\)\||(?<!\\)~|&(?!amp;|lt;|gt;)/, kind);
+    assert.doesNotMatch(said, /(https?|ftp|mailto|xmpp):(?!⁠)|www\.|(#|\bGH-)\d/i, kind);
+    for (const want of [`&amp;#${J}64;zintaen`, `Fixes #${J}4`, `GH-${J}3`, `other-repo#${J}2`, `https:${J}//evil`, `w${J}ww.evil`, '&lt;/blockquote&gt;']) assert.ok(said.includes(want), `${kind}: ${want}`);
+    assert.match(said, /\\\[the patched release\\\]\(https/);
+    assert.match(said, /> \\\\\\\[esc\\\]/); // a backslash of the agent's own is text too
+  }
+  const f = message('failed', { summary: '', reason: '[x](https://e.example) #5' }, '');
+  assert.match(f, new RegExp(`\\\\\\[x\\\\\\]\\(https:${J}//e\\.example\\) #${J}5`));
+  // plain words pass as they are
+  assert.equal(quoteText('The layout of view 2 drew the label twice.'), '> The layout of view 2 drew the label twice.');
+});
+
 // A throwaway repository with a stand-in build (tools/build.mjs copies src/ to lib/) and one test file. edit() writes the
 // agent's changes and returns them as the agent job's diff, then puts the checkout back as the verify job finds it.
 function repo() {

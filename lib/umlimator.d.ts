@@ -820,8 +820,10 @@ export function storyFromDiff(before: MapModel, after: MapModel, viewId: string,
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
  *  lines (a line without one counts 0), from `from` to `to` (either left out: any card), never coming back to a card. Its
- *  cards in order, then its lines, as Refs for highlight(); no refs and 0 when no line leads there. No browser needed. */
-export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number };
+ *  cards in order, then its lines, as Refs for highlight(); no refs and 0 when no line leads there. No browser needed.
+ *  Where the lines loop and the ways between cards are too many to try in about a second, `approximate` marks the best
+ *  path found. */
+export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number; approximate?: true };
 /** What taking cards out of a view would cost (#95), with the model left as it is. unreachable: what loses its way to them
  *  (backward, as reach() finds it: for calls, what depends on them), each with its distance from the nearest, the cards
  *  themselves at 0. No rule breaks: rules only forbid lines and cycles, which taking cards out never adds. No browser needed. */
