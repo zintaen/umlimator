@@ -131,12 +131,15 @@ function mapContext(model, opts = {}) {
   function loopsOf(v) { // edges that close a cycle, found depth-first in run order from the roots
     const ids = (v.nodeIds || []).filter(i => N[i]), edges = viewEdges(v), back = new Set(), st = O();
     edges.forEach((e, k) => { if (e.loop) back.add(k); }); // an edge marked `loop: true` is the view's loop back
-    const dfs = u => { const fr = [[u, 0]]; st[u] = 1; // a stack of frames, not recursion: a chain of any length
-      while (fr.length) { const f = fr[fr.length - 1]; if (f[1] === edges.length) { fr.pop(); st[f[0]] = 2; continue; }
-        const k = f[1]++, e = edges[k]; if (e.from !== f[0] || e.from === e.to || e.loop) continue; if (st[e.to] === 1) back.add(k); else if (!st[e.to]) { st[e.to] = 1; fr.push([e.to, 0]); } } };
-    [...ids.filter(i => !edges.some(e => e.to === i && e.from !== i && !e.loop)), ...ids].forEach(i => { if (!st[i]) dfs(i); });
+    // each card's lines out and the cards a line comes into, read once: a scan of every line once a card grew as the square (audit 69)
+    const outs = new Map(), into = new Set(); edges.forEach((e, k) => { const l = outs.get(e.from); if (l) l.push(k); else outs.set(e.from, [k]); if (e.from !== e.to && !e.loop) into.add(e.to); });
+    const dfs = u => { const fr = [[u, outs.get(u) || [], 0]]; st[u] = 1; // a stack of frames, not recursion: a chain of any length
+      while (fr.length) { const f = fr[fr.length - 1]; if (f[2] === f[1].length) { fr.pop(); st[f[0]] = 2; continue; }
+        const k = f[1][f[2]++], e = edges[k]; if (e.from === e.to || e.loop) continue; if (st[e.to] === 1) back.add(k); else if (!st[e.to]) { st[e.to] = 1; fr.push([e.to, outs.get(e.to) || [], 0]); } } };
+    [...ids.filter(i => !into.has(i)), ...ids].forEach(i => { if (!st[i]) dfs(i); });
     if (v.render === 'sequence') { // run order: a step back to a part an earlier step already reached loops back (state may be written again later)
-      const first = O(); edges.forEach((e, k) => { if (first[e.from] == null && !edges.some((x, j) => j < k && x.to === e.from)) first[e.from] = -1; if (first[e.to] == null) first[e.to] = k; });
+      const first = O(), had = new Set(); edges.forEach(e => { if (first[e.from] == null && !had.has(e.from)) first[e.from] = -1; had.add(e.to); });
+      edges.forEach((e, k) => { if (first[e.to] == null) first[e.to] = k; });
       edges.forEach((e, k) => { if (first[e.to] < k && !isState(e.to) && e.from !== e.to) back.add(k); });
     }
     return { edges, back, keys: new Set(edges.filter((e, k) => back.has(k)).map(e => e.from + '>' + e.to)) };

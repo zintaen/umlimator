@@ -256,3 +256,62 @@ test('a flowchart story carries on through an on-page connector pair, as describ
     assert.equal(s.steps[4].caption, '5. a: the flow carries on from A.'); assert.equal(s.steps[4].tour, undefined); assert.deepEqual(s.steps[4].highlight, ['cb']);
     assert.deepEqual(storyProblems(x, s), []); }
 });
+
+// audit 69: a flowchart's connectors of one label are one group of links, never a link for each two of them, and the story
+// searches its lines and links from indexes: N alike connectors with no flow in or out (a stale chart: 78 s at 1,000 before),
+// and a branch that carries on through every connector of a label (the worst: 460 s at 400), take time near linear in N
+const fcAlike = (N, chain) => { const n = (id, t, label) => ({ id, type: 'flow.' + t, label }), fl = (id, from, to, label) => ({ id, type: 'flow.Flow', from, to, ...(label ? { label } : {}) });
+  const nodes = [n('s', 'Terminator', 'Start'), n('d', chain ? 'Decision' : 'Process', chain ? 'Ok?' : 'Work'), n('e', 'Terminator', 'End')];
+  for (let i = 0; i < N; i++) nodes.push(n('c' + i, 'Connector', 'Z'));
+  const edges = [fl('f1', 's', 'd'), fl('f2', 'd', 'e', chain ? 'yes' : ''), ...(chain ? [fl('f3', 'd', 'c0', 'no')] : [])];
+  return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'flowchart', title: 'v', nodeIds: nodes.map(x => x.id), edges: edges.map(e => e.id) }] }; };
+const bestOf = (f, r = 3) => { let best = Infinity; for (let k = 0; k < r; k++) { const t = performance.now(); f(); best = Math.min(best, performance.now() - t); } return best; };
+test('a flowchart story over many connectors of one label: four times the connectors take at most a small multiple of the time (audit 69) (timed)', () => {
+  for (const [chain, q] of [[false, 100], [true, 40]]) {
+    const s = U.storyFromFlow(fcAlike(q, chain), 'v');
+    assert.deepEqual(s.steps.map(x => x.select), ['s', 'd', 'e']);
+    if (chain) assert.deepEqual(s.chapters[0].steps.map(x => x.select), Array.from({ length: q }, (_, i) => 'c' + i), 'the branch carries on through each connector of its label');
+    else assert.deepEqual(s.chapters, []);
+    U.storyFromFlow(fcAlike(10, chain), 'v'); // warm
+    const t1 = bestOf(() => U.storyFromFlow(fcAlike(q, chain), 'v')), t4 = bestOf(() => U.storyFromFlow(fcAlike(4 * q, chain), 'v'));
+    assert.ok(t4 <= 16 * t1 + 50, `${chain ? 'a branch through' : 'isolated'}: ${4 * q} connectors took ${t4.toFixed(0)} ms, ${q} took ${t1.toFixed(0)} ms`);
+  }
+});
+
+// audit 69: storyFromFlow on a typed view asks the type's flowRole once a line and reads each card's lines from an index:
+// before, each card's caption asked it of every line (through a merge of the whole model each time), cubic in the cards (a
+// 1,000-step flowchart took 25 s). A test type with a layout of its own that costs next to nothing, so the time is the story's
+import { registerDiagramType } from '../src/core/registry.js';
+import { storyFromFlow as storyFromFlowSrc } from '../src/map/stories.js';
+let rowRoles = 0;
+registerDiagramType('test.storyrow', { title: 'story row', flowRole: e => (rowRoles++, /^st/.test(e.to) ? 'dep' : 'branch'),
+  layout: ({ model, view }) => { const at = new Map(model.nodes.map(n => [n.id, n])), nodes = view.nodeIds.map((id, i) => ({ id, label: at.get(id).label, x: i * 200, y: /^st/.test(id) ? 200 : 0, w: 120, h: 50 }));
+    const byId = Object.fromEntries(nodes.map(n => [n.id, n])), edges = model.edges.map(e => ({ ...e, pts: [[byId[e.from].x + 120, 25], [byId[e.to].x, 25]] }));
+    return { nodes, edges, byId, families: [], width: nodes.length * 200, height: 300 }; } });
+const storyRow = n => { const nodes = [], edges = [];
+  for (let i = 0; i < n; i++) { nodes.push({ id: 'p' + i, label: 'Step ' + i }); if (i) edges.push({ id: 'f' + i, from: 'p' + (i - 1), to: 'p' + i, label: 'next' });
+    if (i % 2 === 0) { nodes.push({ id: 'st' + i, label: 'Store ' + i }); edges.push({ id: 'w' + i, from: 'p' + i, to: 'st' + i, label: 'writes' }); } }
+  return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'test.storyrow', nodeIds: nodes.map(x => x.id), edges: edges.map(e => e.id) }] }; };
+test('a typed view\'s story: four times the cards take at most a small multiple of the time, the type asked a few times a line (audit 69) (timed)', () => {
+  rowRoles = 0; const s = storyFromFlowSrc(storyRow(300), 'v');
+  assert.equal(s.steps.length, 300); assert.equal(s.steps[2].caption, '3. Next: Step 1 next Step 2; writes Store 2.');
+  assert.ok(rowRoles <= 10 * 450, `flowRole asked ${rowRoles} times for 450 lines`);
+  storyFromFlowSrc(storyRow(20), 'v'); // warm
+  const t1 = bestOf(() => storyFromFlowSrc(storyRow(300), 'v')), t4 = bestOf(() => storyFromFlowSrc(storyRow(1200), 'v'));
+  assert.ok(t4 <= 16 * t1 + 50, `1,200 steps took ${t4.toFixed(0)} ms, 300 took ${t1.toFixed(0)} ms`);
+});
+
+// audit 69: a cloud line's label names what goes along it on every cloud notation (the type's storyNouns), as GCP's did:
+// "Order queue: Shop API to Order queue (paid order)", never "Paid order: Shop API paid order Order queue"
+test('a cloud view\'s story reads a line label as what goes along the line, on AWS, Azure and GCP alike (audit 69)', () => {
+  const aws = U.storyFromFlow(read('./fixtures/bookshop-aws.json'), 'aws-on-aws').steps.map(x => x.caption);
+  assert.equal(aws[2], '3. Load balancer: CDN to Load balancer (/api).');
+  assert.equal(aws[4], '5. Order queue: Shop API to Order queue (paid order).');
+  const I = read('./fixtures/integration.json'), az = U.storyFromFlow(I, 'on-azure').steps.map(x => x.caption);
+  assert.equal(az[2], '3. Ride queue: Trip API to Ride queue (ended ride).');
+  assert.equal(az[4], '5. Secrets: Ride worker to Secrets (secrets).');
+  for (const [d, item, line] of [['aws', 'aws.Service', 'aws.Connection'], ['azure', 'azure.Service', 'azure.Connector'], ['gcp', 'gcp.Product', 'gcp.Path']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: item, label: 'Shop API' }, { id: 'b', type: item, label: 'Order queue' }], edges: [{ id: 'l', type: line, from: 'a', to: 'b', label: 'paid order' }],
+      views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['l'] }] };
+    assert.equal(U.storyFromFlow(m, 'v').steps[1].caption, '2. Order queue: Shop API to Order queue (paid order).', d); }
+});

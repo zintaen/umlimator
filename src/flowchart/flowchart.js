@@ -257,10 +257,12 @@ function fcZoneOf(x, model, view) {
 /* A story's reading of the view (storyFromFlow, audit 68): its start and end terminals, which the story is told from and to
    (the main flow the arranged picture draws, carried back to its start and on to its end, a data symbol's band and all), and
    each on-page connector pair as a link from the connector with no flow out to each of its label with no flow in, as fcIndex's
-   walk and the reachable rule follow it */
+   walk and the reachable rule follow it: one group a label ({ from, to }), never a pair for each two of them, which grew as
+   the square of the connectors of one label (audit 69) */
 function fcStoryOn(model, view) {
-  const I = fcIndex(model, view);
-  return { starts: I.starts, ends: I.ends, carry: I.ids.filter(id => I.pair(id) && !I.outs(id).length).flatMap(id => (I.carry.get(I.pair(id)) || []).filter(x => x !== id).map(x => [id, x])) };
+  const I = fcIndex(model, view), from = new Map();
+  I.ids.forEach(id => { const k = I.pair(id); if (k && !I.outs(id).length) { const l = from.get(k); if (l) l.push(id); else from.set(k, [id]); } });
+  return { starts: I.starts, ends: I.ends, carry: [...from].filter(([k]) => I.carry.has(k)).map(([k, f]) => ({ from: f, to: I.carry.get(k) })) };
 }
 
 /* ---- the type ---- */
