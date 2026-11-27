@@ -3,7 +3,7 @@
 // something reads "moves"; maps diff and walk as before.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import * as all from '../lib/umlimator-all.js';
 import * as core from '../lib/umlimator.js';
 
@@ -524,4 +524,17 @@ test('known gap of 0.45.0: a typed view\'s re-pointed line it stopped listing or
   const held = edit(C, x => { x.nodes.find(n => n.id === 'note-total').id = 'customer-orders~old'; x.edges.forEach(y => { if (y.from === 'note-total') y.from = 'customer-orders~old'; }); x.views.forEach(w => { w.nodeIds = w.nodeIds.map(i => i === 'note-total' ? 'customer-orders~old' : i); }); });
   const d2 = quiet(() => all.diff(held, edit(held, x => { x.edges.find(y => y.id === 'customer-orders').to = 'line'; x.views[0].edges = x.views[0].edges.filter(y => y !== 'customer-orders'); })));
   assert.deepEqual(twice(d2.model), []); assert.ok(d2.model.views[0].edges.some(x => x && x.id === 'customer-orders~old2'));
+});
+
+test('a typed model deleted (after null) keeps its schemaVersion and own fields, as one added does: its views draw typed (audit 73)', () => {
+  const typed = readdirSync(new URL('fixtures/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, load('tests/fixtures/' + f)]).filter(([, m]) => m.schemaVersion === 2);
+  assert.ok(typed.length > 10);
+  const own = x => Object.fromEntries(Object.entries(x).filter(([k]) => !['nodes', 'edges', 'views', 'rules', 'stories', 'lenses'].includes(k)));
+  for (const [f, m] of typed) {
+    const gone = all.diff(m, null), born = all.diff(null, m);
+    assert.equal(gone.model.schemaVersion, 2, f); assert.equal(born.model.schemaVersion, 2, f);
+    assert.deepEqual(own(gone.model), own(m), f);
+    assert.deepEqual(gone.model.views.map(v => v.diagram), m.views.map(v => v.diagram), f);
+    assert.ok(gone.model.nodes.every(n => n.change === 'removed'), f);
+  }
 });

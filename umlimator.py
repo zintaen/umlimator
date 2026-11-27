@@ -291,8 +291,12 @@ def no_git(what):
 def run(cmd, timeout=None, input=None):
     """A child process (Chrome, the engine, Node) in a session of its own, so that it and whatever it starts (Chrome's
     helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed."""
+    # UTF-8 both ways, whatever the locale: Node writes UTF-8, and a locale's code page (Latin-1, Windows' ANSI page) read
+    # its output as mojibake and could not encode a DBML file's letters (audit 73); a Python child (the engine) is told to
+    # write UTF-8 too. A byte that is no UTF-8 is replaced, never a traceback
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE if input is not None else None, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True, start_new_session=True)
+                         stderr=subprocess.PIPE, encoding="utf-8", errors="replace", start_new_session=True,
+                         env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     try:
         out, err = p.communicate(input, timeout=timeout)
     except BaseException:
@@ -789,7 +793,7 @@ def js(fn, *args, module=LIB):
     """One of the module's functions run in Node (for diff, drift, trace, the MCP server's read tools, and import's
     Mermaid class reader, an internal source), so the CLI and the module share one implementation."""
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
-    code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+    code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode:
@@ -814,7 +818,7 @@ def bpmn(fn, a, *args):
             f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
             "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
             f"const BpmnModdle = B, u = await import({json.dumps(adapter.as_uri())});"
-            "let s = ''; for await (const c of process.stdin) s += c; const a = JSON.parse(s);"
+            "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; const a = JSON.parse(s);"
             # export with no geometry given: the type's layout of the view (lib/umlimator-all.js), a pool's or lane's its band,
             # an expanded sub-process its frame, every other node its box, a line its points (notes/milestone-4b.md §12.3, 4b.5)
             f"if ({json.dumps(fn)} === 'writeBpmnXml' && a[2] == null) {{ const g = (await import({json.dumps((HERE / 'lib' / 'umlimator-all.js').as_uri())})).layout(a[0], a[1]), at = new Map();"
@@ -1929,7 +1933,7 @@ def cmd_import(a):
                     "const req = createRequire(process.cwd() + '/'); let at; try { at = req.resolve('@dbml/core') } catch { process.stdout.write('null'); process.exit(0) }"
                     "let P; try { P = req(at).Parser; if (typeof (P && P.parse) !== 'function') throw new Error('it has no Parser.parse') }"
                     " catch (e) { process.stdout.write(JSON.stringify({ broken: at, why: String(e && e.message || e) })); process.exit(0) }"
-                    "let s = ''; for await (const c of process.stdin) s += c; let db;"
+                    "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; let db;"
                     "try { db = P.parse(s, 'dbmlv2') } catch (e) { process.stdout.write(JSON.stringify({ diags: (Array.isArray(e && e.diags) ? e.diags : [e])"
                     ".map(d => [d && d.location && d.location.start ? d.location.start.line : null, String(d && d.message || d)]) })); process.exit(0) }"
                     "process.stdout.write(JSON.stringify(readDbml(db)));")

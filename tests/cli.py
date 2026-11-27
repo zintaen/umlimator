@@ -1208,6 +1208,29 @@ with tempfile.TemporaryDirectory() as tmp:
             ok(f"diff --base, as the Action runs it (C10, M3.7) · {f}: what changed in words, its view, a page and a still",
                x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-m3-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
                and f"- {said}" in md, x)
+        # audit 73: a pull request that deletes a typed model draws it as it was, removed, in its typed views: it lost its
+        # schemaVersion, so blocks were drawn as map cards and a sequence's interaction use failed ("an unknown end").
+        # Fixtures: a block definition model and a sequence with an interaction use
+        fx = lambda f: (ROOT / "tests" / "fixtures" / f"{f}.json").read_text(encoding="utf-8")
+        (d / "typed").mkdir(exist_ok=True); (d / "typed" / "blocks.json").write_text(fx("sysml-block-definition"), encoding="utf-8")
+        dgit("add", "typed"); dgit("commit", "-q", "-m", "a block model")
+        dgit("rm", "-q", "typed/blocks.json")
+        (d / "typed").mkdir(exist_ok=True); (d / "typed" / "sequence.json").write_text(fx("mcp-sequence"), encoding="utf-8")
+        dgit("add", "typed"); dgit("commit", "-q", "-m", "a typed model added, another deleted")
+        dgit("rm", "-q", "typed/sequence.json"); dgit("commit", "-q", "-m", "and deleted again")
+        # (--no-stable: the page then holds no model but the diff's, whose schemaVersion is checked)
+        # at the last commit: blocks deleted since HEAD~2, sequence since HEAD^1; at HEAD^1, sequence added
+        for at, base, f, view in (("HEAD", "HEAD~2", "blocks", "ebike-blocks"), ("HEAD", "HEAD^1", "sequence", "checkout"),
+                                  ("HEAD^1", "HEAD^1", "sequence", "checkout")):
+            if at != "HEAD":
+                dgit("checkout", "-q", at)
+            out = t / f"action-m3-gone-{f}-{at[-1]}"
+            x = {y["file"]: y for y in cli("diff", "--base", base, "--out", str(out), "--models", "typed/*.json", "--no-stable", cwd=d) or []}.get(f"typed/{f}.json", {})
+            page = out / f"typed-{f}.html"
+            body = page.read_text(encoding="utf-8") if page.is_file() else ""
+            ok(f"diff --base · a typed model {'added' if at != 'HEAD' else 'deleted'} ({f}) is drawn in its typed views, with a page and stills",
+               "error" not in x and view in (x.get("views") or []) and bool(x.get("stills")) and all(Path(s).is_file() for s in x["stills"])
+               and '"schemaVersion":2' in body.replace(" ", ""), x)
 
     # map-repo's CLI (C10): the skill writes maps only, and renders a typed model it is given, every type on main. Its
     # launcher runs a release from its cache; this checkout stands in for one (UMLIMATOR_REF, an empty UMLIMATOR_SHA)

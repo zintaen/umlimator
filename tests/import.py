@@ -1431,4 +1431,26 @@ with tempfile.TemporaryDirectory() as tmp:
        said == [True, True], r.stderr)
     r = dbml(stub, "shop.dbml", env=nonode)
     ok("without Node, a .dbml file's import says it needs Node", r.returncode == 1 and "is DBML" in r.stderr and "Node.js 18" in r.stderr, r.stderr)
+
+    # audit 73: the text goes to Node and back as UTF-8, whatever the locale and however the pipe cuts it. A stub parser
+    # keeps the text it was given; with LC_ALL=C (US-ASCII once Python is told not to coerce it, as a Latin-1 locale or
+    # Windows' ANSI page) the file's letters reached Node as a UnicodeEncodeError and Node's answer came back as mojibake
+    (core / "index.js").write_text("exports.Parser = { parse(s) { require('fs').writeFileSync('got.txt', s); throw new Error('stop'); } };\n", encoding="utf-8")
+    ascii_locale = dict(__import__("os").environ, LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0")
+    said = []
+    for name, text, env in (("vi.dbml", "Table người {\n  tên int\n}\n", ascii_locale),
+                            # over 64 KiB of two- and three-byte letters: a pipe's chunk cuts some letter in two, which Node
+                            # read as two U+FFFD when it appended each chunk to the text by itself
+                            ("long.dbml", "".join(f"Table bảng_khách_{i} {{\n  // ghi chú: Khách hàng {'ả' * 40}\n  id int\n}}\n" for i in range(3000)), None)):
+        (stub / name).write_text(text, encoding="utf-8")
+        (stub / "got.txt").unlink(missing_ok=True)
+        r = dbml(stub, name, **({"env": env} if env else {}))
+        said.append((stub / "got.txt").is_file() and (stub / "got.txt").read_text(encoding="utf-8") == text and "Traceback" not in r.stderr)
+    ok(".dbml · the parser is given the file's text as it is: under a locale that is no UTF-8, and over 64 KiB of letters", said == [True, True], said)
+    (t / "vi.mmd").write_text("classDiagram\nclass Khách\nKhách : +string tên\n", encoding="utf-8")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(t / "vi.mmd"), "--out", str(t / "vi.json")],
+                       capture_output=True, text=True, env=ascii_locale)
+    said, m = typed(r, t / "vi.json")
+    ok("a typed source read in Node (a classDiagram) keeps its letters under a locale that is no UTF-8",
+       [n.get("label") for n in m["nodes"]] == ["Khách"] and "tên" in json.dumps(m, ensure_ascii=False), r.stdout + r.stderr)
 sys.exit(1 if failed else 0)

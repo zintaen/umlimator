@@ -214,7 +214,7 @@ def element_counts(m):
     if counted[0] == at:
         return counted[1]
     code = (f"import {{ layout }} from {json.dumps(cli.LIB.as_uri())}; import {{ elementCount }} from {json.dumps(pieces.as_uri())};"
-            "let s = ''; for await (const c of process.stdin) s += c; const [m, ids] = JSON.parse(s), out = {};"
+            "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; const [m, ids] = JSON.parse(s), out = {};"
             "for (const id of ids) { try { out[id] = elementCount(m.views.find(v => v && v.id === id), layout(m, id)); } catch { out[id] = null; } }"
             "process.stdout.write(JSON.stringify(out));")
     r = cli.run([node_bin, "--input-type=module", "-e", code], input=json.dumps([m, typed]))
@@ -710,7 +710,7 @@ def script(body, *args):
     nodejs = cli.shutil.which("node")
     if not nodejs:
         raise Fail("this tool needs Node.js 18 or later: it runs the module's own functions")
-    code = (f"import * as u from {json.dumps(cli.LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+    code = (f"import * as u from {json.dumps(cli.LIB.as_uri())}; let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c;"
             f"const a = JSON.parse(s); process.stdout.write(JSON.stringify((() => {{ {body} }})()));")
     r = cli.run([nodejs, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode:
