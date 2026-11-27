@@ -27,7 +27,7 @@ const V = D.versions.map(v => ({ ...v, model: { ...v.model, icons: { ...D.icons,
 const $ = id => document.getElementById(id), at = $('at'), marks = $('marks'), play = $('play');
 let i = V.length - 1, timer = null;
 at.max = i;
-const map = render($('map'), V[i].model, { stableLayout: false }); // each version drawn as its own page would draw it
+const map = render($('map'), V[i].model, { stableLayout: false, images: 'local' }); // each version drawn as its own page would draw it
 function show(k) {
   i = k; at.value = k;
   const d = k ? diff(V[k - 1].model, V[k].model) : null, s = d ? d.summary : [];

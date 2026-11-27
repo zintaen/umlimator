@@ -2200,6 +2200,26 @@ if part("audit 33"):
            and "icons" not in base and "avatar" not in base.get("authors", {}).get("octo", {}) and far not in tag.group(1)
            and "SECRET" not in page and "hunter2" not in page and far not in page,
            (rb.stderr[-300:], sorted(base) if isinstance(base, dict) else "no #umlimator-base script", [m.start() for m in re.finditer(re.escape(far), page)][:5]))
+        # audit bh1: with_base read the base's intake logos from the folder of --out, not the before model's, so a before model
+        # naming private/secret.svg inlined any SVG file under the page's folder into #umlimator-base, unsaid. Now its logos are
+        # read from its own folder, as the page's are: one there is embedded, one only beside the page is left out
+        (g / "bh1" / "models").mkdir(parents=True); (g / "bh1" / "out" / "private").mkdir(parents=True)
+        (g / "bh1" / "models" / "own.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><!-- OWN-BH1 --></svg>')
+        (g / "bh1" / "out" / "private" / "secret.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><!-- SECRET-BH1 --></svg>')
+        lm = lambda extra: {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}] + extra, "edges": [{"from": "a", "to": "b"}],
+                            "views": [{"id": "v", "nodeIds": ["a", "b"] + [x["id"] for x in extra],
+                                       "intake": [{"label": "in", "to": "a", "logo": "private/secret.svg"}, {"label": "own", "to": "b", "logo": "own.svg"}]}]}
+        (g / "bh1" / "models" / "before.json").write_text(json.dumps(lm([])))
+        (g / "bh1" / "models" / "after.json").write_text(json.dumps(lm([{"id": "c", "label": "C"}])))
+        rl = run("diff", "models/before.json", "models/after.json", "--out", "out/page.html", cwd=g / "bh1")
+        page = (g / "bh1" / "out" / "page.html").read_text(encoding="utf-8") if (g / "bh1" / "out" / "page.html").is_file() else ""
+        tag = re.search(r'<script id="umlimator-base" type="application/json">(.*?)</script>', page, re.S)
+        logos = [x.get("logo", "") for v in json.loads(tag.group(1).replace("<\\/", "</")).get("views", []) for x in v.get("intake") or []] if tag else []
+        said = [__import__("base64").b64decode(x.split(",", 1)[1]) for x in logos if x.startswith("data:image/svg+xml;base64,")]
+        ok("diff's stable page: the base model's intake logos are read from the before model's own folder, never from the page's (audit bh1)",
+           rl.returncode == 0 and len(logos) == 2 and len(said) == 1 and b"OWN-BH1" in said[0] and "SECRET-BH1" not in page
+           and not any(b"SECRET-BH1" in __import__("base64").b64decode(m) for m in re.findall(r"base64,([A-Za-z0-9+/=]+)", page)),
+           (rl.returncode, rl.stderr[-300:], logos[:2], said))
 if part("audit 34"):
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
