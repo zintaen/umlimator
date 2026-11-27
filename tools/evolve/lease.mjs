@@ -117,10 +117,10 @@ export function check(file, owner, { now = new Date() } = {}) {
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const { flags, rest } = parseArgs(argv), cmd = rest[0];
-  const owner = typeof flags.owner === 'string' ? flags.owner : undefined;
   let r;
   try {
+    const { flags, rest } = parseArgs(argv, [], ['owner', 'ttl', 'now', 'file']), cmd = rest[0];
+    const owner = typeof flags.owner === 'string' ? flags.owner : undefined;
     const file = leasePath(flags), now = instant(flags.now), ttl = duration(flags.ttl, TTL);
     if (cmd === 'take') r = take(file, owner, { now, ttl });
     else if (cmd === 'renew') r = renew(file, owner, { now, ttl });

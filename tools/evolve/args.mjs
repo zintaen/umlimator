@@ -2,16 +2,29 @@
 // No dependency.
 
 // --name value, --name=value and --flag (true); everything else is positional. A flag named in booleans never takes the
-// next argument as its value, so `--json <folder>` leaves the folder positional (audit 67)
-export function parseArgs(argv, booleans = []) {
+// next argument as its value, so `--json <folder>` leaves the folder positional (audit 67). Given `values` (the flags that
+// take a value), the parse is strict (audit 72): a flag named in neither list, a value flag with no value or an empty one
+// (`--file`, `--file=`), or a boolean given a value (`--json=yes`) throws, so a mistyped `--fille STOP` is a usage error
+// and never read as no option at all
+export function parseArgs(argv, booleans = [], values) {
   const flags = {}, rest = [];
+  const strict = Array.isArray(values), bad = why => { throw new Error(why); };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) { rest.push(a); continue; }
-    const eq = a.indexOf('=');
-    if (eq > 0) { flags[a.slice(2, eq)] = a.slice(eq + 1); continue; }
-    const name = a.slice(2), next = argv[i + 1];
-    if (next !== undefined && !next.startsWith('--') && !booleans.includes(name)) { flags[name] = next; i++; } else flags[name] = true;
+    const eq = a.indexOf('='), name = eq > 0 ? a.slice(2, eq) : a.slice(2);
+    if (strict && !booleans.includes(name) && !values.includes(name)) bad(`unknown option ${eq > 0 ? a.slice(0, eq) : a}`);
+    if (eq > 0) {
+      if (strict && booleans.includes(name)) bad(`--${name} takes no value`);
+      if (strict && eq === a.length - 1) bad(`--${name} needs a value`);
+      flags[name] = a.slice(eq + 1); continue;
+    }
+    const next = argv[i + 1];
+    if (next !== undefined && !next.startsWith('--') && !booleans.includes(name)) {
+      if (strict && next === '') bad(`--${name} needs a value`);
+      flags[name] = next; i++;
+    } else if (strict && !booleans.includes(name)) bad(`--${name} needs a value`);
+    else flags[name] = true;
   }
   return { flags, rest };
 }

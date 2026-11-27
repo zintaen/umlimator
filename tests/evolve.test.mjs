@@ -254,6 +254,43 @@ function digestFixture() {
   return { d, audits };
 }
 
+test('every tools/evolve command refuses an option it does not know, an option with no value and a value given to a switch, with exit 2: the kill switch never reads a mistyped --file as no file (audit 72)', (t) => {
+  const dir = tmp(); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, 'STOP'), 'stop now\n');
+  const STOP = join(dir, 'STOP'), lf = join(dir, 'lease.json');
+  assert.equal(node('killswitch.mjs', ['--file', STOP]).status, 1, 'set: the session stops');
+  for (const args of [['--fille', STOP], ['--file='], ['--file', ''], ['--file'], ['--file', STOP, '--verbose'], ['--ref='], ['--repo', '.', '--ref'], ['--Ref', 'origin/main']]) {
+    const r = node('killswitch.mjs', args, { cwd: dir });
+    assert.equal(r.status, 2, `killswitch ${args.join(' ')}: ${r.stdout}`);
+    assert.match(r.stdout, /^killswitch: (unknown option --\w+|--\w+ needs a value)\nusage: killswitch\.mjs/, args.join(' '));
+  }
+  // the lease: a mistyped --file read .evolve/lease.json in the working folder and said the lease was free
+  for (const args of [['check', '--fiel', lf], ['take', '--owner', 'A', '--file='], ['take', '--owner='], ['check', '--now'], ['renew', '--owner', 'A', '--tll', '5m']]) {
+    const r = node('lease.mjs', args, { cwd: dir });
+    assert.equal(r.status, 2, `lease ${args.join(' ')}: ${r.stdout}`);
+    assert.match(r.stderr, /^lease: (unknown option|--\w+ needs a value)/, args.join(' '));
+  }
+  assert.equal(node('lease.mjs', ['take', '--owner', 'A', '--file', lf, '--now', '2026-01-01T00:00:00Z'], { cwd: dir }).status, 0, 'the options it knows still work');
+  // the others: the ledger, the digest, the fuzz run, the tune loop and the strategy sync
+  const bad = [['ledger.mjs', [dir, '--windw', '3']], ['ledger.mjs', [dir, '--json=yes']], ['digest.mjs', ['--audit', dir]], ['digest.mjs', ['--audits', dir, '--out=']],
+    ['fuzz.mjs', ['--lst']], ['fuzz.mjs', ['--list=1']], ['tune-loop.mjs', ['check', '--candidat', 'x']], ['tune-loop.mjs', ['run', '--owner', 'A', '--restart=no']],
+    ['strategy-sync.mjs', ['check', '--dryrun']], ['strategy-sync.mjs', ['check', '--pinned=']]];
+  for (const [tool, args] of bad) {
+    const r = node(tool, args, { cwd: dir, env: { ...process.env, GH_TOKEN: '' } });
+    assert.equal(r.status, 2, `${tool} ${args.join(' ')}: ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout + r.stderr, /unknown option --[\w-]+|--[\w-]+ needs a value|--[\w-]+ takes no value/, `${tool} ${args.join(' ')}`);
+  }
+  // the parser itself, given the flags that take a value
+  assert.deepEqual(parseArgs(['a', '--x', '1', '--y=2', '--z'], ['z'], ['x', 'y']), { flags: { x: '1', y: '2', z: true }, rest: ['a'] });
+  assert.throws(() => parseArgs(['--fille', 'S'], [], ['file']), /^Error: unknown option --fille$/);
+  assert.throws(() => parseArgs(['--fille=S'], [], ['file']), /^Error: unknown option --fille$/);
+  assert.throws(() => parseArgs(['--file='], [], ['file']), /^Error: --file needs a value$/);
+  assert.throws(() => parseArgs(['--file', ''], [], ['file']), /^Error: --file needs a value$/);
+  assert.throws(() => parseArgs(['--file', '--ref', 'x'], [], ['file', 'ref']), /^Error: --file needs a value$/);
+  assert.throws(() => parseArgs(['--json=yes'], ['json'], []), /^Error: --json takes no value$/);
+  assert.throws(() => parseArgs(['--'], [], []), /^Error: unknown option --$/);
+});
+
 // ---------- run through a symbolic link ----------
 
 test('the tools run as scripts through a path holding a symbolic link: the kill switch stops, the lease is taken, protect fails a missing root (audit 70)', (t) => {
