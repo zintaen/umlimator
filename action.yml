@@ -5,7 +5,7 @@
 #   concurrency: { group: "maps-${{ github.event.pull_request.number }}", cancel-in-progress: true }   # one run per pull request
 #   steps:
 #     - uses: actions/checkout@v4
-#     - uses: zintaen/umlimator@v0.45.0
+#     - uses: zintaen/umlimator@v0.46.0
 #       with:
 #         models: "docs/*.json"   # optional: git pathspecs of the model files (default: every .json that is a map model)
 #         stable: "false"         # optional: draw each model fresh (default "true": against its base version, so untouched cards keep their places)
