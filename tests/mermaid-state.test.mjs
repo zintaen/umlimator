@@ -564,27 +564,3 @@ test('audit 75: of two final states (or initials) one scope could write as [*], 
     assert.deepEqual(back.split('\n').filter(l => l.includes('[*]')).sort(), first.split('\n').filter(l => l.includes('[*]')).sort());
   }
 });
-
-// audit 78: a node written as [*] (an initial pseudostate, a final state) never went through writeNode, so its ext went with no
-// word; nor was a note's line checked beyond its ends, so its label, props and ext went too. Each is named now, and a field
-// the text does carry still reads back
-test('audit 78: what a [*] node or a note\'s line carries that Mermaid has no place for is named in a "%% not written" line, never dropped silently', () => {
-  const ex = JSON.parse(readFileSync(new URL('../examples/types/uml-state-machine.json', import.meta.url))), vid = 'order-life';
-  const get = (m, id) => m.nodes.find(n => n.id === id) || m.edges.find(e => e.id === id);
-  const lost = t => t.split('\n').filter(l => l.trim().startsWith('%% not written: ')).map(l => l.trim().slice(16));
-  const base = lost(write(ex, vid));
-  const fresh = m => lost(write(m, vid)).filter(l => !base.includes(l));
-  const cases = [['created', { ext: { tool: { a: 1 } } }, ['created: ext']], ['delivered', { ext: { tool: { a: 1 } } }, ['delivered: ext']],
-    ['created', { ext: { mermaid: { label: 'x' } } }, ['created: ext']], ['delivered', { sublabel: 's' }, ['delivered: sublabel']],
-    ['hold-note-link', { label: 'see this' }, ['hold-note-link: label']], ['hold-note-link', { props: { k: 1 } }, ['hold-note-link: props']],
-    ['hold-note-link', { ext: { tool: 1 } }, ['hold-note-link: ext']], ['hold-note-link', { style: { color: 'red' }, parent: 'x' }, ['hold-note-link: style', 'hold-note-link: parent']]];
-  for (const [id, more, want] of cases) { const m = structuredClone(ex); Object.assign(get(m, id), more);
-    assert.deepEqual(fresh(m), want, `${id} ${JSON.stringify(more)}`); }
-  // all at once, beside a state's ext (said before), and the text still reads back to the same states, lines and note
-  const m = structuredClone(ex); cases.forEach(([id, more]) => Object.assign(get(m, id), structuredClone(more))); get(m, 'placed').ext = { tool: 1 };
-  const t = write(m, vid), r = read(t);
-  assert.deepEqual(lost(t).filter(l => !base.includes(l)).sort(), [...new Set([...cases.flatMap(c => c[2]), 'placed: ext'])].sort());
-  assert.ok(get(r.model, 'created') && get(r.model, 'delivered') && get(r.model, 'hold-note-link'), 'read back');
-  // the shipped example says nothing new: its [*] and its note's line carry nothing more
-  assert.deepEqual(base.filter(l => /^(created|delivered|hold-note-link):/.test(l)), []);
-});

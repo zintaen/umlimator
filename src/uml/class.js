@@ -282,7 +282,6 @@ const realizer = (at, id) => { const r = at.get(id), t = !r ? undefined : r.kind
   return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class'].includes(r.owner.type || 'uml.Class') : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
 const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 const nameOfEl = elName;
-const styKey = s => s.charAt(0).toLowerCase() + s.slice(1); // names meet with the first letter in either case (§5.3): Entity is «entity»; the profile rules' and the owner hooks' one key
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 /* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
    classifier shows its compartments; kinds: whether another UML kind (a component, an actor, a node) shown here is drawn
@@ -747,18 +746,14 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
 function clashes(model, view, id) {
   const at = new Map(); UML_ARR(model && model.nodes).forEach(n => { if (UML_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const x = at.get(id); if (!x) return () => null;
-  // an element of no type a class, package or profile view shows is a class there (classProblems' tyOf); an object view's, an instance
-  const shown = new Set(UML_OBJ(view) && /^uml\.(class|package|profile)$/.test(view.diagram) ? UML_ARR(view.nodeIds) : []), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type), nm = nameOfEl(x);
+  // an element of no type a class or package view shows is a class there (classProblems' tyOf); an object view's, an instance
+  const shown = new Set(UML_OBJ(view) && /^uml\.(class|package)$/.test(view.diagram) ? UML_ARR(view.nodeIds) : []), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type), nm = nameOfEl(x);
   const cl = CLASSIFIERS.includes(ty(x)), pk = OWN_BOXES.includes(x.type); if (!cl && !pk) return () => null;
-  // a stereotype meets one in a profile with the first letter in either case, as rule stereotype-names keys them (audit 78)
-  const by = new Map(), sty = new Set(), key = x.type === 'uml.Stereotype' ? styKey(nm) : null;
-  at.forEach(n => { if (n === x) return; if (key != null && n.type === 'uml.Stereotype' && styKey(nameOfEl(n)) === key) sty.add(n.parent ?? null);
-    if (nameOfEl(n) === nm && (cl ? CLASSIFIERS.includes(ty(n)) : OWN_BOXES.includes(n.type) && (x.type === 'uml.Package' || n.type === 'uml.Package'))) by.set(n.parent ?? null, true); });
-  return parent => { const p = parent ?? null; if ((x.parent ?? null) === p) return null; const pn = p != null && at.has(p) ? nameOfEl(at.get(p)) : 'The model';
-    if (sty.has(p) && at.has(p) && at.get(p).type === 'uml.Profile') return `${pn} has a stereotype ${key} already: names meet with the first letter in either case`;
-    return by.has(p) ? `${pn} has a ${cl ? 'classifier' : 'package'} named ${nm} already` : null; };
+  const by = new Map(); at.forEach(n => { if (n !== x && nameOfEl(n) === nm && (cl ? CLASSIFIERS.includes(ty(n)) : OWN_BOXES.includes(n.type) && (x.type === 'uml.Package' || n.type === 'uml.Package'))) by.set(n.parent ?? null, true); });
+  return parent => { const p = parent ?? null; if ((x.parent ?? null) === p || !by.has(p)) return null;
+    return `${p != null && at.has(p) ? nameOfEl(at.get(p)) : 'The model'} has a ${cl ? 'classifier' : 'package'} named ${nm} already`; };
 }
 function classOwner(model, view, id, parent) { const d = defOwner(model, view, id, parent); if (d) return d; const c = clashes(model, view, id)(parent); return c ? { error: c } : null; }
 function classOwners(model, x, view) { const os = ownerChoices(model, x); if (!Array.isArray(os)) return os; const c = clashes(model, view, x.id); return os.filter(o => !c(o.id)); }
 
-export { classOwner, classOwners, clashes, styKey, CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines, tieDraw, tiePath, TIE_CELLS, TIE_WORK };
+export { classOwner, classOwners, CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines, tieDraw, tiePath, TIE_CELLS, TIE_WORK };

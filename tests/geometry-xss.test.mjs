@@ -98,29 +98,3 @@ test('audit 77: a huge finite w or h (1e308) lays out, held at CARD_MAX, and val
     const c = mapContext(mm);
     for (const v of mm.views) { let out; assert.doesNotThrow(() => { out = c.buildView(v.id); }, `${key} ${P}, view ${v.id}`); assert.ok(out && out.markup, `${key} ${P}, view ${v.id}`); } }
 });
-
-// audit 78: audit 77's warning said "drawn as 100000" of a map card's h and a typed card's w and h, which the drawing never uses
-// (a map card's height is the layout's, a typed card's size its type's). It is said of a w a map view draws only: the card's own
-// on a map view, or a map view's override
-test('audit 78: validate() says a w over CARD_MAX is held only where a map draws it, and nothing of a map card\'s h or a typed card\'s size', async () => {
-  const { layout } = await import('../src/map/api.js');
-  const { validate } = await import('../src/map/validate.js');
-  const { CARD_MAX } = await import('../src/layout/layered.js');
-  await import('../src/map/typed.js'); await import('../src/uml/class.js');
-  const big = 2 * CARD_MAX, said = m => validate(m).filter(p => /\.(w|h)$/.test(p.path)).map(p => `${p.path}: ${p.message}`);
-  const map = { schemaVersion: 2, nodes: [{ id: 'a', h: big }, { id: 'b', w: big }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
-  assert.notEqual(layout(map, 'v').nodes.find(n => n.id === 'a').h, CARD_MAX, 'a map card\'s h is the layout\'s');
-  assert.deepEqual(said(map), [`nodes[1].w: w ${big} is over ${CARD_MAX} px: drawn as ${CARD_MAX}`]);
-  const cls = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A', w: big, h: big }, { id: 'b', type: 'uml.Class', label: 'B' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
-  const a = layout(cls, 'v').nodes.find(n => n.id === 'a');
-  assert.ok(a.w < CARD_MAX && a.h < CARD_MAX, 'a typed card is sized by its type');
-  assert.deepEqual(said(cls), []);
-  // the same card on a map view too: its w is drawn there, and said
-  const both = structuredClone(cls); both.views.push({ id: 'm', diagram: 'map', nodeIds: ['a', 'b'] });
-  assert.deepEqual(said(both), [`nodes[0].w: w ${big} is over ${CARD_MAX} px: drawn as ${CARD_MAX}`]);
-  // a map view's override, and a map card in no view (drawn nowhere)
-  const ov = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c', w: big }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'], nodeOverrides: { a: { w: big, h: big } } }] };
-  assert.deepEqual(said(ov), [`views[0].nodeOverrides.a.w: w ${big} is over ${CARD_MAX} px: drawn as ${CARD_MAX}`]);
-  // a version-1 model: every view a map
-  assert.deepEqual(said({ nodes: [{ id: 'a', w: big, h: big }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] }), [`nodes[0].w: w ${big} is over ${CARD_MAX} px: drawn as ${CARD_MAX}`]);
-});

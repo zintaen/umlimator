@@ -189,9 +189,7 @@ function portsDrawn(g, ports, held0 = null) {
   // narrows the gaps down to 4 px (§4.4, step 3), and what still does not fit is held at the span's start, marked over
   [...new Set(list.filter(p => !at.has(p.id)).map(p => p.owner + '|' + p.side))].forEach(key => {
     const mine = list.filter(p => !at.has(p.id) && p.owner + '|' + p.side === key), o = owner(mine[0].owner), s = mine[0].side, v = s === 'L' || s === 'R', held = boxesOn(mine[0].owner, s);
-    // a port that keeps clear of its owner's header (p.clear: px from its left, on its top; a SysML frame's tag, audit 78)
-    const cl = s === 'T' ? Math.max(0, ...mine.map(p => (Number.isFinite(p.clear) ? p.clear : 0))) : 0;
-    const [a, b] = isBox(mine[0].owner) ? (v ? [o.y + 40, o.y + o.h - 16] : [Math.max(o.x + 20, o.x + cl), o.x + o.w - 20]) : (v ? [o.y + 8, o.y + o.h - 8] : [Math.max(o.x + 8, o.x + cl), o.x + o.w - 8]);
+    const [a, b] = isBox(mine[0].owner) ? (v ? [o.y + 40, o.y + o.h - 16] : [o.x + 20, o.x + o.w - 20]) : (v ? [o.y + 8, o.y + o.h - 8] : [o.x + 8, o.x + o.w - 8]);
     const end = r => (v ? r.y + r.h : r.x + r.w);
     let ts = [];
     for (let gap = 8; gap >= 4; gap--) { const d = 12 + gap, m = 6 + gap, hit = t => held.find(r => { const lo = v ? r.y : r.x, hi = lo + (v ? r.h : r.w); return t + m > lo + .01 && t - m < hi - .01; });

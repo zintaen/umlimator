@@ -463,16 +463,3 @@ test('the subject\'s row lists an unnamed typed property as drawn, ": RangeEq", 
   }
   assert.deepEqual(T.rows(base, base.views[0], 'bike'), ['energy : Real', 'range : Real', 'eq : RangeEq']);
 });
-
-// audit 78: a constraint block with parameters and no constraint property (its frame a card): a parameter with no line moved to
-// the frame's top by Alt + Up sat on the SysML tag. It sits right of it now, the frame growing for it, right and down
-test('audit 78: a parameter with no line on the frame\'s top sits right of the SysML header, right and down', () => {
-  for (const dir of ['right', 'down']) for (const n of [1, 2]) {
-    const ps = ['d', 'e', 'f'].slice(0, n + 1).map(l => ({ id: `eq.${l}`, type: 'sysml.ConstraintParameter', label: l, props: { valueType: 'Real' } }));
-    let m = { schemaVersion: 2, nodes: [{ id: 'eq', type: 'sysml.ConstraintBlock', label: 'Range', members: ps }], views: [{ id: 'v', diagram: 'sysml.parametric', title: 'Range equation', subject: 'eq', nodeIds: ['eq'], direction: dir }] };
-    for (const p of ps.slice(0, n)) { const r = T.edits.moveTo(m, m.views[0], p.id, { by: [0, -1], geo: layout(m, 'v') }); m = apply(m, Array.isArray(r) ? r : r.commands); }
-    const g = layout(m, 'v'), F = g.families.find(f => f.shape === 'sysml-frame'), top = g.nodes.filter(x => x.owner === 'eq' && x.side === 'T'), k = `${dir}, ${n}`;
-    assert.equal(top.length, n, k);
-    top.forEach(x => { assert.ok(x.x > tagEnd(F), `${k}: ${x.id} at ${x.x}, the tag ends at ${tagEnd(F)}`); assert.ok(x.x + x.w <= F.x + F.w, `${k}: ${x.id} past the frame`); });
-    assert.deepEqual(check(m, 'v'), [], k); }
-});

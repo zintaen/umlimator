@@ -1,8 +1,8 @@
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASSIFIERS, classOwner, classOwners, closesCycle, commentConnect, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
-import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
+import { CLASSIFIERS, closesCycle, commentConnect, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
+import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, defOwner, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
@@ -206,10 +206,16 @@ function prClash(model, view, id, label) {
   return null;
 }
 // the owner hook (a drop into a box, the Owner field): a stereotype or a metaclass to a profile only (defOwner), and a classifier
-// moved to an owner whose kin holds its name refused in the rules' words, as an add and a rename are (audit 45): the class view's
-// classOwner, whose one clash check keys a stereotype in a profile as rule stereotype-names does; the Owner field leaves those
-// owners out (classOwners, audit 78). Null: the default
-const prOwner = classOwner;
+// moved to an owner whose kin holds its name refused in prClash's words, as an add and a rename are (audit 45). Null: the default
+function prOwner(model, view, id, parent) {
+  const d = defOwner(model, view, id, parent); if (d) return d;
+  const I = prIndex(model), x = I.at.get(id), p = parent ?? null; if (!x || (x.parent ?? null) === p) return null;
+  const shown = new Set(PR_ARR(view && view.nodeIds)), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type); if (!CLASSIFIERS.includes(ty(x))) return null;
+  const nm = prName(x), kin = PR_ARR(model.nodes).filter(n => PR_OBJ(n) && n !== x && I.at.get(n.id) === n && (n.parent ?? null) === p), pn = p != null && I.at.has(p) ? prName(I.at.get(p)) : 'The model';
+  if (x.type === 'uml.Stereotype' && I.ty(p) === 'uml.Profile' && kin.some(n => n.type === 'uml.Stereotype' && styKey(prName(n)) === styKey(nm)))
+    return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
+  return kin.some(n => CLASSIFIERS.includes(ty(n)) && prName(n) === nm) ? { error: `${pn} has a classifier named ${nm} already` } : null;
+}
 const prLineRename = lineRename(lineLabel);
 const prRename = (model, view, id, text) => prClash(model, view, id, text) ?? prLineRename(model, view, id, text);
 const prField = (model, view, id, path, value) => (String(path) === 'label' ? prClash(model, view, id, value) : null); // the Name field
@@ -239,7 +245,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization' || e.type === 'uml.Extension',
   layout: prGeo,
   boxes: (model, view) => { const pic = ownersOn(model, view); return pic.boxes.map(b => prBox(b, model, pic)); },
-  owners: classOwners,
+  owners: ownerChoices,
   // a stereotype's rows are its tag definitions, in the class type's member syntax; an enumeration's its literals
   // (audit 19): a stereotype takes no operation, which this view would never draw, name or print
   member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration',

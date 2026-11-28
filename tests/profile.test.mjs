@@ -680,21 +680,3 @@ test('audit 68: a second application of a profile a package applies already coun
   viewOf(own).edges = [L('own-app', 'ProfileApplication', 'sales', 'conventions')];
   assert.deepEqual(T.edits.connect(own, viewOf(own), 'sales', 'conventions', null, { type: 'uml.ProfileApplication' }), { error: 'sales applies BookshopConventions already' });
 });
-
-test('audit 78: a class, package or profile view refuses a stereotype into a profile holding one of its name in either first-letter case, as rule stereotype-names keys them, and its Owner field leaves that profile out', async () => {
-  await import('../src/uml/class.js');
-  const m = { schemaVersion: 2, nodes: [N('p1', 'Profile', 'Web'), N('p2', 'Profile', 'Data'), N('p3', 'Profile', 'Misc'), N('s1', 'Stereotype', 'Entity', 'p1'), N('s2', 'Stereotype', 'entity', 'p2'),
-    N('s3', 'Stereotype', 'Entity', 'p3'), N('s4', 'Stereotype', 'eNtity', 'p3')], edges: [],
-  views: ['uml.class', 'uml.package', 'uml.profile'].map(d => ({ id: d, diagram: d, nodeIds: ['p1', 'p2', 'p3', 's1', 's2', 's3', 's4'] })) };
-  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.rule);
-  assert.deepEqual(errs(m), []);
-  for (const v of m.views) { const D = diagramOf(v);
-    assert.deepEqual(D.edits.owner(m, v, 's2', 'p1'), { error: 'Web has a stereotype entity already: names meet with the first letter in either case' }, v.id);
-    assert.deepEqual(D.edits.owner(m, v, 's1', 'p2'), { error: 'Data has a stereotype entity already: names meet with the first letter in either case' }, v.id);
-    assert.deepEqual(D.edits.owner(m, v, 's2', 'p3'), { error: 'Misc has a stereotype entity already: names meet with the first letter in either case' }, `${v.id}: an exact name too`);
-    assert.equal(D.edits.owner(m, v, 's4', 'p1'), null, `${v.id}: eNtity is another name (only the first letter meets either case)`);
-    assert.deepEqual(D.owners(m, by(m, 's2'), v).map(o => o.id), ['p2'], v.id);
-    assert.deepEqual(D.owners(m, by(m, 's4'), v).map(o => o.id), ['p1', 'p2', 'p3'], v.id); }
-  assert.ok(errs(apply(m, [{ op: 'reparent', id: 's2', parent: 'p1' }])).includes('stereotype-names'), 'what the hook keeps away');
-  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 's4', parent: 'p1' }])), [], 'what it lets through');
-});

@@ -1,6 +1,6 @@
 import { jsonText, elName } from '../core/model.js';
 import { TYPED, aWord, diagramOf, drawnKind, kindWord } from '../core/registry.js';
-import { multBounds, styKey } from './class.js';
+import { multBounds } from './class.js';
 
 /* ---------- stereotypes applied across the model (work package 6.2, notes/stage-6.md §5) ----------
    A profile (uml.Profile) defines stereotypes (uml.Stereotype, their tag definitions uml.Property members) that extend
@@ -13,6 +13,7 @@ import { multBounds, styKey } from './class.js';
    appliedOf(model, id) is what the profile type and the PDF read. Only lib/umlimator-all.js holds this file. */
 
 const STY_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), STY_ARR = x => (Array.isArray(x) ? x : []);
+const styKey = s => s.charAt(0).toLowerCase() + s.slice(1); // names meet with the first letter in either case (§5.3): Entity is «entity»
 const styName = elName, styQ = x => JSON.stringify(styName(x));
 const STY_MARKED = /^\s*(?:«|<<)|(?:»|>>)\s*$/; // a name stored with the marks it is drawn in (stereotype-text, audit 47)
 

@@ -529,9 +529,6 @@ function writeMermaidState(model, viewId) {
       }
       Object.keys(c).filter(p => !['id', 'type', 'label', 'ext'].includes(p)).forEach(p => lose(c.id, p));
       lostExt(c, 'description');
-      // its line carries only its ends: anything else on it named too (audit 78: a label, props or ext went without a word)
-      Object.keys(link).filter(p => !['id', 'type', 'from', 'to', 'ext'].includes(p)).forEach(p => lose(link.id, p));
-      lostExt(link);
     }
   };
   // a key Mermaid has no place for on a state, a pseudostate, a region or an internal transition (opensView, what, change,
@@ -595,8 +592,7 @@ function writeMermaidState(model, viewId) {
     const lines = [], end = x => {
       const s = stars.get(x);
       if (!s) return names.get(x);
-      // a node written as [*] keeps no key or ext beyond its kind: named, as writeNode names a state's (audit 78)
-      if (!seenStar.has(x)) { seenStar.add(x); lostKeys(byId.get(x), NODE_KEYS); lostExt(byId.get(x)); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
+      if (!seenStar.has(x)) { seenStar.add(x); lostKeys(byId.get(x), NODE_KEYS); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
       return '[*]';
     };
     const a = end(t.from), b = end(t.to), h = idOf(t.id, mtId(`${t.from}-${t.to}`)), p = isObj(t.props) ? t.props : {};
