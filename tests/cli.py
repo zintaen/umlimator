@@ -2560,7 +2560,7 @@ if part("audit 54 tools"):
     # audit 54: the map-repo skill's pin moved to v0.43.0 and v0.44.0 with plugin.json kept at 0.1.15, so Claude Code offered no
     # update and installed skills ran the 0.42.0 pin; each pin is recorded here with the plugin version it shipped in, so a pin
     # move without a version bump fails until both are recorded
-    shipped = {"0.42.0-847d167": "0.1.15", "0.44.0-679af7d": "0.1.16", "0.45.0-ed90345": "0.1.17"}
+    shipped = {"0.42.0-847d167": "0.1.15", "0.44.0-679af7d": "0.1.16", "0.45.0-ed90345": "0.1.17", "0.46.0-48a7c23": "0.1.18"}
     launcher = (ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py").read_text(encoding="utf-8")
     pin = re.search(r'REF, SHA = "([^"]+)"', launcher).group(1)
     plugin = json.loads((ROOT / "plugins" / "umlimator" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]

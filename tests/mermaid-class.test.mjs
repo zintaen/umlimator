@@ -993,17 +993,16 @@ test('the class writer writes a carriage return as #13;, in a class, relation an
 });
 
 // audit 59: the class writer's #13; came after 0.44.0, so the 0.30.0 note keeps the three writers it shipped, and the
-// section of the release that ships it (package.json's version, 0.45.0) records the class writer
-test('docs/module-api.md records the class writer\'s #13; in the section of package.json\'s version or later, not in the 0.30.0 note (audit 59)', () => {
+// section of the release that shipped it (0.45.0) records the class writer
+test('docs/module-api.md records the class writer\'s #13; in the 0.45.0 section or later, not in the 0.30.0 note (audit 59)', () => {
   const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'a\rb' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A'] }] };
   assert.match(write(m), /a#13;b/, 'the class writer writes #13;');
   const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
   const section = h => doc.slice(at(h), doc.indexOf('\n## ', at(h) + 4) >>> 0 || undefined).replace(/\s+/g, ' ');
-  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
   assert.match(section('0.30.0:'), /the flowchart, state and sequence writers write a carriage return as `#13;`/);
-  // the record lives in the section of the release that ships it (0.45.0) or, on main past it, in a later section
-  assert.ok(at(version + ':') > 0, 'a section for package.json\'s version');
-  const after = doc.slice(at(version + ':')).replace(/\s+/g, ' ');
+  // the record lives in the section of the release that shipped it (0.45.0); 0.46.0 and later sections come after it
+  assert.ok(at('0.45.0:') > 0, 'a 0.45.0 section');
+  const after = doc.slice(at('0.45.0:')).replace(/\s+/g, ' ');
   assert.match(after, /The Mermaid class writer writes a carriage return in a class, relation, cardinality, note or namespace label as `#13;`/);
 });
 

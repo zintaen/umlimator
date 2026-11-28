@@ -18,12 +18,12 @@ One model drives an ES module with no dependencies, a CLI, a GitHub Action that 
 | | |
 |---|---|
 | npm | `npm install umlimator` |
-| CDN | `import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.45.0/lib/umlimator.js'` |
-| CLI | `git clone --depth 1 --branch v0.45.0 https://github.com/zintaen/umlimator.git` (Python 3.9+, Chrome for pictures) |
-| GitHub Action | `uses: zintaen/umlimator@v0.45.0` |
+| CDN | `import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.46.0/lib/umlimator.js'` |
+| CLI | `git clone --depth 1 --branch v0.46.0 https://github.com/zintaen/umlimator.git` (Python 3.9+, Chrome for pictures) |
+| GitHub Action | `uses: zintaen/umlimator@v0.46.0` |
 | MCP | `claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.json` |
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.45.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.46.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Quick start
