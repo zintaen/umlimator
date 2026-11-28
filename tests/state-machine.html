@@ -151,14 +151,19 @@ try {
   const ONE = structuredClone(BASE); ONE.nodes.find(n => n.id === 'delivery').members = [{ id: 'delivery.main', type: 'uml.Region' }];
   ONE.nodes.filter(n => n.parent === 'delivery').forEach(n => { n.parent = 'delivery.main'; });
   h.update(ONE);
-  const to = pick('.family[data-family="delivery"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="enquiry"] .n-mask'), at = [to.left + 30, to.bottom - 12];
-  ptr(pick('.node[data-id="enquiry"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
-  gives('a state dropped into a one-region state\'s box: reparent to its region (moveTo)', [{ op: 'reparent', id: 'enquiry', parent: 'delivery.main' }], m => m.nodes.find(n => n.id === 'enquiry').parent === 'delivery.main', ONE);
+  const to = pick('.family[data-family="delivery"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="cancelled"] .n-mask'), at = [to.left + 30, to.bottom - 12];
+  // cancelled, not enquiry: enquiry's transitions with In delivery would join it to a state that holds it (audit 77)
+  ptr(pick('.node[data-id="cancelled"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  gives('a state dropped into a one-region state\'s box: reparent to its region (moveTo)', [{ op: 'reparent', id: 'cancelled', parent: 'delivery.main' }], m => m.nodes.find(n => n.id === 'cancelled').parent === 'delivery.main', ONE);
   click('.node[data-id="cancelled"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
-  check('the Owner field: none, then each state and region by its name from the top', opts[0] === 'none' && opts.includes('Fulfilling / Parcel') && opts.includes('In delivery / delivery.main'), opts);
-  change(own, 'fulfilling.payment');
-  gives('Owner: reparent the state to a region', [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling.payment' }], m => m.nodes.find(n => n.id === 'cancelled').parent === 'fulfilling.payment', ONE, 0);
+  // audit 77: not Fulfilling's regions, where t-cancel (from Fulfilling) would join it to a state that holds it: not drawn
+  check('the Owner field: none, then each state and region by its name from the top, less the owners a move there would break', opts[0] === 'none' && opts.includes('In delivery / delivery.main') && !opts.some(o => o.startsWith('Fulfilling')), opts);
+  click('.node[data-id="enquiry"] .c-name');
+  const own2 = panel('[data-f="owner"]');
+  check('the Owner field of another state: Fulfilling\'s regions', [...own2.options].some(o => o.textContent === 'Fulfilling / Parcel'), [...own2.options].map(o => o.textContent));
+  change(own2, 'fulfilling.payment');
+  gives('Owner: reparent the state to a region', [{ op: 'reparent', id: 'enquiry', parent: 'fulfilling.payment' }], m => m.nodes.find(n => n.id === 'enquiry').parent === 'fulfilling.payment', ONE, 0);
   // hide, delete
   h.update(BASE); click('.node[data-id="enquiry"] .c-name'); key('Delete');
   gives('Delete: hide the state from the view', [{ op: 'hide', id: 'enquiry', view: 'order-life' }], m => !m.views[0].nodeIds.includes('enquiry'), BASE);

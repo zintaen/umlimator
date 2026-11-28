@@ -452,6 +452,19 @@ ok("edit · move_to_box refuses a container into no box or under a system the vi
    and c4_level == "FAIL move_to_box: An element is not listed with its owner unless that owner is the view's subject: DB would be listed with Bank in view \"Shop\"; nothing written"
    and isinstance(c4_ok, dict) and c4_ok.get("written") is True
    and cls_in == "FAIL move_to_box: Shop has a classifier named Order already; nothing written", [c4_none, c4_level, c4_ok, cls_in])
+# audit 77: a state machine move that brings an error, or stops a transition being drawn, is refused in the rule's words, as the
+# page's Owner field and drop are: an initial to the top, which has one; a state into a composite it has a transition to
+own_model("sm77.json", [{"id": "i", "type": "uml.Pseudostate", "props": {"kind": "initial"}}, {"id": "a", "type": "uml.State", "label": "A"},
+                        {"id": "c", "type": "uml.State", "label": "C"}, {"id": "ci", "type": "uml.Pseudostate", "parent": "c", "props": {"kind": "initial"}},
+                        {"id": "c1", "type": "uml.State", "label": "C1", "parent": "c"}, {"id": "z", "type": "uml.State", "label": "Z"}],
+          [{"id": "t0", "type": "uml.Transition", "from": "i", "to": "a"}, {"id": "t1", "type": "uml.Transition", "from": "a", "to": "c"},
+           {"id": "t2", "type": "uml.Transition", "from": "ci", "to": "c1"}],
+          {"id": "s", "diagram": "uml.state-machine", "nodeIds": ["i", "a", "c", "ci", "c1", "z"]})
+sm_init, sm_inner, sm_ok = ed("move_to_box", view="s", id="ci", box=None), ed("move_to_box", view="s", id="a", box="c"), ed("move_to_box", view="s", id="z", box="c")
+ok("edit · move_to_box refuses a state machine move that brings an error or a transition not drawn, in the rule's words (audit 77)",
+   isinstance(sm_init, str) and sm_init.startswith("FAIL move_to_box: initial-one: the top has 2 initial pseudostates")
+   and sm_inner == 'FAIL move_to_box: composite-inner: t1 joins "A" and "C", which one holds: it is not drawn; nothing written'
+   and isinstance(sm_ok, dict) and sm_ok.get("written") is True, [sm_init, sm_inner, sm_ok])
 # a map view: the commands a host would write (the edit demo page), boxes in the view's containers
 edit_on("map.json", ROOT / "tests" / "fixtures" / "integration.json")
 got = [ed("add_card", view="system", label="Billing", kind="backend", box="rides"), ed("connect", view="system", **{"from": "backend1", "to": "pricing"}, kind="sync", label="prices"),

@@ -6,7 +6,7 @@
 // keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -54,7 +54,7 @@ test('the definition: uml.state-machine with its palette (kinds and name: false)
   assert.deepEqual(T.props['uml.Pseudostate'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['initial', 'choice', 'junction', 'fork', 'join', 'shallowHistory', 'deepHistory', 'terminate'] });
   assert.deepEqual(T.props['uml.Transition'].map(f => f.key), ['trigger', 'guard', 'effect', 'stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'remove', 'rename']); // connect: a comment link (audit 46)
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'owner', 'remove', 'rename']); // connect: a comment link (audit 46); owner: the Owner field (audit 77)
   assert.deepEqual(['uml.State', 'uml.Pseudostate', 'uml.FinalState'].map(t => T.member.holds({ type: t })), [true, false, false]);
   assert.equal(Object.keys(T.rules).length, 19); // comment-link (audit 46)
 });
@@ -325,7 +325,9 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
   assert.equal(T.edits.moveTo(m, m.views[0], 'in-transit', { pt, geo: g }), null, 'already in it: a pin');
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [-500, -500], geo: g }), null, 'outside every box');
   const f = g.families.find(x => x.id === 'fulfilling.parcel');
-  assert.deepEqual(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [f.x + 4, f.y + 4], geo: g }), [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling.parcel' }, { op: 'set', view: 'order-life', path: ['layout', 'cancelled'], value: undefined }], 'into a region\'s own box: to it');
+  assert.deepEqual(T.edits.moveTo(m, m.views[0], 'delivered', { pt: [f.x + 4, f.y + 4], geo: g }), [{ op: 'reparent', id: 'delivered', parent: 'fulfilling.parcel' }], 'into a region\'s own box: to it');
+  // audit 77: but cancelled there would make t-capture-given-up (from Capturing payment, in the other region) cross regions
+  assert.match(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [f.x + 4, f.y + 4], geo: g }).error ?? '', /^region-cross: t-capture-given-up /);
   // audit 13: a second initial, or a second history of a kind, dropped into a region is refused, not emitted; nor offered by the Owner field
   const k2 = apply(m, [{ op: 'add', element: { id: 'i2', type: 'uml.Pseudostate', props: { kind: 'initial' } } }, { op: 'add', element: { id: 'h2', type: 'uml.Pseudostate', props: { kind: 'shallowHistory' }, parent: 'fulfilling' } }]);
   ['delivery-start', 'delivery-history'].forEach(id => assert.equal(node(k2, id).parent, 'delivery.main'));
@@ -350,15 +352,15 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
 });
 
 test('the Owner field: every state and region by its name from the top; deleting a state takes its regions and what they hold', () => {
-  const o = T.owners(SM, node(SM, 'cancelled'));
+  const o = T.owners(SM, node(SM, 'delivered'));
   // a state with regions is no owner, its regions are (audit 14: region-mixed); but where x already is
   assert.deepEqual(o.slice(0, 3), [{ id: 'placed', label: 'Placed' }, { id: 'fulfilling.parcel', label: 'Fulfilling / Parcel' }, { id: 'fulfilling.payment', label: 'Fulfilling / Payment' }]);
-  assert.equal(o.length, 9 + 2, 'nine of the ten other states, two regions');
+  assert.equal(o.length, 9 + 2, 'nine of the ten other states (not out-for-delivery, which t-delivered joins it to: audit 77), two regions');
   const mixed = apply(SM, [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling' }]);
   assert.ok(T.owners(mixed, node(mixed, 'cancelled')).some(x => x.id === 'fulfilling'), 'where it is: kept');
   assert.equal(T.owners(SM, SM.edges[0]), null);
   const of = T.owners(SM, node(SM, 'fulfilling')).map(x => x.id);
-  assert.equal(of.length, 13 - 7, 'not itself, its regions, nor the five states under it');
+  assert.equal(of.length, 13 - 7 - 1, 'not itself, its regions, nor the five states under it, nor cancelled (t-cancel: audit 77)');
   for (const id of ['fulfilling', 'fulfilling.parcel', 'fulfilling.payment', 'picking', 'packed', 'capturing', 'captured']) assert.ok(!of.includes(id), id);
   assert.deepEqual(validate(apply(SM, [{ op: 'reparent', id: 'fulfilling', parent: of.at(-1) }])).filter(p => p.rule === 'owner-kinds'), []);
   // a region deleted from the model says how many elements it held (§10.3); hidden from the view, the default
@@ -1055,4 +1057,59 @@ test('audit 72: composite states and regions never overlap, at the top level and
     for (const direction of ['down', 'right']) { const m = { schemaVersion: 2, title: 't', root: 'v', nodes: ns, edges: es, views: views(ns, direction) };
       check(m, 'v').filter(p => / overlap$| lies over /.test(p.message)).forEach(p => bad.push(`#${it} ${direction}: ${p.message}`)); } }
   assert.deepEqual(bad, []);
+});
+
+// audit 77: the Owner field, a drop and move_to_box (edits.owner) refuse a move that brings an error (initial-one,
+// history-owner, fork-join) or makes a transition one the view does not draw (composite-inner) or one across two regions
+// (region-cross), in the rule's words, as a drop into a box (stMoveTo) does; the Owner field leaves such owners out
+async function dropInto(m, vid, id, into, from) {
+  await import('../src/typed/edit.js');
+  const { typedEditor } = await import('../src/canvas/edit.js');
+  const got = [], status = [];
+  const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(...c), view: () => vid, model: () => m,
+    picked: () => [], sel: () => null, geo: () => ({ byId: {}, nodes: [], edges: [], families: [] }), cam: () => null, focus() {}, touch() {} });
+  const ok = I.drop({ id, x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 50, y: 20, col: 0, row: 0 }, into, from);
+  return { ok, got, status };
+}
+test('audit 77: a move that brings an error or stops a transition being drawn is refused by the Owner field, a drop and move_to_box; the Owner field leaves it out', async () => {
+  const tr = (id, from, to) => ({ id, type: 'uml.Transition', from, to });
+  const m = { schemaVersion: 2, nodes: [{ id: 'i', type: 'uml.Pseudostate', props: { kind: 'initial' } }, { id: 'a', type: 'uml.State', label: 'A' }, { id: 'c', type: 'uml.State', label: 'C' },
+    { id: 'c1', type: 'uml.State', label: 'C1', parent: 'c' }, { id: 'f', type: 'uml.Pseudostate', props: { kind: 'fork' } },
+    { id: 'o', type: 'uml.State', label: 'O', members: [{ id: 'r1', type: 'uml.Region' }, { id: 'r2', type: 'uml.Region' }] },
+    { id: 'x', type: 'uml.State', label: 'X', parent: 'r1' }, { id: 'y', type: 'uml.State', label: 'Y', parent: 'r2' }, { id: 'z', type: 'uml.State', label: 'Z' },
+    { id: 'ci', type: 'uml.Pseudostate', parent: 'c', props: { kind: 'initial' } }, { id: 'h', type: 'uml.Pseudostate', parent: 'c', props: { kind: 'deepHistory' } }],
+  edges: [tr('t0', 'i', 'a'), tr('t1', 'a', 'c'), tr('t2', 'c', 'a'), tr('t3', 'a', 'f'), tr('t4', 'f', 'x'), tr('t5', 'f', 'y'), tr('t6', 'ci', 'c1')],
+  views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['i', 'a', 'c', 'c1', 'f', 'o', 'x', 'y', 'z', 'ci', 'h'] }] }, V7 = m.views[0];
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const own = (id, parent) => T.edits.owner(m, V7, id, parent);
+  assert.match(own('a', 'c').error ?? '', /^composite-inner: t1 joins "A" and "C", which one holds: it is not drawn$/, 'into a composite it has a transition to');
+  assert.match(own('y', 'r1').error ?? '', /^fork-join: the targets of "Fork f" /, 'a fork target into the other region');
+  assert.match(own('f', 'r1').error ?? '', /^region-cross: t5 /, 'the fork into one region: its other line crosses');
+  assert.match(own('ci', null).error ?? '', /^initial-one: the top has 2 initial pseudostates/, 'an initial to none');
+  assert.match(own('h', null).error ?? '', /^history-owner: /, 'a history to none');
+  assert.match(own('z', 'o').error ?? '', /region-mixed/, 'directly in a state with regions');
+  for (const [id, parent] of [['z', 'c'], ['z', 'r1'], ['c1', null], ['z', null], ['a', null]]) assert.equal(own(id, parent), null, `${id} -> ${parent}: the default`);
+  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 'z', parent: 'c' }])), []);
+  // the Owner field: what it offers is what the hook takes
+  const ids = id => T.owners(m, node(m, id), V7).map(o => o.id);
+  assert.ok(!ids('a').includes('c') && ids('a').includes('z'), 'A: not into C');
+  assert.ok(!ids('y').includes('r1'), 'Y: not into the region of the fork\'s other target');
+  for (const n of m.nodes) for (const o of T.owners(m, n, V7)) if (o.id !== n.parent) assert.equal(own(n.id, o.id), null, `${n.id} -> ${o.id} offered`);
+  // a drop out of every box asks the owner hook; one into a box, stMoveTo, refuses the same moves
+  const d = await dropInto(m, 'v', 'ci', null, 'c');
+  assert.equal(d.ok, false); assert.deepEqual(d.got, []); assert.match(d.status[0] ?? '', /^initial-one: /);
+  assert.deepEqual((await dropInto(m, 'v', 'c1', null, 'c')).got.filter(c => c.op === 'reparent'), [{ op: 'reparent', id: 'c1', parent: null }]);
+  const geo = { families: [{ id: 'c', x: 0, y: 0, w: 200, h: 200 }] };
+  assert.match(T.edits.moveTo(m, V7, 'a', { pt: [100, 100], geo }).error ?? '', /^composite-inner: t1 /);
+  assert.deepEqual(T.edits.moveTo(m, V7, 'z', { pt: [100, 100], geo }), [{ op: 'reparent', id: 'z', parent: 'c' }]);
+  // every state machine view of every example: no Owner choice nor none the hook takes brings an error, a composite-inner or a region-cross
+  const files = [...['examples', 'examples/types'].flatMap(d => readdirSync(new URL(`../${d}/`, import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../${d}/${f}`)), '../tests/fixtures/integration.json'];
+  let tried = 0, refused = 0;
+  for (const f of files) { const x = JSON.parse(readFileSync(new URL(f, import.meta.url)));
+    for (const v of (x.views || []).filter(v => v && v.diagram === 'uml.state-machine')) { const key = p => p.rule + ' ' + p.ids.join(' '), bad = p => p.level === 'error' || ['composite-inner', 'region-cross'].includes(p.rule), was = new Set(T.validate(x, v).filter(bad).map(key)); // the view's own rules: validate() asks every view of the atlas
+      for (const n of x.nodes.filter(n => (v.nodeIds || []).includes(n.id))) for (const p of [...(T.owners(x, n, v) || []).map(o => o.id), null]) { if ((n.parent ?? null) === p) continue;
+        if (p == null && T.edits.owner(x, v, n.id, p)) { refused++; continue; } tried++; // an offered owner is one the hook takes (asked above)
+        assert.deepEqual(T.validate(apply(x, [{ op: 'reparent', id: n.id, parent: p }]), v).filter(q => bad(q) && !was.has(key(q))).map(q => q.message), [], `${f} ${n.id} -> ${p}`); } } }
+  assert.ok(tried > 500 && refused > 0, `${tried} moves taken, ${refused} refused`);
 });
