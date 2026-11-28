@@ -355,7 +355,7 @@ The **state machine diagram** (`uml.state-machine`, `examples/order-states.json`
 | a transition's text | double-click once selected, or the properties panel's Trigger, Guard and Effect | `F2`: `trigger [guard] / effect` | one `set` per part that changed (`undefined` clears one); a text the parser refuses is kept, with why. A transition has no Name field: its label is drawn nowhere |
 | an activity, an internal transition | the state's member rows: a row `entry / …`, `do / …` or `exit / …` sets that activity | F2, Enter | `set props.entry` …, or the member hook |
 | a pseudostate's kind | the properties panel | Enter | `set props.kind`: its shape is drawn again |
-| nest a state | drop it into an open state's box or a region's (a one-region state's drop goes to its region) | the Owner field: states and regions by their path, " / " between | `reparent` |
+| nest a state | drop it into an open state's box or a region's (a one-region state's drop goes to its region); refused on the hint line, in the rule's words, when the move brings an error or makes a transition one that is not drawn (`composite-inner`) or crosses regions (`region-cross`) | the Owner field: states and regions by their path, " / " between, less the owners such a move would need | `reparent` |
 | reorder regions | the state's member rows | `Alt + ↑ / ↓` | the member order: the panel, the PDF and the reading order, not the picture |
 | delete a region | its member row's ✕, or `Shift + Delete` on its box | | `delete`, with what it holds; the hint line says how many |
 | hide a compartment | `present.collapsed: ['activities']`, `present.rows` | | (in the view) |
