@@ -241,25 +241,31 @@ HOSTS, ORIGINS = set(), set()
 # needs it, so a process on this machine that was not given the URL (another account's) reads neither the model nor the
 # TOKEN, and posts nothing (audit cf1). The same for one model on each run, so an open page follows its server's restarts
 BASE = KEY = None
+NAMED = bool(os.environ.get("UMLIMATOR_MCP_KEYS"))  # the user named the key file: it is never written over (audit 78)
 KEYS = Path(os.environ.get("UMLIMATOR_MCP_KEYS") or Path.home() / ".cache" / "umlimator" / "mcp-key")  # the secret each model's KEY is made from
+SHORTEST, LONGEST = 16, 65536  # bytes: the secret a named file holds, stripped
 
 
 def page_key(model):
     """The model's page KEY: an HMAC of its path under a secret kept in KEYS (made on first use, readable by its owner
-    only), so it is the same on each run; a secret of this run's when that file cannot be kept or is not private. A file
-    that holds no secret (empty or cut short: a first run stopped between making it and writing it, or a full disk) is
-    written again, whole, never trusted as a secret of none (audit 77)."""
+    only), so it is the same on each run; a secret of this run's when that file cannot be kept or is not private. The
+    file this tool keeps (~/.cache/umlimator/mcp-key) that holds no key of its own making (empty or cut short: a first run
+    stopped between making it and writing it, or a full disk) is written again, whole, never trusted as a secret of none
+    (audit 77). A file the user named (UMLIMATOR_MCP_KEYS) is made when it is not there and never written after: its text,
+    stripped, is the secret (their own hex or base64 secret), and one too short to be one is said and left as it is (audit 78)."""
     class Loose(Exception):
         """KEYS is a link, no plain file, or others can read it: not trusted, and left as it is."""
 
-    def kept():  # the secret KEYS holds, or None: a private file of ours (not a link) holding one, as stash writes it
+    def kept():  # the secret KEYS holds, or None: a private file (not a link) holding one; ours holds one as stash writes it
         st = os.lstat(KEYS)
         if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode) or (os.name != "nt" and (st.st_uid != os.getuid() or st.st_mode & 0o077)):
             raise Loose()
         fd = os.open(KEYS, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         with os.fdopen(fd, "rb") as f:
-            text = f.read(257).strip()
-        return text.decode("ascii") if re.fullmatch(rb"[A-Za-z0-9_-]{43,256}", text) else None
+            text = f.read(LONGEST + 1).strip() if NAMED else f.read(257).strip()
+        if NAMED:
+            return text if SHORTEST <= len(text) <= LONGEST else None
+        return text if re.fullmatch(rb"[A-Za-z0-9_-]{43,256}", text) else None
 
     def stash(replace):  # a new secret, written whole into a private file beside KEYS, then put in its place in one step
         fd, tmp = tempfile.mkstemp(dir=KEYS.parent, prefix=".mcp-key.")
@@ -286,6 +292,9 @@ def page_key(model):
         if not os.path.lexists(KEYS):
             stash(replace=False)
         secret = kept()
+        if secret is None and NAMED:  # the user's file: never replaced, whatever it holds
+            raise ValueError(f"it holds no secret of {SHORTEST} to {LONGEST} bytes, and a file UMLIMATOR_MCP_KEYS names is left as it is: "
+                             f"put a longer secret in it, or name a file that is not there yet")
         if secret is None:
             stash(replace=True)
             secret = kept()
@@ -295,7 +304,7 @@ def page_key(model):
         print(f"{KEYS} is not a private file of yours: the page's URL holds a key of this run's only", file=sys.stderr)
     except (OSError, ValueError) as e:
         print(f"cannot keep the page's key in {KEYS} ({getattr(e, 'strerror', None) or e}): the page's URL holds a key of this run's only", file=sys.stderr)
-    return hmac.new((secret or secrets.token_urlsafe(32)).encode(), str(model).encode(), hashlib.sha256).hexdigest()[:32]
+    return hmac.new(secret or secrets.token_urlsafe(32).encode(), str(model).encode(), hashlib.sha256).hexdigest()[:32]
 
 
 lock, rendering = threading.Lock(), threading.Lock()

@@ -359,22 +359,28 @@ def linked_on_way(out):
     # the path walked as the system walks it, never folded by its text first (os.path.abspath would fold docs/../x to x,
     # while the system takes docs's target's parent for docs/.., audit 77): each folder named is looked at as reached, a
     # link not refused is followed to where it leads before what comes after it, '..' included, is applied
+    # `via` holds, for each folder of the position reached, the link it was reached through (None: a folder of its own), so
+    # a '..' that climbs back out of a folder below a link (L/sub/..) ends at that link, which is then `out` itself (audit 78)
     names = (Path.cwd() / out).parts
-    last = max((i for i, x in enumerate(names) if x not in (".", "..")), default=0)  # the folder `out` names, as written
     at = Path(names[0])
-    for i, name in enumerate(names[1:], 1):
+    via = [None] * len(at.parts)
+    for name in names[1:]:
         if name in (".", ".."):
-            at = at.parent if name == ".." else at
+            if name == ".." and len(via) > 1:
+                at = at.parent
+                via.pop()
             continue
         at = at / name
+        via.append(None)
         try:
-            if at.is_symlink():
-                if i == last or at.parent.resolve().is_relative_to(here) or top(at.parent):
+            if at.is_symlink():  # each folder named is looked at as reached, before a '..' after it is applied
+                if at.parent.resolve().is_relative_to(here) or top(at.parent):
                     return at
-                at = Path(os.path.realpath(at, strict=True))
+                link, at = at, Path(os.path.realpath(at, strict=True))
+                via = [None] * (len(at.parts) - 1) + [link]
         except (OSError, RuntimeError):  # a loop of links, or a link to nothing, on the way: refused as one
             return at
-    return None
+    return via[-1]  # `out` itself, a link wherever it is
 
 
 def make_folder(out):

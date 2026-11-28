@@ -42,7 +42,8 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "audit 77": 6, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "audit 77": 6, "bench views": 1, "bench score": 4,
+    "audit 78 fix78-py": 6})
 
 
 def ok(name, cond, info=""):
@@ -2920,12 +2921,15 @@ if part("audit 77"):
        (grew, said))
     # audit 77 #8, #12, #17 and #20: a key file that holds no key (empty or cut short: a first run stopped between making the
     # file and writing it, or a full disk) was trusted as private and never written again, so every run had a key of its
-    # own and an open page no longer followed its server's restarts, with nothing said. It is written again, whole
+    # own and an open page no longer followed its server's restarts, with nothing said. It is written again, whole. The file
+    # this tool keeps (under HOME), as a file the user names (UMLIMATOR_MCP_KEYS) is never written over (audit 78)
     with tempfile.TemporaryDirectory() as t:
         t = Path(t).resolve()
         def address(model, keys):
+            home = keys.parents[2]
+            env = {k: v for k, v in os.environ.items() if k != "UMLIMATOR_MCP_KEYS"} | {"HOME": str(home)}
             p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, env={**os.environ, "UMLIMATOR_MCP_KEYS": str(keys)})
+                                 stderr=subprocess.PIPE, text=True, env=env)
             p.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}) + "\n"); p.stdin.flush()
             said = p.stdout.readline(); p.stdin.close(); p.wait(timeout=30)
             k = re.search(r"http://127\.0\.0\.1:\d+/\?k=(\w+)", said)
@@ -2933,13 +2937,13 @@ if part("audit 77"):
         a = ROOT / "tests/fixtures/integration.json"
         got = {}
         for name, text in {"empty": b"", "blank": b" \n", "cut short": b"abc", "not text": b"\xff\xfe" * 30}.items():
-            keys = t / name.replace(" ", "-")
+            keys = t / name.replace(" ", "-") / ".cache" / "umlimator" / "mcp-key"; keys.parent.mkdir(parents=True)
             keys.write_bytes(text); keys.chmod(0o600)
             runs = [address(a, keys), address(a, keys)]
             body = keys.read_bytes()
             got[name] = (runs[0][0] is not None and runs[0][0] == runs[1][0], keys.stat().st_mode & 0o777, len(body.strip()), re.fullmatch(rb"[A-Za-z0-9_-]+\s*", body) is not None,
-                         [e for _, e in runs if "key" in e], sorted(x.name for x in t.iterdir() if x.name.startswith(".")))
-        whole = t / "whole"; whole.write_text("A" * 43); whole.chmod(0o600)  # a key file that holds a key is kept as it is
+                         [e for _, e in runs if "key" in e], sorted(x.name for x in keys.parent.iterdir() if x.name.startswith(".")))
+        whole = t / "whole" / ".cache" / "umlimator" / "mcp-key"; whole.parent.mkdir(parents=True); whole.write_text("A" * 43); whole.chmod(0o600)  # a key file that holds a key is kept as it is
         kept = [address(a, whole), address(a, whole)]
         ok("mcp · a key file that holds no key (empty, blank, cut short or not text) is written again whole, private, so the page's key is the same on each later run; one that holds a key is kept (audit 77)",
            all(v == (True, 0o600, 43, True, [], []) for v in got.values()) and kept[0][0] == kept[1][0] and whole.read_text() == "A" * 43, (got, kept))
@@ -2978,5 +2982,60 @@ if part("bench score"):
     r = go("--corpus", "edits", "--expect", str(ROOT / "bench" / "score-expected-edits.json"))
     ok("bench --score --corpus edits · the view's five edit pairs, laid out against the model before, pass bench/score-expected-edits.json and report section 8.4",
        r.returncode == 0 and "total: 5 pairs" in r.stdout and "section 8.4: untouched cards kept their cells in" in r.stdout, (r.returncode, r.stdout[-800:], r.stderr[-400:]))
+# audit 78 fix78-py
+if part("audit 78 fix78-py"):
+    # audit 78 #11: a secret file UMLIMATOR_MCP_KEYS names whose text was not a 43 to 256 character URL-safe token (the user's
+    # own hex or base64 secret, a longer one, any private file) was replaced with a new token on the first start, its text
+    # lost. A file the user names is never written: its text, stripped, is the secret; one too short is said and left as it is
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        def address(model, keys):
+            p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, env={**os.environ, "UMLIMATOR_MCP_KEYS": str(keys)})
+            p.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}) + "\n"); p.stdin.flush()
+            said = p.stdout.readline(); p.stdin.close(); p.wait(timeout=30)
+            k = re.search(r"http://127\.0\.0\.1:\d+/\?k=(\w+)", said)
+            return k and k.group(1), p.stderr.read()
+        a = ROOT / "tests/fixtures/integration.json"
+        usable = {"hex": b"9f2c4b7e1a3d5f60718293a4b5c6d7e8\n", "hex, other spacing": b"  9f2c4b7e1a3d5f60718293a4b5c6d7e8\r\n\n",
+                  "base64": b"q8Zr+/1u2Ww3aXbQ9kL0pR7sT5vY6nM4cE8fG2hJ1iA=\n", "long": b"x" * 300 + b"\n",
+                  "a private key file": b"-----BEGIN KEY-----\n" + b"QUJD" * 200 + b"\n-----END KEY-----\n", "a token": b"A" * 43}
+        short = {"empty": b"", "blank": b" \n\t", "cut short": b"abc", "fifteen bytes": b"0123456789abcde"}
+        got = {}
+        for name, text in (usable | short).items():
+            keys = t / name.replace(" ", "-").replace(",", ""); keys.write_bytes(text); keys.chmod(0o600)
+            runs = [address(a, keys), address(a, keys)]
+            got[name] = (runs[0][0], runs[1][0], keys.read_bytes() == text, keys.stat().st_mode & 0o777, [e.strip() for _, e in runs])
+        left = sorted(x.name for x in t.iterdir() if x.name.startswith("."))
+        ok("mcp · a secret file UMLIMATOR_MCP_KEYS names is never written: a hex, base64, long or other secret in it is kept byte for byte and makes the same key on each run (audit 78)",
+           all(got[n][2] and got[n][3] == 0o600 and got[n][0] and got[n][0] == got[n][1] and not any("key" in e.replace("?k=", "") for e in got[n][4]) for n in usable)
+           and got["hex"][0] == got["hex, other spacing"][0] and len({got[n][0] for n in usable if n != "hex, other spacing"}) == len(usable) - 1 and left == [], (got, left))
+        ok("mcp · a file UMLIMATOR_MCP_KEYS names that holds no secret (empty, blank, shorter than 16 bytes) is said and left as it is: each run's key is its own (audit 78)",
+           all(got[n][2] and got[n][0] and got[n][1] and got[n][0] != got[n][1] and all("holds no secret" in e and "left as it is" in e for e in got[n][4]) for n in short), got)
+    # audit 78 #12: the walk took the link L as `out` only when L was the last name written, so --out L/sub/.. (which the
+    # system takes as L's target) passed when L sits outside every checkout, and the stills were written into its target.
+    # The link a '..' climbs back to is `out` itself: refused, as --out L is, nested links and L/../L too
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        far, far2 = t / "far", t / "far2"; (far / "sub" / "deeper").mkdir(parents=True); (far2 / "x").mkdir(parents=True)
+        (t / "L").symlink_to(far, target_is_directory=True); (far / "L2").symlink_to(far2, target_is_directory=True)
+        here = t / "plain"; here.mkdir()
+        m = ROOT / "tests/fixtures/integration.json"; page = t / "map.html"
+        made = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(m), "--out", str(page), "--no-check"], capture_output=True, text=True)
+        cli = lambda *x: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], cwd=here, capture_output=True, text=True)
+        tree = lambda: sorted(str(x.relative_to(t)) for d in (far, far2) for x in d.rglob("*"))
+        before = tree()
+        res = {o: cli("stills", str(page), "--out", o, "--views", "system") for o in ("../L", "../L/sub/..", "../L/../L", "../L/sub/deeper/../..", str(t / "L" / "sub" / ".."))}
+        res |= {"nested ../L/L2/x/..": cli("stills", str(page), "--out", "../L/L2/x/..", "--views", "system"),
+                "diff --stills ../L/sub/..": cli("diff", str(m), str(m), "--out", str(t / "d.html"), "--stills", "../L/sub/.."),
+                "drift --stills ../L/sub/..": cli("drift", str(m), str(m), "--out", str(t / "dr.html"), "--stills", "../L/sub/..")}
+        after = tree()
+        fine = {o: cli("stills", str(page), "--out", o, "--views", "system") for o in ("../L/sub/stills", "../L/L2/x/stills", "../L/sub/../sub/again")}
+        ok("stills, diff and drift · an output folder that ends at a symbolic link through '..' (L/sub/.., L/../L, nested links) is refused in one line as --out L is, nothing written in its target; a folder below the link is still written (audit 78)",
+           made.returncode == 0 and all(r.returncode == 1 and "is a symbolic link" in r.stderr and "Traceback" not in r.stderr for r in res.values())
+           and f"{far / 'L2'} is a symbolic link" in res["nested ../L/L2/x/.."].stderr and before == after and not (t / "d.html").exists() and not (t / "dr.html").exists()
+           and all(r.returncode == 0 for r in fine.values()) and (far / "sub" / "stills" / "system.svg").is_file() and (far2 / "x" / "stills" / "system.svg").is_file()
+           and (far / "sub" / "again" / "system.svg").is_file(),
+           (made.stderr[-300:], {k: (r.returncode, r.stderr[-300:]) for k, r in (res | fine).items()}, before, after))
 part.done()
 sys.exit(1 if failed else 0)
