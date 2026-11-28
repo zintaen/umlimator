@@ -1073,3 +1073,21 @@ test('connect refuses a connector across two structures in a view that lists its
   // the view's list is left as it was
   assert.ok(!v.edges.some(id => /^connector/.test(id)));
 });
+
+test('audit 78: the gallery example lays out clean in Node; with the browser\'s text widths its down view draws the one crossing its conformance note and Known gaps state', () => {
+  const ex = JSON.parse(readFileSync(new URL('./fixtures/uml-composite-structure.json', import.meta.url)));
+  const W = JSON.parse(readFileSync(new URL('./fixtures/composite-host-widths.json', import.meta.url))).widths, missed = [];
+  const host = (s, px) => { const k = px + '\u0000' + s; if (Object.hasOwn(W, k)) return W[k]; missed.push(k); return String(s).length * px * 0.6; };
+  const ids = ex.views.map(v => v.id);
+  assert.deepEqual(ids, ['inside', 'inside-down', 'events']);
+  for (const id of ids) assert.deepEqual(check(ex, id).map(x => x.message), [], `${id}: clean with the estimate`);
+  const said = Object.fromEntries(ids.map(id => [id, check(ex, id, { measure: host }).map(x => x.message)]));
+  assert.deepEqual(missed, [], 'every text the layout measures is in the table');
+  assert.deepEqual(said, { inside: [], 'inside-down': ['view inside-down: edges checkout : CheckoutFlow [1]→OrderService and checkout : CheckoutFlow [1]→orders : OrderRepository [1] cross'], events: [] });
+  // the docs say which check the clean layout holds for, and name the page's crossing (before: "lays out clean right and down", unqualified)
+  const note = readFileSync(new URL('../docs/diagrams/conformance/uml-composite-structure.md', import.meta.url), 'utf8');
+  const claim = note.split('\n').find(l => l.includes('The example lays out clean right and down'));
+  assert.ok(claim && /in Node/.test(claim) && /`inside-down` draws one crossing/.test(claim), claim);
+  const api = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8');
+  assert.ok(api.split('\n').some(l => l.startsWith('- **Known gaps (audit 78).**') && l.includes('inside-down')));
+});

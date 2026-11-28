@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "audit 77": 6, "bench views": 1, "bench score": 4,
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "audit 77": 6, "audit 78": 12, "bench views": 1, "bench score": 4,
     "audit 78 fix78-py": 6})
 
 
@@ -2947,6 +2947,28 @@ if part("audit 77"):
         kept = [address(a, whole), address(a, whole)]
         ok("mcp · a key file that holds no key (empty, blank, cut short or not text) is written again whole, private, so the page's key is the same on each later run; one that holds a key is kept (audit 77)",
            all(v == (True, 0o600, 43, True, [], []) for v in got.values()) and kept[0][0] == kept[1][0] and whole.read_text() == "A" * 43, (got, kept))
+if part("audit 78"):
+    # audit 78 #0: check drew every view in a 2000 px off-screen host, so a view wider than about 5,000 px was scaled down, the
+    # browser's text boxes came back taller (13.06 px for lines 12 px apart), and each line's label and its own sublabel were said
+    # to overlap: 29 times on a 30-card chain, 4 on the Umlimator atlas's overview with its page card unfolded (tests/fixtures/atlas-overview.json,
+    # a copy of the atlas as it was then). Measured at scale 1
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t)
+        chain = ROOT / "tests/fixtures/wide-chain.json"
+        wide = subprocess.run(["node", "--input-type=module", "-e", "const a = await import(process.argv[1]); const m = JSON.parse((await import('node:fs')).readFileSync(process.argv[2], 'utf8')); "
+                               "const g = a.layout(m, 'v'); console.log(Math.max(...g.nodes.map(n => n.x + n.w)) - Math.min(...g.nodes.map(n => n.x)))", (ROOT / "lib/umlimator-all.js").as_uri(), str(chain)],
+                              capture_output=True, text=True)
+        made = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(chain), "--out", str(t / "wide.html"), "--no-check"], capture_output=True, text=True)
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(t / "wide.html")], capture_output=True, text=True)
+        i = r.stdout.find("{"); got = json.loads(r.stdout[i:]) if i >= 0 else {}
+        made2 = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests/fixtures/atlas-overview.json"), "--out", str(t / "atlas.html"), "--no-check"], capture_output=True, text=True)
+        r2 = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(t / "atlas.html"), "--views", "overview", "--expand"], capture_output=True, text=True)
+        i = r2.stdout.find("{"); got2 = json.loads(r2.stdout[i:]) if i >= 0 else {}
+    ok("check · a view over 7,000 px wide whose lines have a label and a sublabel, and the atlas's overview with its page card unfolded, have no overlapping edge labels: text is measured with the drawing at its own size (audit 78)",
+       wide.returncode == 0 and float(wide.stdout.strip() or 0) > 7000 and made.returncode == 0 and r.returncode == 0 and (got.get("counts") or {}).get("labelsOverlap") == 0 and got.get("problems") == []
+       and made2.returncode == 0 and "unfolded" in str(got2.get("checked")) and (got2.get("counts") or {}).get("labelsOverlap") == 0
+       and not any("edge labels" in p for p in got2.get("problems") or []),
+       (wide.stdout, wide.stderr[-300:], r.stderr[-300:], got.get("counts"), got.get("problems"), r2.stderr[-300:], got2.get("checked"), got2.get("problems")))
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench

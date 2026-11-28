@@ -131,9 +131,7 @@ Layout limits, measured on `examples/order-service-structure.json` and `tests/co
 - The type ranks the subject's parts and collaboration uses itself (longest path over connectors and role bindings),
   then each open collaboration's roles, block after block to the right, with `gap: 64`, `rgap: 56` and `labelGaps`, port
   repair off. A pin is kept to its own block's columns.
-- The example lays out clean right and down: no crossing, `check()` finds nothing (decision 22: a port on its owner is not
-  an overlap). Its own two `part-type` warnings stay: `orders : OrderRepository` and `listeners : OrderListener` are typed
-  by classes the model does not hold.
+- The example lays out clean right and down in Node, where `check()` lays it out with its estimated text widths: no crossing, `check()` finds nothing (decision 22: a port on its owner is not an overlap). In the page, which measures text in the browser's font, the right view is clean too, but the down view `inside-down` draws one crossing on macOS Chrome (audit 78): checkout's narrower part puts its connector to `orders` left of its `charges` port, and the connector from `charges` out to `payments`, which goes round `orders` on the left, crosses it. `umlimator.py check` says so; it is a known gap (cross-platform layout, docs/module-api.md). Its own two `part-type` warnings stay: `orders : OrderRepository` and `listeners : OrderListener` are typed by classes the model does not hold.
 - `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: one crossing each way, between the
   connector to the shared part and a role binding. Its generated `all` view (30 parts, 50 connectors, 20 ports on parts):
   12 crossings right (19 before audit 77) and 3 down.
