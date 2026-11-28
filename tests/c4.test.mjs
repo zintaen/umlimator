@@ -57,7 +57,7 @@ test('the definition: one definition under the four static view names, its palet
   assert.deepEqual(T.props['c4.Relationship'].map(f => f.key), ['technology']);
   assert.deepEqual(T.props['c4.Container'].find(f => f.key === 'shape').options, C4_SHAPES);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['add', 'key', 'rename', 'connect']); // connect: a comment link (audit 46)
+  assert.deepEqual(Object.keys(T.edits), ['add', 'key', 'rename', 'connect', 'owner']); // connect: a comment link (audit 46); owner: a relationship to its owner (audit 76)
   assert.deepEqual(Object.keys(T.rules), ['c4-level', 'c4-subject', 'c4-owner', 'c4-instance', 'c4-relationship', 'c4-zoom', 'c4-description', 'c4-technology', 'c4-label', 'c4-title', 'c4-note-box']);
 });
 
@@ -366,8 +366,8 @@ test('T: an element\'s type picked among the four; add: a container in a contain
   assert.deepEqual(T.edits.add(C4, C4.views[V('c4-context')], { type: 'c4.Container' }, 'Cache'), { error: 'This view shows people and software systems: a container is added on a container view' });
   const added = apply(C4, T.edits.add(C4, v, { type: 'c4.Container' }, 'Cache'));
   assert.ok(layout(added, 'c4-containers').families[0].nodeIds.includes('container1'));
-  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-api')).map(o => o.id), ['c4-bookshop', 'c4-payments', 'c4-mail', 'c4-courier']);
-  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-catalogue')).map(o => o.id), ['c4-storefront', 'c4-api', 'c4-worker', 'c4-db', 'c4-queue']);
+  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-api')).map(o => o.id), ['c4-bookshop', 'c4-mail', 'c4-courier']); // not the payment provider it has a relationship to (audit 76)
+  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-catalogue')).map(o => o.id), ['c4-api', 'c4-worker', 'c4-queue']); // not the storefront nor the database it has relationships to (audit 76)
   assert.equal(T.owners(C4, C4.nodes.find(n => n.id === 'c4-shopper')), null); assert.equal(T.owners(C4, C4.edges[0]), null);
 });
 
@@ -724,4 +724,28 @@ test('zoneOf: a person first, an external software system last, a cylinder conta
   const A = structuredClone(C4); A.views.find(v => v.id === 'c4-context').arrange = 'flow';
   const g = layout(A, 'c4-context'), x = id => g.byId[id].col, ext = ['c4-payments', 'c4-mail', 'c4-courier'];
   assert.ok(['c4-shopper', 'c4-staff'].every(p => x(p) < x('c4-bookshop')) && ext.every(e => x(e) > x('c4-bookshop')), 'people in the first column, external systems in the last');
+});
+
+test('audit 76: an element is not moved into an owner it has a relationship to (Owner field), in c4-relationship\'s words; the Owner field leaves it out', async () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 's1', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 's2', type: 'c4.SoftwareSystem', label: 'Bank' },
+    { id: 'api', type: 'c4.Container', label: 'API', parent: 's1' }, { id: 'db', type: 'c4.Container', label: 'DB', parent: 's1' },
+    { id: 'c1', type: 'c4.Component', label: 'Orders', parent: 'api' }],
+  edges: [{ id: 'r1', type: 'c4.Relationship', from: 'api', to: 's2', label: 'pays' }, { id: 'r2', type: 'c4.Relationship', from: 'c1', to: 'db', label: 'reads' }],
+  views: [{ id: 'v', diagram: 'c4.container', subject: 's1', nodeIds: ['s1', 's2', 'api', 'db'] }] }, Vw = m.views[0];
+  const refused = { error: 'A relationship never joins an element and its own owner' };
+  assert.deepEqual(T.edits.owner(m, Vw, 'api', 's2'), refused);
+  assert.deepEqual(T.edits.owner(m, Vw, 'c1', 'db'), refused);
+  assert.equal(T.edits.owner(m, Vw, 'c1', 'api'), null);
+  assert.equal(T.edits.owner(m, Vw, 'db', 's2'), null, 'no relationship of it reaches the bank');
+  assert.ok(!validate(apply(m, [{ op: 'reparent', id: 'db', parent: 's2' }])).some(p => p.rule === 'c4-relationship'));
+  assert.ok(validate(apply(m, [{ op: 'reparent', id: 'api', parent: 's2' }])).some(p => p.rule === 'c4-relationship'), 'what the hook keeps away');
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'api')).map(o => o.id), ['s1']);
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'c1')).map(o => o.id), ['api']);
+  // the deployment view's: a container instance into a deployment node it has a relationship to
+  await import('../src/c4/views.js');
+  const D = diagramOf({ diagram: 'c4.deployment' }), k = { schemaVersion: 2, nodes: [{ id: 'n1', type: 'c4.DeploymentNode', label: 'EU' }, { id: 'n2', type: 'c4.DeploymentNode', label: 'US' },
+    { id: 'i1', type: 'c4.ContainerInstance', label: 'API', parent: 'n1' }], edges: [{ id: 'r', type: 'c4.Relationship', from: 'i1', to: 'n2' }], views: [{ id: 'd', diagram: 'c4.deployment', nodeIds: ['n1', 'n2', 'i1'] }] };
+  assert.deepEqual(D.edits.owner(k, k.views[0], 'i1', 'n2'), refused);
+  assert.deepEqual(D.owners(k, k.nodes[2]).map(o => o.id), ['n1']);
 });

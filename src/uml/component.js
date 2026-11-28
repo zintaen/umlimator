@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
-import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
+import { lineInside, modelLines, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
 
@@ -257,10 +257,17 @@ const CP_RULES = {
   'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
   'comment-link': 'a comment link the view draws has a comment at one end',
 };
+// a connector's ends as delegation-ends or assembly-ends asks them (by its kind, an assembly without one): within(a, b), is a's
+// component inside b's, given so that a move can be judged before it is made (cpBlocks)
+function cpEndsOk(I, e, within) {
+  const comp = id => I.ty(id) === 'uml.Component', two = comp(e.from) && comp(e.to) && I.comp(e.from) !== I.comp(e.to);
+  if (cpProps(e).kind === 'delegation') return two && (within(e.to, e.from) ? I.P.has(e.from) : within(e.from, e.to) && I.P.has(e.to));
+  return two && !within(e.from, e.to) && !within(e.to, e.from);
+}
 function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const shown = new Set(CP_ARR(view && view.nodeIds)), seen = id => !view || shown.has(I.comp(id)), listed = view && Array.isArray(view.edges) ? new Set(view.edges.map(x => (CP_OBJ(x) ? x.id : x))) : null;
-  const q = id => JSON.stringify(I.name(id)), comp = id => I.ty(id) === 'uml.Component', within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
+  const q = id => JSON.stringify(I.name(id)), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
   CP_ARR(model && model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || drawnKind(CP_TYPE, n) !== 'uml.Component' || !seen(n.id) || n.parent == null || !I.N.has(n.parent)) return;
     // an element or owner of no type is drawn as a component (CP_BOX), so judged as one (audit 33); the kind in words, "an artifact" (audit 31: "a undefined", "a Artifact")
     const p = I.N.get(n.parent); if (!['uml.Component', 'uml.Package'].includes(drawnKind(CP_TYPE, p))) say('warning', 'component-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, ${aKind(CP_TYPE, p)}: a component's owner is a component or a package`); });
@@ -270,9 +277,9 @@ function cpProblems(model, view) {
       say('error', 'provided-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a realization runs from a component, a class or a port to an interface`);
     if (e.type === 'uml.Usage' && e.to != null && (from === 'port' || from === 'uml.Component') && (I.P.has(e.to) || I.ty(e.to) !== 'uml.Interface'))
       say('warning', 'required-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}, not an interface: it is drawn as «use»`);
-    if (e.type === 'uml.Connector' && kind === 'delegation' && !(comp(e.from) && comp(e.to) && I.comp(e.from) !== I.comp(e.to) && (within(e.to, e.from) ? I.P.has(e.from) : within(e.from, e.to) && I.P.has(e.to))))
+    if (e.type === 'uml.Connector' && kind === 'delegation' && !cpEndsOk(I, e, within))
       say('error', 'delegation-ends', path, ends, `${e.id} joins ${q(e.from)} and ${q(e.to)}: a delegation joins a component's port with a component or port inside it`);
-    if (e.type === 'uml.Connector' && kind === 'assembly' && !(comp(e.from) && comp(e.to) && I.comp(e.from) !== I.comp(e.to) && !within(e.from, e.to) && !within(e.to, e.from)))
+    if (e.type === 'uml.Connector' && kind === 'assembly' && !cpEndsOk(I, e, within))
       say('error', 'assembly-ends', path, ends, `${e.id} joins ${q(e.from)} and ${q(e.to)}: an assembly joins two components or their ports, neither inside the other`);
     if (e.type === 'uml.ComponentRealization' && (I.P.has(e.from) || I.P.has(e.to) || !['uml.Class', 'uml.Component'].includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Component'))
       say('error', 'component-realization-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a component realization runs from a class or a component to a component`); });
@@ -402,7 +409,26 @@ function cpOwners(model, x) {
   if (!CP_OBJ(x) || x.from != null || !['uml.Component', 'uml.Interface', 'uml.Artifact', 'uml.Package', 'uml.Comment'].includes(cpKindOf(x))) return null;
   const kinds = cpKindOf(x) === 'uml.Component' ? ['uml.Component', 'uml.Package'] : ['uml.Package'];
   const I = cpIndex(model); // not itself nor what it holds: apply() refuses a move inside itself
-  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: cpName(n) }));
+  // nor one a connector of it would then break (cpBlocks, audit 76)
+  const B = cpBlocks(model, x.id);
+  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id) && B(n.id) == null).map(n => ({ id: n.id, label: cpName(n) }));
+}
+// what blocks a new owner for id (null: none): the first connector (the model's, or any view's own: the owner is the model's)
+// at id, what it holds or their ports, whose ends delegation-ends or assembly-ends accepts now and would not once id is in
+// parent: an assembly then joining a component and one inside it, a delegation no longer from a box to what it holds (audit 76)
+function cpBlocks(model, id) {
+  const I = cpIndex(model), mine = c => c === id || I.chain(c).includes(id), now = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
+  const L = modelLines(model).filter(e => CP_OBJ(e) && e.type === 'uml.Connector' && mine(I.comp(e.from)) !== mine(I.comp(e.to)) && cpEndsOk(I, e, now));
+  return parent => { const up = parent == null ? [] : [parent, ...I.chain(parent)]; if (up.includes(id)) return null; // inside itself: apply() refuses it
+    // a chain once moved: what it holds keeps its owners up to id, then parent's
+    const chain = c => (mine(c) ? [...(c === id ? [] : [...I.chain(c).slice(0, I.chain(c).indexOf(id)), id]), ...up] : I.chain(c));
+    return L.find(e => !cpEndsOk(I, e, (a, b) => chain(I.comp(a)).includes(I.comp(b)))) || null; };
+}
+// owner: the Owner field's choice, and a drop into a box (src/typed/edit.js asks it where moveTo, for a port alone, gives
+// null), refused where a connector would break, in its rule's words; else the default reparent (audit 76)
+function cpOwner(model, view, id, parent) {
+  const e = cpBlocks(model, id)(parent);
+  return !e ? null : { error: cpProps(e).kind === 'delegation' ? 'A delegation joins a component\'s port with a component or port inside it' : 'An assembly joins two components or their ports, neither inside the other' };
 }
 
 const cpClashOwner = o => (CP_OBJ(o) && CLASSIFIERS.includes(o.type) ? o : null); // the owners member-names judges (classProblems)
@@ -430,7 +456,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   validate: cpProblems,
   rules: CP_RULES,
   describe: cpDescribe,
-  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
+  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename, owner: cpOwner },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || (!x.type ? snKindName(x.type) : null)) : null; }, // no type (or ""): "Element", as its accessible name (audits 28, 29)
   // a connector's Lines row: its kind (delegation or assembly) and the ports it joins, as the picture and describe() give them (audit 18)
@@ -445,4 +471,4 @@ const CP_TYPE = registerDiagramType('uml.component', {
     return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });
 
-export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace };
+export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace, cpOwner };

@@ -44,12 +44,12 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   assert.deepEqual([DYN.name, DEP.name], ['c4.dynamic', 'c4.deployment']);
   assert.notEqual(DYN.layout, STATIC.layout); assert.notEqual(DEP.layout, DYN.layout);
   assert.deepEqual(DYN.elements, STATIC.elements); assert.deepEqual(DYN.props, STATIC.props);
-  assert.deepEqual(Object.keys(DYN.edits), ['add', 'key', 'rename', 'connect', 'moveTo']);
+  assert.deepEqual(Object.keys(DYN.edits), ['add', 'key', 'rename', 'connect', 'owner', 'moveTo']); // owner: the static views' (audit 76)
   assert.deepEqual(DEP.elements.map(e => [e.type, e.label, e.name ?? true]), [['c4.DeploymentNode', 'Deployment node', true], ['c4.ContainerInstance', 'Container instance', false], ['uml.Comment', 'Comment', true]]);
   assert.deepEqual(DEP.lines.map(e => e.type), ['c4.Relationship', 'uml.CommentLink']);
   assert.deepEqual(DEP.props['c4.DeploymentNode'].map(f => f.key), ['description', 'technology']);
   assert.deepEqual(DEP.props['c4.ContainerInstance'].map(f => f.key), ['container']);
-  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key', 'rename', 'connect']); // connect: a comment link (audit 46)
+  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key', 'rename', 'connect', 'owner']); // connect: a comment link (audit 46); owner: the static views' (audit 76)
   for (const T of [DYN, DEP]) for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
   assert.deepEqual(Object.keys(DYN.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
   assert.deepEqual(Object.keys(DEP.rules), [...Object.keys(STATIC.rules), 'c4-steps', 'c4-box-line']);

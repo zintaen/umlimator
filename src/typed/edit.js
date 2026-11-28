@@ -21,7 +21,8 @@ import { labelOr } from '../core/model.js';
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
    - owner(model, view, id, parent): the properties panel's Owner field set to parent (null: none), and, where the type has
-     no moveTo, a card dropped into another box (parent: the box's element, else the view's subject or none). Null: reparent,
+     no moveTo or its moveTo gives null (audit 76), a card dropped into another box (parent: the box's element, else the
+     view's subject or none). Null: reparent,
      and the removal of a pin it had, as before (a BPMN activity's boundary events move with it, audit 18).
    - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons, a member row's ✕ and the outline's ✕.
    - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
@@ -81,9 +82,8 @@ TYPED.edit = (I, c) => {
     // a drop into another box is a new owner, which the owner hook guards as it guards the Owner field (cloud, audit 19), and
     // so does a moveTo's default (null): TYPED.owns, the rule on a stereotype's owner, in every view (audit 46)
     const re = !c.stays(n.id, into, from) && can('move'), to = () => { const m = model(), v = view(); return arrOf(m.nodes).some(x => isRec(x) && x.id === into) ? into : v.subject ?? null; };
-    const dflt = () => (re ? ran(owns(n.id, to()), () => base.drop(n, hint, into, from)) : base.drop(n, hint, into, from));
-    const o = !h && re && hook('owner'); // a drop that keeps the owner: the default's pin (audit 34)
-    if (o) { const m = model(), v = view(); return ran(owns(n.id, to()) ?? o(m, v, n.id, to()), dflt); }
+    // and the owner hook asked too where a moveTo gives null, as for a component, whose moveTo places only ports (audit 76)
+    const o = hook('owner'), dflt = () => (re ? ran(owns(n.id, to()) ?? (o ? o(model(), view(), n.id, to()) : null), () => base.drop(n, hint, into, from)) : base.drop(n, hint, into, from));
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
     if (!h || !can('move')) return dflt();
     // a moveTo's own reparent is asked of TYPED.owns too (a stereotype dropped into a state or a partition, audit 47)
