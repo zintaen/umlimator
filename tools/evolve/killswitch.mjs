@@ -8,26 +8,43 @@
 // so the session stops (a hotfix or release pull already pending is the only work allowed). Exit 2: usage error (an option
 // it does not know, or --file, --ref or --repo with no value or an empty one: audit 72).
 // Every session and scheduled job runs it first, and the orchestrator again before every step.
-import { existsSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from './args.mjs';
 import { isMain } from '../main.mjs';
 
 export const STOP = '.evolve/STOP';
 
+// Only a positive answer that the switch is absent lets the session go on: any failure to look for it or to read an existing
+// one (a STOP too large to read, git failing for any other reason, a file that cannot be opened) counts as stopped (audit 77).
+const MAX = 64 << 20;
+
 // { stopped, reason, text }
 export function killSwitch({ repo = '.', ref = 'origin/main', file } = {}) {
   if (file !== undefined) {
     if (!file) return { stopped: true, reason: 'no kill-switch file named: treated as stopped' };
-    if (!existsSync(file)) return { stopped: false, reason: `no kill switch at ${file}` };
-    return { stopped: true, reason: `kill switch set: ${file}`, text: readFileSync(file, 'utf8') };
+    try { lstatSync(file); } catch (e) {
+      if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return { stopped: false, reason: `no kill switch at ${file}` };
+      return { stopped: true, reason: `kill switch at ${file} could not be looked for (${e.code || e.message}): treated as stopped` };
+    }
+    try { return { stopped: true, reason: `kill switch set: ${file}`, text: readFileSync(file, 'utf8') }; } catch (e) {
+      return { stopped: true, reason: `kill switch set: ${file} (it could not be read: ${e.code || e.message})` };
+    }
   }
-  const git = (...a) => spawnSync('git', ['-C', repo, ...a], { encoding: 'utf8' });
+  const git = (...a) => spawnSync('git', ['-C', repo, ...a], { encoding: 'utf8', maxBuffer: MAX });
   const at = git('rev-parse', '--verify', '--quiet', `${ref}^{commit}`);
   if (at.status !== 0) return { stopped: true, reason: `cannot read ${ref} in ${repo}: treated as stopped until it can be read (fetch it first)` };
-  const shown = git('show', `${ref}:${STOP}`);
-  if (shown.status !== 0) return { stopped: false, reason: `no ${STOP} on ${ref} (${at.stdout.trim().slice(0, 8)})` };
-  return { stopped: true, reason: `kill switch set: ${STOP} on ${ref} (${at.stdout.trim().slice(0, 8)})`, text: shown.stdout };
+  const id = at.stdout.trim();
+  const where = `${STOP} on ${ref} (${id.slice(0, 8)})`;
+  // look the path up without reading it: exit 0 and no entry is the only "absent"
+  const ls = git('ls-tree', '-z', '--full-tree', id, '--', STOP);
+  if (ls.status !== 0) return { stopped: true, reason: `cannot look for ${where}: treated as stopped (${(ls.error?.code || ls.stderr || '').toString().trim()})` };
+  if (!ls.stdout) return { stopped: false, reason: `no ${where}` };
+  const [, type, oid] = /^\S+ (\S+) (\S+)\t/.exec(ls.stdout) || [];
+  if (type !== 'blob') return { stopped: true, reason: `kill switch set: ${where} (a ${type || 'tree entry'}, not a file)` };
+  const shown = git('cat-file', 'blob', oid);
+  if (shown.status !== 0) return { stopped: true, reason: `kill switch set: ${where} (it could not be read: ${(shown.error?.code || shown.stderr || 'git failed').toString().trim()})` };
+  return { stopped: true, reason: `kill switch set: ${where}`, text: shown.stdout };
 }
 
 export function main(argv, out = console.log) {

@@ -3,7 +3,7 @@
 // a fake upstream made here, with no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -290,6 +290,57 @@ test('kill switch: .evolve/STOP on the named ref stops the session; none lets it
   assert.match(cli.stdout, /kill switch set: \.evolve\/STOP on main/);
   assert.equal(killSwitch({ file: join(dir, 'nothing-here') }).stopped, false);
   assert.equal(killSwitch({ file: join(dir, '.evolve/STOP') }).stopped, true, 'the file beside the lease, where the rules file puts it there');
+});
+
+test('kill switch fails closed: a STOP too large for a pipe, a STOP that is a directory, and git failing all stop the session (audit 77)', () => {
+  const dir = tmp();
+  const git = (...a) => execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { encoding: 'utf8' });
+  const cli = (ref) => spawnSync(process.execPath, [join(ROOT, 'tools/evolve/killswitch.mjs'), '--repo', dir, '--ref', ref], { encoding: 'utf8', maxBuffer: 16 << 20 });
+  git('init', '-q', '-b', 'main');
+  writeFileSync(join(dir, 'a.txt'), 'a');
+  git('add', '.'); git('commit', '-qm', 'a');
+  git('branch', 'clean');
+  mkdirSync(join(dir, '.evolve'));
+  // over the 1 MiB a child process pipe holds by default: it used to read as "no .evolve/STOP" and exit 0
+  writeFileSync(join(dir, '.evolve/STOP'), 'Stopped: budget.\n' + 'x'.repeat(1200 * 1024) + '\n');
+  git('add', '.'); git('commit', '-qm', 'big stop');
+  const big = killSwitch({ repo: dir, ref: 'main' });
+  assert.equal(big.stopped, true, big.reason);
+  assert.match(big.reason, /kill switch set: \.evolve\/STOP on main/);
+  const bigCli = cli('main');
+  assert.equal(bigCli.status, 1, bigCli.stdout.slice(0, 200));
+  assert.match(bigCli.stdout, /^kill switch set: \.evolve\/STOP on main/);
+  assert.equal(cli('clean').status, 0, 'a commit without STOP still goes on');
+  // the STOP blob is in the tree but its object is gone: git cannot read it, which is not "absent"
+  const oid = git('rev-parse', 'main:.evolve/STOP').trim();
+  rmSync(join(dir, '.git/objects', oid.slice(0, 2), oid.slice(2)));
+  const lost = killSwitch({ repo: dir, ref: 'main' });
+  assert.equal(lost.stopped, true, lost.reason);
+  assert.match(lost.reason, /could not be read/);
+  // the root tree itself is gone: the path cannot even be looked for
+  git('checkout', '-q', 'clean');
+  writeFileSync(join(dir, 'b.txt'), 'b');
+  git('add', 'b.txt'); git('commit', '-qm', 'b');
+  const tree = git('rev-parse', 'HEAD^{tree}').trim();
+  rmSync(join(dir, '.git/objects', tree.slice(0, 2), tree.slice(2)));
+  const blind = killSwitch({ repo: dir, ref: 'HEAD' });
+  assert.equal(blind.stopped, true, blind.reason);
+  assert.match(blind.reason, /cannot look for \.evolve\/STOP/);
+  assert.equal(cli('HEAD').status, 1);
+  // .evolve/STOP committed as a directory is set, not absent
+  const d2 = tmp();
+  const g2 = (...a) => execFileSync('git', ['-C', d2, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { encoding: 'utf8' });
+  g2('init', '-q', '-b', 'main');
+  mkdirSync(join(d2, '.evolve/STOP'), { recursive: true });
+  writeFileSync(join(d2, '.evolve/STOP/why'), 'budget');
+  g2('add', '.'); g2('commit', '-qm', 'stop dir');
+  assert.equal(killSwitch({ repo: d2, ref: 'main' }).stopped, true);
+  // --file: an entry that exists but cannot be read as a file stops the session instead of throwing
+  const asDir = killSwitch({ file: join(d2, '.evolve/STOP') });
+  assert.equal(asDir.stopped, true);
+  assert.match(asDir.reason, /could not be read/);
+  assert.equal(killSwitch({ file: join(d2, 'nothing-here') }).stopped, false);
+  assert.equal(killSwitch({ file: join(d2, '.evolve/STOP/why/deeper') }).stopped, false, 'a path through a file is absent (ENOTDIR)');
 });
 
 // ---------- templates ----------

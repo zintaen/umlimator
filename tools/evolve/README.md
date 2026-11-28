@@ -84,7 +84,7 @@ node tools/evolve/killswitch.mjs [--ref origin/main] [--repo .]
 node tools/evolve/killswitch.mjs --file <path>
 ```
 
-Exits 1 when `.evolve/STOP` exists in the given commit (main by default; run `git fetch` first), printing its text, and also when that commit cannot be read; exits 0 when there is no kill switch. `--file` checks a file beside the lease instead, where the rules file puts it there. Every session and round template runs it first, and the orchestrator before every step (the strategy's C3 step 3).
+Exits 1 when `.evolve/STOP` exists in the given commit (main by default; run `git fetch` first), printing its text, and also when that commit cannot be read or the file cannot be looked for or read (git failing, a STOP too large to read, a STOP that is a directory): only a positive answer that `.evolve/STOP` is absent lets the session go on; exits 0 when there is no kill switch. `--file` checks a file beside the lease instead, where the rules file puts it there. Every session and round template runs it first, and the orchestrator before every step (the strategy's C3 step 3).
 
 ## tune-loop.mjs: the weekly layout loop
 
