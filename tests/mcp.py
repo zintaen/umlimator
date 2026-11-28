@@ -440,6 +440,18 @@ ok("edit · move_to_box refuses a device into the node it has a communication pa
    dep_in == "FAIL move_to_box: A communication path cannot join a node and what it holds; nothing written"
    and isinstance(dep_ok, dict) and dep_ok.get("written") is True
    and comp_in == "FAIL move_to_box: An assembly joins two components or their ports, neither inside the other; nothing written", [dep_in, dep_ok, comp_in])
+own_model("c4o77.json", [{"id": "s1", "type": "c4.SoftwareSystem", "label": "Shop"}, {"id": "s2", "type": "c4.SoftwareSystem", "label": "Bank"},
+                         {"id": "s3", "type": "c4.SoftwareSystem", "label": "Mail"}, {"id": "db", "type": "c4.Container", "label": "DB", "parent": "s1"}], [],
+          {"id": "v", "diagram": "c4.container", "title": "Shop", "subject": "s1", "nodeIds": ["s1", "s2", "db"]})
+c4_none, c4_level, c4_ok = ed("move_to_box", view="v", id="db", box=None), ed("move_to_box", view="v", id="db", box="s2"), ed("move_to_box", view="v", id="db", box="s3")
+own_model("cls77.json", [{"id": "p", "type": "uml.Package", "label": "Shop"}, {"id": "a", "type": "uml.Class", "label": "Order"},
+                         {"id": "b", "type": "uml.Class", "label": "Order", "parent": "p"}], [], {"id": "c", "diagram": "uml.class", "nodeIds": ["p", "a", "b"]})
+cls_in = ed("move_to_box", view="c", id="a", box="p")
+ok("edit · move_to_box refuses a container into no box or under a system the view lists that is not its subject, and a class into a package holding its name (audit 77)",
+   c4_none == "FAIL move_to_box: A container is owned by a software system; nothing written"
+   and c4_level == "FAIL move_to_box: An element is not listed with its owner unless that owner is the view's subject: DB would be listed with Bank in view \"Shop\"; nothing written"
+   and isinstance(c4_ok, dict) and c4_ok.get("written") is True
+   and cls_in == "FAIL move_to_box: Shop has a classifier named Order already; nothing written", [c4_none, c4_level, c4_ok, cls_in])
 # a map view: the commands a host would write (the edit demo page), boxes in the view's containers
 edit_on("map.json", ROOT / "tests" / "fixtures" / "integration.json")
 got = [ed("add_card", view="system", label="Billing", kind="backend", box="rides"), ed("connect", view="system", **{"from": "backend1", "to": "pricing"}, kind="sync", label="prices"),

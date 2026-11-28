@@ -212,8 +212,10 @@ function typedEditor(api) {
       else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, key + (f.kind === 'list' ? ' data-list' : '')); });
     // the Owner field (notes/stage-2.md §8): the owners the type offers, less the element and what it holds, and none
     const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), k === x.type ? x : { ...x, type: k }, view()) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
-    // its owner is offered too when the type does not offer it (a class in a class), so the field says it and "none" is a change
-    const offer = Array.isArray(os) && [{ id: '', label: 'none' }, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
+    // its owner is offered too when the type does not offer it (a class in a class), so the field says it and "none" is a change;
+    // no "none" for a kind the type says is always owned (ownerRequired: C4's container, audit 77), unless it is owned by nothing now
+    const none = arrOf(def().ownerRequired).includes(k) && x.parent != null ? [] : [{ id: '', label: 'none' }];
+    const offer = Array.isArray(os) && [...none, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
     if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });
     if (offer) h += `<label>Owner<select data-f="owner" data-owner${can('move') ? '' : ' disabled'}>${offer.map(o => `<option value="${esc(o.id)}"${o.id === (x.parent ?? '') ? ' selected' : ''}>${esc(elName(o))}</option>`).join('')}</select></label>`;
     const rest = own.length ? [] : Object.entries(P); // no schema: what it holds, to read

@@ -153,10 +153,10 @@ try {
   // the Owner field: a container's software systems
   click('.node[data-id="c4-worker"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
-  // but the email service and the courier, which it has relationships to: in either it would join its own owner (audit 76)
-  check('the Owner field of a container: none and every software system it has no relationship to', same(opts, ['none', 'Bookshop', 'Payment provider']) && own.value === 'c4-bookshop', opts);
-  change(own, 'c4-payments');
-  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds; c4-level says the container view and the dynamic view list it with its new owner, not the subject)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4, 2);
+  // but the email service and the courier, which it has relationships to: in either it would join its own owner (audit 76);
+  // not the payment provider, which the view lists, so it would be listed with an owner that is not the subject (c4-level),
+  // and not none, since a container is owned by a software system (c4-owner, audit 77)
+  check('the Owner field of a container: every software system it has no relationship to and the view would not list it under, and no none', same(opts, ['Bookshop']) && own.value === 'c4-bookshop', opts);
   // T: the type, picked
   click('.node[data-id="c4-queue"] .c-name'); key('t'); await tick();
   const types = all('.um-pick button').map(b => b.textContent);

@@ -393,3 +393,33 @@ test('pins that ignore the packages settle clean, in milliseconds (audit 59) (ti
   const f = classes(80, 10, 'uml.class', true); f.views[0].layout = Object.fromEntries(Array.from({ length: 5 }, (_, i) => ['c' + i, [0, 0]])); timed(f, 1500, 'five on one cell');
   for (const view of ['uml.class', 'uml.package']) { const o = classes(9, 3, view, true); o.views[0].layout = Object.fromEntries(Array.from({ length: 9 }, (_, i) => ['c' + i, [0, 0]])); timed(o, 250, view + ': nine on one cell'); }
 });
+
+test('audit 77: a class or package is not moved into an owner that holds one of its name (Owner field, drop): refused in the rules\' words, and the Owner field leaves it out', () => {
+  const C = diagramOf({ diagram: 'uml.class' }), m = { schemaVersion: 2, nodes: [N('p', 'Package', 'Shop'), N('q', 'Package', 'Stock'), N('a', 'Class', 'Order'), N('b', 'Class', 'Order', 'p'),
+    N('c', 'Interface', 'Cart', 'q'), N('d', 'Class', 'Cart'), N('k', 'Package', 'Shop', 'q'), { id: 'u', label: 'Item', parent: 'q' }, N('e', 'Class', 'Item')],
+  edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['p', 'q', 'a', 'b', 'c', 'd', 'k', 'u', 'e'] }] }, Vw = m.views[0];
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.rule);
+  for (const D of [T, C]) {
+    assert.deepEqual(D.edits.owner(m, Vw, 'a', 'p'), { error: 'Shop has a classifier named Order already' });
+    assert.deepEqual(D.edits.owner(m, Vw, 'b', null), { error: 'The model has a classifier named Order already' });
+    assert.deepEqual(D.edits.owner(m, Vw, 'd', 'q'), { error: 'Stock has a classifier named Cart already' }, 'a class and an interface of one name');
+    assert.deepEqual(D.edits.owner(m, Vw, 'k', null), { error: 'The model has a package named Shop already' });
+    assert.deepEqual(D.edits.owner(m, Vw, 'e', 'q'), { error: 'Stock has a classifier named Item already' }, 'the view draws an element of no type as a class');
+    assert.equal(D.edits.owner(m, Vw, 'a', 'q'), null, 'the default');
+    assert.equal(D.edits.owner(m, Vw, 'k', 'p'), null, 'a package of a name its new owner has not');
+    assert.deepEqual(D.owners(m, m.nodes.find(n => n.id === 'a'), Vw).map(o => o.id), ['q', 'k']);
+    assert.deepEqual(D.owners(m, m.nodes.find(n => n.id === 'k'), Vw).map(o => o.id), ['p', 'q', 'k']); } // itself: the field leaves it out
+  assert.ok(errs(apply(m, [{ op: 'reparent', id: 'a', parent: 'p' }])).includes('classifier-names'), 'what the hook keeps away');
+  assert.ok(errs(apply(m, [{ op: 'reparent', id: 'k', parent: null }])).includes('package-names'));
+  // the shipped example: order into wholesale, wholesale-order into sales, refused and not offered
+  assert.deepEqual(T.edits.owner(EX, EX.views[0], 'order', 'wholesale'), { error: 'wholesale has a classifier named Order already' });
+  assert.deepEqual(T.edits.owner(EX, EX.views[0], 'wholesale-order', 'sales'), { error: 'sales has a classifier named Order already' });
+  assert.ok(!T.owners(EX, EX.nodes.find(n => n.id === 'order'), EX.views[0]).some(o => o.id === 'wholesale'));
+  const base = new Set(validate(EX).filter(p => p.level === 'error').map(p => p.message));
+  for (const v of EX.views) { const D = diagramOf(v); if (!D || !D.owners) continue;
+    for (const x of EX.nodes.filter(n => (v.nodeIds || []).includes(n.id))) { const os = D.owners(EX, x, v); if (!Array.isArray(os)) continue;
+      const under = id => { for (let p = id; p != null; p = (EX.nodes.find(n => n.id === p) || {}).parent) if (p === x.id) return true; return false; }; // the field leaves these out
+      for (const o of [...os.filter(o => !under(o.id)), { id: null }]) { if ((x.parent ?? null) === o.id || D.edits.owner(EX, v, x.id, o.id)) continue;
+        const fresh = validate(apply(EX, [{ op: 'reparent', id: x.id, parent: o.id }])).filter(p => p.level === 'error' && !base.has(p.message));
+        assert.deepEqual(fresh, [], `${v.id}: ${x.id} -> ${o.id}`); } } }
+});

@@ -276,7 +276,8 @@ function c4Problems(model, view) {
     say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : I.at.has(view.subject) ? `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}` : `its subject ${q(view.subject)} names no element`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);
   ids.forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
     const ok = C4_SHOWS[K].includes(x.type) && !(K === 'component' && x.type === 'c4.Component' && x.parent !== view.subject);
-    if (!ok) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${c4A(kind(id))}${x.type === 'c4.Component' && K === 'component' ? ` of ${q(x.parent)}` : ''}, is not drawn in a ${K} view`);
+    // a component owned by nothing says so, not "of \"undefined\"" (audit 77)
+    if (!ok) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${c4A(kind(id))}${x.type === 'c4.Component' && K === 'component' ? (x.parent != null ? ` of ${q(x.parent)}` : ' owned by nothing') : ''}, is not drawn in a ${K} view`);
     // §7.5.1: only the subject is a boundary; any other listed owner would box this element and drop the lines lifted onto it
     const o = I.chain(id).find(y => ids.includes(y));
     if (ok && o != null && o !== view.subject) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id, o], `${q(id)} is listed with its owner ${q(o)}, which is not the view's subject: only the subject is drawn as a boundary`);
@@ -355,12 +356,43 @@ function c4Add(model, view, entry, label) {
   const base = entry.type.split('.').pop().toLowerCase(), used = c4Used(model); let k = 1; while (used.has(base + k)) k++;
   return [{ op: 'add', element: { id: base + k, type: entry.type, ...(label ? { label } : {}), parent: o.id }, view: view.id }];
 }
-// the Owner field: a container's software systems, a component's containers
-// (not one a relationship of it would then join to its own part: c4Blocks, audit 76)
+// the Owner field: a container's software systems, a component's containers, and never none (ownerRequired: c4-owner)
+// (not one a relationship of it would then join to its own part: c4Blocks, audit 76; nor one a view would then list it, or
+// what it holds, under: c4Levels, audit 77)
 function c4Owners(model, x) {
   if (!C4_OBJ(x) || x.from != null || !Object.hasOwn(C4_OWNER, x.type) || x.type === 'c4.ContainerInstance') return null;
-  const B = c4Blocks(model, x.id);
-  return C4_ARR(model.nodes).filter(n => C4_OBJ(n) && n.type === C4_OWNER[x.type] && B(n.id) == null).map(n => ({ id: n.id, label: c4Name(n) }));
+  const B = c4Blocks(model, x.id), L = c4Levels(model, x.id);
+  return C4_ARR(model.nodes).filter(n => C4_OBJ(n) && n.type === C4_OWNER[x.type] && B(n.id) == null && L(n.id) == null).map(n => ({ id: n.id, label: c4Name(n) }));
+}
+// what c4-owner says of id under parent, in its words: a container is owned by a software system, a component by a container,
+// a container instance by a deployment node, a deployment node by one or none, a person or a software system by nothing; null: none
+function c4OwnerRule(model, id, parent) {
+  const I = c4Index(model), x = I.at.get(id); if (!x) return null; const t = parent == null ? null : (I.at.get(parent) || {}).type, w = C4_WORD[x.type];
+  if (Object.hasOwn(C4_OWNER, x.type)) return t === C4_OWNER[x.type] ? null : `${c4A(w.toLowerCase())} is owned by ${c4A(C4_WORD[C4_OWNER[x.type]].toLowerCase())}`.replace(/^./, c => c.toUpperCase());
+  if ((x.type === 'c4.Person' || x.type === 'c4.SoftwareSystem') && parent != null) return `${c4A(w.toLowerCase())} is owned by nothing`.replace(/^./, c => c.toUpperCase());
+  return x.type === 'c4.DeploymentNode' && parent != null && t !== 'c4.DeploymentNode' ? 'A deployment node is owned by a deployment node or none' : null;
+}
+// the static level a view draws at: its own, a dynamic view's its subject's (dynLevel, src/c4/views.js); null: none (a deployment view)
+const c4LevelOf = (I, v) => (v.diagram !== 'c4.dynamic' ? C4_KIND[v.diagram] || null : v.subject == null ? 'landscape'
+  : { 'c4.SoftwareSystem': 'container', 'c4.Container': 'component' }[(I.at.get(v.subject) || {}).type] || null);
+// what c4-level would newly say once id moves under parent: in a view (static, or dynamic at its subject's level) that lists id
+// or what it holds, one then listed with an owner that is not the view's subject, or a component of a component view then
+// not its subject's; the words to refuse it in, null where none (audit 77)
+function c4Levels(model, id) {
+  const I = c4Index(model); if (!I.at.has(id)) return () => null;
+  const under = [...I.at.keys()].filter(y => y === id || I.chain(y).includes(id));
+  const vs = C4_ARR(model && model.views).filter(C4_OBJ).map(v => { const K = c4LevelOf(I, v), ids = new Set(C4_ARR(v.nodeIds));
+    return K ? { v, K, ids, ys: under.filter(y => ids.has(y) && I.at.get(y).type !== 'uml.Comment') } : null; }).filter(o => o && o.ys.length);
+  const OFF = Symbol('not drawn'), said = ({ v, K, ids }, y, ch, par) => { const t = I.at.get(y).type;
+    if (!C4_SHOWS[K].includes(t) || (K === 'component' && t === 'c4.Component' && par !== v.subject)) return OFF;
+    const o = ch.find(z => ids.has(z)); return o != null && o !== v.subject ? o : null; };
+  return parent => { if (parent == null || !I.at.has(parent)) return null; const up = [parent, ...I.chain(parent)]; if (up.includes(id)) return null;
+    for (const s of vs) for (const y of s.ys) { const ch = I.chain(y), was = said(s, y, ch, I.at.get(y).parent);
+      const now = said(s, y, y === id ? up : [...ch.slice(0, ch.indexOf(id) + 1), ...up], y === id ? parent : I.at.get(y).parent);
+      if (now != null && now !== was) { const T = jsonText(labelOr(s.v.title, s.v.id)), Y = c4Name(I.at.get(y));
+        return now === OFF ? `A component view shows the components of its subject: ${Y} is listed in view ${T}`
+          : `An element is not listed with its owner unless that owner is the view's subject: ${Y} would be listed with ${c4Name(I.at.get(now))} in view ${T}`; } }
+    return null; };
 }
 // what blocks a new owner for id: the first relationship (the model's, or any view's own: the owner is the model's) that joins
 // id, or what it holds, with the owner or one of its owners, which c4-relationship then calls an error; null where none does (audit 76)
@@ -371,9 +403,15 @@ function c4Blocks(model, id) {
   return parent => { if (parent == null || !I.at.has(parent)) return null; const up = [parent, ...I.chain(parent)];
     return up.includes(id) ? null : L.find(e => up.includes(mine(e.from) ? e.to : e.from)) || null; }; // inside itself: apply() refuses it
 }
-// owner: the Owner field's choice, and a drop into a box (src/typed/edit.js), refused where a relationship would join an element
-// and its own owner, in c4-relationship's words; else the default (audit 76, as cloud's, audit 19)
-const c4Owner = (model, view, id, parent) => (c4Blocks(model, id)(parent) ? { error: 'A relationship never joins an element and its own owner' } : null);
+// owner: the Owner field's choice, a drop into a box (src/typed/edit.js) and MCP move_to_box, refused where c4-owner would call
+// the new owner wrong (none for a container, audit 77), where a relationship would join an element and its own owner, in
+// c4-relationship's words (audit 76, as cloud's, audit 19), and where a view would then list it under another owner than its
+// subject, in c4-level's (audit 77); else the default
+function c4Owner(model, view, id, parent) {
+  const o = c4OwnerRule(model, id, parent); if (o) return { error: o };
+  if (c4Blocks(model, id)(parent)) return { error: 'A relationship never joins an element and its own owner' };
+  const l = c4Levels(model, id)(parent); return l ? { error: l } : null;
+}
 
 /* ---- the type, under its four static view names ---- */
 // the model's people, once a model (rankFlip reads them for each line); a view laid out by flow puts them first by its zones
@@ -403,6 +441,7 @@ const C4_DEF = {
   flowRole: c4FlowRole,
   zoneOf: c4ZoneOf,
   owners: c4Owners,
+  ownerRequired: Object.keys(C4_OWNER), // c4-owner: a container, a component and a container instance have an owner, so no "none"
   // the model lines the view draws (validate()'s stories read it, audit 38): its own, and those an implied line stands for; not
   // one to a boundary it opens, which no line ends on
   drawn: (model, view) => { const { own, implied } = c4Lines(model, view, c4Pic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; },

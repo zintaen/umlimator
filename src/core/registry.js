@@ -94,7 +94,7 @@ function withOwnNodes(def) {
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
   if (typeof def.word === 'function') out.word = ownWrap('word', def.word, f => (model, id, view) => f(view ? M(model, view) : all(model).model, id));
   // the Owner field: a view's own owners too, for what one view alone holds; never for a model element (ownGuard's rule)
-  if (typeof def.owners === 'function') out.owners = ownWrap('owners', def.owners, f => (model, x, view) => { const os = f(view ? M(model, view) : all(model).model, x), held = heldBy(model);
+  if (typeof def.owners === 'function') out.owners = ownWrap('owners', def.owners, f => (model, x, view) => { const os = f(view ? M(model, view) : all(model).model, x, view), held = heldBy(model);
     return Array.isArray(os) && R_OBJ(x) && !held.has(x.id) ? os.filter(o => !(R_OBJ(o) && held.has(o.id))) : os; });
   if (typeof def.validate === 'function') out.validate = def.validate.length < 2 ? ownWrap('validate1', def.validate, f => model => { const o = all(model); return said(o, f(o.model)); })
     // a view's, its own nodes first, then the other typed views' (audit 24: a model line from one view's own node is not "from
@@ -123,7 +123,9 @@ function withOwnNodes(def) {
    - owners(model, element) -> [{ id, label }]: the properties panel's Owner field for that element, a select of these and
      "none", which emits reparent, or what the type's edits.owner returns (src/typed/edit.js) (the element itself and what it
      holds are left out; its owner is added when not offered).
-     None, or not a list: no Owner field.
+     None, or not a list: no Owner field. It is given the view too, when the panel asks (a class view's unnamed node is a class).
+   - ownerRequired: [type]: the kinds the Owner field offers no "none" for, since the type's rules call one owned by nothing
+     an error (C4's container, component and container instance, c4-owner); one owned by nothing now still shows "none".
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
      layout.keepsRank(model, view, id): a card the layout keeps in its rank whatever its pin says, by a text the canvas says
      when Alt + an arrow would step it along the rank axis, which then emits nothing (the use case's actors, audit 63).
