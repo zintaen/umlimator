@@ -3,7 +3,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
+import { SYS_AS_UML, SYS_HEAD, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
 import { bdField, bdProblems, bdTypeGuard } from './blocks.js';
 import { modelLines } from '../uml/owners.js';
 
@@ -85,7 +85,7 @@ const SYS_PAR_LEGEND = [
    constraint property's shape and expression, SysML's legend ---- */
 function SYS_PAR_GEO({ model, view, pos, memo }) {
   const I = SYS_PAR_INDEX(model, view), P = SYS_AS_UML(model, view);
-  const raw = csGeo({ model: P.model, view: P.view, pos, memo });
+  const raw = csGeo({ model: P.model, view: P.view, pos, memo, head: SYS_HEAD(model, view).title });
   const d = SYS_DRESS(raw, model, view, id => SYS_PAR_SAY(I, raw, id, SYS_PORT_GONE(view, I.el)));
   const nodes = d.nodes.map(n => { const m = I.mem.get(n.id); if (!m || m.owner !== I.S || m.m.type !== 'sysml.ConstraintProperty') return n;
     // it reads its block, whose name and expression it draws: what diff() marks it by (audit 48), and each namesake, which leaves
