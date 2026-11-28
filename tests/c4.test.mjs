@@ -366,8 +366,12 @@ test('T: an element\'s type picked among the four; add: a container in a contain
   assert.deepEqual(T.edits.add(C4, C4.views[V('c4-context')], { type: 'c4.Container' }, 'Cache'), { error: 'This view shows people and software systems: a container is added on a container view' });
   const added = apply(C4, T.edits.add(C4, v, { type: 'c4.Container' }, 'Cache'));
   assert.ok(layout(added, 'c4-containers').families[0].nodeIds.includes('container1'));
-  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-api')).map(o => o.id), ['c4-bookshop', 'c4-mail', 'c4-courier']); // not the payment provider it has a relationship to (audit 76)
-  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-catalogue')).map(o => o.id), ['c4-api', 'c4-worker', 'c4-queue']); // not the storefront nor the database it has relationships to (audit 76)
+  // not the payment provider it has a relationship to (audit 76), nor the email service and the courier, which the container
+  // view lists, so it would be listed with an owner that is not the subject (c4-level, audit 77)
+  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-api')).map(o => o.id), ['c4-bookshop']);
+  // not the storefront nor the database it has relationships to (audit 76), nor the worker and the queue: the component view
+  // lists it, and shows its subject's components only (c4-level, audit 77)
+  assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-catalogue')).map(o => o.id), ['c4-api']);
   assert.equal(T.owners(C4, C4.nodes.find(n => n.id === 'c4-shopper')), null); assert.equal(T.owners(C4, C4.edges[0]), null);
 });
 
@@ -737,7 +741,8 @@ test('audit 76: an element is not moved into an owner it has a relationship to (
   assert.deepEqual(T.edits.owner(m, Vw, 'api', 's2'), refused);
   assert.deepEqual(T.edits.owner(m, Vw, 'c1', 'db'), refused);
   assert.equal(T.edits.owner(m, Vw, 'c1', 'api'), null);
-  assert.equal(T.edits.owner(m, Vw, 'db', 's2'), null, 'no relationship of it reaches the bank');
+  // no relationship of it reaches the bank; the view lists both, so c4-level refuses it (audit 77)
+  assert.match(T.edits.owner(m, Vw, 'db', 's2').error, /^An element is not listed with its owner/);
   assert.ok(!validate(apply(m, [{ op: 'reparent', id: 'db', parent: 's2' }])).some(p => p.rule === 'c4-relationship'));
   assert.ok(validate(apply(m, [{ op: 'reparent', id: 'api', parent: 's2' }])).some(p => p.rule === 'c4-relationship'), 'what the hook keeps away');
   assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'api')).map(o => o.id), ['s1']);
@@ -748,4 +753,48 @@ test('audit 76: an element is not moved into an owner it has a relationship to (
     { id: 'i1', type: 'c4.ContainerInstance', label: 'API', parent: 'n1' }], edges: [{ id: 'r', type: 'c4.Relationship', from: 'i1', to: 'n2' }], views: [{ id: 'd', diagram: 'c4.deployment', nodeIds: ['n1', 'n2', 'i1'] }] };
   assert.deepEqual(D.edits.owner(k, k.views[0], 'i1', 'n2'), refused);
   assert.deepEqual(D.owners(k, k.nodes[2]).map(o => o.id), ['n1']);
+});
+
+test('audit 77: the Owner field offers no owner c4-owner or c4-level would call wrong, nor none; the owner hook refuses those moves in the rules\' words', async () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 's1', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 's2', type: 'c4.SoftwareSystem', label: 'Bank' }, { id: 's3', type: 'c4.SoftwareSystem', label: 'Mail' },
+    { id: 'api', type: 'c4.Container', label: 'API', parent: 's1' }, { id: 'db', type: 'c4.Container', label: 'DB', parent: 's1' },
+    { id: 'c1', type: 'c4.Component', label: 'Orders', parent: 'api' }, { id: 'c2', type: 'c4.Component', label: 'Stock' }],
+  edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'Shop: containers', subject: 's1', nodeIds: ['s1', 's2', 'api', 'db'] },
+    { id: 'w', diagram: 'c4.component', title: 'API: components', subject: 'api', nodeIds: ['api', 'c1', 'c2'] }] }, Vw = m.views[0];
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  // none: c4-owner's words, for a container, a component and (on a deployment view) a container instance
+  assert.deepEqual(T.edits.owner(m, Vw, 'api', null), { error: 'A container is owned by a software system' });
+  assert.deepEqual(T.edits.owner(m, Vw, 'c1', null), { error: 'A component is owned by a container' });
+  assert.deepEqual(T.edits.owner(m, Vw, 'c1', 's3'), { error: 'A component is owned by a container' }, 'dropped into a software system');
+  assert.deepEqual(T.edits.owner(m, Vw, 's2', 's1'), { error: 'A software system is owned by nothing' });
+  // an owner the view lists that is not its subject: c4-level's words, and so for a component of a component view
+  assert.deepEqual(T.edits.owner(m, Vw, 'db', 's2'), { error: 'An element is not listed with its owner unless that owner is the view\'s subject: DB would be listed with Bank in view "Shop: containers"' });
+  assert.ok(errs(apply(m, [{ op: 'reparent', id: 'db', parent: 's2' }])).some(e => e.startsWith('c4-level')), 'what the hook keeps away');
+  assert.deepEqual(T.edits.owner(m, Vw, 'c1', 'db'), { error: 'A component view shows the components of its subject: Orders is listed in view "API: components"' });
+  assert.equal(T.edits.owner(m, Vw, 'db', 's3'), null, 'Mail is listed in no view with it: the default');
+  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 'db', parent: 's3' }])), errs(m));
+  // the Owner field: only those, and no "none" (ownerRequired), but for one owned by nothing now
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'db'), Vw).map(o => o.id), ['s1', 's3']);
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'c1'), Vw).map(o => o.id), ['api']);
+  assert.deepEqual(T.ownerRequired, ['c4.Container', 'c4.Component', 'c4.ContainerInstance']);
+  // a component owned by nothing is said so, not 'of "undefined"'
+  const lv = errs(m).filter(e => e.startsWith('c4-level'));
+  assert.deepEqual(lv, ['c4-level: "Stock", a component owned by nothing, is not drawn in a component view'], lv);
+  // the shipped example: every container and component of every view, each owner the field offers then applied: no new error
+  const base = new Set(errs(C4));
+  for (const v of C4.views) { const D = diagramOf(v); if (!D || !D.owners) continue;
+    for (const x of C4.nodes.filter(n => v.nodeIds.includes(n.id))) { const os = D.owners(C4, x, v); if (!Array.isArray(os)) continue;
+      for (const o of os) { if (o.id === x.parent || D.edits.owner(C4, v, x.id, o.id)) continue;
+        const fresh = errs(apply(C4, [{ op: 'reparent', id: x.id, parent: o.id }])).filter(e => !base.has(e));
+        assert.deepEqual(fresh, [], `${v.id}: ${x.id} -> ${o.id}`); }
+      if (D.ownerRequired.includes(x.type)) assert.ok(D.edits.owner(C4, v, x.id, null), `${v.id}: ${x.id} -> none is refused`); } }
+  // the deployment view's container instance: none refused, and its Owner field offers no none either
+  await import('../src/c4/views.js');
+  const D = diagramOf({ diagram: 'c4.deployment' }), k = { schemaVersion: 2, nodes: [{ id: 'n1', type: 'c4.DeploymentNode', label: 'EU' }, { id: 'n2', type: 'c4.DeploymentNode', label: 'US' },
+    { id: 'i1', type: 'c4.ContainerInstance', label: 'API', parent: 'n1' }], edges: [], views: [{ id: 'd', diagram: 'c4.deployment', nodeIds: ['n1', 'n2', 'i1'] }] };
+  assert.deepEqual(D.edits.owner(k, k.views[0], 'i1', null), { error: 'A container instance is owned by a deployment node' });
+  assert.equal(D.edits.owner(k, k.views[0], 'n2', null), null, 'a deployment node may be owned by none');
+  assert.equal(D.edits.owner(k, k.views[0], 'i1', 'n2'), null);
+  assert.deepEqual(D.ownerRequired, T.ownerRequired);
 });

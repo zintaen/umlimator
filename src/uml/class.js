@@ -720,7 +720,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   layout: classGeo,
   // the view's open packages, the boxes the layout draws (notes/stage-2.md §4), and the Owner field's packages (§8)
   boxes: (model, view) => ownersOn(model, view).boxes,
-  owners: ownerChoices,
+  owners: classOwners,
   member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
   validate: (model, view) => [...classProblems(model, view), ...assocClassProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
   rules: { ...RULES, ...ASSOC_RULE, ...OWNER_RULES },
@@ -732,10 +732,28 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // the PDF's Kind (asked with no view): a class that is an association's class, rule association-class kept, is "Association
   // class"; null: the element's kind
   word: (model, id) => (assocClassProblems(model).some(p => p.ids[0] === id) || !UML_ARR(model && model.nodes).some(n => UML_OBJ(n) && n.id === id && assocOf(n)) ? null : 'Association class'),
-  edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner, field: classField },
+  edits: { connect: classConnect, rename: lineRename(lineLabel), owner: classOwner, field: classField },
   // a deleted association leaves its class a plain class: apply()'s delete takes props.associationClass out of the class that
   // names it, of no type ('', a class here) too (audit 65: left naming a gone id, an error of rule association-class)
   refs: { 'uml.Class': { 'props.associationClass': 'drop' }, '': { 'props.associationClass': 'drop' } },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines, tieDraw, tiePath, TIE_CELLS, TIE_WORK };
+// the owner hook of the class and package views (a drop into a box, the Owner field, MCP move_to_box): defOwner's rule, then a
+// classifier or a package moved to an owner that holds one of its name refused in the rule's words (classifier-names,
+// package-names), as the profile view's prOwner (audit 45) and an add or a rename are; the Owner field leaves those owners out
+// (audit 77); the object view's too, which shares the field. clashes(model, view, id) gives parent => the words, or null; one
+// index for every owner the field asks of
+function clashes(model, view, id) {
+  const at = new Map(); UML_ARR(model && model.nodes).forEach(n => { if (UML_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+  const x = at.get(id); if (!x) return () => null;
+  // an element of no type a class or package view shows is a class there (classProblems' tyOf); an object view's, an instance
+  const shown = new Set(UML_OBJ(view) && /^uml\.(class|package)$/.test(view.diagram) ? UML_ARR(view.nodeIds) : []), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type), nm = nameOfEl(x);
+  const cl = CLASSIFIERS.includes(ty(x)), pk = OWN_BOXES.includes(x.type); if (!cl && !pk) return () => null;
+  const by = new Map(); at.forEach(n => { if (n !== x && nameOfEl(n) === nm && (cl ? CLASSIFIERS.includes(ty(n)) : OWN_BOXES.includes(n.type) && (x.type === 'uml.Package' || n.type === 'uml.Package'))) by.set(n.parent ?? null, true); });
+  return parent => { const p = parent ?? null; if ((x.parent ?? null) === p || !by.has(p)) return null;
+    return `${p != null && at.has(p) ? nameOfEl(at.get(p)) : 'The model'} has a ${cl ? 'classifier' : 'package'} named ${nm} already`; };
+}
+function classOwner(model, view, id, parent) { const d = defOwner(model, view, id, parent); if (d) return d; const c = clashes(model, view, id)(parent); return c ? { error: c } : null; }
+function classOwners(model, x, view) { const os = ownerChoices(model, x); if (!Array.isArray(os)) return os; const c = clashes(model, view, x.id); return os.filter(o => !c(o.id)); }
+
+export { classOwner, classOwners, CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, rowMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines, tieDraw, tiePath, TIE_CELLS, TIE_WORK };

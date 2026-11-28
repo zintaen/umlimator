@@ -152,7 +152,7 @@ try {
   gives('the container field', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-db' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-db', m2);
   click('.node[data-id="c4-api-1"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
-  check('the Owner field of an instance: none and every deployment node', same(opts, ['none', 'User\'s device', 'Web browser', 'Web server', 'Docker Compose', 'Database server', 'PostgreSQL']) && own.value === 'c4-docker', opts);
+  check('the Owner field of an instance: every deployment node, and no none: an instance is owned by a deployment node (c4-owner, audit 77)', same(opts, ['User\'s device', 'Web browser', 'Web server', 'Docker Compose', 'Database server', 'PostgreSQL']) && own.value === 'c4-docker', opts);
   change(own, 'c4-web-host');
   gives('Owner: reparent the instance (it leaves Docker Compose for the web server)', [{ op: 'reparent', id: 'c4-api-1', parent: 'c4-web-host' }], m => m.nodes.find(n => n.id === 'c4-api-1').parent === 'c4-web-host', m2);
   click('.family[data-family="c4-web-host"] .family-title');

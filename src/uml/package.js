@@ -1,7 +1,7 @@
 import { elName } from '../core/model.js';
 import { registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, commentConnect, describeAs, drawnLines, lineLabel, lineRename, typeGeo } from './class.js';
-import { OWNER_RULES, OWN_BOXES, defOwner, ownerChoices, ownerProblems, ownersOn, viewLines } from './owners.js';
+import { CLASS_DEF, RULES, classOwner, classOwners, classProblems, commentConnect, describeAs, drawnLines, lineLabel, lineRename, typeGeo } from './class.js';
+import { OWNER_RULES, OWN_BOXES, ownerProblems, ownersOn, viewLines } from './owners.js';
 
 /* ---------- the package diagram, uml.package (work package 2.2, notes/stage-2.md §10.2, §10.3) ----------
    Packages and the classifiers of the class diagram, drawn by the class view's code with their names only: a package holding
@@ -49,13 +49,13 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization',
   layout: typeGeo(PACKAGE_LOOK),
   boxes: (model, view) => ownersOn(model, view).boxes,
-  owners: ownerChoices,
+  owners: classOwners,
   member: { holds: () => false }, // a classifier is drawn by its name here; its members are edited in a class view
   rows: () => [], // so the PDF lists no members
   validate: (model, view) => [...classProblems(model, view), ...packageProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),
-  edits: { connect: packageConnect, rename: lineRename(lineLabel), owner: defOwner },
+  edits: { connect: packageConnect, rename: lineRename(lineLabel), owner: classOwner },
 });
 
 export { PACKAGE_TYPE, PACKAGE_RULES, packageProblems };

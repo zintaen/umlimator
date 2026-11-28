@@ -301,6 +301,7 @@ const DEP_DEF = {
   layout: depGeo,
   boxes: (model, view) => depPic(model, view).boxes,
   owners: depOwners,
+  ownerRequired: C4_DEF.ownerRequired,
   drawn: (model, view) => { const { own, implied } = c4Lines(model, view, depPic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; }, // as C4_DEF's (audit 38)
   drawnKeys: (model, view) => c4Keys(c4Lines(model, view, depPic(model, view))), // as C4_DEF's (audit 41)
   validate: depProblems,

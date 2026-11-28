@@ -4,8 +4,8 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, commentConnect, commentLinkProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember, rowMember } from './class.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
+import { RULES, classOwner, classOwners, classProblems, commentConnect, commentLinkProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember, rowMember } from './class.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
    Instance specifications drawn with the classifier shape, the head underlined, `name : Classifier` (or `: Classifier`
@@ -227,7 +227,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
     'uml.Link': [{ key: 'association', label: 'Association', kind: 'text' }, obRole('from'), obRole('to'), OB_STEREO], 'uml.CommentLink': [] },
   layout: objectGeo,
   boxes: (model, view) => ownersOn(model, view).boxes,
-  owners: ownerChoices,
+  owners: classOwners, // the class view's: no package holding a classifier or package of its name (audit 77)
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
   member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: (text, owner) => { const r = parseSlot(text); return r.error ? r : memberClash(owner, {}, r, OB_SLOTS_ONCE) || r; }, holds: n => isInstance(n) }, // and an element of no UML kind, drawn as an instance (audit 29)
   validate: (model, view) => [...classProblems(model, view).filter(p => p.rule === 'member-names'), ...obTextProblems(model, view), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
@@ -240,7 +240,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
     return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(rowMember)); },
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
   text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
-  edits: { rename: obRename, connect: obConnect },
+  edits: { rename: obRename, connect: obConnect, owner: classOwner },
 });
 
 export { OBJECT_TYPE, OBJECT_RULES, obRename, obConnect, parseSlot, printSlot, slotEdit, objectProblems, objectDescribe };
