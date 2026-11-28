@@ -215,7 +215,7 @@ function csRank(ids, links) {
   loose.forEach((id, k) => { at[id] = [k % per, under + Math.floor(k / per)]; });
   return at;
 }
-function csGeo({ model, view, pos: pins, memo, head }) {
+function csGeo({ model, view, pos: pins, memo }) {
   const P = csPic(model, view), down = view.direction === 'down', present = CS_OBJ(view.present) ? view.present : {};
   // the ranking: the subject's parts and uses, then each open collaboration's roles, then the rest, block after block to the right
   const pos = Object.create(null), sBox = P.boxed.has(P.sid), blocks = [], lineNode = l => [l.f.node, l.t.node];
@@ -271,12 +271,7 @@ function csGeo({ model, view, pos: pins, memo, head }) {
   const inLbl = Math.max(0, ...P.lines.filter(l => l.inner && csLineText(l.e)).map(l => Math.min(280, textW(csLineText(l.e), 10)) + 12));
   const shape = { 'uml.Component': 'component', 'uml.Collaboration': 'collaboration' };
   // a title the author broke: its header room a line taller for each past the first, as its frame draws them (audit 23)
-  // head: the subject's header as a type that dresses the box as its frame draws it (SysML's `par [ConstraintBlock] name [title]`,
-  // src/sysml/sysml.js), cut to the box: the box's title, which the lines keep clear of, and its ports on the top sit right of
-  // (the box grows for them, layered.js headPorts); its fit, the text it grows to hold, UML's title as before (audit 76: laid out
-  // down, a frame parameter on the top border sat under the longer header, and its line ran through it)
-  const csTitle = x => [...csStereo(x).map(t => `«${t}»`), csName(x)].join(' '), dressed = typeof head === 'string' && sBox;
-  const containers = [...(sBox ? [P.S] : []), ...P.collabs.map(c => c.x)].map(x => ({ id: x.id, label: csName(x), title: x === P.S && dressed ? head : csTitle(x), ...(x === P.S && dressed ? { fit: csTitle(x) } : {}),
+  const containers = [...(sBox ? [P.S] : []), ...P.collabs.map(c => c.x)].map(x => ({ id: x.id, label: csName(x), title: [...csStereo(x).map(t => `«${t}»`), csName(x)].join(' '),
     ...(brLines(csName(x)).length > 1 ? { head: (brLines(csName(x)).length - 1) * 16 } : {}),
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
     ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));

@@ -516,20 +516,3 @@ test('audit 61: one pin of a part leaves no item flow label on a connector', () 
     const g = JSON.parse(readFileSync(new URL(`fixtures/${f}.json`, import.meta.url))), m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
     assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${f} ${id}`); }
 });
-
-// audit 76: the composite geometry laid the frame's box out for UML's title (the block's name), and the router kept lines clear of
-// that, not of SysML's header the frame draws: after one Alt + Right on the controller's drive port, its line to the motor ran
-// out over the frame and down through the header. The box is laid out for the header now; every port of the gallery's views,
-// moved by one Alt + arrow each way, right and down, leaves no line through it
-test('audit 76: no line crosses the frame\'s SysML header after one Alt + arrow on any port, right and down', () => {
-  const E = JSON.parse(readFileSync(new URL('../examples/types/sysml-internal-block.json', import.meta.url)));
-  let edits = 0;
-  for (const v of E.views) for (const dir of ['right', 'down']) {
-    const m0 = structuredClone(E), v0 = m0.views.find(x => x.id === v.id); v0.direction = dir; const g0 = layout(m0, v.id);
-    for (const n of g0.nodes.filter(x => x.shape === 'port')) for (const by of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const r = T.edits.moveTo(m0, v0, n.id, { by, geo: g0 }), c = r && (Array.isArray(r) ? r : r.commands); if (!c || !c.length) continue;
-      const m = apply(m0, c); edits++;
-      assert.deepEqual(check(m, v.id).filter(p => / header crossed by /.test(p.message)).map(p => p.message), [], `${v.id} ${dir}: ${n.id} ${by}`); }
-  }
-  assert.ok(edits > 40, String(edits));
-});

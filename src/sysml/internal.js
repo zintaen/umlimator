@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
 import { bdField, bdTypeGuard } from './blocks.js';
-import { SYS_AS_UML, SYS_HEAD, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -126,7 +126,7 @@ function SYS_IB_PROJ(model, view, I) {
    port's member and flow, each item flow's triangle, SysML's legend ---- */
 function SYS_IB_GEO({ model, view, pos, memo }) {
   const I = SYS_IB_INDEX(model, view), P = SYS_IB_PROJ(model, view, I);
-  const raw = csGeo({ model: P.model, view: P.view, pos, memo, head: SYS_HEAD(model, view).title });
+  const raw = csGeo({ model: P.model, view: P.view, pos, memo });
   const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id, SYS_PORT_GONE(view, I.el)));
   const memberOf = id => { const k = String(id).indexOf('->'); return k < 0 ? id : String(id).slice(k + 2); };
   // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49),

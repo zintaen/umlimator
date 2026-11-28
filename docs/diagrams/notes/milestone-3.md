@@ -654,7 +654,10 @@ words (port, part, connector) are said as SysML's (parameter, constraint propert
 `say` and `error`. A parameter's name the composite geometry places outside the frame (laid out right, the e-bike's eco
 bindings run up one bus beside its parameters, so its search along each line finds no spot inside and goes up to 220 px over
 the frame's top) is placed again at the nearest clear spot inside the frame; the composite geometry itself is unchanged, as
-it is not this package's. `tests/embed.py`'s pages line lists `tests/parametric.html` (the departure M3.3 records, §7.4). A gap, closed by audit 76: laid out down, a constraint block subject's parameters on the frame's top side crossed its header band with their lines inward (the composite geometry laid the box out for UML's title, not the SysML header the frame draws); the geometry is now given the header, the frame grows so its top ports sit right of it, and `tests/parametric.test.mjs` holds the view clean both ways.
+it is not this package's. `tests/embed.py`'s pages line lists `tests/parametric.html` (the departure M3.3 records, §7.4). A gap: laid
+out down, a constraint block subject's parameters on the frame's top side cross its header band with their lines inward (the
+composite geometry's port sides do not see the header); `tests/parametric.test.mjs` pins it, and the e-bike's own view is
+clean both ways.
 
 ## 10. SysML elements in other views
 

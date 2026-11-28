@@ -121,7 +121,13 @@ Layout limits, measured on `examples/ebike-range.json` and `tests/parametric-str
 - The composite type's geometry, `repair: false`, `reroute: false`. A parameter's name the geometry places outside the
   frame is placed again inside it.
 - The example lays out clean right and down, in Node and in Chrome.
-- The stress file's `edge-cases` view (two constraint properties of one type, a parameter bound twice, an unbound parameter, a binding to a parameter the type lacks, a binding between two values, a 120-character expression, cut) crosses once, right and down. `ec-constraint-block` (a constraint block subject built from constraint properties of another, its parameters on the frame) is clean right and down. The frame is laid out for its SysML header: a parameter on the frame's top sits right of the header, the frame growing for it, and no line crosses the header (till audit 76, laid out down, one parameter on the frame's top crossed the header band with its line inward). The generated `all` (16 constraint properties, 48 parameters, 30 values, 60 bindings) crosses 208 times right and 201 down, with 16 and 18 findings of lines sharing a track (207 and 205 crossings, 22 and 24 findings, till audit 60).
+- The stress file's `edge-cases` view (two constraint properties of one type, a parameter bound twice, an unbound
+  parameter, a binding to a parameter the type lacks, a binding between two values, a 120-character expression, cut)
+  crosses once, right and down. `ec-constraint-block` (a constraint block subject built from constraint properties of
+  another, its parameters on the frame) is clean right; laid out down, one parameter on the frame's top crosses the
+  header band with its line inward (a gap of the composite geometry's port sides, M3.5's, pinned). The generated `all`
+  (16 constraint properties, 48 parameters, 30 values, 60 bindings) crosses 208 times right and 201 down, with 16 and 18
+  findings of lines sharing a track (207 and 205 crossings, 22 and 24 findings, till audit 60).
 
 ### Writers: what each shows of a parametric diagram
 

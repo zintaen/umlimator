@@ -430,15 +430,6 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
   const headW = f => (map ? textW(f.label || f.id, 11) : linesW(f.title || f.label || f.id, f.head ? 12 : 11)) + 16; // a box's title, as the audit measures it (two lines: at 12 px); a broken one by its widest line (audit 24)
-  // a typed box's fit: the text it grows to hold, where that is not its title (a type that draws a longer header, cut to the box,
-  // than the box need hold: the lines keep clear of the header as drawn, audit 76); none, its title
-  const fitW = f => (!map && typeof f.fit === 'string' ? headW({ ...f, title: f.fit }) : headW(f));
-  // and the room a typed box's ports on its header side take past its title (its lines' ends that name a port there, each port
-  // 2 px and 10 px a line, 8 px apart, as placePorts spreads them): a frame parameter laid out under the title ran its line
-  // through it (audit 76)
-  const headPorts = f => { const H = TB ? 'L' : 'T', by = new Map(), opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
-    (dg.edges || []).forEach(e => ['from', 'to'].forEach(k => { const s = EDGE_SIDE[e[k + 'Side']]; if (e[k] === f.id && e[k + 'Port'] != null && s && (e.inner === k ? opp[s] : s) === H) by.set(e[k + 'Port'], (by.get(e[k + 'Port']) || 0) + 1); }));
-    return by.size ? [...by.values()].reduce((a, k) => a + 2 + 10 * k, 8 * (by.size - 1)) : 0; };
   const kids = new Map(), held = new Set(familyDefs.flatMap(f => f.nodeIds || [])); // a box's boxes; the cards in a box
   familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
   // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
@@ -448,7 +439,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // rule between two boxes moves them apart (audit 41: a deployment node six deep over its parent's artifact)
   // nor does a box grown wider than its cards for its title (byTitle, frameOf's; audit 71: a deployment box's «executionEnvironment»
   // «docker» line, laid out down, grew it over the box beside it, whose artifact it then took for its own)
-  const byTitle = new Set(), byPorts = new Map(); // byPorts: px a box grew past its far end for its ports on its header side (headPorts)
+  const byTitle = new Set();
   const boxesOf = new Map(), upOf = new Map(familyDefs.map(f => [f.id, f.parent])); // a card's boxes; a box's parent (a walk up, no recursion: boxes nest 3,000 deep)
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
@@ -495,7 +486,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       // laid out down, its title runs along its top, and the ports there go right of it: the box holds a port's room for each
       // line out of it, up to four (audit 38: as wide as its title, every line through its top met it at one point, or crossed the title)
       const outs = NEST && TB ? Math.min(4, (dg.edges || []).filter(e => { const i = id => id === f.id || under(f, id); return i(e.from) !== i(e.to); }).length) : 0;
-      if (!map) { const k = TB ? 'h' : 'w', hp = dg.typed ? headPorts(f) : 0, was = Math.max(b[k], fitW(f) + 16, hp && headW(f) + 36 + hp); if (dg.typed && was > b[k]) byTitle.add(f.id); else byTitle.delete(f.id); b[k] = Math.max(b[k], fitW(f) + 16 + (outs ? 36 + 16 * outs : 0)); if (b[k] > was) used = true; if (hp && was > b[k]) byPorts.set(f.id, was - b[k]); else byPorts.delete(f.id); b[k] = Math.max(b[k], was); }
+      if (!map) { const k = TB ? 'h' : 'w', was = Math.max(b[k], headW(f) + 16); if (dg.typed && was > b[k]) byTitle.add(f.id); else byTitle.delete(f.id); b[k] = Math.max(b[k], headW(f) + 16 + (outs ? 36 + 16 * outs : 0)); if (b[k] > was) used = true; }
       return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
     // a box's frame holds its children's: a stack, not recursion, so boxes nest to any depth; a box already on it closes a parent cycle
@@ -593,13 +584,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // an end may be a container: the line ends on its box's border, whose title the ports keep clear of (not a box and
   // something inside it: that has no line, but a typed view's inner line)
   const headOf = f => Math.min((TB ? f.h : f.w) - 16, headW(f)); // the length of a box's title along its header
-  // (a box with a fit, its title cut to it: hdFit and decoFit, the title it was sized for, by which placePorts centres its ports as
-  // before, those clear of the title as drawn, audit 76)
-  const headFit = f => Math.min((TB ? f.h : f.w) - 16, fitW(f)), fitted = f => !map && typeof f.fit === 'string';
   const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
-    decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [],
-    ...(fitted(f) ? { hdFit: TB ? headFit(f) : 0, decoFit: TB ? [] : [[f.x + 8, headFit(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])] } : {}),
-    ...(byPorts.has(f.id) ? { grew: byPorts.get(f.id) } : {}) }]));
+    decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
   const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
   // a line between a box and something inside it is no line: inside by what the box holds (its cards, its boxes and theirs), not by
   // where it lies, as viewEdges decides it for a map; a box grown over a card it does not hold dropped that card's line to the box
