@@ -68,7 +68,7 @@ Layout limits, measured on `examples/order-service-structure.json` and `tests/co
   by classes the model does not hold.
 - `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: one crossing each way, between the
   connector to the shared part and a role binding. Its generated `all` view (30 parts, 50 connectors, 20 ports on parts):
-  19 crossings right and 3 down.
+  12 crossings right (19 before audit 77) and 3 down.
 - Found in 5.8 and fixed in `src/uml/structure.js`: a port with no line was drawn over the end of a connector that names
   no port on the same side; it now keeps off it.
 

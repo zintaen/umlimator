@@ -70,3 +70,31 @@ test('fuzz: every number in a model of every family, and each geometry field, as
     if (key !== '*') mm.views.forEach(v => { v.nodeOverrides = Object.fromEntries((Array.isArray(v.nodeIds) ? v.nodeIds : []).map(id => [id, { [key]: P }])); });
     clean(mm, `field ${key}`); }
 });
+
+test('audit 77: a huge finite w or h (1e308) lays out, held at CARD_MAX, and validate() says so; huge and tiny numbers in every geometry field of every family throw nothing', async () => {
+  const { layout } = await import('../src/map/api.js');
+  const { validate } = await import('../src/map/validate.js');
+  const { CARD_MAX } = await import('../src/layout/layered.js');
+  // the finding: three cards, two lines into one (bestFlow's ways), a card w of 1e306 or more scored NaN and no way was kept
+  for (const [w, at] of [[1e308, 'card'], [1e306, 'card'], [1e308, 'override'], [Number.MAX_VALUE, 'card']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b', ...(at === 'card' ? { w } : {}) }, { id: 'c' }], edges: [{ id: 'e0', from: 'a', to: 'c' }, { id: 'e1', from: 'b', to: 'c' }],
+      views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], ...(at === 'override' ? { nodeOverrides: { b: { w } } } : {}) }] };
+    const g = layout(m, 'v'), b = g.nodes.find(n => n.id === 'b');
+    assert.equal(b.w, CARD_MAX, `${at} w ${w}`); assert.ok(g.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.y)), `${at} w ${w}`);
+    assert.ok(validate(m).some(p => p.level === 'warning' && /\.w$/.test(p.path) && p.message.includes(`over ${CARD_MAX} px`)), `${at} w ${w}: validate() says it`); }
+  // with a pin on another card (the finding's other message), and a huge h beside (a map card's height is layout's own)
+  const pinned = { schemaVersion: 2, nodes: [{ id: 'a', h: 1e308 }, { id: 'b', w: 1e308 }, { id: 'c' }], edges: [{ id: 'e0', from: 'a', to: 'c' }, { id: 'e1', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], layout: { c: [2, 0] } }] };
+  assert.equal(layout(pinned, 'v').nodes.find(n => n.id === 'b').w, CARD_MAX);
+  // a size within the cap is the card's own, and validate() is silent about it
+  const fine = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b', w: 900 }, { id: 'c' }], edges: [{ id: 'e0', from: 'a', to: 'c' }, { id: 'e1', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  assert.equal(layout(fine, 'v').nodes.find(n => n.id === 'b').w, 900); assert.deepEqual(validate(fine).filter(p => /\.w$/.test(p.path)), []);
+  // fuzz: each geometry field, and every number at once, huge and tiny, on every element and in every view's nodeOverrides and pins
+  const m = read('./fixtures/integration.json');
+  const set = (o, key, P, top = true) => { if (Array.isArray(o)) return o.map(x => set(x, key, P, false)); if (!o || typeof o !== 'object') return o;
+    const r = {}; for (const [k, v] of Object.entries(o)) r[k] = typeof v === 'number' && k !== 'schemaVersion' && (key === '*' || k === key) ? P : set(v, key, P, false);
+    if (!top && key !== '*' && typeof o.id === 'string' && !(key in o)) r[key] = P; return r; };
+  for (const P of [1e308, 5e-324]) for (const key of ['*', 'w', 'h', 'x', 'y', 'gap', 'rgap', 'nodeH']) { const mm = set(m, key, P);
+    if (key !== '*') mm.views.forEach(v => { v.nodeOverrides = Object.fromEntries((Array.isArray(v.nodeIds) ? v.nodeIds : []).map(id => [id, { [key]: P }])); if (v.layout) v.layout = Object.fromEntries(Object.keys(v.layout).map(k => [k, [P, P]])); });
+    const c = mapContext(mm);
+    for (const v of mm.views) { let out; assert.doesNotThrow(() => { out = c.buildView(v.id); }, `${key} ${P}, view ${v.id}`); assert.ok(out && out.markup, `${key} ${P}, view ${v.id}`); } }
+});

@@ -93,7 +93,7 @@ const PINNED = {
       right: [1,[],[]],
       down: [1,[],[]] },
     'all': {
-      right: [19,[],[]],
+      right: [12,[],[]],
       down: [3,[],[]] } }, // down: 3 since audit 38 (lines between two parts keep their ports' order)
 };
 

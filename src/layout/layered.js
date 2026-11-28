@@ -364,10 +364,13 @@ function layoutGraph(dg, map) {
   }
   return best;
 }
+const CARD_MAX = 1e5; // the largest w or h a card from a model is drawn at (px)
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
   const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
-  const size = x => typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0; // a card's w or h that is no finite positive number is the default: a string went into the markup as it was (audit cf1)
+  // a card's w or h that is no finite positive number is the default: a string went into the markup as it was (audit cf1); one
+  // over CARD_MAX is held there, as a pin far off the grid is (audit 77: w 1e306 made the layout score Infinity or NaN, so bestFlow kept no way)
+  const size = x => typeof x === 'number' && Number.isFinite(x) && x > 0 ? Math.min(x, CARD_MAX) : 0;
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
   const C = map ? 16 : 12, STUB = dg.mainSteps ? C : C + 6, SEP = 10; // maps: 16 px clear of other nodes
@@ -796,7 +799,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // line before it and whose search, its crossings dear, visits all of it: 30 s). Past it, the last resort keeps off cards,
   // tags and labels but not other lines, whose grid is small and whose search goes nearly straight to its end.
   // ponytail: 4e6 is some six times what the largest test model spends (requirement-stress: 0.66e6)
-  let anyWork = 0; const ANY_WORK = 4e6;
+  let anyWork = 0, ANY_WORK = 4e6;
+  // the work the searches before the last resort (no crossing, then crossings costing) may spend in this pass, in cells built and
+  // visited: each grid holds every line routed before it, so a view of n lines cost some n^3 (audit 77: 300 classes with 450
+  // associations 34 s, 75 of them 0.7 s). Past it, a line takes the plain elbow, which the last resort routes again round cards,
+  // its budget (ANY_WORK) raised to a quarter of this one, so the lines left keep off the others where they can.
+  // ponytail: the floor is twice what the largest test model spends (a decision's 200 exits, 96e6; every example, fixture and
+  // bench view under 18e6), and 400 per line squared passes it only past some 700 lines; a cheaper router (one grid kept across a
+  // pass) when a bigger view needs it
+  let gridWork = 0; const GRID_WORK = Math.max(2e8, 400 * free.length ** 2), over = () => { ANY_WORK = Math.max(ANY_WORK, GRID_WORK / 4); return null; };
   // a search near its ends (win) that fails for its start or end being shut in, where the grid near them is the whole grid's,
   // fails the same on the whole grid: wide() then skips that search, whose grid of the whole view was most of the time a view
   // of many lines into one card spent (audit 55). sealed: the last search so failed (as bare, or not)
@@ -804,7 +815,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const wide = (e, allowCross, spare) => gridRoute(e, allowCross, 320, spare)
     || (sealed !== null && sealed === (allowCross >= 2 && anyWork > ANY_WORK) ? null : gridRoute(e, allowCross, 0, spare));
   function gridRoute(e, allowCross, win, spare, soft) {
-    sealed = null;
+    sealed = null; if (allowCross < 2 && gridWork > GRID_WORK) return over(); // past its budget (GRID_WORK): built no more
     const st = [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB];
     const en = [e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB];
     // ends that face each other closer than two stubs (a card 32 px beside a box) leave the grid no room: the plain
@@ -845,7 +856,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const fx = families.flatMap(f => [f.x, f.x + f.w]), fy = families.flatMap(f => [f.y, f.y + f.h]); X = X.filter(v => far(v, fx)); Y = Y.filter(v => far(v, fy)); } // once, not per line
     const XF = X, YF = Y; // the whole grid's lines, which the window's are among
     if (W) { X = X.filter(v => keep.has(v) || (v >= W.x && v <= W.x2)); Y = Y.filter(v => keep.has(v) || (v >= W.y && v <= W.y2)); }
-    const nx = X.length, ny = Y.length, N = nx * ny; if (any && !bare) anyWork += N;
+    const nx = X.length, ny = Y.length, N = nx * ny; if (any && !bare) anyWork += N; if (!any && (gridWork += N) > GRID_WORK) return over();
     // an end that lies in an obstacle (or, without crossings, on an earlier line) fails the search: say so before building the grid
     const blockedAt = p => obs.some(r => inRect(p, r)) || (!allowCross && avoid.some(([a, b]) => onSegInterior(p, a, b)));
     if (blockedAt(st) || blockedAt(en)) { if (!soft) sealed = bare; return null; }
@@ -954,6 +965,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const nearOf = (nd, i, j, i2, j2) => (nd < 2 ? nearY[j].some(f => Math.max(X[i], X[i2]) > f.x && Math.min(X[i], X[i2]) < f.x + f.w) : nearX[i].some(f => Math.max(Y[j], Y[j2]) > f.y && Math.min(Y[j], Y[j2]) < f.y + f.h)) ? 2 : 1;
     while (hn) {
       if (any && !bare && ++anyWork > ANY_WORK) return gridRoute(e, allowCross, win, spare, soft); // past the budget: bare
+      if (!any && ++gridWork > GRID_WORK) return over(); // past its budget: the elbow, routed again by the last resort
       hpop(); const k = pk, cell = k >> 2, dir = k & 3, i = (cell / ny) | 0, j = cell - i * ny;
       if (pd > dist[k] + (hx[i] + hy[j])) continue;
       // (NEST) head on only for up to two bends more than the cheapest way in: a route that kept to it at any cost ran along a
@@ -1206,7 +1218,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     e.how = how; routed.push(e); placeLabel(e); return true; };
   let budget = 2 * free.length, swapped = false, rrSwap = false, sideKept = false;
   // a route moved onto its end's new port: its last run follows it
-  const moved = (e, k, P) => { const [i, j] = k === 'p1' ? [0, 1] : [P.length - 1, P.length - 2], v = P[i][1] === P[j][1];
+  // (a route of two points or fewer has no last run to move: a card 1e-300 px high left one of one point, and P[j] threw, audit 77)
+  const moved = (e, k, P) => { if (P.length <= 2) return false; const [i, j] = k === 'p1' ? [0, 1] : [P.length - 1, P.length - 2], v = P[i][1] === P[j][1];
     return P.length > 2 && simplify(P.map((p, x) => x === i ? e[k] : x === j ? (v ? [p[0], e[k][1]] : [e[k][0], p[1]]) : p)); };
   const segsE = e => e.pts.slice(0, -1).map((p, i) => [p, e.pts[i + 1]]), xing = (a, b) => segsE(a).some(([p, q]) => segsE(b).some(([r, s]) => crosses(p, q, r, s)));
   // with repair off (S19), two lines between the same two cards that cross (a request and its reply, laid out right) swap their
@@ -1224,11 +1237,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     by.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => {
       if (!xing(a, b) || swapBudget <= 0) return;
       const ks = [a.s, a.t].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
-      if (ks.length !== 2) return;
+      if (!ks.length || ks.length > 2) return; // at one card only where they share a side at only one (a decision's, a connector's one port a side, audit 77)
       const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how, e.p1, e.p2]), snapR = [routed.slice(), reserved.slice(), placed.slice()], ab = new Set([a, b]), was = issueCount(ab), b0 = rims(a, b);
       const undo = () => { snap.forEach(([e, p, lb, hw, p1, p2]) => { Object.assign(e, { pts: p, lbl: lb, how: hw, p1, p2 }); restub(e); });
         routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); };
-      for (const sw of [ks, [ks[0]], [ks[1]]]) {
+      for (const sw of ks.length === 2 ? [ks, [ks[0]], [ks[1]]] : [ks]) {
         ripUp(a); ripUp(b);
         let ma = a.pts, mb = b.pts; sw.forEach(([ka, kb]) => { [a[ka], b[kb]] = [b[kb], a[ka]]; ma = ma && moved(a, ka, ma); mb = mb && moved(b, kb, mb); }); restub(a); restub(b);
         let now = Infinity;
@@ -1257,10 +1270,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     let fixed = false; __ms.rounds++;
     const pairs = []; edges.forEach((a, i) => edges.slice(i + 1).forEach(b => { if (xing(a, b)) pairs.push([a, b]); }));
     // a crossing pair, or a pair where one shares a node side with the other's crossing partner
-    // each pair once, crossing pairs first; by place, since a model's edges need no id (by id, every pair of r15's was one)
-    const cand = [], seen = new Set(), add = (a, b) => { const k = edges.indexOf(a) + '|' + edges.indexOf(b); if (!seen.has(k)) { seen.add(k); cand.push([a, b]); } };
-    pairs.forEach(([a, b]) => add(a, b)); pairs.forEach(([a, b]) => free.forEach(o => { if (o !== a && o !== b) { add(a, o); add(b, o); } }));
-    outer3: for (const [a, b] of cand.filter(([x, y]) => !x.fixed && !y.fixed)) {
+    // each pair once, crossing pairs first; by place, since a model's edges need no id (by id, every pair of r15's was one), found
+    // in a table and made only as the budget takes them (audit 77: all made first, each found by indexOf, every crossing pair
+    // with every line, cost 160 classes with 480 lines 3 s a round for the few pairs the budget tries)
+    const at = new Map(edges.map((e, i) => [e, i]));
+    const cand = function* () { const seen = new Set(), add = (a, b) => { const k = at.get(a) + '|' + at.get(b); if (seen.has(k)) return false; seen.add(k); return !a.fixed && !b.fixed; };
+      for (const [a, b] of pairs) if (add(a, b)) yield [a, b];
+      for (const [a, b] of pairs) for (const o of free) if (o !== a && o !== b) { if (add(a, o)) yield [a, o]; if (add(b, o)) yield [b, o]; } };
+    outer3: for (const [a, b] of cand()) { if (budget <= 0) break; // as the budget's check below would, for every pair after
       for (const n of [a.s, a.t]) for (const side of ['L', 'R', 'T', 'B']) {
         const ka = endAt(a, n, side), kb = endAt(b, n, side); if (!ka || !kb) continue;
         if (budget <= 0) break outer3;
@@ -1526,4 +1543,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(BOXES && !NEST && !TITLES ? { [SHUT_BOXES]: true } : {}), ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: most(xs) - minX + M, h: most(ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
+export { CARD_MAX, CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
