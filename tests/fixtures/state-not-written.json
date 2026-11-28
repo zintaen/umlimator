@@ -1,0 +1,20 @@
+{
+  "$schema": "../../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "What a state text leaves out",
+  "root": "order-life",
+  "nodes": [
+    { "id": "created", "type": "uml.Pseudostate", "props": { "kind": "initial" } },
+    { "id": "placed", "type": "uml.State", "label": "Placed", "props": { "entry": "reserve the books" } },
+    { "id": "delivered", "type": "uml.FinalState" },
+    { "id": "hold-note", "type": "uml.Comment", "label": "Placed waits for the payment" }
+  ],
+  "edges": [
+    { "id": "t-created", "type": "uml.Transition", "from": "created", "to": "placed" },
+    { "id": "t-delivered", "type": "uml.Transition", "from": "placed", "to": "delivered", "props": { "trigger": "parcel signed for" } },
+    { "id": "hold-note-link", "type": "uml.CommentLink", "from": "hold-note", "to": "placed" }
+  ],
+  "views": [
+    { "id": "order-life", "diagram": "uml.state-machine", "title": "An order's life", "nodeIds": ["created", "placed", "delivered", "hold-note"] }
+  ]
+}

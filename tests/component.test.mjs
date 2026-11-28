@@ -809,3 +809,27 @@ test('audit 76: a component is not moved where an assembly or delegation it has 
   assert.deepEqual(T.edits.owner(CM, CM.views.find(v => v.id === V), 'shop-api', 'payment-provider-component'), assembly);
   assert.deepEqual(T.edits.owner(CM, CM.views.find(v => v.id === V), 'checkout-component', 'storefront-component'), delegation);
 });
+
+test('audit 78: an interface or package is not moved into a package that holds one of its name (Owner field, drop): refused in the class view\'s words, and the Owner field leaves it out', async () => {
+  await import('../src/uml/class.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'billing', type: 'uml.Package', label: 'Billing' }, { id: 'pay1', type: 'uml.Interface', label: 'Payments', parent: 'billing' },
+    { id: 'pay2', type: 'uml.Interface', label: 'Payments' }, { id: 'svc', type: 'uml.Component', label: 'Checkout' }, { id: 'other', type: 'uml.Package', label: 'Other' },
+    { id: 'k', type: 'uml.Package', label: 'Billing', parent: 'other' }, { id: 'cl', type: 'uml.Class', label: 'Payments', parent: 'other' }],
+  edges: [], views: [{ id: 'comp', diagram: 'uml.component', nodeIds: ['billing', 'pay1', 'pay2', 'svc', 'other', 'k', 'cl'] }, { id: 'cls', diagram: 'uml.class', nodeIds: ['billing', 'pay1', 'pay2', 'other', 'k', 'cl'] }] };
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.rule), by = id => m.nodes.find(n => n.id === id);
+  for (const v of m.views) { const D = diagramOf(v);
+    assert.deepEqual(D.edits.owner(m, v, 'pay2', 'billing'), { error: 'Billing has a classifier named Payments already' }, v.id);
+    assert.deepEqual(D.edits.owner(m, v, 'pay2', 'other'), { error: 'Other has a classifier named Payments already' }, `${v.id}: an interface and a class of one name`);
+    assert.deepEqual(D.edits.owner(m, v, 'k', null), { error: 'The model has a package named Billing already' }, v.id);
+    assert.equal(D.edits.owner(m, v, 'k', 'billing'), null, `${v.id}: the default, a package of a name its new owner holds not`);
+    assert.deepEqual(D.owners(m, by('pay2'), v).map(o => o.id), ['k'], `${v.id}: not billing nor other, which hold its name`);
+    assert.deepEqual(D.owners(m, by('k'), v).map(o => o.id), ['billing', 'other', ...(v.id === 'cls' ? ['k'] : [])], v.id); } // the class view's lists itself, which the page leaves out
+  assert.ok(errs(apply(m, [{ op: 'reparent', id: 'pay2', parent: 'billing' }])).includes('classifier-names'), 'what the hook keeps away');
+  // this model and a component type's fixture: each owner the field offers, and the top, is accepted only where validate() adds no name error
+  for (const [f, EX] of [['the model above', m], ['uml-component.json', JSON.parse(readFileSync(new URL('fixtures/uml-component.json', import.meta.url)))]]) {
+    const base = new Set(validate(EX).filter(p => p.level === 'error').map(p => p.message));
+    for (const v of EX.views.filter(v => v.diagram === 'uml.component')) for (const x of EX.nodes.filter(n => (v.nodeIds || []).includes(n.id))) { const os = T.owners(EX, x, v); if (!Array.isArray(os)) continue;
+      for (const o of [...os, { id: null }]) { if ((x.parent ?? null) === o.id || T.edits.owner(EX, v, x.id, o.id)) continue;
+        const fresh = validate(apply(EX, [{ op: 'reparent', id: x.id, parent: o.id }])).filter(p => p.level === 'error' && !base.has(p.message) && /-names$/.test(p.rule));
+        assert.deepEqual(fresh, [], `${f} ${v.id}: ${x.id} -> ${o.id}`); } } }
+});

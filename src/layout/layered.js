@@ -441,7 +441,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // through it (audit 76)
   const headPorts = f => { const H = TB ? 'L' : 'T', by = new Map(), opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
     (dg.edges || []).forEach(e => ['from', 'to'].forEach(k => { const s = EDGE_SIDE[e[k + 'Side']]; if (e[k] === f.id && e[k + 'Port'] != null && s && (e.inner === k ? opp[s] : s) === H) by.set(e[k + 'Port'], (by.get(e[k + 'Port']) || 0) + 1); }));
-    return by.size ? [...by.values()].reduce((a, k) => a + 2 + 10 * k, 8 * (by.size - 1)) : 0; };
+    // and its ports there with no line (bareHead, a count: 12 px each, audit 78)
+    const n = by.size + (Number.isInteger(f.bareHead) && f.bareHead > 0 ? f.bareHead : 0);
+    return n ? [...by.values()].reduce((a, k) => a + 2 + 10 * k, 8 * (n - 1) + 12 * (n - by.size)) : 0; };
   const kids = new Map(), held = new Set(familyDefs.flatMap(f => f.nodeIds || [])); // a box's boxes; the cards in a box
   familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
   // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
