@@ -3,7 +3,9 @@
 // a fake upstream made here, with no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { once } from 'node:events';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +15,7 @@ import {
   check, propose, update, main, readPin, pinFile, parseFeedback, feedbackProblems, writeFeedback, applyEdits,
   changelogEntry, changelogSince, latestTag, compareVersions,
 } from '../tools/evolve/strategy-sync.mjs';
-import { killSwitch } from '../tools/evolve/killswitch.mjs';
+import { killSwitch, FILE_MAX } from '../tools/evolve/killswitch.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const tmp = () => mkdtempSync(join(tmpdir(), 'umlimator-strategy-'));
@@ -341,6 +343,57 @@ test('kill switch fails closed: a STOP too large for a pipe, a STOP that is a di
   assert.match(asDir.reason, /could not be read/);
   assert.equal(killSwitch({ file: join(d2, 'nothing-here') }).stopped, false);
   assert.equal(killSwitch({ file: join(d2, '.evolve/STOP/why/deeper') }).stopped, false, 'a path through a file is absent (ENOTDIR)');
+});
+
+test('kill switch --file never hangs and fails closed on an entry that is not a regular file: a FIFO, a socket, a device, a directory, a link; a big STOP is read up to a cap (audit 78)', { skip: process.platform === 'win32' && 'no FIFO or socket files' }, async () => {
+  const dir = tmp();
+  const cli = (file) => spawnSync(process.execPath, [join(ROOT, 'tools/evolve/killswitch.mjs'), '--file', file], { encoding: 'utf8', timeout: 20000, maxBuffer: 16 << 20 });
+  // the command first, under a timeout, so a hang fails the test instead of blocking this process
+  const notFile = (file, what) => {
+    const reason = `kill switch set: ${file} (a ${what}, not a regular file, so it could not be read)`;
+    const c = cli(file);
+    assert.equal(c.error, undefined, `${what}: the CLI ends by itself (${c.error?.code})`);
+    assert.equal(c.status, 1, `${what}: ${c.stdout}`);
+    assert.equal(c.stdout, `${reason}\n`);
+    const r = killSwitch({ file });
+    assert.deepEqual(r, { stopped: true, reason }, `${what} is set and not read`);
+  };
+  // a FIFO with no writer: opening it to read waited forever (exit 124 under timeout 5)
+  const fifo = join(dir, 'fifo');
+  execFileSync('mkfifo', [fifo]);
+  notFile(fifo, 'FIFO');
+  // a socket, with its server listening, and the character device every Unix has
+  const sock = join(dir, 's.sock');
+  const server = createServer().listen(sock);
+  await once(server, 'listening');
+  try { notFile(sock, 'socket'); } finally { server.close(); }
+  notFile('/dev/null', 'character device');
+  mkdirSync(join(dir, 'STOPDIR'));
+  notFile(join(dir, 'STOPDIR'), 'directory');
+  // a link is set whatever it points at (a STOP file, a FIFO, nothing), and is never followed
+  writeFileSync(join(dir, 'real'), 'Stopped: budget.\n');
+  for (const [name, to] of [['to-file', join(dir, 'real')], ['to-fifo', fifo], ['dangling', join(dir, 'none')]]) {
+    symlinkSync(to, join(dir, name));
+    notFile(join(dir, name), 'symbolic link');
+  }
+  // a regular STOP: set, with its text
+  const normal = killSwitch({ file: join(dir, 'real') });
+  assert.deepEqual(normal, { stopped: true, reason: `kill switch set: ${join(dir, 'real')}`, text: 'Stopped: budget.\n' });
+  const empty = join(dir, 'empty');
+  writeFileSync(empty, '');
+  assert.deepEqual(killSwitch({ file: empty }), { stopped: true, reason: `kill switch set: ${empty}`, text: '' }, 'an empty STOP is set');
+  assert.equal(cli(empty).status, 1);
+  // a STOP over the cap: set, and only its first FILE_MAX bytes are read
+  const big = join(dir, 'big');
+  writeFileSync(big, 'Stopped: budget.\n' + 'x'.repeat(FILE_MAX * 3));
+  const b = killSwitch({ file: big });
+  assert.equal(b.stopped, true);
+  assert.equal(b.text.length, FILE_MAX);
+  assert.match(b.text, /^Stopped: budget\.\n/);
+  assert.match(b.reason, new RegExp(`only its first ${FILE_MAX} bytes are shown`));
+  const bc = cli(big);
+  assert.equal(bc.status, 1);
+  assert.ok(bc.stdout.length < FILE_MAX + 4096, 'the CLI prints no more than the cap');
 });
 
 // ---------- templates ----------

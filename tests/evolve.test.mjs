@@ -126,6 +126,26 @@ test('lease: a lock left by a crashed writer is broken once stale; a fresh one m
   rmSync(f + '.lock', { recursive: true });
 });
 
+test('lease: a lease path that is a FIFO or a directory is refused at once, never waited on (audit 78)', { skip: process.platform === 'win32' && 'no FIFO files' }, () => {
+  const d = tmp(), fifo = join(d, 'fifo.json');
+  execFileSync('mkfifo', [fifo]);
+  mkdirSync(join(d, 'dir.json'));
+  for (const f of [fifo, join(d, 'dir.json')]) {
+    // the command first, under a timeout, so a hang fails the test instead of blocking this process
+    for (const cmd of [['check'], ['take', '--owner', 'A']]) {
+      const r = spawnSync(process.execPath, [join(ROOT, 'tools/evolve/lease.mjs'), ...cmd, '--file', f], { encoding: 'utf8', timeout: 20000 });
+      assert.equal(r.error, undefined, `lease ${cmd[0]} on ${f} ends by itself (${r.error?.code})`);
+      assert.equal(r.status, 2, r.stdout + r.stderr);
+      assert.equal(r.stderr, `lease: ${f} is not a lease (not a regular file)\n`);
+    }
+    assert.throws(() => lease.readLease(f), /is not a lease \(not a regular file\)/);
+  }
+  const ok = join(d, 'l.json');
+  assert.equal(lease.readLease(ok), null, 'an absent lease is free');
+  assert.equal(lease.take(ok, 'A').ok, true, 'a regular lease file still works');
+  assert.equal(lease.readLease(ok).owner, 'A');
+});
+
 // ---------- ledger ----------
 
 const finding = (title, severity = 'low', extra = {}) => ({ title, severity, area: 'x', files: 'src/a.js', verdict: { real: true, reason: 'ok' }, ...extra });
