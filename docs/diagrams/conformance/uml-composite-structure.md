@@ -66,9 +66,7 @@ Layout limits, measured on `examples/order-service-structure.json` and `tests/co
 - The example lays out clean right and down: no crossing, `check()` finds nothing (decision 22: a port on its owner is not
   an overlap). Its own two `part-type` warnings stay: `orders : OrderRepository` and `listeners : OrderListener` are typed
   by classes the model does not hold.
-- `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: one crossing each way, between the
-  connector to the shared part and a role binding. Its generated `all` view (30 parts, 50 connectors, 20 ports on parts):
-  12 crossings right (19 before audit 77) and 3 down.
+- `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: no crossing laid out right and one laid out down, between the connector to the shared part and a role binding (one each way till audit 78). Its generated `all` view (30 parts, 50 connectors, 20 ports on parts): no crossing right and 2 down (12 right and 3 down till audit 78's second layout try, 19 right before audit 77).
 - Found in 5.8 and fixed in `src/uml/structure.js`: a port with no line was drawn over the end of a connector that names
   no port on the same side; it now keeps off it.
 

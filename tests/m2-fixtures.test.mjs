@@ -63,7 +63,7 @@ const PINNED = {
   'er-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [17, 0, 0], down: [18, 0, 0] } },
   'flowchart-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
-  'flowchart-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [4, 0, 0], down: [4, 0, 0] } },
+  'flowchart-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [3, 0, 0], down: [4, 0, 0] } }, // right 3 since audit 78 (4 before)
   'dfd-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'dfd-stress': {
     'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-level-2': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-level-2-gs': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-level-3': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-pay-level': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [0, 0, 0], down: [0, 0, 0] } },
@@ -88,6 +88,14 @@ test('every view of the ten fixtures, right and down: a line through a node, an 
   assert.match(ifNote, new RegExp(`crosses ${ifAll.right[0]} times right and ${ifAll.down[0]} down, with ${['no', 'one', 'two', 'three'][ifAll.right[1]] || ifAll.right[1]} labels? on (?:a line|lines) right and ${ifAll.down[1]} findings down`));
   // outside the generated views, no finding but crossings
   assert.deepEqual(other, []);
+  // audit 78 finding 14: the DFD note (and the type page tools/gallery.mjs writes from it) states the stress file's second
+  // level's crossings as counted here, in both notations (it said 2 right after audit 77 made it 1)
+  const lv = ['ec-level-2', 'ec-level-2-gs'].map(id => counts['dfd-stress'][id]), [r2, d2] = [lv[0].right[0], lv[0].down[0]];
+  assert.deepEqual(lv.map(x => [x.right[0], x.down[0]]), [[r2, d2], [r2, d2]], 'both notations alike, as the note says');
+  const xing = n => `${n} crossing${n === 1 ? '' : 's'}`, dfdSaid = `the second level's ${r2 === d2 ? `${xing(r2)} each way` : `${xing(r2)} right and ${d2} down`}, in both notations`;
+  for (const file of ['../docs/diagrams/conformance/dfd.md', '../docs/types/dfd.md']) {
+    let bare = readFileSync(new URL(file, import.meta.url), 'utf8').replace(/\s+/g, ' '); for (let k = 0; k < 3; k++) bare = bare.replace(/ \([^()]*\)/g, '');
+    assert.ok(bare.includes(`Its \`edge-cases\` levels are clean but for ${dfdSaid};`), `${file}: should say "${dfdSaid}"`); }
 });
 
 test('the minimal fixtures: what §10 says each holds, and no problem', () => {

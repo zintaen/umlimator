@@ -83,7 +83,7 @@ test('the legal lines: their two copies, icons/packs.json\'s and the type\'s, ar
 });
 
 test('the three targets (rows 26 to 28) validate clean and lay out clean right and down: every line routed, no overlap, each in its group, ends on outlines; crossings pinned (repair and reroute off, §11)', () => {
-  const got = {}, want = { 'gcp right': 0, 'gcp down': 0, 'azure right': 2, 'azure down': 2, 'aws right': 2, 'aws down': 2 }; // azure right: 2 since audit 27 (a line no longer runs back through its own box); gcp 1 and 1, azure down 3 till audit 71 (the box pass routes a line round a group that holds neither of its ends)
+  const got = {}, want = { 'gcp right': 0, 'gcp down': 0, 'azure right': 2, 'azure down': 1, 'aws right': 2, 'aws down': 0 }; // azure down 2 and aws down 2 till audit 78 (FAR); azure right: 2 since audit 27 (a line no longer runs back through its own box); gcp 1 and 1, azure down 3 till audit 71 (the box pass routes a line round a group that holds neither of its ends)
   for (const [fam, M, vid] of TARGETS) {
     assert.deepEqual(validate(M), [], fam);
     for (const direction of ['right', 'down']) {

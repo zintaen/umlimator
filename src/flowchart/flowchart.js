@@ -167,7 +167,7 @@ function fcGeo({ model, view, pos, memo }) {
   const edges = I.lines.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : FC_TXT(e.label);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: 280 } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : e.type === 'flow.Flow' ? { from: 'none', to: 'arrow' } : { from: 'none', to: 'none' },
       aria: fcLineName(I, e), ...(FC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
-  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, sideSwap: true }, memo); // sideSwap: layered.js, audit 78
   const types = new Set([...I.lines.map(e => (fcOther(e) ? FC_OTHER : e.type)), ...I.ids.map(id => { const t = I.N.get(id).type; return Object.hasOwn(FC_LOOK, t) ? t : 'flow.Process'; })]); // a node of no type or another kind: the process rectangle it is drawn as (audit 43)
   // a new object: what layoutTyped returned is never edited (stage 4 §2.4). The slots: one per node, so L and the palette hear the selection
   return { ...g, order: [...I.walk, ...I.lines.map(e => e.id)], slots: g.nodes.map(n => ({ after: n.id, x: n.x + n.w / 2, y: n.y + n.h / 2 })),
