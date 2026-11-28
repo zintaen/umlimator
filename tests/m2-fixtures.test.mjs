@@ -66,7 +66,7 @@ const PINNED = {
   'flowchart-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [4, 0, 0], down: [4, 0, 0] } },
   'dfd-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'dfd-stress': {
-    'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-level-2': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-2-gs': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-3': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-pay-level': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [0, 0, 0], down: [0, 0, 0] } },
+    'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-level-2': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-level-2-gs': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-level-3': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-pay-level': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [0, 0, 0], down: [0, 0, 0] } },
   'information-flow-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'information-flow-stress': { 'edge-cases': { right: [1, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 0, 0], down: [119, 12, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
