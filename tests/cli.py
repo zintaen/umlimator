@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "bench views": 1, "bench score": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 6, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "audit 74": 8, "audit 75 node errors": 4, "audit cf1": 6, "audit 77": 6, "bench views": 1, "bench score": 4})
 
 
 def ok(name, cond, info=""):
@@ -2874,6 +2874,75 @@ if part("audit cf1"):
            runs[0][0] and runs[0][0] == runs[1][0] != runs[2][0] and len(runs[0][0]) == 32 and mode == 0o600
            and all(k and k != runs[0][0] for k, _ in loose + linked) and loose[0][0] != loose[1][0] and linked[0][0] != linked[1][0]
            and all("is not a private file of yours" in e for _, e in loose + linked), (runs, mode, loose, linked))
+if part("audit 77"):
+    # audit 77 #3 and #15: the link check folded --out by its text first (os.path.abspath), so docs/../x/stills, where docs
+    # is a link a checkout holds, was checked as x/stills and passed, while the system takes docs/.. as the parent of the
+    # link's target: the folders and every file were written outside the checkout. The path is walked as the system walks it
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        far = t / "far" / "deep"; far.mkdir(parents=True)
+        g = t / "g"; g.mkdir(); sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+        m = ROOT / "tests/fixtures/integration.json"
+        (g / "a.json").write_text(m.read_text()); (g / "docs").symlink_to("../far/deep", target_is_directory=True); (g / "real").mkdir()
+        sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "a.json").write_text(m.read_text().replace('"Moped share, an example"', '"Moped share, edited"', 1))
+        page = t / "map.html"
+        made = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(m), "--out", str(page), "--no-check"], capture_output=True, text=True)
+        cli = lambda *x: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], cwd=g, capture_output=True, text=True)
+        res = {"stills --out docs/../x/stills": cli("stills", str(page), "--out", "docs/../x/stills", "--views", "system"),
+               "stills --out docs/../stills": cli("stills", str(page), "--out", "docs/../stills", "--views", "system"),
+               "stills --out absolute through docs/..": cli("stills", str(page), "--out", str(g / "docs" / ".." / "y"), "--views", "system"),
+               "diff --stills docs/../x": cli("diff", str(m), str(m), "--out", str(t / "d.html"), "--stills", "docs/../x"),
+               "drift --stills docs/../x": cli("drift", str(m), str(m), "--out", str(t / "dr.html"), "--stills", "docs/../x"),
+               "diff --base --out docs/../maps": cli("diff", "--base", "HEAD", "--out", "docs/../maps")}
+        fine = cli("stills", str(page), "--out", "real/../real/x/../stills", "--views", "system")  # '..' after real folders: written where the system puts it
+        ok("stills, diff and drift · an output folder reached through '..' after a symbolic link a checkout holds (docs/../x) is refused in one line, nothing written beside the link's target; '..' after real folders is followed (audit 77)",
+           made.returncode == 0 and all(r.returncode == 1 and "docs is a symbolic link" in r.stderr and "Traceback" not in r.stderr for r in res.values())
+           and sorted(x.name for x in (t / "far").iterdir()) == ["deep"] and list(far.iterdir()) == [] and not (t / "d.html").exists() and not (t / "dr.html").exists()
+           and fine.returncode == 0 and (g / "real" / "stills" / "system.svg").is_file(),
+           (made.stderr[-300:], {k: (r.returncode, r.stderr[-300:]) for k, r in res.items()}, sorted(x.name for x in (t / "far").iterdir()), fine.returncode, fine.stderr[-300:], sorted(str(x.relative_to(g)) for x in (g / "real").rglob("*"))))
+    # audit 77 #16: node_error's caret and end patterns let \s run across lines, and its join of the said lines ran \s* over
+    # a run of spaces, so a stderr of many blank lines (or a long run of spaces) took a time growing with the square of its
+    # length. A quarter-size stderr against the full one, for each worst shape: the time grows about as the length does
+    shapes = {"blank lines": lambda n: "\n\t" * (n // 2), "space lines": lambda n: " \n" * (n // 2), "an error, blank lines, a frame": lambda n: "Error: x" + "\n" * n + "    at f (x.js:1:1)\n",
+              "an error, blank lines, Node's version": lambda n: "Error: x\n" + " \n" * (n // 2) + "\nNode.js v20.0.0\n", "an error with a run of spaces": lambda n: "Error: a" + " " * n + "b\n",
+              "a thrown value after blank lines": lambda n: "file.js:1\nthrow 'a'\n^\n" + " \t\n" * (n // 3) + "boom\n"}
+    def took(text):
+        best = float("inf")
+        for _ in range(3):
+            t0 = time.perf_counter(); u.node_error(text, 1); best = min(best, time.perf_counter() - t0)
+        return best
+    grew = {k: (took(f(10_000)), took(f(40_000))) for k, f in shapes.items()}
+    said = {k: u.node_error(f(40_000), 1) for k, f in shapes.items()}
+    ok("node_error (timed) · a stderr of many blank or whitespace lines, or a long run of spaces, takes a time growing as its length, not its square, and is still said in one line (audit 77)",
+       all(b / max(a, 0.005) < 8 for a, b in grew.values()) and said["an error, blank lines, a frame"] == "Error: x" and said["an error, blank lines, Node's version"] == "Error: x"
+       and said["an error with a run of spaces"].startswith("Error: a ") and said["a thrown value after blank lines"] == "Uncaught boom" and all("\n" not in x for x in said.values()),
+       (grew, said))
+    # audit 77 #8, #12, #17 and #20: a key file that holds no key (empty or cut short: a first run stopped between making the
+    # file and writing it, or a full disk) was trusted as private and never written again, so every run had a key of its
+    # own and an open page no longer followed its server's restarts, with nothing said. It is written again, whole
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t).resolve()
+        def address(model, keys):
+            p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, env={**os.environ, "UMLIMATOR_MCP_KEYS": str(keys)})
+            p.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}) + "\n"); p.stdin.flush()
+            said = p.stdout.readline(); p.stdin.close(); p.wait(timeout=30)
+            k = re.search(r"http://127\.0\.0\.1:\d+/\?k=(\w+)", said)
+            return k and k.group(1), p.stderr.read()
+        a = ROOT / "tests/fixtures/integration.json"
+        got = {}
+        for name, text in {"empty": b"", "blank": b" \n", "cut short": b"abc", "not text": b"\xff\xfe" * 30}.items():
+            keys = t / name.replace(" ", "-")
+            keys.write_bytes(text); keys.chmod(0o600)
+            runs = [address(a, keys), address(a, keys)]
+            body = keys.read_bytes()
+            got[name] = (runs[0][0] is not None and runs[0][0] == runs[1][0], keys.stat().st_mode & 0o777, len(body.strip()), re.fullmatch(rb"[A-Za-z0-9_-]+\s*", body) is not None,
+                         [e for _, e in runs if "key" in e], sorted(x.name for x in t.iterdir() if x.name.startswith(".")))
+        whole = t / "whole"; whole.write_text("A" * 43); whole.chmod(0o600)  # a key file that holds a key is kept as it is
+        kept = [address(a, whole), address(a, whole)]
+        ok("mcp · a key file that holds no key (empty, blank, cut short or not text) is written again whole, private, so the page's key is the same on each later run; one that holds a key is kept (audit 77)",
+           all(v == (True, 0o600, 43, True, [], []) for v in got.values()) and kept[0][0] == kept[1][0] and whole.read_text() == "A" * 43, (got, kept))
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
