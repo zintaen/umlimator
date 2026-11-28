@@ -522,15 +522,3 @@ test('audit 77: a step and a decision (or connector) joined both ways, a retry l
     for (let i = 1; i < n; i++) if (nodes[i].type === 'flow.Decision' || r() < .25) { nodes[i].type = 'flow.Decision'; edges.push(F('b' + i, 'n' + i, 'n' + (i - 1), 'No')); }
     for (const d of ['right', 'down']) assert.deepEqual(crossings(one(nodes, edges, { direction: d })), [], `chain ${it}, ${d}: ${edges.map(e => e.from + '>' + e.to).join(' ')}`); }
 });
-
-// audit 78 finding 8: laid out down (Mermaid TD, the default), a loop back into a decision came into the decision's bottom
-// between its two exits and crossed one of them, with the exits listed Yes first. The two lines now swap their ports where
-// they leave or enter one side side by side (sideSwap, as the activity view), or the view is laid out a second time (FAR)
-test('audit 78: a Mermaid TD loop back into a decision draws with no crossing, down and right', async () => {
-  const { readMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
-  for (const t of ['flowchart TD\n A([Request]) --> B{Approved?}\n B -->|Yes| E([Done])\n B -->|No| C[Revise request]\n C --> D[Resubmit]\n D --> B',
-    'flowchart TD\n A[Start] --> B{Is it?}\n B -->|Yes| C[OK]\n C --> D[Rethink]\n D --> B\n B -->|No| E[End]',
-    'flowchart TD\n A([Request]) --> B{Approved?}\n B -->|No| C[Revise request]\n C --> D[Resubmit]\n D --> B\n B -->|Yes| E([Done])']) {
-    const { model } = readMermaidFlowchart(t), v = model.views[0];
-    for (const d of ['down', 'right']) { v.direction = d; assert.deepEqual(check(model, v.id).map(p => p.message), [], `${d}: ${t.replace(/\n/g, ' | ')}`); } }
-});

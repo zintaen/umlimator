@@ -90,11 +90,11 @@ const PINNED = {
       down: [0,[],[]] } },
   'composite-stress': {
     'edge-cases': {
-      right: [0,[],[]],
+      right: [1,[],[]],
       down: [1,[],[]] },
     'all': {
-      right: [0,[],[]],
-      down: [2,[],[]] } }, // down: 3 since audit 38 (lines between two parts keep their ports' order); right 0 (12) and down 2 since audit 78 (FAR)
+      right: [12,[],[]],
+      down: [3,[],[]] } }, // down: 3 since audit 38 (lines between two parts keep their ports' order)
 };
 
 test('every view of the six fixtures, right and down: line through a node, port line off its square, port off its owner\'s border, port name over a node or a line and check()\'s findings each only as pinned (the stated limits)', () => {

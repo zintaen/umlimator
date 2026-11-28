@@ -1113,20 +1113,3 @@ test('audit 77: a move that brings an error or stops a transition being drawn is
         assert.deepEqual(T.validate(apply(x, [{ op: 'reparent', id: n.id, parent: p }]), v).filter(q => bad(q) && !was.has(key(q))).map(q => q.message), [], `${f} ${n.id} -> ${p}`); } } }
   assert.ok(tried > 500 && refused > 0, `${tried} moves taken, ${refused} refused`);
 });
-
-// audit 78 finding 6: two transitions from the last state back to the first (cancel, timeout) crossed the forward transitions
-// laid out right and each other laid out down; and two returns each two states back that overlap (State 2 to State 0, State 3
-// to State 1) crossed either way, both going over the top. Lines round a state between two on their row now go over and under
-// it by turns (layoutTyped's second try, FAR in src/layout/layered.js)
-test('audit 78: returns from the last state to the first, and returns two states back that overlap, draw with no crossing, right and down', () => {
-  const S = (id, label) => ({ id, type: 'uml.State', label }), Tr = (id, from, to, trigger) => ({ id, type: 'uml.Transition', from, to, ...(trigger ? { props: { trigger } } : {}) });
-  const run = (nodes, edges) => ['right', 'down'].map(direction => { const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.state-machine', direction, nodeIds: nodes.map(n => n.id) }] };
-    assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], direction); return [direction, check(m, 'v').map(p => p.message)]; });
-  const ns = [{ id: 'i', type: 'uml.Pseudostate', props: { kind: 'initial' } }, S('idle', 'Idle'), S('running', 'Running'), S('paused', 'Paused')];
-  const es = [Tr('t0', 'i', 'idle'), Tr('a', 'idle', 'running', 'start'), Tr('b', 'running', 'paused', 'pause'), Tr('c', 'paused', 'idle', 'cancel'), Tr('d', 'paused', 'idle', 'timeout')];
-  assert.deepEqual(run(ns, es), [['right', []], ['down', []]], 'Idle, Running, Paused: cancel and timeout back to Idle');
-  for (const [k, backs] of [[4, [[2, 0], [3, 1]]], [5, [[3, 1], [4, 2]]], [4, [[3, 1], [2, 0]]], [6, [[4, 2], [3, 1]]]]) {
-    const nodes = [{ id: 'i', type: 'uml.Pseudostate', props: { kind: 'initial' } }, ...Array.from({ length: k }, (_, j) => S('s' + j, 'State ' + j)), { id: 'f', type: 'uml.FinalState' }];
-    const edges = [Tr('t0', 'i', 's0'), ...Array.from({ length: k - 1 }, (_, j) => Tr('n' + j, 's' + j, 's' + (j + 1), 'next' + j)), Tr('fin', 's' + (k - 1), 'f', 'done'), ...backs.map(([x, y], j) => Tr('b' + j, 's' + x, 's' + y, 'back' + j))];
-    assert.deepEqual(run(nodes, edges), [['right', []], ['down', []]], `${k} states, back ${JSON.stringify(backs)}`); }
-});

@@ -35,11 +35,6 @@ const SPAN = Symbol('span');
 // a typed view whose main line kept its side of a card with room for one port, a line beside it moved instead (audit 68), laid
 // out with the main line moved as before too (layoutTyped): a symbol, as TURNS
 const MAIN_SIDE = Symbol('main side');
-// a typed view of up to 30 cards that check() finds crossings in is laid out once more with FAR (layoutTyped), kept with fewer
-// crossings and no more other problems: lines round a card between two level ones go over or under by turns, a line to the
-// farthest card leaves a full side first, a side's ports slide towards their far ends, and lines out of one side are routed in
-// the order that nests their turns (layoutPass, audit 78): a symbol, as TURNS
-const FAR = Symbol('far');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
 // ponytail: the searches a label's spot may take with a label near it moved to each of that label's other spots (placeLabel),
@@ -306,15 +301,14 @@ function pinCells(at, P, up, order = Object.keys(at)) {
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
-  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew, kept = g.kept, side = g.side, farMv = g.far;
-  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; kept ||= g.kept; side ||= g.side; farMv ||= g.far; }
+  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew, kept = g.kept, side = g.side;
+  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; kept ||= g.kept; side ||= g.side; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
   if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0) + (snaked(dg) ? leaveIssues(h, '').length : 0); // a label not drawn the worst; on a snake, one that leaves its line too
-    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; kept ||= g2.kept; side ||= g2.side; farMv ||= g2.far; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; kept ||= g2.kept; side ||= g2.side; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
   if (grew) g.grew = true; // and a side grown over a box's title
   if (kept) g.kept = true; // and a main line that kept its side
-  if (farMv) g.far = true; // and a small typed view, which layoutTyped may lay out with FAR
   if (side) g.side = true; // a side swap kept (dg.sideSwap): layoutTyped judges it by check()
   if (rr) g.rr = true; // a typed view's request/reply swap kept: buildGeo (context.js) judges it by the finished picture
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
@@ -372,7 +366,7 @@ function layoutGraph(dg, map) {
 }
 const CARD_MAX = 1e5; // the largest w or h a card from a model is drawn at (px)
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
-  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false, farMoved = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
+  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
   // a card's w or h that is no finite positive number is the default: a string went into the markup as it was (audit cf1); one
   // over CARD_MAX is held there, as a pin far off the grid is (audit 77: w 1e306 made the layout score Infinity or NaN, so bestFlow kept no way)
@@ -666,18 +660,6 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // over a card with a loop ran along the loop's last run); a card's own top holds its lines left of its loop's port
   const loopRooms = LP ? nodes.map(m => { const r = LP.reach(m.id); return r && { m, x: m.x + m.w / 2 - SEP, y: m.y - r.top - SEP, w: m.w / 2 + r.right + 2 * SEP, h: r.top + SEP }; }).filter(Boolean) : [];
   const facesLoop = (n, side) => loopRooms.some(r => r.m !== n && hit(r, side === 'T' ? { x: n.x, y: n.y - STUB, w: n.w, h: STUB } : { x: n.x, y: n.y + n.h, w: n.w, h: STUB }));
-  // a typed view's lines between two cards level with each other with a card between them on their row go round it, over or
-  // under; FAR (layoutTyped's second try) gives each a way, under but where it would cross one that goes under (each spanning
-  // one end of the other, or both the same two cards), shortest first: a line moved off a full side takes the side its way
-  // gives, and on a card's side the lines that go over take the ports above the others and those that go under the ports below
-  // them (audit 78: two returns each two states back, both over the top, crossed; an activity's two decisions' "no" lines,
-  // both under, crossed; two returns from the last state to the first crossed each other)
-  const midY = c => c.y + c.h / 2, midX = c => c.x + c.w / 2, flat = (a, b) => Math.abs(midY(a) - midY(b)) < Math.min(a.h, b.h) / 2;
-  const skips = dg[FAR] ? free.filter(e => e.s !== e.t && !e.inner && /^[LR]$/.test(e.fs) && /^[LR]$/.test(e.ts) && flat(e.s, e.t)
-    && nodes.some(c => c !== e.s && c !== e.t && !c.box && flat(c, e.s) && (midX(c) - midX(e.s)) * (midX(c) - midX(e.t)) < 0)) : [];
-  if (dg.typed && !dg[FAR] && nodes.length <= 30) farMoved = true; // layoutTyped may lay it out with FAR
-  const way = new Map(); if (dg[FAR]) { const span = e => [Math.min(midX(e.s), midX(e.t)), Math.max(midX(e.s), midX(e.t))], cut = (a, b) => (a[0] < b[0] && b[0] < a[1] && a[1] < b[1]) || (b[0] < a[0] && a[0] < b[1] && b[1] < a[1]) || (a[0] === b[0] && a[1] === b[1]);
-    [...skips].sort((a, b) => (span(a)[1] - span(a)[0]) - (span(b)[1] - span(b)[0])).forEach(e => { const p = span(e), hit2 = w => [...way].some(([d, v]) => v === w && cut(p, span(d))); way.set(e, hit2('B') && !hit2('T') ? 'T' : 'B'); }); }
   for (let pass = 0; pass < 2; pass++) nodes.forEach(n => {
     ['R', 'L'].forEach(side => {
       const mine = free.filter(e => (e.s === n && e.fs === side) || (e.t === n && e.ts === side));
@@ -694,13 +676,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       // the one check() has less to say of (the activity stress view drew a crossing more). A map's lines move as before
       const pin = dg.typed && !dg[MAIN_SIDE], pinned = e => !!(pin && e.mainLine), steep = (a, b) => Math.abs(far(b)) - Math.abs(far(a));
       if (pin && mine.some(e => e.mainLine)) { const was = [...mine].sort(steep).slice(0, over); if (was.some(e => e.mainLine)) kept = true; }
-      // (FAR, a typed view's: of lines as steep, the one to the farthest card moves, as it goes round the nearer ones anyway; by
-      // the model's order, the line to the state beside the first moved under it, and two returns from the last crossed it, audit 78)
-      const reach = e => Math.abs(oth(e).x + oth(e).w / 2 - (n.x + n.w / 2)), byFar = (a, b) => pinned(a) - pinned(b) || steep(a, b) || reach(b) - reach(a);
-      const moved = mine.sort(dg[FAR] ? byFar : (a, b) => pinned(a) - pinned(b) || steep(a, b)).filter(e => !facesLoop(n, far(e) < 0 ? 'T' : 'B')).slice(0, over);
+      const moved = mine.sort((a, b) => pinned(a) - pinned(b) || steep(a, b)).filter(e => !facesLoop(n, far(e) < 0 ? 'T' : 'B')).slice(0, over);
       moved.forEach(e => {
         const o = oth(e), k = turn.get(o) || 0, all = mine.every(d => oth(d) === o), two = !!(level(o) || NEST && !o.box && Math.abs(far(e)) < 1) && (all || NEST && !dg[TURNS] && (TB || !!level(o)) && moved.filter(d => oth(d) === o).length > 1) && moved.length > 1; turn.set(o, k + 1); if (two && (TB || !level(o))) used = true; if (two && !all) turns = true;
-        const ns = way.has(e) && !two ? way.get(e) : (far(e) < 0) !== (two && k % 2 === 1) ? 'T' : 'B';
+        const ns = (far(e) < 0) !== (two && k % 2 === 1) ? 'T' : 'B';
         if (e.s === n) e.fs = ns; else e.ts = ns;
       });
     });
@@ -742,15 +721,6 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // under Billing 1's, whose line ran below Reports, and had no way in but round the map)
     const lean = it => Math.atan2(it.other.y + it.other.h / 2 - my, Math.abs(it.other.x + it.other.w / 2 - mx));
     list.sort((a, b) => vertical ? ((a.e.under || 0) - (b.e.under || 0)) || (a.other.y - b.other.y) || (lean(a) - lean(b)) || ((side === 'R' ? -1 : 1) * (a.other.x - b.other.x)) : turn(a) - turn(b));
-    // a typed view's three or more lines to cards level with this one: the line to the nearest takes the middle port and the
-    // rest go above and below it by turns, so the lines that go round it leave over and under it (audit 78: laid out down, two
-    // transitions back to the first state took the two ports above the one to the next state and crossed each other)
-    // (FAR: of the lines to cards level with this one, those that go over take the ports above and those that go under below)
-    if (dg.typed && vertical) { const near = it => Math.abs(it.other.x + it.other.w / 2 - mx), lv = it => Math.abs(it.other.y + it.other.h / 2 - my) < 1 && !it.e.under && !way.has(it.e);
-      const L = list.filter(lv), N = [...L].sort((a, b) => near(a) - near(b)); let out = L;
-      if (dg[FAR] && L.length > 2 && near(N[0]) < near(N[1])) { out = [N[0]]; N.slice(1).forEach((it, i) => { if (i % 2) out.push(it); else out.unshift(it); }); }
-      const T = list.filter(it => way.get(it.e) === 'T').sort((a, b) => near(b) - near(a)), B = list.filter(it => way.get(it.e) === 'B').sort((a, b) => near(a) - near(b));
-      if (out !== L || T.length || B.length) { const all = [...T, ...out, ...B], at = new Set(all); let k = 0; list.forEach((it, i) => { if (at.has(it)) list[i] = all[k++]; }); } }
     const sp = vertical ? null : sideSpan(n, side);
     const len = vertical ? n.h : sp ? sp[1] - sp[0] : n.w, mid = sp ? (sp[0] + sp[1]) / 2 : n.x + n.w / 2;
     // mainPort (layout-flow note, section 6.2): a main-flow line takes the side's middle, the others spread round it in their
@@ -759,13 +729,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const mp = vertical ? list.findIndex(it => it.e.mainLine) : -1, reach = mp >= 0 ? Math.max(mp, list.length - 1 - mp) : 0;
     const gap = Math.min(vertical ? 16 : 26, (len * 0.84) / Math.max(1, list.length), reach ? Math.max(10, len * 0.42 / reach) : Infinity), cy = n.y + n.h / 2;
     const lim = len * 0.42 / gap, mid0 = mp >= 0 ? Math.min(lim, Math.max(list.length - 1 - lim, mp)) : (list.length - 1) / 2;
-    // (FAR: a left or right side's ports, as many as two or more, slide together towards the middle of their far ends as far as
-    // the side allows: laid out right, an actor's line into a use case whose second line comes from below took the port above
-    // the use case's middle, over the actor's line to the use case above, and the two crossed, audit 78)
-    let slide = 0; if (dg[FAR] && vertical && list.length > 1 && mp < 0) { const want = list.reduce((a, it) => a + it.other.y + it.other.h / 2, 0) / list.length - cy;
-      slide = Math.max(-len * 0.42 - (0 - mid0) * gap, Math.min(len * 0.42 - (list.length - 1 - mid0) * gap, want)); if (!(slide * want > 0)) slide = 0; }
     list.forEach((it, i) => {
-      const off = (i - mid0) * gap + slide;
+      const off = (i - mid0) * gap;
       const p = side === 'R' ? [n.x + n.w, cy + off] : side === 'L' ? [n.x, cy + off]
         : side === 'T' ? [mid + off, n.y] : [mid + off, n.y + n.h];
       portAt(it, side, p);
@@ -1202,14 +1167,6 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const nearFirst = e => { const d = e.p1[ax] - e.p2[ax]; return d > 0 ? -e.p2[ax] : d < 0 ? e.p2[ax] - 1e6 : 1e7; };
     const slots = list.map(e => order.indexOf(e)).sort((a, b) => a - b), turns = [...list].sort((a, b) => nearFirst(a) - nearFirst(b));
     slots.forEach((at, i) => { order[at] = turns[i]; }); });
-  // (FAR: and lines out of one side of a card the same way, the one whose port lies least far that way first, so its turn takes
-  // the track nearest its far end and the next turns before it: laid out down, an actor's line to the use case below it turned
-  // over its line to the far one and the two crossed, audit 78)
-  if (dg[FAR]) { const outOf = {}; free.forEach(e => (outOf[e.s.id + '|' + e.fs] ||= []).push(e));
-    Object.entries(outOf).forEach(([k, list]) => { if (list.length < 2) return; const ax = /\|[LR]$/.test(k) ? 1 : 0;
-      const farFirst = e => { const d = e.p2[ax] - e.p1[ax]; return d > 0 ? e.p1[ax] : d < 0 ? -e.p1[ax] - 1e6 : 1e7; };
-      const slots = list.map(e => order.indexOf(e)).sort((a, b) => a - b), turns = [...list].sort((a, b) => farFirst(a) - farFirst(b));
-      slots.forEach((at, i) => { order[at] = turns[i]; }); }); }
   // fan-in (issue 111): lines into a card that six or more lines come into go first, in that order, so they take the tracks by
   // the card and the rest go round them (r19's logger has seven; its lines crossed the ones routed before them).
   // ponytail: six fits the bench (five made d24's hub worse); a fan-in card's own layout row is what is left
@@ -1601,7 +1558,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // folded, not spread: a list of over about 120,000 ends overflowed the call stack as arguments (audit bh1: 12,000 nested boxes)
   const least = a => a.reduce((m, v) => Math.min(m, v), Infinity), most = a => a.reduce((m, v) => Math.max(m, v), -Infinity), M = 36, minX = least(xs) - M, minY = least(ys) - M;
   __ms.moves = moves;
-  return { ms: __ms, ...(BOXES && !NEST && !TITLES ? { [SHUT_BOXES]: true } : {}), ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(farMoved ? { far: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: most(xs) - minX + M, h: most(ys) - minY + M } };
+  return { ms: __ms, ...(BOXES && !NEST && !TITLES ? { [SHUT_BOXES]: true } : {}), ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: most(xs) - minX + M, h: most(ys) - minY + M } };
 }
 
-export { CARD_MAX, CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, FAR, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };
+export { CARD_MAX, CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };

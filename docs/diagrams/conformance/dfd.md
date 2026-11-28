@@ -51,7 +51,8 @@ Layout limits, measured on `examples/bookshop-data-flow.json` and `tests/dfd-str
 - The example's level 1 keeps 1 crossing laid out right and 2 down, in each notation (Node's `check()`; the CI loop's
   pin); level 2 none. Two flows between one pair that crossed each other (a request and its reply) swap their ports
   with repair off (audit 14). `check()` finds nothing else.
-- `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` levels are clean but for the second level's 1 crossing each way, in both notations (2 right before audit 77); its generated `all` view (50 nodes, 60 flows) is clean both ways.
+- `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` levels are clean but for the second level's 2
+  crossings right and 1 down, in both notations; its generated `all` view (50 nodes, 60 flows) is clean both ways.
 - Deleting or hiding an external entity or store a level and its parent both show leaves a `dfd-balance` warning on the
   process until the other level is edited to match: the type's `remove` hook does not follow it onto the other level.
 - A long number is cut at 160 px, as a name wraps there.

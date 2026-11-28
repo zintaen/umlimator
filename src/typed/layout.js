@@ -1,6 +1,6 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { FAR, MAIN_SIDE, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
+import { MAIN_SIDE, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -12,7 +12,7 @@ import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noFar', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'shutBoxes', 'sideSwap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'shutBoxes', 'sideSwap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -91,10 +91,6 @@ function layoutTyped(dg0, memo) {
   // main cards centred on their row (an arranged view's, memo.flow) are laid out top-aligned too, and that kept when check()
   // has less to say of it: a centred event can push a line into a crossing (tests/bpmn-stress.json's edge cases)
   if (F && (t.nodes || []).some(n => n.mainCard)) { const u = { ...t, nodes: t.nodes.map(n => (n.mainCard ? { ...n, mainCard: false } : n)) }, [h, ht] = best(u); if (less(said(h), said(g))) { g = h; tried = ht; u0 = u; } }
-  // a small layout (g.far: up to 30 cards) with crossings is laid out with FAR too (layoutPass: lines round a card go over or
-  // under by turns, ports slide towards their far ends, audit 78), and that kept when check() finds fewer crossings and no more
-  // other problems
-  if (g.far && !dg.noFar) { const a = told(g); if (a[0]) { const u = { ...u0, [FAR]: true }, [h, ht] = best(u), b = told(h); if (b[0] < a[0] && b[1] <= a[1]) { g = h; tried = ht; u0 = u; } } }
   // a layout that kept a side swap (dg.sideSwap, layoutPass) is laid out without them too, and the swap kept only where check()
   // says no more of it, crossings or other (audit 71: a do-while loop among 25 other cards, laid out down, kept a swap that its
   // two lines judged better and the finished view drew one crossing more)

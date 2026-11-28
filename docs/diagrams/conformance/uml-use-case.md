@@ -41,7 +41,10 @@ store) does the same since audit 19 (the type's `refs`: `drop empties`), without
 
 Layout limits, measured on `examples/shopping-use-cases.json` and `tests/usecase-stress.json`:
 
-- The four stage 4 types lay out with port repair off (`repair: false`, `reroute: false`, `notes/stage-4.md` §17), but two lines that cross after leaving or entering one side of a node side by side swap their ports there when that leaves fewer layout check problems, as in the activity view (audit 78). A view of up to 30 elements that still crosses is laid out a second time, kept when `check()` finds fewer crossings and nothing more: the ports on an actor's or a use case's side slide towards the ends of their lines, and lines out of one side are routed so their turns nest, so two associations of one actor no longer cross (audit 78: two actors sharing a use case). Lines of two actors may still cross where the actors and the use cases lie in an order that leaves no straight way. `tests/stage4-fixtures.test.mjs` pins what is left: no crossing in the `edge-cases` view (one either way till audit 78); in the `all` view (50 elements, 60 lines) two crossings laid out right and four down.
+- The four stage 4 types lay out with port repair off (`repair: false`, `reroute: false`, `notes/stage-4.md` §17), so
+  two lines that cross next to a shared side keep their ports. `tests/stage4-fixtures.test.mjs` pins what is left: one
+  crossing in the `edge-cases` view either way; in the `all` view (50 elements, 60 lines) two crossings laid out right
+  and four down.
 - A line from an actor to a use case far down the subject may run round the subject's box (the payment provider's
   association in the example): a long route, not a crossing.
 

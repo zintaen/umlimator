@@ -748,20 +748,3 @@ test('audit 71: a side swap never draws a view with more layout check problems: 
   const m = { schemaVersion: 2, title: 't', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', title: 'A', nodeIds: nodes.map(x => x.id), direction: 'down' }] };
   assert.deepEqual(check(m, 'v').map(p => p.message), []);
 });
-
-// audit 78 finding 5: laid out right (the default), a second check whose "no" goes back to the step the first check guards
-// crossed the line into that decision: both "no" lines went under, and each spans one end of the other. Lines round a node
-// between two on their row now go over and under it by turns (layoutTyped's second try, FAR in src/layout/layered.js)
-test('audit 78: two checks in a row whose "no" lines go back past each other draw with no crossing, in every direction', () => {
-  const A = (id, label) => ({ id, type: 'uml.Action', label }), D = (id, label) => ({ id, type: 'uml.DecisionNode', label });
-  const F = (id, from, to, guard) => ({ id, type: 'uml.ControlFlow', from, to, ...(guard ? { props: { guard } } : {}) });
-  const nodes = [{ id: 's', type: 'uml.InitialNode' }, A('fill', 'Fill in the form'), A('check', 'Check the form'), D('valid', 'Valid?'), A('review', 'Review'), D('ok', 'Approved?'), { id: 'e', type: 'uml.ActivityFinalNode' }];
-  const edges = [F('1', 's', 'fill'), F('2', 'fill', 'check'), F('3', 'check', 'valid'), F('4', 'valid', 'fill', 'no'), F('5', 'valid', 'review', 'yes'), F('6', 'review', 'ok'), F('7', 'ok', 'check', 'no'), F('8', 'ok', 'e', 'yes')];
-  for (const direction of [undefined, 'right', 'down']) {
-    const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.activity', ...(direction ? { direction } : {}), nodeIds: nodes.map(n => n.id) }] };
-    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
-    assert.deepEqual(check(m, 'v').map(p => p.message), [], direction ?? '(default)'); }
-  // and the same as an interaction overview, whose interaction uses open no view here (a warning of their own, no crossing)
-  const ov = { schemaVersion: 2, nodes: nodes.map(n => (n.type === 'uml.Action' ? { ...n, type: 'uml.InteractionUse' } : n)), edges, views: [{ id: 'v', diagram: 'uml.interaction-overview', nodeIds: nodes.map(n => n.id) }] };
-  for (const direction of ['right', 'down']) assert.deepEqual(check({ ...ov, views: [{ ...ov.views[0], direction }] }, 'v').map(p => p.message), [], `overview ${direction}`);
-});

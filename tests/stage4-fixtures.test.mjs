@@ -70,12 +70,12 @@ function clean(m, vid) {
 // laid out down, labels that found no spot and were left off with nothing said: drawn on a looser spot now (audit 6)
 const PINNED = {
   'usecase-minimal': { v: { right: [0, []], down: [0, []] } },
-  'usecase-stress': { 'edge-cases': { right: [0, []], down: [0, []] }, // 1 and 1 till audit 78 (FAR)
+  'usecase-stress': { 'edge-cases': { right: [1, []], down: [1, []] },
     all: { right: [2, []], down: [4, []] } },
   'activity-minimal': { v: { right: [0, []], down: [0, []] } },
-  'activity-stress': { 'edge-cases': { right: [1, []], down: [0, []] }, 'ec-take-payment': { right: [0, []], down: [0, []] }, all: { right: [6, []], down: [8, []] } }, // 9 and 14 before audit 70's side swap; edge-cases down 1 till audit 78 (FAR)
+  'activity-stress': { 'edge-cases': { right: [1, []], down: [1, []] }, 'ec-take-payment': { right: [0, []], down: [0, []] }, all: { right: [6, []], down: [8, []] } }, // 9 and 14 before audit 70's side swap
   'state-minimal': { v: { right: [0, []], down: [0, []] } },
-  'state-stress': { 'edge-cases': { right: [0, []], down: [0, ['view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Payment"']] }, // audit 26: the Payment region holds the retry loop's label, off its border
+  'state-stress': { 'edge-cases': { right: [0, []], down: [1, ['view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Parcel"', 'view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Payment"']] }, // audit 26: the Payment region holds the retry loop's label, off its border
     all: { right: [19, []], down: [26, ['view all: label "evt [x > 0] / act" lies on edge State 40→State 2', 'view all: label "evt [x > 0] / act" lies on edge State 40→State 22', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 10', 'view all: label "evt [x > 0] / act" lies on edge State 16→State 42', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 30', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 11']] } },
   'overview-minimal': { v: { right: [0, []], down: [0, []] } },
   'overview-stress': { 'edge-cases': { right: [0, []], down: [0, []] }, // down 1 before audit 70's side swap
