@@ -16,7 +16,7 @@
 //
 // Prints the lease as JSON. Exit 0: done (check: the lease is free or expired, or with --owner, live and that owner's);
 // 1: refused (held by another owner, not yours, or check failed); 2: a usage error.
-import { readFileSync, writeFileSync, mkdirSync, rmdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmdirSync, renameSync, rmSync, statSync, openSync, fstatSync, closeSync, constants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { parseArgs, duration, instant } from './args.mjs';
 import { isMain } from '../main.mjs';
@@ -30,7 +30,13 @@ export function leasePath(flags = {}, env = process.env) {
 
 export function readLease(file) {
   let text;
-  try { text = readFileSync(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+  // opened without waiting and read only when it is a regular file: a FIFO there blocked the read forever (audit 78)
+  let fd;
+  try { fd = openSync(file, constants.O_RDONLY | (constants.O_NONBLOCK || 0)); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+  try {
+    if (!fstatSync(fd).isFile()) throw new Error(`${file} is not a lease (not a regular file)`);
+    text = readFileSync(fd, 'utf8');
+  } finally { closeSync(fd); }
   const l = JSON.parse(text);
   if (!l || typeof l.owner !== 'string' || Number.isNaN(Date.parse(l.expires))) throw new Error(`${file} is not a lease (owner and expires missing)`);
   return l;

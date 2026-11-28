@@ -8,7 +8,7 @@
 // so the session stops (a hotfix or release pull already pending is the only work allowed). Exit 2: usage error (an option
 // it does not know, or --file, --ref or --repo with no value or an empty one: audit 72).
 // Every session and scheduled job runs it first, and the orchestrator again before every step.
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, openSync, fstatSync, readSync, closeSync, constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from './args.mjs';
 import { isMain } from '../main.mjs';
@@ -19,17 +19,51 @@ export const STOP = '.evolve/STOP';
 // one (a STOP too large to read, git failing for any other reason, a file that cannot be opened) counts as stopped (audit 77).
 const MAX = 64 << 20;
 
+// A STOP given by --file is shown up to this many bytes; the rest is left unread.
+export const FILE_MAX = 1 << 20;
+
+function kind(st) {
+  return st.isSymbolicLink() ? 'a symbolic link' : st.isDirectory() ? 'a directory' : st.isFIFO() ? 'a FIFO'
+    : st.isSocket() ? 'a socket' : st.isCharacterDevice() ? 'a character device' : st.isBlockDevice() ? 'a block device' : 'not a file';
+}
+
+// Open without following a link and without waiting (O_NONBLOCK: an entry swapped for a FIFO after the lstat opens at
+// once), check again that it is a regular file, and read at most FILE_MAX bytes.
+function readStop(file) {
+  const set = `kill switch set: ${file}`;
+  let fd;
+  try { fd = openSync(file, constants.O_RDONLY | (constants.O_NONBLOCK || 0) | (constants.O_NOFOLLOW || 0)); } catch (e) {
+    return { stopped: true, reason: `${set} (it could not be read: ${e.code || e.message})` };
+  }
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile()) return { stopped: true, reason: `${set} (${kind(st)}, not a regular file, so it could not be read)` };
+    const buf = Buffer.alloc(Math.min(FILE_MAX, st.size));
+    let n = 0;
+    while (n < buf.length) {
+      const got = readSync(fd, buf, n, buf.length - n, n);
+      if (!got) break;
+      n += got;
+    }
+    const cut = st.size > FILE_MAX ? ` (only its first ${FILE_MAX} bytes are shown)` : '';
+    return { stopped: true, reason: set + cut, text: buf.subarray(0, n).toString('utf8') };
+  } catch (e) {
+    return { stopped: true, reason: `${set} (it could not be read: ${e.code || e.message})` };
+  } finally { closeSync(fd); }
+}
+
 // { stopped, reason, text }
 export function killSwitch({ repo = '.', ref = 'origin/main', file } = {}) {
   if (file !== undefined) {
     if (!file) return { stopped: true, reason: 'no kill-switch file named: treated as stopped' };
-    try { lstatSync(file); } catch (e) {
+    let st;
+    try { st = lstatSync(file); } catch (e) {
       if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return { stopped: false, reason: `no kill switch at ${file}` };
       return { stopped: true, reason: `kill switch at ${file} could not be looked for (${e.code || e.message}): treated as stopped` };
     }
-    try { return { stopped: true, reason: `kill switch set: ${file}`, text: readFileSync(file, 'utf8') }; } catch (e) {
-      return { stopped: true, reason: `kill switch set: ${file} (it could not be read: ${e.code || e.message})` };
-    }
+    // a FIFO, socket, device, directory or link is never opened: opening a FIFO waits for a writer forever (audit 78)
+    if (!st.isFile()) return { stopped: true, reason: `kill switch set: ${file} (${kind(st)}, not a regular file, so it could not be read)` };
+    return readStop(file);
   }
   const git = (...a) => spawnSync('git', ['-C', repo, ...a], { encoding: 'utf8', maxBuffer: MAX });
   const at = git('rev-parse', '--verify', '--quiet', `${ref}^{commit}`);
