@@ -431,6 +431,56 @@ test('protect: a protected test that its file\'s run does not show passing (the 
   assert.deepEqual(out.trim().split('\n'), [`tests/x.test.mjs: "${NOT_RUN.replace(': ', '": ')}`, '1 of 1 protected tests gone or changed: ask the maintainer, who runs node tools/protect.mjs --update after approving']);
 });
 
+test('protect: a file that writes a pass into the run\'s report and exits is reported, since the run gives it no report to write (audit 72)', async (t) => {
+  const HEAD = "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { appendFileSync, writeFileSync, writeSync } from 'node:fs';\n";
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const NOT_RUN = 'f is one: does not run: node --test of its file did not run it (the file exits or stops before it?)';
+  const forgeries = [
+    // the report file named on the command line (audit 71's TAP file), read from process.execArgv and from process.argv
+    "for (const a of [...process.execArgv, ...process.argv]) { const m = /^--test-reporter-destination=(.*)$/.exec(a); if (m) appendFileSync(m[1], 'ok 1 - f is one\\n'); }",
+    "for (const a of process.execArgv) if (a.includes('/') && !a.includes('assert-watch')) try { appendFileSync(a.slice(a.indexOf('=') + 1), 'ok 1 - f is one\\n'); } catch {}",
+    // TAP and node:test's own words on stdout and stderr, and on any descriptor past them
+    "writeSync(1, 'TAP version 13\\nok 1 - f is one\\n  ---\\n  duration_ms: 1\\n  ...\\n1..1\\n# pass 1\\n'); writeSync(2, 'ok 1 - f is one\\n');",
+    "for (let fd = 3; fd < 20; fd++) try { writeSync(fd, 'ok 1 - f is one\\n'); } catch {}",
+    // a line in the runner's own words, unsigned, into the stdout of the process that runs it (Linux's /proc; elsewhere a no-op)
+    "for (const fd of [1, 2]) try { appendFileSync(`/proc/${process.ppid}/fd/${fd}`, 'x {\"name\":\"f is one\",\"line\":9,\"column\":1,\"status\":\"ok\"}\\n'); } catch {}",
+  ];
+  for (const forge of forgeries) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + forge + '\nprocess.exit(0);\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    assert.deepEqual((await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`), [NOT_RUN], forge);
+    let code = 0;
+    try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; }
+    assert.equal(code, 1, forge);
+  }
+});
+
+test('protect: each protected test is read from its own run, by title and by where it is called: a test is not reported for another of its title (audit 72)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\n";
+  const FAILS = ': fails: node --test of its file ran it and it did not pass';
+  const loads = async (src, titles) => {
+    const dir = repo(src, titles); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // f() is truthy, and not 1
+    return (await assertLoads(dir)).map(p => `${p.title}${p.problem.startsWith('fails') ? FAILS : `: ${p.problem}`}`);
+  };
+  const OK = 'assert.ok(f())', ONE = 'assert.equal(f(), 1)';
+  // the first passes, the second fails; the other way round; three of one title; two on one line
+  assert.deepEqual(await loads(HEAD + `test('again', () => { ${OK}; });\ntest('again', () => { ${ONE}; });\n`, ['again', 'again #2']), ['again #2' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('again', () => { ${ONE}; });\ntest('again', () => { ${OK}; });\n`, ['again', 'again #2']), ['again' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${OK}; });\ntest('x', () => { ${ONE}; });\ntest('x', () => { ${OK}; });\n`, ['x', 'x #2', 'x #3']), ['x #2' + FAILS]);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${ONE}; }); test('x', () => { ${OK}; });\n`, ['x', 'x #2']), ['x' + FAILS]);
+  // one in a describe and one at the top level, the later one only protected; a test that is not protected fails
+  assert.deepEqual(await loads(HEAD + `describe('d', () => { test('x', () => { ${ONE}; }); });\ntest('x', () => { ${OK}; });\n`, ['x #2']), []);
+  assert.deepEqual(await loads(HEAD + `test('x', () => { ${OK}; });\ndescribe('d', () => { test.only('x', () => { ${ONE}; }); });\n`, ['x']), []);
+  // where it is called is counted as V8 counts lines: \r\n, a lone \r, U+2028 and U+2029 in a string, a byte order mark
+  const odd = '\uFEFF' + HEAD.replace(/\n/g, '\r\n') + "const s = 'a\u2028b\u2029c'; /* \r */\n" + `test('x', () => { ${OK}; });\n` + `test('x', () => { ${ONE}; });\n`;
+  assert.deepEqual(await loads(odd, ['x', 'x #2']), ['x #2' + FAILS]);
+  // a protected test the scan numbered after one that never runs (in an if) is read from its own call
+  assert.deepEqual(await loads(HEAD + `if (process.env.PROTECT_NEVER_SET) test('x', () => { ${OK}; });\ntest('x', () => { ${OK}; });\n`, ['x #2']), []);
+});
+
 test('protect: --update records a change again, all, one file or some titles; a title not found is an error', (t) => {
   const dir = repo(); t.after(() => rmSync(dir, { recursive: true, force: true }));
   edit(dir, s => s.replace('assert.equal(double(2), 4)', 'assert.equal(double(3), 6)').replace('twice(1), 4', 'twice(2), 8'));
@@ -487,4 +537,182 @@ test('jsscan: a / after an operand divides, else starts a regular expression; st
   assert.deepEqual(kinds("'it\\'s' /* a */ 1_000 x?.y a?.5:1"), ["str:'it\\'s'", 'comment:/* a */', 'num:1_000', 'id:x', 'punct:?.', 'id:y', 'id:a', 'punct:?', 'num:.5', 'punct::', 'num:1']);
   assert.equal(literal(tokenize("'a\\u0041\\x42\\n'")[0]), 'aAB\n');
   assert.equal(literal(tokenize('`a ${b}`')[0]), null);
+});
+
+test('protect: a file that writes node:test\'s own event frames into its run and exits is reported: a pass counts only when the preload signed it (audit 73)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { readFileSync, realpathSync, writeSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { Serializer } from 'node:v8';\n" +
+    // a frame as node:test's child reporter writes it (0xff 0x0f, a 4-byte length, a v8-serialized event), for the protected test where it is called
+    "const file = realpathSync(fileURLToPath(import.meta.url)), self = readFileSync(file, 'utf8'), at = self.lastIndexOf(\"test('f is one'\");\n" +
+    "const frame = (type, data) => { const s = new Serializer(); s.writeHeader(); s.writeValue({ type, data }); const body = s.releaseBuffer(), m = Buffer.alloc(6 + body.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(body.length, 2); body.copy(m, 6); return m; };\n" +
+    "const pass = () => frame('test:pass', { name: 'f is one', nesting: 0, testNumber: 1, line: self.slice(0, at).split('\\n').length, column: at - self.lastIndexOf('\\n', at - 1), file, details: { duration_ms: 1, type: 'test' } });\n";
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const NOT_RUN = /^f is one: (does not run|could not be checked)/;
+  const forgeries = [
+    // audit 73's repro: a pass frame on stdout, then exit before the test runs
+    'writeSync(1, pass()); process.exit(0);',
+    // with a signature of the preload's words that no key made
+    "writeSync(1, pass()); writeSync(1, frame('test:diagnostic', { message: 'protect-ran ' + 'a'.repeat(64) + ' {\"seq\":0,\"name\":\"f is one\",\"status\":\"ok\"}', nesting: 0, file })); process.exit(0);",
+    // with a test of the same title that really passes, its title built at run time so the scan does not count it, at the top level and in a describe
+    "test(['f is', 'one'].join(' '), () => {});\ntest('stop', () => { writeSync(1, pass()); process.exit(0); });",
+    "describe('g', () => { test(['f is', 'one'].join(' '), () => {}); });\ntest('stop', () => { writeSync(1, pass()); process.exit(0); });",
+    // with a pass the preload signed, its key read out of the preload's memory through node:inspector (which the run denies)
+    String.raw`try {
+  const { Session } = await import('node:inspector'), { hash } = await import('node:crypto'), s = new Session(); s.connect();
+  const post = (m, p) => { let r, err; s.post(m, p, (e, v) => { err = e; r = v; }); if (err) throw err; return r; };
+  const props = id => post('Runtime.getProperties', { objectId: id, ownProperties: true });
+  const fns = post('Runtime.queryObjects', { prototypeObjectId: post('Runtime.evaluate', { expression: 'Function.prototype' }).result.objectId }).objects.objectId;
+  let key = null;
+  for (const p of props(fns).result) {
+    const scopes = p.value?.objectId && (props(p.value.objectId).internalProperties || []).find(i => i.name === '[[Scopes]]');
+    if (scopes) for (const sc of props(scopes.value.objectId).result) if (sc.value?.objectId) for (const v of props(sc.value.objectId).result) if (v.name === 'KEY' && typeof v.value?.value === 'string') key = v.value.value;
+  }
+  const body = JSON.stringify({ seq: 1000, name: 'f is one', status: 'ok' });
+  writeSync(1, frame('test:diagnostic', { message: 'protect-ran ' + hash('sha256', key + hash('sha256', key + body)) + ' ' + body, nesting: 0, file }));
+} catch {}
+writeSync(1, pass()); process.exit(0);`,
+    // the frame written from a test that runs before it, and after the protected test failed (a fail is not taken back by a later pass)
+    "test('stop', () => { writeSync(1, pass()); });",
+  ];
+  for (const forge of forgeries) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + forge + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, forge);
+    assert.match(found[0], forge.startsWith("test('stop'") ? /^f is one: (fails|could not be checked)/ : NOT_RUN, forge);
+    let code = 0;
+    try { execFileSync(process.execPath, [tool, '--root', dir], { encoding: 'utf8', stdio: 'pipe' }); } catch (e) { code = e.status; }
+    assert.equal(code, 1, forge);
+  }
+  // the file as recorded, f() right: nothing to say
+  const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+  writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+  assert.deepEqual(await assertLoads(fine), []);
+});
+
+test('protect: a pass is read only from the protected test itself: a test of its title elsewhere (a subtest, in a describe, at the top level) does not stand for it when the file rewrites its own event frames (audit 74)', async (t) => {
+  const HEAD = "import { test, describe } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport { readFileSync, realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { Serializer, DefaultDeserializer } from 'node:v8';\n";
+  // audit 74's repro: the file filters its own stdout, where node:test's child reporter writes its frames (0xff 0x0f, a
+  // 4-byte length, a v8-serialized event): the pass of the other test of the protected title is dropped, and the
+  // protected test's fail (whose error does not deserialize here, so it is found by its bytes) becomes a pass where it is called
+  const TRICK = String.raw`const file = realpathSync(fileURLToPath(import.meta.url)), self = readFileSync(file, 'utf8'), line = self.slice(0, self.lastIndexOf("test('f is one'")).split('\n').length;
+const frame = item => { const s = new Serializer(); s.writeHeader(); s.writeValue(item); const b = s.releaseBuffer(), m = Buffer.alloc(6 + b.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(b.length, 2); b.copy(m, 6); return m; };
+const write = process.stdout.write.bind(process.stdout);
+let buf = Buffer.alloc(0), at = null;
+process.stdout.write = (chunk, ...rest) => {
+  buf = Buffer.concat([buf, Buffer.from(chunk)]);
+  const out = [];
+  while (buf.length >= 6 && buf[0] === 0xff && buf[1] === 0x0f && buf.length >= 6 + buf.readUInt32BE(2)) {
+    const n = buf.readUInt32BE(2), raw = buf.subarray(0, 6 + n), body = buf.subarray(6, 6 + n); buf = buf.subarray(6 + n);
+    let it = null;
+    try { const d = new DefaultDeserializer(body); d.readHeader(); it = d.readValue(); } catch { if (at && body.includes('test:fail') && body.includes('f is one')) it = { type: 'test:fail', data: { ...at } }; }
+    if (!it) { out.push(raw); continue; }
+    const mine = it.data?.name === 'f is one' && it.data.line === line;
+    if (it.type === 'test:enqueue' && mine) at = { ...it.data };
+    if (it.type === 'test:pass' && it.data?.name === 'f is one' && !mine) continue;
+    if (it.type === 'test:fail' && mine) { it.type = 'test:pass'; it.data = { ...it.data, details: { duration_ms: 1, type: 'test' } }; }
+    out.push(frame(it));
+  }
+  if (buf.length && !(buf[0] === 0xff && buf[1] === 0x0f)) { out.push(buf); buf = Buffer.alloc(0); }
+  return out.length ? write(Buffer.concat(out), ...rest) : true;
+};
+process.on('exit', () => { process.exitCode = 0; });
+`;
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const decoys = [
+    // a subtest of the protected title, which the preload signed as passing (the repro)
+    "test('helper', async (t) => { await t.test('f is one', () => {}); });",
+    // one in a describe, its title built at run time so the scan does not count it
+    "describe('g', () => { test(['f is', 'one'].join(' '), () => {}); });",
+    // one at the top level, called on another line
+    "test(['f is', 'one'].join(' '), () => {});",
+    // one called where the protected test is called, by code run under the file's name, and an exit before the protected
+    // test runs (once the run has reported the other)
+    "globalThis.made = test; (await import('node:vm')).runInThisContext('\\n'.repeat(line - 1) + \"made('f is one', () => {});\", { filename: import.meta.url });\ntest('stop', () => new Promise(() => { setTimeout(() => process.exit(0), 300); }));",
+  ];
+  for (const decoy of decoys) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + TRICK + decoy + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, decoy);
+    assert.match(found[0], /^f is one: (fails|does not run|could not be checked)/, decoy);
+  }
+  // the same file with f() right, and the same decoys left honest: nothing to say
+  for (const decoy of decoys.slice(0, 3)) {
+    const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+    writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+    edit(fine, () => HEAD + decoy + '\n' + CORE);
+    assert.deepEqual(await assertLoads(fine), [], decoy);
+  }
+  // the titles around a test are read where they are literal, and a protected test in a describe and a test is read as it runs there
+  const NESTED = HEAD + "describe('d', () => {\n  test('t', async () => {\n    test('f is one', () => {\n      assert.equal(f(), 1);\n    });\n  });\n});\ndescribe(`${'e'}`, () => { test('g', () => { assert.ok(f()); }); });\n";
+  const { tests } = scan(NESTED);
+  assert.deepEqual([...tests.values()].map(x => x.path), ['d > t', 'd > t > f is one', null]);
+  for (const [right, found] of [[1, []], [2, ['f is one: fails: node --test of its file ran it and it did not pass']]]) {
+    const dir = repo(NESTED, ['f is one', 'g']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), `export const f = () => ${right};\n`);
+    assert.deepEqual((await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`), found);
+  }
+});
+
+test('protect: a file cannot sign a pass with the preload\'s key read out of its own process: a heap snapshot, node:crypto patched under the preload, or a hash object of the preload\'s (audit 75)', async (t) => {
+  const HEAD = "import { test, before } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { f } from './code.mjs';\nimport v8, { Serializer, DefaultDeserializer } from 'node:v8';\nimport C from 'node:crypto';\nimport { syncBuiltinESMExports } from 'node:module';\n";
+  // audit 75's repro, made to check itself: the file filters its own stdout, where node:test's child reporter writes its
+  // frames (0xff 0x0f, a 4-byte length, a v8-serialized event), drops the protected test's fail, and turns the preload's
+  // signed 'not ok' for it into an 'ok' signed with whatever way to sign it found, once that way gives the preload's own
+  // signature of the 'not ok'; with no such way it signs nothing
+  const TRICK = String.raw`const H = C.hash, M = C.createHmac, signers = [];
+const fromKey = k => { signers.push(b => H('sha256', k + H('sha256', k + b)), b => M('sha256', k).update(b).digest('hex')); if (/^[0-9a-f]{64}$/.test(k)) signers.push(b => M('sha256', Buffer.from(k, 'hex')).update(b).digest('hex')); };
+const frame = item => { const s = new Serializer(); s.writeHeader(); s.writeValue(item); const b = s.releaseBuffer(), m = Buffer.alloc(6 + b.length); m[0] = 0xff; m[1] = 0x0f; m.writeUInt32BE(b.length, 2); b.copy(m, 6); return m; };
+const write = process.stdout.write.bind(process.stdout);
+let buf = Buffer.alloc(0);
+process.stdout.write = (chunk, ...rest) => {
+  buf = Buffer.concat([buf, Buffer.from(chunk)]);
+  const out = [];
+  while (buf.length >= 6 && buf[0] === 0xff && buf[1] === 0x0f && buf.length >= 6 + buf.readUInt32BE(2)) {
+    const n = buf.readUInt32BE(2), raw = buf.subarray(0, 6 + n), body = buf.subarray(6, 6 + n); buf = buf.subarray(6 + n);
+    if (body.includes('test:fail') && body.includes('f is one')) continue;
+    let it = null;
+    try { const d = new DefaultDeserializer(body); d.readHeader(); it = d.readValue(); } catch {}
+    const m = it?.type === 'test:diagnostic' && typeof it.data?.message === 'string' && /^protect-ran (\S+) (.*)$/s.exec(it.data.message);
+    if (m && m[2].includes('"name":"f is one"') && m[2].includes('"status":"not ok"')) {
+      const sign = signers.find(s => { try { return s(m[2]) === m[1]; } catch { return false; } });
+      if (sign) { const ok = m[2].replace('"status":"not ok"', '"status":"ok"'); it.data.message = 'protect-ran ' + sign(ok) + ' ' + ok; out.push(frame(it)); }
+      continue;
+    }
+    out.push(raw);
+  }
+  if (buf.length && !(buf[0] === 0xff && buf[1] === 0x0f)) { out.push(buf); buf = Buffer.alloc(0); }
+  return out.length ? write(Buffer.concat(out), ...rest) : true;
+};
+process.on('exit', () => { process.exitCode = 0; });
+`;
+  const CORE = "test('f is one', () => {\n  assert.equal(f(), 1);\n});\n";
+  const ways = [
+    // the repro: every 64-hex string in a heap snapshot of the file's process (the permission model leaves node:v8 open)
+    String.raw`before(async () => { const c = []; for await (const x of v8.getHeapSnapshot({ exposeInternals: true })) c.push(x); for (const k of new Set([...Buffer.concat(c).toString('latin1').matchAll(/"([0-9a-f]{64})"/g)].map(x => x[1]))) fromKey(k); });`,
+    // node:crypto's functions replaced and synced into every module's import of them, the preload's too
+    String.raw`for (const name of ['hash', 'createHmac', 'createHash']) { const was = C[name]; C[name] = function (...a) { if (typeof a[1] === 'string' && a[1].length >= 64) fromKey(a[1].slice(0, 64)); if (name === 'createHmac') { const k = a[1]; signers.push(b => M('sha256', k).update(b).digest('hex')); } return was.apply(this, a); }; }
+syncBuiltinESMExports();`,
+    // a hash object's copy() replaced on its prototype, which hands over every hash object it is called on
+    String.raw`const P = Object.getPrototypeOf(C.createHash('sha256')), copy = P.copy, seen = new Set();
+P.copy = function (...a) { if (!seen.has(this)) { for (const o of seen) for (const [i, j] of [[o, this], [this, o]]) signers.push(b => copy.call(j).update(copy.call(i).update(b).digest()).digest('hex')); seen.add(this); } return copy.apply(this, a); };`,
+  ];
+  for (const way of ways) {
+    const dir = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'tests/code.mjs'), 'export const f = () => 2;\n'); // the regression the protected test should catch
+    edit(dir, () => HEAD + TRICK + way + '\n' + CORE);
+    assert.deepEqual(problems(dir), [], 'the scan sees the test as it was recorded');
+    const found = (await assertLoads(dir)).map(p => `${p.title}: ${p.problem}`);
+    assert.equal(found.length, 1, way);
+    assert.match(found[0], /^f is one: (fails|does not run|could not be checked)/, way);
+    // with f() right, the same file reads as recorded
+    const fine = repo(HEAD + CORE, ['f is one']); t.after(() => rmSync(fine, { recursive: true, force: true }));
+    writeFileSync(join(fine, 'tests/code.mjs'), 'export const f = () => 1;\n');
+    edit(fine, () => HEAD + TRICK + way + '\n' + CORE);
+    assert.deepEqual(await assertLoads(fine), [], way);
+  }
 });

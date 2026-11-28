@@ -40,12 +40,13 @@ diagram types draw in their own notation. `examples/element.html` is a working p
 | `minimap` | Present: draw the minimap. |
 | `controls` | `"false"` hides the zoom and fit buttons. |
 | `wheel` | `"ctrl"`: the wheel zooms only with Ctrl or ⌘, and scrolls the page otherwise. |
+| `images` | Which images the model names are drawn, `render()`'s [`images`](./render.md#renderoptions): none but `data:` images without it; `"local"` also a path on the page's own site; `"remote"` any http(s) address too, which a model from someone else can use to make each reader's browser call an address it names. |
 | `height` | A number is pixels; anything else is a CSS length. Default 480px; CSS may size the element instead. |
 | `theme` | `"light"` or `"dark"`: that palette from `umlimator-theme.css` for this map, whatever the page's. Without it the map follows the page, including a docs site's dark mode (VitePress's `html.dark`, Docusaurus's `html[data-theme="dark"]`). |
 
-Changing `src`, `view`, `minimap`, `controls` or `wheel` draws the map again (a model already fetched from the same `src`
-is reused); setting an attribute to the value it has draws nothing. Removing the element destroys the map. The element
-fetches nothing but its model.
+Changing `src`, `view`, `minimap`, `controls`, `wheel` or `images` draws the map again (a model already fetched from the same `src`
+is reused); setting an attribute to the value it has draws nothing. Removing the element destroys the map. Without
+`images`, the element fetches nothing but its model.
 
 ### Events
 
@@ -109,8 +110,8 @@ view: overview
 ```
 ````
 
-The block's `key: value` lines are the element's attributes: `src`, `view`, `minimap`, `controls`, `wheel`, `theme` and
-`height`. After them, or instead of `src`, the block may hold a model in JSON, which goes into `src` as a `data:` URL
+The block's `key: value` lines are the element's attributes: `src`, `view`, `minimap`, `controls`, `wheel`, `images`,
+`theme` and `height`. After them, or instead of `src`, the block may hold a model in JSON, which goes into `src` as a `data:` URL
 (VitePress compiles each page as a Vue template, which drops a `<script>` child). A block the element can't use throws,
 so the site's build fails where the mistake is seen: an unknown key, a broken model, or neither or both of `src` and a
 model.

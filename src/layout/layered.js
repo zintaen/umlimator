@@ -1,5 +1,5 @@
-import { EDGE_BREAK, EDGE_LH, brLines, fit, linesW, sansW, textW, widest } from '../core/text.js';
-import { behind, detour, leaveIssues, onBorder, routeAudit } from './audit.js';
+import { EDGE_BREAK, EDGE_LH, brLines, fit, lastOk, linesW, sansW, textW, widest } from '../core/text.js';
+import { SHUT_BOXES, behind, detour, leaveIssues, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
@@ -367,14 +367,17 @@ function layoutGraph(dg, map) {
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
   const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN], BOXES = NEST || (!map && !!dg.typed && !!dg.shutBoxes); let used = false, turns = false, grew = false, kept = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
+  const size = x => typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0; // a card's w or h that is no finite positive number is the default: a string went into the markup as it was (audit cf1)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
   const C = map ? 16 : 12, STUB = dg.mainSteps ? C : C + 6, SEP = 10; // maps: 16 px clear of other nodes
   const lim = (dg.nodes || []).length + 64, cl = v => Math.max(-lim, Math.min(lim, v)); // a pin far off the grid (1e6, 1e308) is held at its edge: the column and row loops walk every index between
   const nodes = (dg.nodes || []).map((n, i) => {
     const k = kindOf(n.kind, map);
-    const w = n.w || (map ? mapNodeW(n) : NW);
-    return { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: n.h || NH };
+    const w = size(n.w) || (map ? mapNodeW(n) : NW);
+    const o = { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: size(n.h) || NH };
+    if (map) delete o.tag; // a map card's name tag is layout's own (below), never the model's: its fields go into the markup as they are (audit cf1)
+    return o;
   });
   const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n]))); // a card named constructor is found only if drawn
   const cols = dg.abs ? [] : [...new Set(nodes.map(n => n.col))].sort((a, b) => a - b);
@@ -434,15 +437,20 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24). Nor
   // does any box hold a card of a box it lies in (outer): grown wider than its cards for its title, it covered that card, and no
   // rule between two boxes moves them apart (audit 41: a deployment node six deep over its parent's artifact)
+  // nor does a box grown wider than its cards for its title (byTitle, frameOf's; audit 71: a deployment box's «executionEnvironment»
+  // «docker» line, laid out down, grew it over the box beside it, whose artifact it then took for its own)
+  const byTitle = new Set();
   const boxesOf = new Map(), upOf = new Map(familyDefs.map(f => [f.id, f.parent])); // a card's boxes; a box's parent (a walk up, no recursion: boxes nest 3,000 deep)
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
   const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
   // nor does a typed box hold a card of a box beside it in the same box (sibling: audit 71, a state's region grown over its
-  // sibling region's card by fanned transitions, laid out down, so the two regions were never moved apart). Only boxes of one
-  // parent: a top-level box over another stack's card keeps it (tests/deployment-stress.json's all, which moved apart drew more crossings)
-  const sibling = (f, id) => !!dg.typed && f.parent != null && (boxesOf.get(id) || []).some(b => b !== f.id && upOf.get(b) === f.parent);
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !sibling(f, n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
+  // sibling region's card by fanned transitions, laid out down, so the two regions were never moved apart). From the second pass
+  // of the box gaps below (deep), nor a card of a box in one, at any depth, top-level boxes too (audit 72: two top-level
+  // composite states laid out down, and a region over a composite nested in its sibling region, overlapped). The first pass
+  // keeps audit 71's rule: a box over such a card only for a pass moved apart there drew more crossings (tests/deployment-stress.json's all)
+  let deep = false; const sibling = (f, id) => !!dg.typed && (deep || f.parent != null) && (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = deep ? upOf.get(b) : null, k++) if (b !== f.id && upOf.get(b) === f.parent) return true; return false; });
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !sibling(f, n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !byTitle.has(f.id) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
   // border. Narrower, the labels found no spot inside and each was set on the other line (audit 26: Mermaid's keyboard example)
@@ -478,7 +486,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       // laid out down, its title runs along its top, and the ports there go right of it: the box holds a port's room for each
       // line out of it, up to four (audit 38: as wide as its title, every line through its top met it at one point, or crossed the title)
       const outs = NEST && TB ? Math.min(4, (dg.edges || []).filter(e => { const i = id => id === f.id || under(f, id); return i(e.from) !== i(e.to); }).length) : 0;
-      if (!map) { const k = TB ? 'h' : 'w', was = Math.max(b[k], headW(f) + 16); b[k] = Math.max(b[k], headW(f) + 16 + (outs ? 36 + 16 * outs : 0)); if (b[k] > was) used = true; }
+      if (!map) { const k = TB ? 'h' : 'w', was = Math.max(b[k], headW(f) + 16); if (dg.typed && was > b[k]) byTitle.add(f.id); else byTitle.delete(f.id); b[k] = Math.max(b[k], headW(f) + 16 + (outs ? 36 + 16 * outs : 0)); if (b[k] > was) used = true; }
       return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
     // a box's frame holds its children's: a stack, not recursion, so boxes nest to any depth; a box already on it closes a parent cycle
@@ -497,6 +505,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // Boxes keep apart: a column (row) gap widens wherever a box would come within 32 px of another box, or of a card outside
   // it, so their borders never touch and a line can run between them. Frames are measured again until nothing is too close.
   if (!dg.abs && familyDefs.length) for (let pass = 0, BOXGAP = 32; pass < 4; pass++) {
+    deep = pass > 0;
     const span = ns => ns.length ? { c0: Math.min(...ns.map(n => n.col)), c1: Math.max(...ns.map(n => n.col)), r0: Math.min(...ns.map(n => n.row)), r1: Math.max(...ns.map(n => n.row)) } : null;
     const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => owns(f, n))) })).filter(f => f.s);
     const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]), n }));
@@ -525,7 +534,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       fr.forEach(A => { if (owns(A, n) || !hit(A, B, 32)) return; const a = A.s, b = B.s;
         if (a.c1 < b.c0 || b.c1 < a.c0) { if (b.c1 < a.c0) { const k = Math.floor(b.c1); want(wantX, k, (B.x + B.w + 32 - A.x) / (Math.min(1, a.c0 - k) - b.c1 + k)); } }
         else if (a.r1 < b.r0 && hit(A, B, 8)) want(wantY, at(a.r1), A.y + A.h + 8 - B.y); }); });
-    if (!Object.keys(wantX).length && !Object.keys(wantY).length) break;
+    if (!Object.keys(wantX).length && !Object.keys(wantY).length) { if (deep) break; continue; } // nothing too close by audit 71's rule: once more by the deep one
     Object.entries(wantX).forEach(([k, v]) => { extraX[k] = (extraX[k] || 0) + v; }); Object.entries(wantY).forEach(([k, v]) => { extraY[k] = (extraY[k] || 0) + v; });
     place();
   }
@@ -541,7 +550,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     if (n.author || n.k === 'm-ext') {
       const A = (dg.authors || {})[n.author] || {}, max = n.w - 40;
       let t = n.author ? '@' + n.author : 'unknown';
-      while (t.length > 4 && sansW(t, 10, .92) + 42 > max) t = [...t].slice(0, -2).join('') + '…'; // whole characters: never half an emoji
+      // cut by whole characters (never half an emoji): the j-th cut keeps all but j + 1 of them and adds an ellipsis; the first that
+      // fits, or is 4 long or less, found by halves (a character at a time was quadratic in the author's length, audit cf1)
+      const over = x => x.length > 4 && sansW(x, 10, .92) + 42 > max;
+      if (over(t)) { const cs = [...t], cutAt = j => cs.slice(0, Math.max(0, cs.length - 1 - j)).join('') + '…';
+        t = cutAt(lastOk(1, cs.length - 1, j => over(cutAt(j))) + 1); }
       const w = Math.ceil(sansW(t, 10, .92) + 42);
       n.tag = { x: n.x + n.w - 12 - w, y: n.y + n.h - 9, w, h: 22, text: t, img: A.avatar || '', name: A.name || '' };
       n.decoB.push([n.tag.x - 2, n.tag.w + 4]);
@@ -1082,7 +1095,17 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
       for (const so of fits(o, was.text, 0)) { if (moves >= moveCap) break; moves++; put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
-    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    // a typed view's late label that no strict pass placed: before the relaxed passes' first spot, which may lie on another
+    // line (check() names it), the first of their spots clear of every other line routed, of up to 48 a pass (audit 73: a
+    // requirement view laid out down put a «satisfy» on another satisfy's last run, which the reroute below cannot move,
+    // the label being in front of that line's end)
+    let looked = !late || map;
+    const clearOf = b => { const r = { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }; return !routed.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, q]) => segHitsRect(a, q, r))); };
+    const clearSpot = () => { for (const pass of [3, 5]) for (const text of tries) { let k = 0; for (const c of fits(e, text, pass)) { if (++k > 48) break; if (clearOf(c.box)) return c; } } return null; };
+    for (const pass of (late ? (map ? LABEL_PASSES.mapLate : LABEL_PASSES.late) : map ? LABEL_PASSES.map : LABEL_PASSES.typed)) for (const text of tries) {
+      if (!looked && (pass === 3 || pass === 5)) { looked = true; if ((s = clearSpot())) return put(e, s, full); }
+      if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    }
   }
   // moves: the searches placeLabel's moved labels took in this pass (ms.moves), at most LABEL_TRIES, or a test's own bound (LABEL_CAP)
   let stats = {}, moves = 0; const moveCap = dg[LABEL_CAP] ?? LABEL_TRIES;
@@ -1355,9 +1378,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // (a typed view with repair off) then each line the grid routed that runs along another, routed again round every other line,
   // kept on the same terms (audit 61: laid out down, a line into the top of a card under its source, its port level with another
   // line's port on the card's other side, ran on that line, routed earlier, for the 6 px where it turned into its end's track)
-  if (dg.typed && dg.repair === false && !NEST && !dg.quick) free.filter(e => e.how === 'grid' && !e.fixed && e.s !== e.t).forEach(e => { const k0 = issuesOf(e); if (!k0[0] || !routeAudit({ edges }, '', new Set([e])).some(p => / share a line$/.test(p))) return;
-    const was = [e.pts, e.lbl]; ripUp(e); e.lbl = null; const P = wide(e, false);
-    if (P) { e.pts = P; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); }
+  // A view whose box pass takes titles only (dg.shutBoxes 'titles', the use case view, audit 74: two actors' associations, one the
+  // last resort's, ran on one track up to a use case) tries every line so, and a route that may cross lines after the one that may not
+  const TITLES = dg.shutBoxes === 'titles';
+  if (dg.typed && dg.repair === false && !NEST && !dg.quick) free.filter(e => (e.how === 'grid' || TITLES) && !e.fixed && e.s !== e.t).forEach(e => { const k0 = issuesOf(e); if (!k0[0] || !routeAudit({ edges }, '', new Set([e])).some(p => / share a line$/.test(p))) return;
+    const was = [e.pts, e.lbl]; ripUp(e); e.lbl = null;
+    for (const c of TITLES ? [false, true] : [false]) { const P = wide(e, c); if (!P) continue; e.pts = P; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); e.lbl = null; }
     const L = e.lbl = was[1]; e.pts = was[0]; routed.push(e); if (L) { placed.push(L); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); } });
   // (NEST) then each line that crosses a box's title, runs along a box's border, runs through a box that holds neither of its
   // ends (drawn so it seems to enter the box and leave it, and a region's title, which state.js draws later, may lie on its
@@ -1378,9 +1404,16 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const titles = e => families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)) || (drawnAs && drawnAs.has(f) && segHitsRect(a, b, headRect(drawnAs.get(f)))))).length;
   const boxIn = e => families.filter(f => !holds(boxEnd[f.id], e.s) && !holds(boxEnd[f.id], e.t) && segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, { x: f.x + 1, y: f.y + 1, w: f.w - 2, h: f.h - 2 }))).length;
   // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each); with dg.shutBoxes 2 (the
-  // component view, audit 70) [issues other than crossings, boxes run through, all]: a line through a box and its ports is worse than a crossing
+  // component view, audit 70; the cloud, requirement and C4 views, audit 71),
+  // [issues other than crossings, boxes run through, all]: a line through a box and its ports is worse than a crossing; a class
+  // view of up to 30 cards [issues other than crossings, all and boxes run through together, boxes run through]: a line through
+  // a box weighs as one crossing, as the layout score has it (D17), so one box pass is never traded for two crossings (audit 74). A
+  // deployment view's (shutBoxes 1, audit 71) keeps crossings first: taking them drew tests/deployment-stress.json's all, right, two more
+  // (dg.shutBoxes 'titles', the use case view, audit 74: only a line over a box's title or along its border or another line is
+  // tried, and a line through a subject is no worse for it: an association runs into the subject that holds its use case)
   const boxSaid = only => { const ps = routeAudit({ edges, families, byId }, '', only).filter(p => !/ header crossed by /.test(p)), x = ps.filter(p => / cross$/.test(p)).length;
-    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); return [ps.length - x + b, ps.length + b, L.reduce((k, e) => k + boxIn(e), 0)].map((x, i, a) => (dg.shutBoxes === 2 && i ? a[3 - i] : x)); };
+    const L = only ? [...only] : edges.filter(e => e.pts), b = L.reduce((k, e) => k + titles(e), 0); const v = [ps.length - x + b, ps.length + b, TITLES ? 0 : L.reduce((k, e) => k + boxIn(e), 0)];
+    return dg.shutBoxes === 2 ? [v[0], v[2], v[1]] : nodes.length <= 30 && dg.shutBoxes === true ? [v[0], v[1] + v[2], v[2]] : v; };
   const lt3 = (u, w) => u[0] < w[0] || (u[0] === w[0] && (u[1] < w[1] || (u[1] === w[1] && u[2] < w[2])));
   const relabel = (e, L) => { e.lbl = L; routed.push(e); if (L) { placed.push(L); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); } };
   // (the pass is kept only when the view as a whole is better for it: a line's move can take a track another line wanted)
@@ -1392,9 +1425,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // A line ending on a port is tried too: that end keeps its side, as one whose side the type gives (audit 70)
   if (BOXES) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
     is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box || r0[k].some(y => y.s === y.t)))) r0[k].forEach(x => bad.add(x)); });
-    const todo = free.filter(e => !e.fixed && !e.inner && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
+    // (a class view's line through a box is tried at any size, its pass taking no crossing for it past 30 cards: audit 71)
+    const todo = free.filter(e => !e.fixed && !e.inner && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (!TITLES && (nodes.length <= 30 || dg.shutBoxes === true) && boxIn(e))));
+    if (nodes.length <= 30) boxBudget = Math.max(boxBudget, Math.min(40, 8 * todo.length)); // a try for each side of each end (audit 71: seven cloud lines through a group used the dozen up)
     const v0 = todo.length ? boxSaid() : null, snap = todo.length ? edges.map(e => [e, e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl, e.stubs]) : null, snapR = todo.length ? [routed.slice(), reserved.slice(), placed.slice()] : null, used0 = used;
-    todo.forEach(e => { const k0 = boxSaid(new Set([e])), was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl]; let best = null; ripUp(e);
+    const tryLine = e => { const k0 = boxSaid(new Set([e])), was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl]; let best = null; ripUp(e);
       for (const [k, fk, n, o, given] of [['p1', 'fs', e.s, e.t, e.fromSide], ['p2', 'ts', e.t, e.s, e.toSide]]) { if (n.box) continue;
         // (an end whose side the type gives, a bar's long side, stays on it)
         for (const side of ['R', 'L', 'B', 'T'].filter(sd => sd === e[fk] ? k === 'p1' : !EDGE_SIDE[given])) { const lr = side === 'L' || side === 'R', same = side === e[fk];
@@ -1408,7 +1443,17 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
             if (lt3(k1, k0) && (!best || lt3(k1, best[0]) || (!lt3(best[0], k1) && lenOf(P) < lenOf(best[1])))) best = [k1, P, k, fk, e[k], side]; ripUp(e); }
           [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
       if (best) { e[best[2]] = best[4]; e[best[3]] = best[5]; restub(e); e.pts = best[1]; e.how = 'grid'; if (NEST) used = true; e.lbl = null; routed.push(e); placeLabel(e); }
-      else { e.pts = was[4]; e.how = was[5]; relabel(e, was[6]); } });
+      else { e.pts = was[4]; e.how = was[5]; relabel(e, was[6]); } };
+    todo.forEach(tryLine);
+    // (dg.shutBoxes 2) lines taken out of boxes that now cross more lines than the view crossed before the pass: each line of
+    // those crossings is tried once more, on its own budget, kept only where it is better as the pass weighs it, so a box run
+    // through is never taken back for a crossing (CI, PR 585: Arial's widths, a Linux runner's, drew bookshop-aws three
+    // crossings where two, the database's lines out of the subnets each across another)
+    const cx = u => u[2] - u[0];
+    if (todo.length && dg.shutBoxes === 2 && cx(boxSaid()) > cx(v0)) { const r1 = [], is1 = routeAudit({ edges, families, byId }, '', null, r1), again = new Set();
+      is1.forEach((p, k) => { if (/ cross$/.test(p)) r1[k].forEach(x => again.add(x)); });
+      const more = [...again].filter(e => free.includes(e) && !e.fixed && !e.inner && e.s !== e.t && e.pts);
+      boxBudget = Math.min(40, 8 * more.length); more.forEach(tryLine); }
     if (todo.length && !lt3(boxSaid(), v0)) { snap.forEach(([e, p1, p2, fs, ts, pts, how, lbl, stubs]) => Object.assign(e, { p1, p2, fs, ts, pts, how, lbl, stubs }));
       routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); used = used0; } }
   if (!dg.quick) edges.forEach(e => { const n = through(e.pts, e); if (n) warn(`the line for edge ${edgeRefIds(e).join(' / ') || e.from + '->' + e.to} runs through card "${n.name ?? n.id}", which it does not join: no route found around it`); });
@@ -1475,9 +1520,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const ys = [...families.flatMap(f => [f.y,f.y+f.h]), ...(dg.lanes || []).flatMap(l => [l.y, l.y + l.h]), ...nodes.flatMap(n => [n.y - 14, n.y + n.h + (n.tag ? 18 : 8)]), ...groups.flatMap(g => [g.y, g.y2]), ...edges.flatMap(e => e.pts.map(p => p[1])), ...placed.flatMap(p => [p.y, p.y + p.h])];
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
-  const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
+  // folded, not spread: a list of over about 120,000 ends overflowed the call stack as arguments (audit bh1: 12,000 nested boxes)
+  const least = a => a.reduce((m, v) => Math.min(m, v), Infinity), most = a => a.reduce((m, v) => Math.max(m, v), -Infinity), M = 36, minX = least(xs) - M, minY = least(ys) - M;
   __ms.moves = moves;
-  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  return { ms: __ms, ...(BOXES && !NEST && !TITLES ? { [SHUT_BOXES]: true } : {}), ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(kept ? { kept: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), ...(sideKept ? { side: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: most(xs) - minX + M, h: most(ys) - minY + M } };
 }
 
 export { CHG, NW, OWN_ROUTE, LABEL_TRIES, LABEL_CAP, PLAIN, SPAN, TURNS, MAIN_SIDE, labelW, pillW, stepW, stepOrder, hit, mainFlow, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells, unpile };

@@ -1,5 +1,5 @@
 import { jsonText } from '../core/model.js';
-import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
+import { boxThroughIssues, leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { mapContext } from './context.js';
 
 const edgeRefIds = e => [...new Set((e.all || [e]).map(x => x._id).filter(Boolean))];
@@ -18,11 +18,12 @@ export function layout(model, viewId, options = {}) {
 /** The layout check's geometry for one view, without a browser: overlapping cards, crossing or shared lines, detours,
  *  lines round their own ends, against reading order or through a card, labels on lines or off their own, boxes and lanes. The page's check
  *  (`umlimator.py check`) adds what it measures in the DOM: text that overflows its card or touches its mark, titles
- *  that overflow, edge labels on cards or on each other. Each issue names the cards and lines it is about. */
+ *  that overflow, edge labels on cards or on each other. Each issue names the cards and lines it is about. options.throughBoxes:
+ *  also a typed view's line through a box that holds neither of its ends (audit 71), on the views whose type runs the box pass */
 export function check(model, viewId, options = {}) {
   const g = layout(model, viewId, options), where = `view ${viewId}`, about = [], lines = new Set([...g.edges, ...(g.notDrawn || [])]), boxes = new Set(g.families || []);
   const ref = x => lines.has(x) ? { type: 'edge', ids: x.ids, view: viewId } : boxes.has(x) ? { type: 'container', id: x.id, view: viewId } : { type: 'node', id: x.id, view: viewId };
-  return [...overlapIssues(g, where, about), ...routeAudit(g, where, null, about), ...throughIssues(g, where, about), ...leaveIssues(g, where, about)]
+  return [...overlapIssues(g, where, about), ...routeAudit(g, where, null, about), ...throughIssues(g, where, about), ...(options.throughBoxes ? boxThroughIssues(g, where, about) : []), ...leaveIssues(g, where, about)]
     .map((message, i) => ({ message, targets: about[i].filter(Boolean).map(ref) }));
 }
 

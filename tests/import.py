@@ -127,6 +127,30 @@ ok("compose · two keys that differ only in a character XML cannot hold are kept
    [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
    and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
    and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
+# hostile keys (security, R2): keys that all read as one text took the first free key-2, key-3 ... searched from 2 each time,
+# n squared in all: 34,900 of them in a 1 MiB compose file took 34 s and said 18,515 lines (audit bh1). In one map, and one
+# per map across many (where the names already given are what is searched), a quarter as many keys takes about a quarter
+# as long, and what legal() says is listed 1000 items deep, the rest counted in one
+import time
+def hostile_keys(n):
+    ks = [chr(0xd800 + i // 1024) + chr(0xd800 + i % 1024) for i in range(n)]
+    one = json.dumps({"services": {"w" + k: {"image": "x"} for k in ks}})
+    many = json.dumps({"services": {f"s{i}": {"image": "x", "depends_on": {"w" + k: {"condition": "service_started"}}} for i, k in enumerate(ks)}})
+    return one, many
+def best_of(fn, k=3):
+    out = []
+    for _ in range(k):
+        t0 = time.perf_counter(); fn(); out.append(time.perf_counter() - t0)
+    return min(out)
+for shape in (0, 1):
+    big, small = hostile_keys(12000)[shape], hostile_keys(3000)[shape]
+    full, quarter = best_of(lambda: imp.legal(json.loads(big), lambda no, m: None)), best_of(lambda: imp.legal(json.loads(small), lambda no, m: None))
+    ok(f"compose · 12,000 keys that read as one text{', one per map' if shape else ''} are kept apart in linear time: a quarter as many take over a ninth as long (timed, audit bh1)",
+       full < 9 * max(quarter, 0.002), (round(full, 3), round(quarter, 3)))
+m, un = imp.read("compose", hostile_keys(3000)[0], "x")
+said = [t for _, t in un if t.startswith("key w") or "more items like these" in t or "cannot hold" in t]
+ok("compose · what reading 3000 keys that read as one says is listed 1000 items deep, then counted in one (audit bh1)",
+   len(m["nodes"]) == 3000 and len(said) == 1001 and re.fullmatch(r"[1-9]\d* more items like these: not listed", said[-1]) is not None, said[-3:])
 # the report's order reads digit runs as numbers, and a name with a character isdigit() takes but int() does not (², ①),
 # other scripts' digits or a run longer than int() reads is still imported, its report in order (audit 70)
 names = ["web1\u00b2", "web2\u2460", "db\u00b3", "q\u0661\u0662", "q\u0663", "x\u0967", "s10", "s9", "n" + "7" * 5000, "n8"]
@@ -1431,4 +1455,26 @@ with tempfile.TemporaryDirectory() as tmp:
        said == [True, True], r.stderr)
     r = dbml(stub, "shop.dbml", env=nonode)
     ok("without Node, a .dbml file's import says it needs Node", r.returncode == 1 and "is DBML" in r.stderr and "Node.js 18" in r.stderr, r.stderr)
+
+    # audit 73: the text goes to Node and back as UTF-8, whatever the locale and however the pipe cuts it. A stub parser
+    # keeps the text it was given; with LC_ALL=C (US-ASCII once Python is told not to coerce it, as a Latin-1 locale or
+    # Windows' ANSI page) the file's letters reached Node as a UnicodeEncodeError and Node's answer came back as mojibake
+    (core / "index.js").write_text("exports.Parser = { parse(s) { require('fs').writeFileSync('got.txt', s); throw new Error('stop'); } };\n", encoding="utf-8")
+    ascii_locale = dict(__import__("os").environ, LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0")
+    said = []
+    for name, text, env in (("vi.dbml", "Table người {\n  tên int\n}\n", ascii_locale),
+                            # over 64 KiB of two- and three-byte letters: a pipe's chunk cuts some letter in two, which Node
+                            # read as two U+FFFD when it appended each chunk to the text by itself
+                            ("long.dbml", "".join(f"Table bảng_khách_{i} {{\n  // ghi chú: Khách hàng {'ả' * 40}\n  id int\n}}\n" for i in range(3000)), None)):
+        (stub / name).write_text(text, encoding="utf-8")
+        (stub / "got.txt").unlink(missing_ok=True)
+        r = dbml(stub, name, **({"env": env} if env else {}))
+        said.append((stub / "got.txt").is_file() and (stub / "got.txt").read_text(encoding="utf-8") == text and "Traceback" not in r.stderr)
+    ok(".dbml · the parser is given the file's text as it is: under a locale that is no UTF-8, and over 64 KiB of letters", said == [True, True], said)
+    (t / "vi.mmd").write_text("classDiagram\nclass Khách\nKhách : +string tên\n", encoding="utf-8")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(t / "vi.mmd"), "--out", str(t / "vi.json")],
+                       capture_output=True, text=True, env=ascii_locale)
+    said, m = typed(r, t / "vi.json")
+    ok("a typed source read in Node (a classDiagram) keeps its letters under a locale that is no UTF-8",
+       [n.get("label") for n in m["nodes"]] == ["Khách"] and "tên" in json.dumps(m, ensure_ascii=False), r.stdout + r.stderr)
 sys.exit(1 if failed else 0)

@@ -4,7 +4,7 @@ import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2, shapeOf } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
-import { boxClash, leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
+import { boxClash, leaveIssues, overlapIssues, routeAudit, throughBoxes, throughIssues } from '../layout/audit.js';
 import { layoutGraph, mainFlow, pillW, pullSources, rowsFor, settlePins, stepW, unpile, untangle } from '../layout/layered.js';
 import { BRANCH_BALANCE, FAN_IN, FLOW_CAP, FLOW_MIN, FLOW_WAYS, SCORE_WEIGHTS, SNAKE_AT, SNAKE_SLACK, STABLE_SLACK, STABLE_WEIGHTS } from '../layout/tune.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
@@ -73,9 +73,36 @@ const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'm
   arrOf(g.nodes).forEach(n => { if (n && !PIECES.has(n.shape) && ((typeof n.type === 'string' && n.type) || (n.type == null && listed.has(n.id) && isEl(n.id)))) ids.add(n.id); });
   arrOf(g.families).forEach(f => { if (f && f.id != null && isEl(f.id)) ids.add(f.id); }); return ids.size; };
 
+/* The images a model names, which a browser fetches when they are drawn (audit bh1: a model's author avatar, icon src and
+   intake logo made each viewer's browser fetch any address the model named). Kept by `allow`, the host's `images` option:
+   'data' (the default) keeps only a data: image, drawn from the model itself; 'local' also a path the page's own site serves
+   (no scheme, no host); 'remote' also an http(s) address (//host too). Anything else, a value that is no string among them, is left out of
+   the context's copy, so no picture, panel or toSVG() names it, and is said once when `say` (the CLI's own_media keeps the
+   same set on a page: risks.md S2, audit 19). Read as a browser reads a URL (tabs and newlines dropped, leading controls
+   and spaces trimmed). */
+const imageOk = (u, allow) => { if (typeof u !== 'string') return false; const s = u.replace(/[\t\n\r]/g, '').replace(/^[\0- ]+/, '');
+  if (/^data:image\/[\w.+-]+[;,]/i.test(s)) return true;
+  if (allow === 'remote' && /^(https?:|[\\/]{2})/i.test(s)) return true;
+  return (allow === 'local' || allow === 'remote') && s !== '' && !/^[a-z][a-z0-9+.-]*:|^[\\/]{2}/i.test(s); };
+function ownImages(D, allow, say) {
+  const ob = x => x && typeof x === 'object' && !Array.isArray(x), drop = (o, k, at) => { if (o[k] == null || o[k] === '' || imageOk(o[k], allow)) return; delete o[k];
+    if (say) warn(`${at} is not drawn: it names an image the browser would fetch${allow === 'local' || allow === 'remote' ? '' : " (a host draws one beside the page with images: 'local', or any address with images: 'remote')"}`); };
+  if (ob(D.authors)) Object.entries(D.authors).forEach(([k, a]) => { if (ob(a)) drop(a, 'avatar', `authors.${k}.avatar`); });
+  if (ob(D.icons)) Object.entries(D.icons).forEach(([k, a]) => { if (ob(a)) drop(a, 'src', `icons.${k}.src`); });
+  const views = Array.isArray(D.views) ? D.views : [], cards = [...arrOf(D.nodes).map((n, i) => [`nodes[${i}]`, n])];
+  views.forEach((v, i) => { if (!ob(v)) return; arrOf(v.intake).forEach((x, j) => { if (ob(x)) drop(x, 'logo', `views[${i}].intake[${j}].logo`); });
+    arrOf(v.nodes).forEach((n, j) => cards.push([`views[${i}].nodes[${j}]`, n]));
+    if (ob(v.nodeOverrides)) Object.entries(v.nodeOverrides).forEach(([k, n]) => cards.push([`views[${i}].nodeOverrides.${k}`, n])); });
+  const seen = new Set(); // a host's model may hold one object twice, or in itself: each walked once
+  for (let c; (c = cards.pop());) { const [at, n] = c; if (!ob(n) || seen.has(n)) continue; seen.add(n); // members too, at any depth (a member's examples draw in its details panel like a card's)
+    arrOf(n.members).forEach((m, j) => cards.push([`${at}.members[${j}]`, m]));
+    arrOf(n.examples).forEach((x, j) => { if (ob(x)) ['thumb', 'full'].forEach(k => drop(x, k, `${at}.examples[${j}].${k}`)); }); }
+}
+
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
   const D = copyOf(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
+  ownImages(D, opts.images, !!opts.say); // no address the model names is fetched unless the host allows it (audit bh1)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
@@ -106,13 +133,18 @@ function mapContext(model, opts = {}) {
   const viewsWith = nid => views.filter(v => (v.nodeIds || []).includes(nid));
   const kidsOf = id => views.filter(x => (x.parent || null) === id);
   const chain = vid => { const out = []; let c = V[vid]; const seen = new Set(); while (c && !seen.has(c.id)) { seen.add(c.id); out.unshift(c.id); c = V[c.parent]; } return out; };
+  // the model's lines by id, the first of an id as find() took it, built again when the list changes (a linear find for each
+  // listed id was quadratic in the view's list, audit cf1)
+  let lineList = null, lineLen = -1, lineById = null;
+  const lineOf = id => { const L = D.edges || []; if (L !== lineList || L.length !== lineLen) { lineList = L; lineLen = L.length; lineById = new Map();
+    for (const x of L) if (x && !lineById.has(x.id)) lineById.set(x.id, x); } return lineById.get(id); };
   const viewEdges = (v, say) => { // an edge's ends are cards of the view or its containers; say: warn of one left out for joining a box and what it holds
     const ids = new Set([...(v.nodeIds || []), ...(v.containers || []).map(c => c && c.id).filter(Boolean)]);
     const list = Array.isArray(v.edges) ? v.edges : (D.edges || []).filter(e => ids.has(e.from) && ids.has(e.to));
     const once = new Set(); // a line id listed twice is one line, drawn once (audit 7)
     const inside = boxHolds(v), apart = e => { const b = inside(e.from, e.to) ? e.from : inside(e.to, e.from) ? e.to : null;
       if (b != null && say) warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${b}" and something inside it`); return b == null; };
-    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to) && apart(e));
+    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? lineOf(e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to) && apart(e));
   };
   /* ---------- reading order: every view runs left → right ----------
      The trigger sits at the far left; each next step or callee goes one column to the right, branches
@@ -545,8 +577,9 @@ function mapContext(model, opts = {}) {
   const boxesOf = vid => { const T = ownLayout(vid); return T && T.boxes ? arrOf(T.boxes(D, V[vid])).filter(b => b && b.id != null) : []; };
   const autoPos = vid => { const T = ownLayout(vid), bx = boxesOf(vid);
     if (!T) return ((V[vid] || {}).containers || []).length ? bestBlock(vid) : bestFlow(vid);
-    const one = (o = {}) => bx.length ? blockPos(vid, { boxes: bx, flip: T.rankFlip }, o) : flowPos(vid, { flip: T.rankFlip, ...o });
-    return flowT(vid) && (V[vid] || {}).arrange === 'flow' && !(V[vid] || {}).layout ? bestTyped(vid, T, one) : one(); };
+    const one = oneOf(vid, T, bx); if (flowT(vid) && (V[vid] || {}).arrange === 'flow' && !(V[vid] || {}).layout) return bestTyped(vid, T, one);
+    typedWay(vid); return Object.hasOwn(wayPos, vid) ? wayPos[vid] : one(); };
+  const oneOf = (vid, T, bx = boxesOf(vid)) => (o = {}) => bx.length ? blockPos(vid, { boxes: bx, flip: T.rankFlip }, o) : flowPos(vid, { flip: T.rankFlip, ...o });
   /* An arranged view of a type that reads the flow, laid out as bestFlow lays out a map: as arranged, without the snake where
      it snakes, and without its default zones where it has some, keeping the first that draws the fewest problems (bad), so a
      snake or a default never makes it worse to read (audit 66: an activity's lanes set each node's row, so the snake's runs
@@ -559,9 +592,39 @@ function mapContext(model, opts = {}) {
      lines): a typed view by bestTyped (audit 71), a boxed map view by bestBlock (RANKED_GAIN). One mark for both, plainMain
      RANKED, which plainOf hands an update's base (basePlain). arranged: whether a view lays out arranged; laidView: the view
      as its type lays it out, without its arrange when kept ranked (a type may read it itself: C4's zones, BPMN's lanes) */
-  const RANKED = 'ranked', ranked = vid => plainMain.get(vid) === RANKED;
+  const RANKED = 'ranked', ranked = vid => (typedWay(vid), plainMain.get(vid) === RANKED);
   const arranged = vid => (V[vid] || {}).arrange === 'flow' && !ranked(vid);
   const laidView = vid => { const v = V[vid]; if (!ranked(vid)) return v; const { arrange, ...o } = v; return o; };
+  /* The way of an arranged typed view bestTyped does not choose (audit 72): one with pins (a drag writes one, and a view kept
+     ranked went back to arranged with up to 10 problems more), one of a type that ranks its own cards (BPMN: the host passes
+     only its pins) or reads zones but no flow (the use case). Its way without pins first: bestTyped's, else arranged or ranked
+     by the type's own layout, ranked kept where arranged draws more problems (bad). With pins, that way, its free cards in its
+     cells (wayPos, so a card pinned where it is moves nothing), unless it is arranged and draws more with the pins than ranked
+     does. Once a context, when the mark is first read */
+  const wayDone = new Set(), wayPos = O();
+  // a typed view's cells with pins: an arranged view's free cards in the cells its way gives them (audit 73: with one card
+  // pinned at its own cell, boxFit moved the others, whose lines ran back in the arranged cells)
+  const fillTyped = (vid, L) => { typedWay(vid); return fillLayout(vid, L, true, null, Object.hasOwn(wayPos, vid) && plainMain.get(vid) !== RANKED); };
+  function typedWay(vid) {
+    if (wayDone.has(vid)) return; const v = V[vid] || {}, T = v.arrange === 'flow' && ownLayout(vid), L = T && T.layout;
+    if (!T || L.pins === false || !flowT(vid) && typeof T.zoneOf !== 'function' || !v.layout && L.rank !== false && flowT(vid)) return; // bestTyped's (autoPos)
+    wayDone.add(vid); const own = L.rank === false, one = own ? () => O() : oneOf(vid, T);
+    // with pins, an arranged way's free cards keep its cells (exact); a ranked way's are placed as a ranked view's are (fillTyped)
+    const cells = (pin, P, way) => own ? onGrid(vid, pin ? v.layout : {}) : pin ? fillLayout(vid, v.layout, true, () => P, way !== RANKED) : P;
+    // a way with pins scored as buildGeo draws it: its pins cleared (pinsClear) round the free cards in that way's cells (P;
+    // audit 73: scored without, a boxed C4 view's ranked way, its dragged card a column back as drawn, lost to arranged by one)
+    const badAt = (way, pos, P = null) => { setPlain(vid, way); const lc = Object.hasOwn(layoutCache, vid), was = layoutCache[vid]; if (P) wayPos[vid] = P;
+      try { const FL = way || !flowT(vid) ? null : flowMarks(vid), lv = laidView(vid), run = (pos, memo) => { if (FL) memo.flow = FL; return L.run ? L.run(D, lv, { measure: M, pos, memo }) : L({ model: D, view: lv, pos, memo }); };
+      let [g, said] = held(() => run(pos, {})); if (P) [[g]] = held(() => pinsClear(vid, v, L, g, {}, said, run));
+      if (FL) (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
+      return badT({ g }); } catch { return Infinity; } finally { if (P) delete wayPos[vid]; if (lc) layoutCache[vid] = was; else delete layoutCache[vid]; } };
+    const wayAt = (way, pin) => { flatWay.delete(vid); setPlain(vid, way); const P = one(); return { way, P, b: badAt(way, cells(pin, P, way), pin && P) }; };
+    let k; if (!own && flowT(vid)) { const P = bestTyped(vid, T, one); k = { way: plainMain.get(vid) || false, P, flat: flatWay.has(vid) }; }
+    else { const a = wayAt(false, false), r = wayAt(RANKED, false); k = r.b < a.b ? r : a; }
+    // ranked with pins only where check() reports fewer problems than arranged with them (audit 73: on a tie in its count, the
+    // router's raw crossings sent a view ranked, every card moved by a pin where its card was)
+    if (v.layout && k.way !== RANKED) { const a = badAt(false, cells(true, k.P, false), k.P), r = wayAt(RANKED, true); if (Math.floor(r.b / 1e4) < Math.floor(a / 1e4)) k = r; }
+    setPlain(vid, k.way); if (k.flat) flatWay.add(vid); else flatWay.delete(vid); wayPos[vid] = k.P; }
   function bestTyped(vid, T, one) {
     // the way a layout of the view is taken in: the snake left out (flat true) or ranked (flat RANKED)
     const wayOf = flat => { setPlain(vid, flat === RANKED && RANKED); if (flat === true) flatWay.add(vid); else flatWay.delete(vid); };
@@ -582,7 +645,7 @@ function mapContext(model, opts = {}) {
       const FL = flat === RANKED ? null : flowMarks(vid), memo = FL ? { flow: FL } : {}, lv = laidView(vid);
       let g = null; try { [g] = held(() => L.run ? L.run(D, lv, { measure: M, pos, memo }) : L({ model: D, view: lv, pos, memo })); } catch { g = null; } if (!g) return;
       if (FL) (g.edges || []).forEach(e => { const k = e._id ?? e.id; if (FL.dep.has(k)) e.dep = true; if (FL.main.has(k)) e.mainLine = true; });
-      let b; try { b = bad({ g }); } catch { return; } if (!best || b < best.b) best = { flat, pos, b }; });
+      let b; try { b = badT({ g }); } catch { return; } if (!best || b < best.b) best = { flat, pos, b }; });
     wayOf(best ? best.flat : false); return best ? best.pos : p0; }
   const memos = opts.memos || Object.create(null); // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
@@ -608,6 +671,10 @@ function mapContext(model, opts = {}) {
   }
   // the problems a scouted layout draws: what check() says, crossings and lines the router could not place, labels not drawn
   const bad = ({ g }) => { const st = g.stats || {}; return routeAudit(g, '').length + throughIssues(g, '').length + leaveIssues(g, '').length + g.edges.filter(e => e.label && !e.lbl).length + (st.cross || 0) + (st.fallback || 0); };
+  /* a typed view's ways (bestTyped, typedWay) by what check() reports first (overlaps, the route audit, lines through or round
+     cards), what else bad counts only between ways that draw as many (audit 73: the router's raw crossings, some at a fork's or
+     decision's port that check() does not report, tied a ranked way of none with an arranged way of one, and arranged was kept) */
+  const badT = ({ g }) => { const st = g.stats || {}; return (overlapIssues(g, '').length + routeAudit(g, '').length + throughIssues(g, '').length + leaveIssues(g, '').length) * 1e4 + g.edges.filter(e => e.label && !e.lbl).length + (st.cross || 0) + (st.fallback || 0); };
   /* A boxed arranged map view is laid out a few ways (blockWays) and keeps the one section 4's score (guardScore) puts lowest,
      each problem the layout check finds (bad: a detour, a line against the reading way, which the score does not count)
      counted as a line read backwards, else the first: its stores in
@@ -1088,10 +1155,16 @@ function mapContext(model, opts = {}) {
   // the cells a view's cards take (its pins and the layout round them), null for a view not laid out on cells (a hub, a type
   // that ranks its own cards or takes no pins); the box a card is drawn in; a card's flow lines by their ends
   function cellsOf(vid) { const v = V[vid], T = v && ownLayout(vid); if (!v) return null;
-    if (T) return T.layout.pins === false || T.layout.rank === false ? null : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid));
+    if (T) return typedWay(vid), T.layout.pins === false || T.layout.rank === false ? null : v.layout ? fillTyped(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid));
     return planOf(vid).hub ? null : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)); }
   const homeOf = (vid, id) => { const bx = ownLayout(vid) ? boxesOf(vid) : arrOf(V[vid].containers).filter(b => b && b.id != null), b = bx.filter(x => x.id !== id && arrOf(x.nodeIds).includes(id)).pop(); return b ? b.id : null; };
-  const flowKeys = (vid, id) => viewEdges(V[vid]).filter(e => e.flow !== 'dep' && e.from !== e.to && (e.from === id || e.to === id)).map(e => e.from + '\u0000' + e.to).sort().join('\u0001');
+  // a card's flow lines by their ends, for every card of a view in one pass over its lines (once per card was cards x lines, audit cf1)
+  // kept while what viewEdges reads is the same (an unfold sets a view's edges)
+  const flowCache = O();
+  const flowKeys = (vid, id) => { const v = V[vid], E = D.edges || [], at = [v, v.edges, v.nodeIds, v.containers, E, E.length]; let c = flowCache[vid];
+    if (!c || c.at.some((x, i) => x !== at[i])) { const m = new Map(), add = (k, e) => { let a = m.get(k); if (!a) m.set(k, a = []); a.push(e.from + '\u0000' + e.to); };
+      viewEdges(v).forEach(e => { if (e.flow === 'dep' || e.from === e.to) return; add(e.from, e); add(e.to, e); }); c = flowCache[vid] = { at, m }; }
+    return [...(c.m.get(id) || [])].sort().join('\u0001'); };
   const softCache = O(), stableAt = O(), picked = O();
   function softOf(vid) { if (Object.hasOwn(softCache, vid)) return softCache[vid]; softCache[vid] = null;
     const B = baseOf(), v = V[vid], w = B && B.V[vid];
@@ -1122,7 +1195,8 @@ function mapContext(model, opts = {}) {
   const hardOf = g => { const A = routeAudit(g, ''), n = re => A.filter(m => re.test(m)).length;
     return n(/ share a line$/) + n(/ which it does not hold$/) + n(/^: families .* overlap$/) + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length; };
   /* the quality score of section 4.1 for the stability guard (src/layout/score.js holds the bench's copy, which no host
-     loads; tests/stable-layout.test.mjs holds the two to one number): hard issues, crossings, labels, flow lines read backwards,
+     loads; tests/stable-layout.test.mjs holds the two to one number): hard issues, crossings, lines through a box holding neither
+     end (D17), labels, flow lines read backwards,
      the main flow off its row, length, corners and area, with STABLE_WEIGHTS (bench/score-weights.json's values), plus the
      moved weight times the share of the view's unchanged cards the layout takes off their cells */
   const FLOWISH = new Set(['map', 'flowchart', 'uml.activity', 'dfd', 'bpmn', 'aws', 'gcp', 'azure']);
@@ -1149,7 +1223,7 @@ function mapContext(model, opts = {}) {
       if (cards) for (let i = 1; i < cards.length; i++) { const a = byNode[cards[i - 1]], b = byNode[cards[i]]; if (!a || !b) continue; const ra = a.run ?? 0, rb = b.run ?? 0;
         if (ra !== rb ? at(b) <= at(a) : ra % 2 ? along(b) >= along(a) : along(b) <= along(a)) reverse++; } }
     const length = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0), points = g.edges.reduce((a, e) => a + e.pts.length, 0);
-    return W.hard * hard + W.cross * n(/ cross$/) + W.labels * labels + W.reverse * reverse + W.straight * straight + W.moved * share + W.length * length + W.points * points + W.area * g.bounds.w * g.bounds.h; }
+    return W.hard * hard + W.cross * n(/ cross$/) + W.through * (throughBoxes(g, d) || 0) + W.labels * labels + W.reverse * reverse + W.straight * straight + W.moved * share + W.length * length + W.points * points + W.area * g.bounds.w * g.bounds.h; }
   // the share of the soft-pinned cards (the view's unchanged ones) that cells pos takes off their cells in the base
   const offShare = (S, pos) => { const ids = Object.keys(S); return ids.length ? ids.filter(i => !Array.isArray(pos[i]) || pos[i][0] !== S[i][0] || pos[i][1] !== S[i][1]).length / ids.length : 0; };
   // the stable layout g1 (cells p1) is kept over the fresh one g0 (cells p0) unless it has more hard issues, or its score with
@@ -1161,7 +1235,8 @@ function mapContext(model, opts = {}) {
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
-      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
+      if (!override) typedWay(vid); // its way (arranged or ranked) before its cells: they follow it
+      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillTyped(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       // an arranged view of a type that reads the flow: its main and dependency lines, by model line id, for layoutTyped (memo.flow)
       const FL = flowT(vid) && arranged(vid) ? flowMarks(vid) : null; if (FL) memo.flow = FL; else delete memo.flow;
       const lv = laidView(vid), run = (pos, memo) => { if (FL) memo.flow = FL; return L.run ? L.run(D, lv, { measure: M, pos, memo }) : L({ model: D, view: lv, pos, memo }); };
@@ -1252,14 +1327,14 @@ function mapContext(model, opts = {}) {
     // the way from it; beside it or past it is kept (audit 62: Alt + Right on the AWS view's CDN, a label then on a group's border,
     // drew the card back where it was, and a row down at best: the model held the pin, and each further Alt + Right wrote it again)
     const fr = O(), cell = (h, i) => { const n = (h.byId || {})[i] || (h.nodes || []).find(x => x.id === i); return n && Number.isFinite(n.col) ? [n.col, n.row] : null; };
-    const freeOf = i => { if (!Object.hasOwn(fr, i)) { const L2 = { ...v.layout }; delete L2[i]; const q = (L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true))[i]; fr[i] = Array.isArray(q) ? q : null; } return fr[i]; };
+    const freeOf = i => { if (!Object.hasOwn(fr, i)) { const L2 = { ...v.layout }; delete L2[i]; const q = (L.rank === false ? onGrid(vid, L2) : fillTyped(vid, L2))[i]; fr[i] = Array.isArray(q) ? q : null; } return fr[i]; };
     const back = (h, ids) => n0 < 100 && ids.some(i => { const p = v.layout[i], f = Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? freeOf(i) : null, q = f && cell(h, i);
       if (!q) return false; const d = [p[0] - f[0], p[1] - f[1]], k = Math.abs(d[0]) + Math.abs(d[1]); return k > .01 && k <= 1.01 && (q[0] - f[0]) * d[0] + (q[1] - f[1]) * d[1] < k * k - .01; });
     let best = { g, n: n0, memo: null, said }, left = 12; const seen = new Set();
     for (const i of pins) { const n0 = (g.byId || {})[i] || (g.nodes || []).find(n => n.id === i), p = n0 && Number.isFinite(n0.col) ? [n0.col, n0.row] : v.layout[i];
       for (let m = 1; m <= 2 && best.n && left > 0; m++) for (let dc = -m; dc <= m && best.n && left > 0; dc++) for (const dr of new Set([m - Math.abs(dc), Math.abs(dc) - m])) {
         if (!best.n || left <= 0) break; const c = p[0] + dc, r = p[1] + dr; if (c < 0 || r < 0) continue;
-        const L2 = { ...v.layout, [i]: [c, r] }, pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), key = JSON.stringify(pos); if (seen.has(key)) continue; seen.add(key); left--;
+        const L2 = { ...v.layout, [i]: [c, r] }, pos = L.rank === false ? onGrid(vid, L2) : fillTyped(vid, L2), key = JSON.stringify(pos); if (seen.has(key)) continue; seen.add(key); left--;
         const m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
         if (k < best.n && !back(h, [i])) best = { g: h, n: k, memo: m2, said: w }; } }
     // none of those clean (a region's box reaches past the cells the pins settle by: audit 60, order-states' parcel-start dropped
@@ -1267,7 +1342,7 @@ function mapContext(model, opts = {}) {
     // with no pin does (boxFit), the pins the picture can keep kept. One at a time first, in that order (audit 61: a pin in the
     // composite's other region, which met nothing itself, went with the one that did, and a clean drag there did nothing), then all
     const hits = pins.filter(hit), drop = ids => { const L2 = { ...v.layout }; ids.forEach(i => { delete L2[i]; });
-      const pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
+      const pos = L.rank === false ? onGrid(vid, L2) : fillTyped(vid, L2), m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
       if (k < best.n && !back(h, ids)) best = { g: h, n: k, memo: m2, said: w }; };
     if (best.n && hits.length) { if (hits.length > 1) for (const i of hits.slice(0, 6)) { if (!best.n) break; drop([i]); } if (best.n) drop(hits); }
     if (best.memo) { Object.keys(memo).forEach(k => { delete memo[k]; }); Object.assign(memo, best.memo); }

@@ -61,6 +61,7 @@ interface RenderOptions {
   select?: Ref | null;
   controls?: boolean;
   wheel?: 'zoom' | 'ctrl';
+  images?: 'data' | 'local' | 'remote';
   minimap?: boolean;
   flow?: boolean;
   speed?: number;
@@ -83,6 +84,7 @@ interface RenderOptions {
 | `select` | none | A [`Ref`](./model-and-schema.md#ref) selected at the start. |
 | `controls` | `true` | The up, zoom, fit, 1:1, flow and speed buttons over the canvas. |
 | `wheel` | `'zoom'` | `'zoom'`: the wheel zooms and a trackpad pans. `'ctrl'`: only Ctrl or ⌘ with the wheel (or a pinch) zooms, and the wheel otherwise scrolls the page, as a map inside a document should. |
+| `images` | `'data'` | Which images a model names the map draws, and so the browser fetches: an author's avatar, an icon's `src`, an intake logo, an example's thumb and full. `'data'`: only a `data:` image, so a model fetches nothing. `'local'`: also a path on the page's own site (no scheme, no host). `'remote'`: also any http(s) address; a model you did not write can then make each reader's browser call an address it names (an intranet one too). An image left out is not drawn (a card shows its sigil, a name tag its initials) and is said once in the console. |
 | `minimap` | `false` | A small overview of the view in a corner. |
 | `flow` | on, unless the reader prefers reduced motion | Animated flow along lines. |
 | `speed` | the model's [`motion.speed`](./model-and-schema.md#motion), else 1 | The motion speed, from 0.25 to 4: one multiplier on a tour's dot, a story step's time and the flow along lines. Reduced motion still stops all motion. |
@@ -374,7 +376,7 @@ speed: number;
 ## mountPage
 
 ```ts
-function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
+function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel; images?: 'data' | 'local' | 'remote' }): Handle;
 ```
 
 The whole standalone viewer that `umlimator.py render` writes: top bar, breadcrumbs, views list, details panel, search,
@@ -386,6 +388,7 @@ listeners it added to the document and the window.
 |---|---|
 | `params` | The page's mode, as the CLI passes it: `theme`, `reader`, and the CLI's own `check`, `still`, `shot` and `pdf`. Default: none. The link's `view`, `node`, `story`, `step` and `lens` are read from `location.hash`. |
 | `instant` | Draw with no animation, as the CLI's checks and stills do. |
+| `images` | Which images a model names are drawn, as `render()`'s [`images`](#renderoptions). Default `'data'`; the page `umlimator.py render` writes passes `'local'`, since the CLI has already left out every image but a `data:` one and a path beside the page. |
 | `stableFrom` | The model before an edit, as `render()`'s [`stableFrom`](#renderoptions). A page the CLI writes with `diff` (unless `--no-stable`), or the MCP page after an edit, holds it in a `#umlimator-base` script. |
 
 ```js
@@ -435,13 +438,14 @@ Card boxes, drawn lines (one may stand for several model edges, listed in `ids`)
 ## check
 
 ```ts
-function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
+function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel; throughBoxes?: boolean }): CheckIssue[];
 ```
 
 The layout check on `layout()`'s geometry, with no browser: overlapping cards, crossing or shared lines, detours,
 lines that run through a card or against reading order, labels on lines or away from their own, and boxes and lanes. The CLI's `check` adds what only a browser can measure (text overflowing its
 card, for one). In Node, text widths are an estimate unless `measure` is given, so the result can differ from a
-browser's. The options are those of [`layout()`](#layout).
+browser's. The options are those of [`layout()`](#layout), and `throughBoxes: true` also lists a line that runs through a
+box holding neither of its ends, on the class, component, deployment, cloud, requirement and C4 views (not in the default list).
 
 ```js
 import { check } from 'umlimator';

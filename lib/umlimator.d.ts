@@ -540,6 +540,11 @@ export interface RenderOptions {
   /** 'zoom' (the default): the wheel zooms the map, and a trackpad pans it. 'ctrl': only Ctrl or ⌘ with the wheel (and a
    *  trackpad's pinch) zooms, and the wheel otherwise scrolls the page, as a map in a document should. */
   wheel?: 'zoom' | 'ctrl';
+  /** The images a model names (an author's avatar, an icon's src, an intake logo, an example's thumb and full) that the map
+   *  draws, and so the browser fetches. 'data' (the default): data: images only, so a model fetches nothing. 'local': also a
+   *  path on the page's own site (no scheme, no host). 'remote': also any http(s) address, which a model from someone else
+   *  can use to make each viewer's browser call an address it names. One left out is not drawn, and said once (console). */
+  images?: 'data' | 'local' | 'remote';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
   /** The motion speed, from 0.25 to 4: tours, story steps and the flow along lines, together. Default: the model's
@@ -772,7 +777,7 @@ export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[]; stableFrom?: MapModel; throughBoxes?: boolean }): CheckIssue[];
 /** Picks cards by id, kind (as the map draws it: "db" picks databases), box (at any depth) or owner, each a value or a
  *  list; every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind
  *  and no owner. */
@@ -820,8 +825,10 @@ export function storyFromDiff(before: MapModel, after: MapModel, viewId: string,
 export function otlpSpans(otlp: unknown): Span[];
 /** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
  *  lines (a line without one counts 0), from `from` to `to` (either left out: any card), never coming back to a card. Its
- *  cards in order, then its lines, as Refs for highlight(); no refs and 0 when no line leads there. No browser needed. */
-export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number };
+ *  cards in order, then its lines, as Refs for highlight(); no refs and 0 when no line leads there. No browser needed.
+ *  Where the lines loop and the ways between cards are too many to try in about a second, `approximate` marks the best
+ *  path found. */
+export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number; approximate?: true };
 /** What taking cards out of a view would cost (#95), with the model left as it is. unreachable: what loses its way to them
  *  (backward, as reach() finds it: for calls, what depends on them), each with its distance from the nearest, the cards
  *  themselves at 0. No rule breaks: rules only forbid lines and cycles, which taking cards out never adds. No browser needed. */
@@ -855,4 +862,4 @@ export type Observed = { from: string; to: string; count?: number } | { parent: 
 export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
 export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
-export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel }): Handle;
+export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean; stableFrom?: MapModel; images?: 'data' | 'local' | 'remote' }): Handle;

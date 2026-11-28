@@ -106,3 +106,10 @@ Questions agents leave for the maintainer (C9, A10.10). Each entry has a status:
 - Asked: 2026-11-27, by the orchestrator, for a correct layout fix that moves a recorded bench view
 - Question: May a lane regenerate `bench/expected.json` and `bench/score-expected.json`?
 - Answer: yes, only when the layout score improves or holds and no view gains a hard issue; the pull request names each moved view and why. Otherwise the fix is skipped and the moved views are reported. Answered: 2026-11-27, by the maintainer in the orchestrating session; recorded by Claude.
+
+## D17. Score term for a line through a box holding neither end
+
+- Status: answered
+- Asked: 2026-11-27, by the orchestrator, when the boxes lane (audit 71 findings 2, 7 and 8) failed the layout score check: routing cloud lines round group boxes made `examples/bookshop-azure` az-on-azure (and its atlas copy) and `tests/cloud-stress` edge-cases score 4 to 5 percent worse, for the longer lines only, while the score had no term for the lines it took out of the boxes
+- Question: Add a score term for a line through a box that holds neither of its ends, take the lane as it scores, or drop it?
+- Answer: option A of the boxes-lane score question: a score term for a line through a box holding neither end, weighted like a crossing. `through` in `src/layout/score.js` (and the stability guard's `guardScore`) counts `boxThroughIssues` on the view types whose layout runs the box pass, weight 100 in `bench/score-weights.json` and `STABLE_WEIGHTS`. Answered: 2026-11-27, by the maintainer in the orchestrating session; recorded by Claude.

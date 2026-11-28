@@ -63,6 +63,9 @@ const bzWord = x => bpmnName({ ...bzLook(x), label: '' }).trim();
 const bzA = (w, cap) => `${/^[aeiou]/i.test(w) ? (cap ? 'An' : 'an') : cap ? 'A' : 'a'} ${w}`; // "a start event", "an end event"
 
 /* ---- the model read: nodes, lanes (members of a pool), lines; each element's owner up to its pool ---- */
+// the items an open box holds, the open boxes in it read through, in order: on a list of its own, not by recursion (audit
+// bh1: 3,000 nested sub-processes overflowed the call stack in layout and export)
+const bzLeaves = (open, holds) => x => { const out = [], st = [x]; while (st.length) { const y = st.pop(); if (open.has(y)) { const h = holds(y); for (let i = h.length - 1; i >= 0; i--) st.push(h[i]); } else out.push(y); } return out; };
 function bzIndex(model, view) {
   const N = new Map(), L = new Map(), E = new Map(), path = new Map();
   BZ_ARR(model && model.nodes).forEach((n, i) => { if (!BZ_OBJ(n) || typeof n.id !== 'string' || N.has(n.id)) return; N.set(n.id, n); path.set(n.id, `nodes[${i}]`);
@@ -79,18 +82,39 @@ function bzIndex(model, view) {
   // a lane's owner: its parent lane of the same pool, else its pool; a node's: its parent
   const up = id => { if (L.has(id)) { const { x, pool } = L.get(id); return L.has(x.parent) && L.get(x.parent).pool === pool && x.parent !== id ? x.parent : pool; } return (N.get(id) || {}).parent; };
   const chain = id => { const out = [], seen = new Set([id]); for (let p = up(id); p != null && el(p) && !seen.has(p); p = up(p)) { seen.add(p); out.push(p); } return out; };
-  const poolOf = id => (L.has(id) ? L.get(id).pool : ty(id) === BZ_POOL ? id : chain(id).find(p => ty(p) === BZ_POOL) ?? null);
-  const laneIn = id => chain(id).find(p => L.has(p)) ?? null;
+  // the first owner up id's chain that `is` picks (chain(id).find(is)), worked out once per id: chain() for each call cost
+  // n times the depth, and 27,000 nested sub-processes kept validate() busy for minutes (audit bh1). An owner on a loop of
+  // parents has the loop's others as its chain; one below a loop, what is above it and the whole loop
+  const nearest = is => { const memo = new Map(); return id => { if (memo.has(id)) return memo.get(id);
+    const path = [id], seen = new Map([[id, 0]]); let q = up(id), hit = null;
+    for (; q != null && el(q); q = up(q)) { if (seen.has(q)) break; if (is(q)) { hit = q; break; } if (memo.has(q)) { hit = memo.get(q); break; } seen.set(q, path.length); path.push(q); }
+    let k = path.length; // where a loop starts on the path, if the walk met one
+    if (q != null && el(q) && seen.has(q)) { k = seen.get(q); const c = path.slice(k), m = c.length; let next = null;
+      for (let j = 2 * m - 1; j >= 0; j--) { if (j < m) memo.set(c[j], next != null && next - j < m ? c[next % m] : null); if (is(c[j % m])) next = j; }
+      hit = is(c[0]) ? c[0] : memo.get(c[0]); }
+    // an owner never finds itself up its own chain: one on a loop whose owner above already found it there finds none
+    for (let i = k - 1; i >= 0; i--) { memo.set(path[i], hit === path[i] ? null : hit); if (is(path[i])) hit = path[i]; }
+    return memo.get(id); }; };
+  const poolUp = nearest(p => ty(p) === BZ_POOL), laneUp = nearest(p => L.has(p)), levelUp = nearest(p => ty(p) === BZ_SUB || ty(p) === BZ_POOL);
+  const poolOf = id => (L.has(id) ? L.get(id).pool : ty(id) === BZ_POOL ? id : poolUp(id) ?? null);
+  const laneIn = id => laneUp(id) ?? null;
   // a flow node's process level (sequence-scope): its nearest sub-process, else its pool, else none
-  const level = id => chain(id).find(p => ty(p) === BZ_SUB || ty(p) === BZ_POOL) ?? null;
-  // an owner whose parents lead back to it (validate's "ends up inside itself"): never drawn open, so nothing nests in a loop
-  const looped = id => up(chain(id).at(-1) ?? id) === id;
+  const level = id => levelUp(id) ?? null;
+  // an owner whose parents lead back to it (validate's "ends up inside itself"): never drawn open, so nothing nests in a loop.
+  // The owners on a loop found once, in one walk up from each element (chain() per owner was n times the depth, audit bh1)
+  let loops = null; const looped = id => { if (!loops) { loops = new Set(); const st = new Map();
+    for (const s of [...N.keys(), ...L.keys()]) { const path = []; let p = s; for (; p != null && el(p) && !st.has(p); p = up(p)) { st.set(p, 1); path.push(p); }
+      if (p != null && st.get(p) === 1) path.slice(path.indexOf(p)).forEach(x => loops.add(x)); path.forEach(x => st.set(x, 2)); } }
+    return loops.has(id); };
   // a line's end as its card names it: a pool, lane or group with no name by its id (bzLabel), a flow node by its kind (audit 35:
   // a message flow to an unnamed pool was "from pool", where the pool's card and the PDF say its id)
   const called = id => { const x = el(id); return x ? (BZ_HAS(x.label) ? String(x.label) : [BZ_POOL, BZ_LANE, BZ_GROUP].includes(x.type) ? bzLabel(x) : bzWord(x).toLowerCase()) : String(id); };
   // a line that is its source's default flow: a sequence flow its source (an exclusive gateway or an activity) names as props.default
   const isDefault = e => BZ_OBJ(e) && e.type === BZ_SEQ && typeof e.id === 'string' && BZ_DEFAULTS.includes(ty(e.from)) && bzProps(el(e.from)).default === e.id;
-  return { N, L, E, path, el, ty, up, chain, poolOf, laneIn, level, looped, called, isDefault, lanesOf: p => [...L].filter(([, v]) => v.pool === p).map(([id]) => id) };
+  // each pool's lanes in the model's order, gathered once (a scan of every lane per flow node was n times the lanes)
+  let byPool = null; const lanesOf = p => { if (!byPool) { byPool = new Map(); L.forEach((v, id) => { if (!byPool.has(v.pool)) byPool.set(v.pool, []); byPool.get(v.pool).push(id); }); }
+    return (byPool.get(p) || []).slice(); };
+  return { N, L, E, path, el, ty, up, chain, poolOf, laneIn, level, looped, called, isDefault, lanesOf };
 }
 
 /* ---- the view read: its pools and lanes (the bands), boundary events and their activities, expanded sub-processes (boxes),
@@ -100,8 +124,9 @@ function bzPic(model, view) {
   const pools = ids.filter(id => I.ty(id) === BZ_POOL), groups = ids.filter(id => I.ty(id) === BZ_GROUP);
   const lanes = pools.flatMap((p, k) => [{ id: p, order: k }, ...I.lanesOf(p).map((id, j) => ({ id, parent: I.up(id), order: j }))]), band = new Set(lanes.map(l => l.id));
   const be = new Map(); ids.forEach(id => { const h = bzProps(I.N.get(id)).attachedTo; if (I.ty(id) === BZ_BE && shown.has(h) && BZ_ACT.includes(I.ty(h))) be.set(id, h); });
-  // each owner looked at once: one already walked had its own owners walked with it
-  const open = new Set(), went = new Set(); ids.forEach(id => { if (I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id)) for (const p of I.chain(id)) { if (went.has(p)) break; went.add(p); if (shown.has(p) && I.ty(p) === BZ_SUB && !I.looped(p)) open.add(p); } });
+  // each owner looked at once: one already walked had its own owners walked with it (up its chain one at a time: chain()
+  // built the whole of it first, n times the depth, audit bh1)
+  const open = new Set(), went = new Set(); ids.forEach(id => { if (I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id)) for (let p = I.up(id), seen = new Set([id]); p != null && I.el(p) && !seen.has(p); p = I.up(p)) { seen.add(p); if (went.has(p)) break; went.add(p); if (shown.has(p) && I.ty(p) === BZ_SUB && !I.looped(p)) open.add(p); } });
   // the expanded sub-process it is drawn in: the first open one up its chain, kept for each id walked (an open one is in no loop)
   const own = new Map(), owner = id => { if (own.has(id)) return own.get(id); const path = [id]; let p = I.up(id), o = null;
     for (const seen = new Set(path); p != null && I.el(p) && !seen.has(p); p = I.up(p)) { if (open.has(p) || own.has(p)) { o = open.has(p) ? p : own.get(p); break; } seen.add(p); path.push(p); }
@@ -197,7 +222,7 @@ function bzKeeps(model, view, id, geo, d) {
   const beside = x => (P.dataLane.get(x) || {}).by, b = beside(id);
   if (b != null) return `${P.I.called(id)} is drawn beside ${P.I.called(b)}, the flow node it is associated with`;
   if (!d[1]) return `${P.I.called(id)} keeps its column: the flows into and out of it rank it there`;
-  const leaves = x => (P.open.has(x) ? P.holds(x).flatMap(leaves) : [x]), cols = x => leaves(x).map(i => (Object.hasOwn(by, i) ? by[i].col : NaN)).filter(Number.isFinite);
+  const leaves = bzLeaves(P.open, P.holds), cols = x => leaves(x).map(i => (Object.hasOwn(by, i) ? by[i].col : NaN)).filter(Number.isFinite);
   const mine = cols(id), l = P.laneOf(id), lane = l == null ? 'no lane' : P.I.called(l), c0 = Math.min(...mine), c1 = Math.max(...mine);
   return top.some(x => x !== id && beside(x) == null && P.laneOf(x) === l && cols(x).some(k => k >= c0 && k <= c1))
     ? `${P.I.called(id)} keeps its place in ${lane}: the lane stacks its items in their columns from its first row; the Owner field, or a drag into another lane, moves it to another lane`
@@ -245,7 +270,7 @@ function bzFlow(model, view, P) {
   return { anchor: on, zone, under, role: l => (l.e ? bzFlowRole(l.e, model, view) : 'branch') };
 }
 function bzCells(P, pins, F) {
-  const { open, lines } = P, pic = { open, holds: P.holds, owner: P.owner }, leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]);
+  const { open, lines } = P, pic = { open, holds: P.holds, owner: P.owner }, leaves = bzLeaves(open, P.holds);
   // ranked: the sequence flows (a boundary event's from its activity), then each message flow between laid-out items that closes no cycle
   const links = lines.filter(l => l.e.type === BZ_SEQ && l.f.at != null && l.t.at != null).map(l => [l.f.at, l.t.at]);
   const reach = (a, b) => { const seen = new Set([a]), q = [a]; while (q.length) { const u = q.pop(); if (u === b) return true; links.forEach(([s, t]) => { if (s === u && !seen.has(t)) { seen.add(t); q.push(t); } }); } return false; };
@@ -275,7 +300,7 @@ function bzCells(P, pins, F) {
 }
 function bzGeo({ model, view, pos: pins, memo }) {
   const P = bzPic(model, view), { I, items, open, lines, be } = P, down = view.direction === 'down', present = BZ_OBJ(view.present) ? view.present : {};
-  const leaves = x => (open.has(x) ? P.holds(x).flatMap(leaves) : [x]), { at, runs, spans } = bzCells(P, pins, bzFlow(model, view, P));
+  const leaves = bzLeaves(open, P.holds), { at, runs, spans } = bzCells(P, pins, bzFlow(model, view, P));
   const rowOf = x => Math.min(...leaves(x).map(id => at[id][1])), colOf = x => Math.min(...leaves(x).map(id => at[id][0]));
   const toward = (me, other) => (other.pool ? (spans[other.pool] || [0])[0] : rowOf(other.at)) < (me.pool ? spans[me.pool][0] : rowOf(me.at));
   // anchors (§7.2): a message flow to or from a pool ends at a 2 px node in the empty row beside it, on the other end's side
@@ -416,15 +441,21 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
   // the reading order (§13): each pool, its lanes, each lane's items by rank (a box's contents after it, an activity's
   // boundary events after it), what is in no pool, the groups, then the lines
   const order = [];
-  const put = id => { if (!byId[id] && !families.some(f => f.id === id)) return; order.push(id); circles.filter(c => c.owner === id).forEach(c => order.push(c.id)); if (P.open.has(id)) P.holds(id).sort(rankOf).forEach(put); };
+  // on a list of its own, not by recursion, with the boxes and each activity's boundary events looked up, not scanned (audit
+  // bh1: 10,000 nested sub-processes overflowed the call stack)
+  const fam = new Set(families.map(f => f.id)), ring = new Map(); circles.forEach(c => { if (!ring.has(c.owner)) ring.set(c.owner, []); ring.get(c.owner).push(c.id); });
+  const put = top => { for (const st = [top]; st.length;) { const id = st.pop(); if (!byId[id] && !fam.has(id)) continue; order.push(id); (ring.get(id) || []).forEach(c => order.push(c));
+    if (P.open.has(id)) { const h = P.holds(id).sort(rankOf); for (let i = h.length - 1; i >= 0; i--) st.push(h[i]); } } };
   // an open box ranks at its contents' least column and row, each id's key worked out once: worked out afresh in every
   // comparison, twice per child, it cost 2^depth calls, and 30 nested sub-processes holding one more item each hung (audit 54)
   const keys = new Map();
-  const p = x => { let k = keys.get(x); if (k) return k;
-    if (byId[x]) k = [byId[x].col, byId[x].row];
-    else if (P.open.has(x)) { k = [Infinity, Infinity]; for (const y of P.holds(x)) { const q = p(y); if (q[0] < k[0]) k[0] = q[0]; if (q[1] < k[1]) k[1] = q[1]; } }
-    else k = [0, 0];
-    keys.set(x, k); return k; };
+  const p = x => { if (keys.has(x)) return keys.get(x); // a box's after what it holds, on a list of its own, not by recursion (audit bh1)
+    for (const st = [[x, false]]; st.length;) { const [y, after] = st.pop(); if (keys.has(y)) continue;
+      if (byId[y]) keys.set(y, [byId[y].col, byId[y].row]);
+      else if (!P.open.has(y)) keys.set(y, [0, 0]);
+      else if (!after) { st.push([y, true]); P.holds(y).forEach(z => { if (!keys.has(z)) st.push([z, false]); }); }
+      else { const k = [Infinity, Infinity]; for (const z of P.holds(y)) { const q = keys.get(z); if (q[0] < k[0]) k[0] = q[0]; if (q[1] < k[1]) k[1] = q[1]; } keys.set(y, k); } }
+    return keys.get(x); };
   const rankOf = (a, b) => { const u = p(a), v = p(b); return u[0] - v[0] || u[1] - v[1]; };
   laneOrder(P.lanes).forEach(l => { order.push(l.id); P.holds(null).filter(x => P.laneOf(x) === l.id).sort(rankOf).forEach(put); });
   P.holds(null).filter(x => P.laneOf(x) == null).sort(rankOf).forEach(put);
@@ -514,6 +545,8 @@ function bzProblems(model, view) {
   // built from every flow node of the model, not only those the view shows: a view of one stretch of a pool judges the pool's
   // whole process, which has its start and end events though the view leaves them out (audit 31); judged where it shows one
   const procs = new Map(), judged = new Set();
+  // the owners of what the view shows, and of every node, gathered once (a scan of both per sub-process was n squared, audit bh1)
+  let sh = null, ah = null; const shownHolds = () => sh ??= new Set(BZ_ARR(view && view.nodeIds).map(n => (I.N.get(n) || {}).parent)), allHolds = () => ah ??= new Set([...I.N.values()].map(n => n.parent));
   I.N.forEach((x, id) => { if (!flow(id)) return; const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); if (seen(id)) judged.add(k); });
   I.N.forEach((x, id) => { if (!seen(id)) return; const t = x.type, p = bzProps(x);
     // a kind outside the subset (a typo, another notation's): drawn as a task, so said by its own name, as the typed core says a
@@ -543,7 +576,7 @@ function bzProblems(model, view) {
     bzRefs(x).forEach(r => { if (ty(r) !== BZ_GROUP) say('warning', 'group-ref', id, [id, r], `${q(id)} names ${q(r)} as its group, which is no group`, '.props.categoryValueRef'); });
     // a lone id, not a list, is read as nothing: said, never dropped without a word (audit 26)
     if (p.categoryValueRef != null && !Array.isArray(p.categoryValueRef)) say('warning', 'group-ref', id, [id], `${q(id)}'s categoryValueRef is ${jsonText(p.categoryValueRef)}, not a list of group ids: it is ignored`, '.props.categoryValueRef');
-    if ((t === BZ_SUB || t === 'bpmn.CallActivity') && (x.opensView != null || (t === BZ_SUB && view && !BZ_ARR(view.nodeIds).some(n => (I.N.get(n) || {}).parent === id) && [...I.N.values()].some(n => n.parent === id)))) {
+    if ((t === BZ_SUB || t === 'bpmn.CallActivity') && (x.opensView != null || (t === BZ_SUB && view && !shownHolds().has(id) && allHolds().has(id)))) {
       const v = BZ_ARR(model.views).find(w => BZ_OBJ(w) && w.id === x.opensView);
       if (!v || v.diagram !== 'bpmn' || (t === BZ_SUB && v.subject !== id)) say('warning', 'opens-view', id, [id], `${q(id)} ${x.opensView == null ? 'is collapsed and opens no view' : `opens ${jsonText(x.opensView)}, ${!v ? 'no view of the model' : v.diagram !== 'bpmn' ? 'not a BPMN view' : 'whose subject is not it'}`}`, '.opensView'); } });
   procs.forEach((list, k) => { if (!judged.has(k)) return; const f = list.find(seen); // said at the first node the view shows

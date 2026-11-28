@@ -538,3 +538,29 @@ test('audit 56: a state\'s, a pseudostate\'s, a region\'s and an internal transi
   const text = write(atlas, 'order-life');
   for (const n of linked) assert.match(text, new RegExp(`%% not written: ${n.id}: opensView\\n`), text);
 });
+
+test('audit 75: of two final states (or initials) one scope could write as [*], the same one is picked on every write -> read cycle, so the text settles', () => {
+  const S = (id, x = {}) => ({ id, type: 'uml.State', label: id.toUpperCase(), ...x }), F = (id, x = {}) => ({ id, type: 'uml.FinalState', ...x });
+  const I = (id, x = {}) => ({ id, type: 'uml.Pseudostate', props: { kind: 'initial' }, ...x }), T = (id, from, to) => ({ id, type: 'uml.Transition', from, to });
+  const machine = (nodes, edges) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: nodes.map(n => n.id) }] });
+  const cases = [
+    // the report's: end and failed at the top, end listed last
+    machine([S('a'), S('b'), S('c'), I('start'), F('end'), F('failed')], [T('t0', 'start', 'a'), T('t1', 'a', 'b'), T('t2', 'b', 'end'), T('t3', 'a', 'c'), T('t4', 'c', 'failed')]),
+    // no final has the reader's id: the lowest id wins, whichever order they come in
+    machine([S('a'), S('b'), I('i'), F('zed'), F('ok')], [T('t0', 'i', 'a'), T('t1', 'a', 'b'), T('t2', 'a', 'zed'), T('t3', 'b', 'ok')]),
+    // in a composite state, the reader's id p.end listed between two others
+    machine([S('p'), S('x', { parent: 'p' }), S('y', { parent: 'p' }), I('p1', { parent: 'p' }), F('q', { parent: 'p' }), F('p.end', { parent: 'p' }), F('k', { parent: 'p' })],
+      [T('t1', 'p1', 'x'), T('t2', 'x', 'q'), T('t3', 'y', 'p.end'), T('t4', 'y', 'k'), T('t5', 'x', 'y')]),
+    // two initials in one scope (one is written as a state and said, so only the [*] choice is checked)
+    machine([S('p'), S('x', { parent: 'p' }), S('y', { parent: 'p' }), I('p2', { parent: 'p' }), I('p1', { parent: 'p' })], [T('t0', 'p2', 'x'), T('t1', 'p1', 'y')]),
+  ];
+  for (const m of cases) {
+    const first = write(m), r = read(first), again = write(r.model);
+    if (m.nodes.length === 5 && m.nodes[3].id === 'p2') { assert.match(first, /%% start-id: p1\n.*\n\s*\[\*\] --> y/); continue; }
+    assert.equal(again, first, `${first}\n---\n${again}`);
+    assert.equal(write(read(again).model), first);
+    // and the reversed node order writes the same [*] choice
+    const back = write({ ...m, nodes: [...m.nodes].reverse() });
+    assert.deepEqual(back.split('\n').filter(l => l.includes('[*]')).sort(), first.split('\n').filter(l => l.includes('[*]')).sort());
+  }
+});

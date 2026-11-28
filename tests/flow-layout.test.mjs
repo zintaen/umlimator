@@ -482,6 +482,66 @@ test('audit 71: arranged, no typed view of the test fixtures draws more layout c
         const r = said(false), a = said(true); if (a > r) worse.push(`${f} ${v.id} ${direction}: ${a} arranged, ${r} ranked`); } } }
   assert.deepEqual(worse, []);
 });
+// audit 72: only a view with no pins of a type the host ranks was laid out ranked too (bestTyped): a pinned view (a drag
+// writes a pin, even one that drops the card where it was), BPMN (which ranks its own cards) and the use case (zones, no
+// flow) were kept arranged, up to 10 problems more than ranked. Each is laid out both ways now (typedWay), with its pins
+test('audit 72: arranged, no typed view of the test fixtures draws more layout check problems than ranked, with its pins, with none, or with one card pinned where it is', () => {
+  const dir = new URL('./fixtures/', import.meta.url), worse = []; let pinned = 0;
+  for (const f of readdirSync(dir).filter(x => x.endsWith('.json')).sort()) { const m = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    for (const v of Array.isArray(m.views) ? m.views : []) { if (!v.diagram || v.diagram === 'map') continue;
+      for (const direction of ['right', 'down']) { const said = (arrange, layout) => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id);
+        w.direction = direction; if (arrange) w.arrange = 'flow'; else delete w.arrange; if (layout) w.layout = layout; else delete w.layout; return c; };
+        const g = layout(said(true), v.id), n = g.nodes.find(x => x.col != null && v.nodeIds.includes(x.id)), ways = v.layout ? [['its pins', v.layout], ['no pins', null]] : [];
+        if (n) ways.push([`${n.id} pinned where it is`, { [n.id]: [n.col, n.row] }]);
+        for (const [say, pins] of ways) { const r = check(said(false, pins), v.id).length, a = check(said(true, pins), v.id).length; if (pins) pinned++;
+          if (a > r) worse.push(`${f} ${v.id} ${direction}, ${say}: ${a} arranged, ${r} ranked`); } } } }
+  assert.ok(pinned > 50, `${pinned} pinned views`); assert.deepEqual(worse, []);
+});
+// audit 73: a pinned arranged view's free cards were placed by fillLayout's boxFit (not exact), so one card pinned at the cell
+// it held moved every other card, and the view could then go ranked (the DFD gallery's take-order, laid out right)
+test('audit 73: arranged, one card of a DFD or C4 dynamic view pinned at the cell it holds moves no card', () => {
+  const at = g => Object.fromEntries(g.nodes.map(n => [n.id, [n.x, n.y]])), moved = [];
+  for (const [f, vid, direction] of [['dfd-gallery.json', 'take-order', 'right'], ['bookshop-data-flow.json', 'dfd-level-2-take-order', 'right'], ['integration.json', 'dfd-1', 'right'], ['bookshop-c4.json', 'c4-placing-an-order', 'right']]) {
+    const m = JSON.parse(readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8')), w = m.views.find(x => x.id === vid); w.arrange = 'flow'; w.direction = direction; delete w.layout;
+    const g = layout(m, vid), p0 = at(g);
+    for (const n of g.nodes.filter(x => x.col != null && w.nodeIds.includes(x.id))) { const c = structuredClone(m); c.views.find(x => x.id === vid).layout = { [n.id]: [n.col, n.row] };
+      const p1 = at(layout(c, vid)), mv = Object.keys(p0).filter(i => JSON.stringify(p0[i]) !== JSON.stringify(p1[i])); if (mv.length) moved.push(`${f} ${vid}, ${n.id} pinned: ${mv.join(' ')} moved`); } }
+  assert.deepEqual(moved, []);
+});
+// audit 73: bestTyped scored each way by the router's raw crossings on top of what check() reports, so a ranked way of no
+// problem (2 raw crossings at a decision's ports) tied an arranged way of one, and the first, arranged, was kept. check()'s
+// count decides first now: the audit's view, and generated activities of nested decisions and forks, laid out right and down
+test('audit 73: arranged, an activity draws no more layout check problems than without arrange, the router\'s raw crossings aside', () => {
+  const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) }), cf = (id, from, to, guard) => ({ id, type: 'uml.ControlFlow', from, to, ...(guard && { props: { guard } }) });
+  const views = [[[n('s', 'InitialNode'), n('n0', 'DecisionNode'), n('n1', 'Action', 'Step 1'), n('n2', 'DecisionNode'), n('f', 'ActivityFinalNode')],
+    [cf('e0', 's', 'n0', 'g1'), cf('e1', 's', 'n1', 'g2'), cf('e2', 's', 'n2'), cf('e3', 'n2', 'f'), cf('e4', 'n2', 'n1'), cf('e5', 'n0', 'f')]]];
+  // the audit's generator (act-struct73): a sequence of actions, decisions with their merges and forks with their joins, nested
+  let seed = 3; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let it = 0; it < 40; it++) { const ns = [], es = []; let k = 0, e = 0; const node = (t, label) => { const id = 'n' + k++; ns.push(n(id, t, label)); return id; }, edge = (a, b, g) => es.push(cf('e' + e++, a, b, g));
+    const block = d => { const r = rnd(); if (d >= 2 || r < 0.45) { const a = node('Action', 'Step ' + k); return [a, a]; }
+      if (r < 0.75) { const dec = node('DecisionNode'), mg = node('MergeNode'), m = 2 + (rnd() < 0.2 ? 1 : 0); for (let i = 0; i < m; i++) { const [x, y] = seq(d + 1, 1 + Math.floor(rnd() * 2)); edge(dec, x, i ? 'no' : 'yes'); edge(y, mg); } return [dec, mg]; }
+      const fk = node('ForkNode'), j = node('JoinNode'); for (let i = 0; i < 2 + (rnd() < 0.3 ? 1 : 0); i++) { const [x, y] = seq(d + 1, 1 + Math.floor(rnd() * 2)); edge(fk, x); edge(y, j); } return [fk, j]; };
+    const seq = (d, m) => { let first = null, last = null; for (let i = 0; i < m; i++) { const [x, y] = block(d); if (last) edge(last, x); else first = x; last = y; } return [first, last]; };
+    const s = node('InitialNode'), [x, y] = seq(0, 2 + Math.floor(rnd() * 3)); edge(s, x); const f = node('ActivityFinalNode'); edge(y, f); views.push([ns, es]); }
+  const worse = [];
+  views.forEach(([nodes, edges], i) => { for (const direction of ['down', 'right']) { const said = arrange => check({ schemaVersion: 2, title: 't', root: 'v', nodes, edges,
+    views: [{ id: 'v', diagram: 'uml.activity', title: 'V', nodeIds: nodes.map(x => x.id), direction, ...(arrange && { arrange: 'flow' }) }] }, 'v').length;
+    const a = said(true), r = said(false); if (a > r) worse.push(`view ${i} ${direction}: ${a} arranged, ${r} ranked`); } });
+  assert.deepEqual(worse, []);
+});
+// audit 73: a boxed C4 view's ranked way with pins was scored over the pinned cells as filled, not as drawn (pinsClear moves a
+// pin that puts a box over a card), and by bad(), not check()'s count: a card dragged to another cell drew up to 17 problems
+// arranged against 14 ranked. Each way is scored as drawn now, and decided by check()'s count
+test('audit 73: arranged, a C4 view with a boundary and one card dragged to another cell draws no more layout check problems than ranked', () => {
+  const worse = [];
+  for (const [f, vid, direction, pins] of [['integration.json', 'c4-containers', 'right', { 'c4-staff': [1, 1] }], ['integration.json', 'c4-containers', 'down', { 'c4-rider': [1, 2] }],
+    ['bookshop-c4.json', 'c4-containers', 'right', { 'c4-worker': [0, 2.5] }], ['c4-gallery.json', 'containers', 'down', { storefront: [0, 5] }], ['c4-gallery.json', 'components', 'down', { checkout: [0, 0] }],
+    ['c4-gallery.json', 'containers', 'right', { mail: [3, 2] }]]) {
+    const m = JSON.parse(readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8')), said = arrange => { const c = structuredClone(m), w = c.views.find(x => x.id === vid);
+      w.direction = direction; w.layout = pins; if (arrange) w.arrange = 'flow'; else delete w.arrange; return check(c, vid).length; };
+    const a = said(true), r = said(false); if (a > r) worse.push(`${f} ${vid} ${direction} ${JSON.stringify(pins)}: ${a} arranged, ${r} ranked`); }
+  assert.deepEqual(worse, []);
+});
 test('audit 71: arranged and laid out down, a decision whose [no] line runs straight to its merge past a fork in its [yes] branch draws no crossing', () => {
   const n = (id, t, label) => ({ id, type: 'uml.' + t, ...(label && { label }) });
   // the audit's generated view (its ids, which order the cards): one fork branch of one action, the other of two

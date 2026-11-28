@@ -533,3 +533,68 @@ test('apply() hide of a call the view lists by id takes its reply with it, so th
     }
   }
 });
+
+// audit 73: a self connector listed after another connector leaving the same lifeline: its loop ran past the next lifeline and
+// back over the whole picture, across that connector. Drawn as a small loop beside its own lifeline and its stack, in any
+// connector order and every direction; a lifeline whose other connectors come into the side the loop would take tries the
+// loop's other ways (two parallel lines between the lifeline and its stack, or round the other way)
+test('audit 73: a self connector is a small loop beside its lifeline that crosses nothing, whatever order the connectors are listed in', () => {
+  const mk = (names, conns, msgs, direction) => { const cs = conns.map(([a, b], i) => ({ id: 'k' + i, type: 'uml.Connector', from: a, to: b }));
+    const ms = msgs.map(([a, b, l], i) => ({ id: 'm' + i, type: 'uml.Message', from: a, to: b, label: l, props: { sort: 'call' } }));
+    return { schemaVersion: 2, title: 't', root: 'v', nodes: names.map(id => ({ id, type: 'uml.Lifeline', label: id })), edges: [...cs, ...ms],
+      views: [{ id: 'v', diagram: 'uml.communication', title: 'C', nodeIds: names, ...(direction && { direction }), edges: [...cs, ...ms].map(e => e.id) }] }; };
+  const cases = [
+    [['ctl', 'svc'], [['ctl', 'svc'], ['ctl', 'ctl']], [['ctl', 'svc', 'load()'], ['ctl', 'ctl', 'validate()'], ['svc', 'ctl', 'result']]], // the audit's
+    [['client', 'server', 'db'], [['client', 'server'], ['server', 'db'], ['server', 'server']], [['client', 'server', 'request()'], ['server', 'server', 'validate()'], ['server', 'db', 'query()']]],
+    [['ctl', 'svc'], [['ctl', 'ctl'], ['ctl', 'svc']], [['ctl', 'svc', 'load()'], ['ctl', 'ctl', 'validate()']]],
+    [['l0', 'l1', 'l2'], [['l0', 'l1'], ['l1', 'l1'], ['l2', 'l1']], [['l1', 'l0', 'a()'], ['l1', 'l1', 'b()'], ['l1', 'l2', 'c()']]], // a hub: down, both neighbours into the side the loop took
+    [['l0', 'l1', 'l2', 'l3'], [['l1', 'l0'], ['l2', 'l2'], ['l2', 'l1'], ['l2', 'l3']], [['l1', 'l0', 'a()'], ['l2', 'l2', 'b()'], ['l2', 'l3', 'c()']]],
+    // audit 74: laid out down, cart's loop listed after cart-db ran round stock and onto stock's own loop, end to end
+    [['cart', 'stock', 'db'], [['cart', 'db'], ['stock', 'stock'], ['cart', 'cart']], [['cart', 'db', 'load()'], ['stock', 'stock', 'validate(order)'], ['cart', 'cart', 'validate(order)']]],
+    [['cart', 'db'], [['cart', 'db'], ['cart', 'cart']], [['cart', 'db', 'load()'], ['cart', 'cart', 'validate(order)']]],
+  ];
+  // a point of a loop on no card that another line also passes: two lines drawn as one
+  const onCard = (g, [x, y]) => g.nodes.some(n => x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h);
+  const meets = (g, e) => e.pts.filter(p => !onCard(g, p) && g.edges.some(f => f !== e && f.pts.some(q => q[0] === p[0] && q[1] === p[1])));
+  for (const [names, conns, msgs] of cases) for (let k = 0; k < conns.length; k++) for (const dir of [undefined, 'right', 'down']) {
+    const order = [...conns.slice(k), ...conns.slice(0, k)], m = mk(names, order, msgs, dir), tag = `${order.map(c => c.join('-')).join(',')} ${dir || 'default'}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], tag);
+    const g = layout(m, 'v');
+    g.edges.filter(e => e.from === e.to).forEach(e => { const own = [g.byId[e.from], ...e.stack.map(id => g.byId[id])], x0 = Math.min(...own.map(n => n.x)), y0 = Math.min(...own.map(n => n.y));
+      const x1 = Math.max(...own.map(n => n.x + n.w)), y1 = Math.max(...own.map(n => n.y + n.h));
+      assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${tag}: ${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
+      assert.deepEqual(outsideStack(g, e), [], `${tag}: ${e.id} is not tied in a knot`);
+      assert.deepEqual(meets(g, e), [], `${tag}: ${e.id} meets no other line end to end`); });
+  }
+});
+// audit 74: each loop's way is chosen on its own when one way for all of them leaves a loop knotted or crossing
+test('audit 74: two self connectors that each need a different way both get a small clean loop', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: ['L0', 'L1', 'L2', 'L3'].map(id => ({ id, type: 'uml.Lifeline', label: id })),
+    edges: [con('self', 'L1', 'L1'), con('c2', 'L3', 'L3'), con('c1', 'L2', 'L1'), con('o0', 'L3', 'L0'), con('o2', 'L2', 'L3'),
+      ...[['m0', 'L1', 'L1', 'validate(order)'], ['m1', 'L3', 'L3', 'validate(order)'], ['m2', 'L2', 'L1', 'call2()'], ['m3', 'L3', 'L0', 'call3()'], ['m4', 'L2', 'L3', 'call4()']]
+        .map(([id, from, to, label]) => ({ id, type: 'uml.Message', from, to, label, props: { sort: 'call' } }))] };
+  m.views = [{ id: 'v', diagram: 'uml.communication', direction: 'right', nodeIds: m.nodes.map(n => n.id), edges: m.edges.map(e => e.id) }];
+  assert.deepEqual(check(m, 'v').map(p => p.message), []);
+  const g = layout(m, 'v');
+  g.edges.filter(e => e.from === e.to).forEach(e => { const own = [g.byId[e.from], ...e.stack.map(id => g.byId[id])], x0 = Math.min(...own.map(n => n.x)), y0 = Math.min(...own.map(n => n.y));
+    const x1 = Math.max(...own.map(n => n.x + n.w)), y1 = Math.max(...own.map(n => n.y + n.h));
+    assert.ok(e.pts.every(([x, y]) => x >= x0 - 40 && x <= x1 + 40 && y >= y0 - 40 && y <= y1 + 40), `${e.id} keeps beside its lifeline and stack: ${JSON.stringify(e.pts)}`);
+    assert.deepEqual(outsideStack(g, e), [], `${e.id} is not tied in a knot`); });
+});
+// audit 75: the loops' ways were chosen on the loops' own problems, so a way that left two other connectors on one track
+// was kept laid out right (life2-life0 and life1-life2 ran down x=749 together); a shared line now weighs in every way's
+// score and sends the search on. Each model: lifelines, then connectors a>b, each with a message unless marked !
+test('audit 75: a view with self connectors draws no two connectors on one track, either way round', () => {
+  const build = (n, spec, direction) => { const nodes = [...Array(n)].map((_, i) => ({ id: `l${i}`, type: 'uml.Lifeline', label: `life${i}`, props: { represents: `R${i}` } })), edges = [];
+    spec.split(' ').forEach((s, k) => { const [, a, b, bare] = s.match(/^(\d)>(\d)(!?)$/); edges.push({ id: `c${k}`, type: 'uml.Connector', from: `l${a}`, to: `l${b}` });
+      if (!bare) edges.push({ id: `m${k}`, type: 'uml.Message', from: `l${a}`, to: `l${b}`, label: `msg${k}`, props: { sort: 'call' } }); });
+    return { schemaVersion: 2, title: 't', nodes, edges, views: [{ id: 'v', diagram: 'uml.communication', title: 'v', direction, nodeIds: nodes.map(x => x.id), edges: edges.map(e => e.id) }] }; };
+  const cases = [[4, '3>1 2>0 2>2 0>3 1>2 1>1 3>3'], [4, '2>2 0>0 1>2! 1>3! 3>3 3>2 0>3 2>0!'], [7, '5>5 0>1 1>1 1>2 4>0 1>3 0>2 2>5! 2>2 4>1!'],
+    [4, '0>0 0>2 1>0 3>3 3>2 2>2 3>1 1>2'], [5, '0>1 2>2 3>4 2>4 3>2! 1>1 4>1 1>3']];
+  for (const [n, spec] of cases) for (const dir of ['right', 'down']) {
+    const m = build(n, spec, dir), tag = `${spec} ${dir}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => / share a line$/.test(x)), [], tag);
+    assert.equal(JSON.stringify(layout(m, 'v').edges.map(e => e.pts)), JSON.stringify(layout(m, 'v').edges.map(e => e.pts)), `${tag}: the same picture twice`);
+  }
+  assert.deepEqual(check(build(...cases[0], 'right'), 'v').map(p => p.message), [], 'the reported view is clean');
+});

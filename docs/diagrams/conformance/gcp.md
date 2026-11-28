@@ -41,7 +41,7 @@ pointer or `L` (the canvas's handle ends on cards: such a line is written in the
 Layout limits, with port repair and rerouting off (`repair: false`, `reroute: false`, §11), measured on the example and
 `tests/cloud-stress.json`:
 
-- The example crosses once laid out right and once down; no line runs through a node.
+- The example lays out with no crossing, right or down (once each way till audit 71's box pass routed a line round a group that holds neither of its ends); no line runs through a node.
 - `tests/m4a-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (five levels of groups, an icon the pack lacks,
   an alias a re-pin moved, a line from a group to a product in a sibling group, one between a group and what it holds, a
   white icon and a coloured one, a wrong kind, a subnetwork outside a network, a product with no icon) is clean both ways but

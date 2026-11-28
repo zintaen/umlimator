@@ -47,6 +47,8 @@ An assistant changes the model with the same gestures you make on the page. Each
 | `apply(edits)` | runs a list of steps as one change and writes it |
 | `undo()`, `redo()` | takes the last change back, or writes it again |
 
+Each tool says what it does to its world in its `annotations`, all four hints set: the read tools, `page_state` and `preview` are read-only; the page tools change only what the page shows (`tour` and `play_story` start again on a repeat call); `add_card` and `connect` add; `rename`, `move_to_box`, `set_field`, `pin` and `remove` are destructive and idempotent (the same call again changes nothing); `apply`, `undo` and `redo` are destructive and not idempotent. None is open-world: the server reads the model, the other model file `diff` is given, and talks to its page on 127.0.0.1.
+
 Where the type refuses a gesture, the tool refuses it with the type's own words: "A message flow cannot start at a start event" on a BPMN view, or "a uml.sequence view places its elements itself" for a pin. Where the page would open a picker of the type's own, the tool asks for `choose`, the choice by its label or its place from 0.
 
 A step of `preview` or `apply` is an edit tool's call with its name in `tool`, or an `apply()` command as it is:
@@ -74,12 +76,14 @@ To measure how well an assistant turns a request into these calls, `tests/fixtur
 ## How it behaves
 
 - The read tools run the module's own functions in Node on the model file, read again at each call, so edits show up, the edit tools' and anyone else's.
-- The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391` (`--port N`, or another port when that one is taken). Open it in a browser.
+- The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391/?k=<key>` (`--port N`, or another port when that one is taken). Open the address the tools give in a browser: the key in it is the page's, and the server answers `/` with nothing but 403 without it, so another process or account on the machine that was not given the address reads neither the model nor the page's state. The key is the same for a model on each run, made from a secret in `~/.cache/umlimator/mcp-key` (or the file `UMLIMATOR_MCP_KEYS` names) that only you can read; anything running as you can read it too, as it can read the model.
   - A tool answers "shown" once a page has shown it, or says why none did: the page's own error, or a tab in the background that didn't finish in time. With no page open, it gives the URL.
   - A page that opens later shows what the assistant built: the view, with the highlight on it, and a tour or story still under way.
   - The assistant's highlight is a layer of its own (`mcp`): off on another view, back on its own.
   - A model that stops rendering keeps the last page that did, and the tools and the page say why.
 - The server listens on 127.0.0.1 only and fetches nothing, so a logo not in the cache yet keeps its card's sigil.
+- Each Node run of a tool, and the render of the page, stops after 30 seconds, and the tool says so in one line (a page that does not render in time is tried again once the model changes); the element counts `list_views` adds stop after 10, and it counts each view's cards instead. Tool calls run one at a time in the order sent, apart from the thread that reads requests, so `ping` is answered while one runs, and `notifications/cancelled` stops a call that waits or runs: its Node run ends and it gets no answer.
+- The undo history `MODEL.json.undo` is read only when it is a regular file of at most 128 MB, never through a symbolic link: one that is a link, a device or a pipe is an empty history, and the edit tools refuse to write over it until it is removed. The model file is read only when it is a regular file.
 
 ## Map a repository with Claude Code
 

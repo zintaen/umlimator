@@ -3,6 +3,8 @@ import { mapNodeW, mapTabs } from '../map/cards.js';
 import { KIND, NOTED, hasKey } from '../map/kinds.js';
 
 const r2 = v => Math.round(v * 100) / 100;
+// a number that goes into the markup: a finite number as it is, anything else 0, so no model string ever reaches an attribute (audit cf1)
+const num = v => typeof v === 'number' && Number.isFinite(v) ? v : 0;
 function rrect(x, y, w, h, r) { // a rounded rect's path; r: one radius, or [top left, top right, bottom right, bottom left]
   const [a, b, c, d] = Array.isArray(r) ? r : [r, r, r, r], A = (q, X, Y) => q ? `A${r2(q)} ${r2(q)} 0 0 1 ${r2(X)} ${r2(Y)}` : '';
   return `M${r2(x + a)} ${r2(y)}H${r2(x + w - b)}${A(b, x + w, y + b)}V${r2(y + h - c)}${A(c, x + w - c, y + h)}H${r2(x + d)}${A(d, x, y + h - d)}V${r2(y + a)}${A(a, x + a, y)}Z`;
@@ -127,6 +129,7 @@ const shapeOf = (n, byKind = true) => { const sh = String(n.shape ?? '').toLower
 // tabs, ⤢ and change badge. Drawing only: layout never sees it. ports: the card's highest line ends on its sides (sidePorts)
 function cardLook(n, byKind, hint, ports) {
   const sh = shapeOf(n, byKind); if (sh === 'box') return null;
+  n = { ...n, x: num(n.x), y: num(n.y), w: num(n.w), h: num(n.h) }; // its outline and details are drawn from these (num)
   const S = SHAPE[sh], L = { ...n, sh, S, portTop: ports ? Math.min(ports.L, ports.R) : Infinity, portL: ports ? ports.L : Infinity }, tabs = mapTabs(n), spans = []; let tx = n.x + 12;
   // a step keeps 16 px above the highest line into the left side (svgOf): where that is above a person's or robot's shoulder,
   // the shoulder comes up under it, 5 px below its middle (it floated 4 px above the shoulder)
@@ -189,4 +192,4 @@ function markShape(n, out) { const ch = CHG[typeof n.change === 'string' ? n.cha
     .replace(FADE, (m, t, a, c) => / opacity="|\bn-logo\b/.test(a) ? m : `<${t}${a} opacity=".6"${c}>`);
   return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); }
 
-export { markShape, r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, cardLook, tabAfter, tabLine, drawnPts };
+export { markShape, num, r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, cardLook, tabAfter, tabLine, drawnPts };

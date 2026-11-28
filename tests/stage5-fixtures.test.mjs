@@ -80,9 +80,10 @@ const PINNED = {
       right: [0,[],[]],
       down: [4,[],[]] },
     'all': {
-      // audit 27: 8 more crossings, the 8 lines that ran back inside the box they leave or end on now keep out of it
-      right: [23,["view all: edges Stack 2 level 4→Stack 3 level 4 and service-2-4.jar→service-2-3.jar share a line","view all: label \"gRPC\" sits on the border of family \"Stack 0 level 0\"","view all: edge Stack 1 level 3→Stack 2 level 3 runs along the border of family \"Stack 2 level 2\"","view all: edge Stack 2 level 3→Stack 3 level 3 runs along the border of family \"Stack 3 level 2\"","view all: edge Stack 4 level 4→Stack 1 level 0 runs along the border of family \"Stack 4 level 3\""],[]],
-      down: [15,["view all: edges Stack 2 level 4→Stack 3 level 4 and Stack 3 level 4→Stack 0 level 0 share a line","view all: edges Stack 3 level 4→Stack 4 level 4 and Stack 4 level 4→Stack 1 level 0 share a line","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 4→Stack 0 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 1→Stack 2 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge service-1-0.jar→service-2-4.jar","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 4→Stack 3 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 1→Stack 3 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 3→Stack 3 level 3","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 3 level 4","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 1→Stack 4 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 2→Stack 4 level 2","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0"],[]] } }, // down: a label on one line twice since audit 27
+      // audit 27: 8 more crossings, the 8 lines that ran back inside the box they leave or end on now keep out of it. Audit 71's
+      // box pass (a deployment view's, crossings first): right, no two lines share a line (1 before); down, 14 crossings (15 before)
+      right: [23,["view all: label \"gRPC\" sits on the border of family \"Stack 0 level 0\"","view all: edge Stack 1 level 3→Stack 2 level 3 runs along the border of family \"Stack 2 level 2\"","view all: edge Stack 2 level 3→Stack 3 level 3 runs along the border of family \"Stack 3 level 2\"","view all: edge Stack 4 level 4→Stack 1 level 0 runs along the border of family \"Stack 4 level 3\""],[]],
+      down: [14,["view all: edges Stack 2 level 4→Stack 3 level 4 and Stack 3 level 4→Stack 0 level 0 share a line","view all: edges Stack 3 level 4→Stack 4 level 4 and Stack 4 level 4→Stack 1 level 0 share a line","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 4→Stack 0 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 1→Stack 2 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge service-1-0.jar→service-2-4.jar","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 4→Stack 3 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 1→Stack 3 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 3→Stack 3 level 3","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 3 level 4","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 1→Stack 4 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 2→Stack 4 level 2","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0"],[]] } }, // down: a label on one line twice since audit 27
   'composite-minimal': {
     'v': {
       right: [0,[],[]],
@@ -104,6 +105,28 @@ test('every view of the six fixtures, right and down: line through a node, port 
   }
   if (process.env.PIN) console.log(JSON.stringify(seen));
   assert.deepEqual(seen, PINNED);
+});
+
+// audit 74: the deployment note (and the type page tools/gallery.mjs writes from it) gave the stress view all's counts from
+// before audit 71's box pass (15 crossings down, a pair of lines sharing a line laid out right): it states what check() finds,
+// the crossings each way and the other findings each way in words, history in parentheses
+test('audit 74: the deployment note and type page state the stress view all\'s crossings and other findings as check() finds them, right and down', () => {
+  const W = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'][n] ?? String(n);
+  const pl = (n, one, many) => (n === 1 ? `a ${one}` : `${W(n)} ${many}`);
+  const got = Object.fromEntries(['right', 'down'].map(dir => [dir, clean(turned(FIX['deployment-stress'], 'all', dir), 'all')]));
+  const kinds = o => ({ share: o.filter(p => / share a line$/.test(p)).length, along: o.filter(p => / runs along the border of /.test(p)).length,
+    labelBorder: o.filter(p => / sits on the border of /.test(p)).length, labelLine: o.filter(p => / lies on edge /.test(p)).length, all: o.length });
+  const k = { right: kinds(got.right.other), down: kinds(got.down.other) };
+  const words = o => [o.along && pl(o.along, 'line along a box\'s border', 'lines along a box\'s border'), o.labelBorder && pl(o.labelBorder, 'label on a box\'s border', 'labels on a box\'s border'),
+    o.share && pl(o.share, 'pair of lines sharing a line', 'pairs of lines sharing a line'), o.labelLine && pl(o.labelLine, 'label on a line', 'labels on a line')].filter(Boolean).join(' and ');
+  for (const dir of ['right', 'down']) assert.equal(k[dir].along + k[dir].labelBorder + k[dir].share + k[dir].labelLine, k[dir].all, `${dir}: every finding is one the note words`);
+  const want = `${got.right.crossings} crossings right and ${got.down.crossings} down; laid out right, ${words(k.right)}; laid out down, ${words(k.down)}.`;
+  for (const file of ['../docs/diagrams/conformance/uml-deployment.md', '../docs/types/uml-deployment.md']) {
+    const line = readFileSync(new URL(file, import.meta.url), 'utf8').split('\n').find(l => l.includes('generated `all` view (50 nodes and artifacts'));
+    assert.ok(line, `${file}: the stress bullet`);
+    let bare = line; for (let n = 0; n < 3; n++) bare = bare.replace(/ \([^()]*\)/g, '');
+    assert.ok(bare.includes(want), `${file}: should say "${want}", says "${bare}"`);
+  }
 });
 
 test('the minimal fixtures: what §13 says each holds, and no problem', () => {

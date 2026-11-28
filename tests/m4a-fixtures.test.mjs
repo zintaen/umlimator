@@ -89,9 +89,9 @@ const PINNED = {
   'cloud-stress': { 'edge-cases': { right: [0, 0, 0, 1], down: [0, 0, 0, 1] }, 'ec-no-product': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] },
     'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 0, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them; the one on a line placed again (audit 32)
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
-  'bookshop-gcp': { 'gcp-on-gcp': { right: [1, 0, 0, 0], down: [1, 0, 0, 0] } },
+  'bookshop-gcp': { 'gcp-on-gcp': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] } }, // 1 and 1 till audit 71: the box pass routes a line round a group that holds neither of its ends
   // audit 27: right, the subnet's line to Logs and alerts ran back through its own subnet box to dodge one crossing; it keeps out of it now
-  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [3, 0, 0, 0] } },
+  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [2, 0, 0, 0] } }, // down: 3 till audit 71 (the box pass)
 };
 
 test('every view of the four fixtures and the three examples (cloud views right and down, with a synthetic icons table): nothing meets, texts inside, no curve through a topic, each element in its group, ends on outlines; check()\'s findings only as pinned', () => {
@@ -109,6 +109,23 @@ test('every view of the four fixtures and the three examples (cloud views right 
   if (process.env.PIN) console.log(JSON.stringify(counts), other);
   assert.deepEqual(counts, PINNED);
   assert.deepEqual(other, []); // the label "HTTPS" lay on Service 52→Service 5 laid out down till audit 32 placed it again
+});
+
+// audit 74: the Layout limits bullet of the Google Cloud and Azure notes (and the type pages tools/gallery.mjs writes from
+// them) gave the example's crossings from before audit 71's box pass (GCP once each way, Azure 3 times down): each now says
+// what check() counts on the example, right and down, in the sentence's own words (a parenthesis holds the history)
+test('audit 74: the GCP and Azure notes and type pages state the example\'s crossings as check() counts them, right and down', () => {
+  const said = n => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+  for (const [f, vid, page] of [['bookshop-gcp', 'gcp-on-gcp', 'gcp'], ['bookshop-azure', 'az-on-azure', 'azure']]) {
+    const [r, d] = ['right', 'down'].map(dir => quiet(() => check(turned(FIX[f], vid, dir), vid))[0].filter(p => / cross$/.test(p.message)).length);
+    const want = r || d ? `The example crosses ${said(r)} laid out right and ${said(d)} down;` : 'The example lays out with no crossing, right or down;';
+    for (const file of [`../docs/diagrams/conformance/${page}.md`, `../docs/types/${page}.md`]) {
+      const line = readFileSync(new URL(file, import.meta.url), 'utf8').split('\n').find(l => l.startsWith('- The example '));
+      assert.ok(line, `${file}: the example's bullet`);
+      let bare = line.slice(2); for (let k = 0; k < 3; k++) bare = bare.replace(/ \([^()]*\)/g, '');
+      assert.ok(bare.startsWith(want), `${file}: "${bare}" should start "${want}"`);
+    }
+  }
 });
 
 test('the minimal fixtures: one topic; a gcp view of one project and one product, an azure view of one resource group and one service; no problem', () => {

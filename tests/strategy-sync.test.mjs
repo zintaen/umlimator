@@ -276,6 +276,7 @@ test('kill switch: .evolve/STOP on the named ref stops the session; none lets it
   writeFileSync(join(dir, 'a.txt'), 'a');
   git('add', '.'); git('commit', '-qm', 'a');
   assert.equal(killSwitch({ repo: dir, ref: 'main' }).stopped, false);
+  assert.equal(killSwitch({ repo: dir, ref: 'main', file: '' }).stopped, true, 'an empty file name is no kill switch read: stopped (audit 72)');
   mkdirSync(join(dir, '.evolve'));
   writeFileSync(join(dir, '.evolve/STOP'), 'Stopped by the maintainer, 24 Nov 2026: budget.\n');
   assert.equal(killSwitch({ repo: dir, ref: 'main' }).stopped, false, 'an uncommitted STOP is not on main');

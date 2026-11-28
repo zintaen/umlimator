@@ -1,6 +1,7 @@
 import { TYPED, diagramOf, drawnKind, heldBy } from '../core/registry.js';
 import { copyOf, usedIds, labelOr, elName } from '../core/model.js';
 import { esc } from '../core/text.js';
+import { num } from '../draw/shapes.js';
 import { arrOf, validate } from '../map/validate.js';
 import { jsonText } from '../map/diff.js';
 
@@ -134,7 +135,7 @@ function typedEditor(api) {
     if (!link || !link.to) return;
     const g = [...svg.querySelectorAll('.node')].find(x => x.dataset.id === link.to), a = api.geo().byId[link.from], b = api.geo().byId[link.to];
     if (g) g.classList.add('um-target');
-    if (a && b) svg.insertAdjacentHTML('beforeend', `<path class="um-edit um-link um-klink" d="M ${a.x + a.w} ${a.y + a.h / 2} L ${b.x + b.w / 2} ${b.y + b.h / 2}"/>`);
+    if (a && b) svg.insertAdjacentHTML('beforeend', `<path class="um-edit um-link um-klink" d="M ${num(a.x + a.w)} ${num(a.y + a.h / 2)} L ${num(b.x + b.w / 2)} ${num(b.y + b.h / 2)}"/>`);
     say(`Line from ${api.nameOf(link.from)} to ${api.nameOf(link.to)}: Enter to choose`);
   }
   const endLink = () => { const was = !!link; link = null; mark(); if (was) api.touch(); return was; };

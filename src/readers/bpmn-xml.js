@@ -50,6 +50,9 @@ const BX_LIMIT = 1 << 20; // characters of XML read (R2)
 const bxList = x => (Array.isArray(x) ? x : []); // a list the model gives, else none (a lone id is no list: audit 27)
 const BX_MAX = 1000; // report items listed; the rest counted in one
 const BX_DEEP = 32; // levels of a skipped element kept under ext.bpmn
+// sub-processes and lanes nested deeper are read flat from there, as the Mermaid and Structurizr readers' (R2, audit bh1:
+// 27,000 nested sub-processes read in a second, then kept validate() busy for minutes and overflowed layout's call stack)
+const BX_NEST = 64;
 const BX_NS = 'https://zintaen.github.io/umlimator/bpmn'; // the umlimator: attributes' namespace
 const BX_VIEW = 'process'; // the view of a file with no diagram interchange
 const BX_TASK = { 'bpmn:Task': 'none', 'bpmn:UserTask': 'user', 'bpmn:ServiceTask': 'service', 'bpmn:SendTask': 'send', 'bpmn:ReceiveTask': 'receive' };
@@ -271,7 +274,7 @@ async function readBpmnXml(xml, moddle) {
     for (const [c, n] of owner) { const lost = procLost(c), id = idOf(c) || '(no id)';
       if (lost.length) say(n.id, 'skipped', `process ${id}${bxStr(c.name) ? ` ("${c.name}")` : ''}, ${n.id}'s: its ${both(lost)} not kept`); }
     // a process's lanes are its participant's members, nested by parent; a flow node is in the deepest lane naming it
-    const laneOf = new Map(), depth = new Map();
+    const laneOf = new Map(), depth = new Map(); let flatLane = 0;
     for (const [proc] of queue) {
       if (proc.$type !== 'bpmn:Process') continue;
       const pool = owner.get(proc), stack = (proc.laneSets || []).flatMap(s => (s.lanes || []).map(l => [l, null, 0])).reverse();
@@ -291,13 +294,15 @@ async function readBpmnXml(xml, moddle) {
           if (f.$parent && f.$parent.$type === 'bpmn:Process' && f.$parent !== proc) say(id, 'skipped', `flowNodeRef ${f.id}: a flow node of another process, left in its own`);
           else if (!(depth.get(f) >= d)) { laneOf.set(f, id); depth.set(f, d); }
         }
-        if (l.childLaneSet) stack.push(...(l.childLaneSet.lanes || []).map(c => [c, id, d + 1]).reverse());
+        const flat = d + 1 >= BX_NEST; // a lane BX_NEST deep: the lanes it holds are read beside it
+        if (flat && (l.childLaneSet?.lanes || []).length && !flatLane++) say(id, 'approximated', `lane ${id} is nested ${BX_NEST} deep: the lanes it holds are read flat from there`);
+        if (l.childLaneSet) stack.push(...(l.childLaneSet.lanes || []).map(c => flat ? [c, up, d] : [c, id, d + 1]).reverse());
       }
     }
     // flow elements and artifacts, container by container (iterative: a sub-process queues its own)
-    const objects = new Set(), refd = new Set();
+    const objects = new Set(), refd = new Set(); let flatSub = 0;
     for (let q = 0; q < queue.length; q++) {
-      const [c, inner] = queue[q], pool = c.$type === 'bpmn:Process' ? owner.get(c) : null, parent = inner || (pool && pool.id) || null;
+      const [c, inner, deep = 0] = queue[q], pool = c.$type === 'bpmn:Process' ? owner.get(c) : null, parent = inner || (pool && pool.id) || null;
       if (c.$type === 'bpmn:Process') { foreign(c, c.id || ''); ext(c, parent); }
       else for (const s of c.laneSets || []) skip(s, inner, 'of a sub-process');
       for (const el of c.flowElements || []) {
@@ -310,7 +315,8 @@ async function readBpmnXml(xml, moddle) {
           if (n && !(BX_TASK[t] in BX_TASK_OUT)) weak(n, `a ${BX_TASK[t]} task`, 'task', BX_TASK[t]);
         } else if (t === 'bpmn:SubProcess' && !el.triggeredByEvent) {
           n = add(el, 'bpmn.SubProcess', at);
-          if (n) queue.push([el, n.id]);
+          if (n && deep >= BX_NEST && !flatSub++) say(n.id, 'approximated', `sub-process ${n.id} is nested over ${BX_NEST} deep: what it holds is read flat from there`);
+          if (n) queue.push(deep >= BX_NEST ? [el, inner, deep] : [el, n.id, deep + 1]);
           if (n && el.default) defaults.push([n, el.default]);
         } else if (t === 'bpmn:CallActivity') { n = add(el, 'bpmn.CallActivity', at, bxStr(el.calledElement) ? { calledElement: el.calledElement } : {}); if (n && el.default) defaults.push([n, el.default]); }
         else if (kind in BX_DEFS) {

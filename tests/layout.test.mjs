@@ -815,3 +815,19 @@ test('routeAudit about some lines says what the whole audit says of them, in its
     assert.deepEqual(said.map((s, k) => [s, r[k]]), all.flatMap((s, k) => refs[k].some(x => set.has(x)) ? [[s, refs[k]]] : []), `about ${only.length} lines`);
   }
 });
+
+// audit cf1: a card's author tag is cut to its room by halves, not a character at a time (quadratic: a 32,000-character author
+// 13 s, a megabyte hours). Timed by growth against a quarter, CPU, best of two; the tag as the cut a character at a time gave it
+test('audit cf1: a long author tag is cut to the card in near linear time, to the same tag (timed)', () => {
+  const cpuOf = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const tagOf = au => layout({ nodes: [{ id: 'a', label: 'A', author: au }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v').byId.a.tag;
+  for (const [name, unit] of [['letters', 'x'], ['emoji', '😀'], ['mixed', 'ab😀é中 ']]) {
+    const make = n => unit.repeat(Math.ceil(n / unit.length)), N = 32000;
+    const q = Math.min(cpuOf(() => tagOf(make(N / 4))), cpuOf(() => tagOf(make(N / 4)))), ms = Math.min(cpuOf(() => tagOf(make(N))), cpuOf(() => tagOf(make(N))));
+    assert.ok(ms < 400 || ms / Math.max(q, 1) < 8, `${name}: ${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`); } // a character at a time was about 40x
+  assert.equal(tagOf('x'.repeat(100000)).text, '@xxxxxxxx…');
+  assert.equal(tagOf('😀'.repeat(50000)).text, '@😀😀😀😀…');
+  assert.equal(tagOf('ab😀é中 '.repeat(5000)).text, '@ab😀é中 a…');
+  assert.equal(tagOf('abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ').text, '@abcdefgh…');
+  assert.equal(tagOf('abcdefghi').text, '@abcdefghi'); assert.equal(tagOf('abcdefghij').text, '@abcdefgh…');
+});

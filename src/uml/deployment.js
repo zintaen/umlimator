@@ -74,7 +74,9 @@ function dpIndex(model, view) {
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
   // live: not one diff() drew back removed, nor through a removed «deploy» line, as the model after counts them (audit 55)
   const gone = isGone;
-  const deployed = (id, live) => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type) && !(live && gone(n))).map(n => n.id),
+  // the artifacts each target owns, in the model's order, indexed once (audit 72: every node's name looked through the whole model)
+  let owned = null; const ownedBy = id => { if (!owned) { owned = new Map(); at.forEach(n => { if (DP_ARTIFACTS.includes(n.type)) { if (!owned.has(n.parent)) owned.set(n.parent, []); owned.get(n.parent).push(n); } }); } return owned.get(id) || []; };
+  const deployed = (id, live) => [...new Set([...ownedBy(id).filter(n => !(live && gone(n))).map(n => n.id),
     ...into('uml.Deployment', id).filter(e => !(live && gone(e))).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type) && !(live && gone(at.get(x))))])];
   // does a hold b, at any depth
   const holds = (a, b) => { for (let p = (at.get(b) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (at.get(p) || {}).parent) { if (p === a) return true; seen.add(p); } return false; };
@@ -161,9 +163,10 @@ function dpGeo({ model, view, pos, memo }) {
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: Object.hasOwn(DP_LINE_LOOK, e.type) ? DP_LINE_LOOK[e.type] : { from: 'none', to: 'arrow' }, aria: dpLineName(e, pic),
       ...(e.type === 'uml.CommunicationPath' ? { cut: 280 } : {}), ...(DP_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // a small gap with gapAfter's widening, and labelGaps for a label left with no spot (§8, decision 9); stage 2's 12 px padding:
-  // a deployment view has no ports (§7)
+  // a deployment view has no ports (§7); the box pass round a box that holds neither end of a line (shutBoxes 1, audit 71), with
+  // crossings weighed first, as a class view's past 30 cards
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false, shutBoxes: 1 }, memo);
   // on a copy: a line's end on a cube box's slanted corner goes in on to it, as SHAPE.cube.inset does for a closed cube
   const fams = new Map((g.families || []).map(f => [f.id, f])), at = (f, s, p) => (f && s ? SHAPE.cube.inset(f, s, s === 'T' || s === 'B' ? p[0] : p[1]) : 0);
   const out = g.edges.map(e => { const da = e.pts && at(fams.get(e.from), e.fs, e.pts[0]), db = e.pts && at(fams.get(e.to), e.ts, e.pts.at(-1));

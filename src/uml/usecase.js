@@ -239,7 +239,7 @@ function ucGeo({ model, view, pos: ranked, memo }) {
   // as the class view (class.js typeGeo): laid out right with boxes, the columns spread by the widest label
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = placeTabs(layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right',
-    gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false }, memo));
+    gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false, shutBoxes: 'titles' }, memo));
   // the actors' column is -1 when the host put a node in column 0; the canvas pins no column under 0, and an actor's pinned column
   // is not read, so it says 0. ponytail: a drop then reads the actors' and that column's places as one column (render.js), and
   // an actor's pin can push a node of that column down a row (the host's fillLayout); a rank hook in the host would end both

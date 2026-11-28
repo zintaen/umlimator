@@ -253,7 +253,7 @@ function pieces(X, el, o) {
     let r = run(a, b); if (b && !r.refs.length) r = run(b, a); // the two cards in either order
     const cs = r.refs.filter(x => x.type === 'node').map(x => x.id), sum = by === 'latency' ? msText(r.total) : `cost ${r.total}`, word = BY[by][1];
     light(`${by} ${a} ${b || ''}`, r.refs, !cs.length ? (b ? `No path joins ${cardName(a)} and ${cardName(b)} here` : `${cardName(a)} leads nowhere here`)
-      : `The ${word} path: ${cs.map(cardName).join(' → ')}, ${sum}`, cs.length ? { nodes: { [cs[cs.length - 1]]: { badge: { text: sum, tone: 'amber' } } } } : null);
+      : `The ${word} path${r.approximate ? ' found (too many ways between the cards to try them all)' : ''}: ${cs.map(cardName).join(' → ')}, ${sum}`, cs.length ? { nodes: { [cs[cs.length - 1]]: { badge: { text: sum, tone: 'amber' } } } } : null);
   }
   function lightDown() { // what if the selected card goes down (#95): what loses its way to it
     if (!sel) return;

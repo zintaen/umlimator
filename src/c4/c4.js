@@ -210,7 +210,7 @@ function c4Geo({ model, view, pos, memo }) {
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(C4_HAS).join(' ') || undefined }))];
   edges.push(...c4Gone(view, nodes, edges, pic, C4_LINE_LOOK));
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
-    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
+    gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false, shutBoxes: 2 }, memo);
   // on a copy (stage 4 §2.4): a person's or robot's body starts just above the highest line on its side, as a map card's
   // does (sidePorts), so each such end lands on its outline
   const sp = sidePorts(g), lift = new Map();

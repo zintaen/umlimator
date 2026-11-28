@@ -28,7 +28,7 @@ needs @dbml/core, which umlimator never installs).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
-import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
+import argparse, atexit, base64, contextlib, hashlib, html, io, itertools, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -272,6 +272,10 @@ def soft_git(run):
     checkout prints nothing: render, diff and drift need no git, which docs/use/cli.md does not ask for (audit 60).
     It wraps the engine's subprocess.run too (visual_cmd), so visual.py's load_map takes the model's folder as its root."""
     def soft(cmd, *a, **k):
+        # git's text is read as the file system names paths, never with the locale's code page: the engine's own
+        # rev-parse --show-toplevel read a checkout path's letters as mojibake under Latin-1, and recorded a wrong root (audit 74)
+        if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == "git" and (k.get("text") or k.get("universal_newlines")) and not k.get("encoding"):
+            k = {**k, "encoding": sys.getfilesystemencoding(), "errors": sys.getfilesystemencodeerrors()}
         try:
             return run(cmd, *a, **k)
         except FileNotFoundError:
@@ -288,12 +292,19 @@ def no_git(what):
         sys.exit(f"{what} needs git, and none is installed")
 
 
-def run(cmd, timeout=None, input=None):
+def run(cmd, timeout=None, input=None, started=None):
     """A child process (Chrome, the engine, Node) in a session of its own, so that it and whatever it starts (Chrome's
-    helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed."""
+    helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed. started: called
+    with the process once it runs (the MCP server stops a cancelled call's child)."""
+    # UTF-8 both ways, whatever the locale: Node writes UTF-8, and a locale's code page (Latin-1, Windows' ANSI page) read
+    # its output as mojibake and could not encode a DBML file's letters (audit 73); a Python child (the engine) is told to
+    # write UTF-8 too. A byte that is no UTF-8 is replaced, never a traceback
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE if input is not None else None, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True, start_new_session=True)
+                         stderr=subprocess.PIPE, encoding="utf-8", errors="replace", start_new_session=True,
+                         env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     try:
+        if started:
+            started(p)
         out, err = p.communicate(input, timeout=timeout)
     except BaseException:
         with contextlib.suppress(ProcessLookupError):
@@ -311,9 +322,9 @@ def replacing(path):
     if path.is_dir():  # before any work is written (render: before the engine runs), not an IsADirectoryError at the end
         sys.exit(f"--out {path} is a folder: name a file")
     stem = path.stem
-    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the probe's, 10 bytes longer, overflows: cut as temp_json cuts (audit 32)
-        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
-    suffix = path.suffix if len(path.suffix.encode()) <= 40 else ""  # a long "suffix" (a.<200 bytes>) is no extension: the probe's name stays short
+    if len(os.fsencode(stem)) > 180:  # a name the disk takes (255 bytes) is one the probe's, 10 bytes longer, overflows: cut as temp_json cuts (audit 32)
+        stem = os.fsdecode(os.fsencode(stem)[:180].decode(errors="ignore").encode()) + "-" + hashlib.sha256(os.fsencode(stem)).hexdigest()[:8]
+    suffix = path.suffix if len(os.fsencode(path.suffix)) <= 40 else ""  # a long "suffix" (a.<200 bytes>) is no extension: the probe's name stays short
     tmp = path.with_name(f".{stem}.{os.urandom(4).hex()}{suffix}")  # not mkstemp: the file takes the usual mode
     try:  # a folder that cannot be written, or a path under a file: one line before any work, never a traceback (audit 21)
         path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
@@ -337,8 +348,32 @@ def cannot_write(path, e):
     return f"cannot write {path} ({why}): name a file in a folder you can write"
 
 
+def linked_on_way(out):
+    """The first folder that is a symbolic link among `out` and the folders above it, where the folder holding the link is
+    in a checkout (any: the cwd's, or another, --out ../their-clone/docs/stills) or under the cwd, as diff --base's
+    inside() walks them: a committed link could aim what is written there anywhere. A link in a folder outside every
+    checkout and above the cwd (the system's /tmp, say) is a way there, not one a checkout put there; `out` itself is
+    looked at wherever it is. None if none."""
+    out = Path(os.path.abspath(out))  # not resolved: a link on the way is what is looked for
+    top = lambda at: os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=at, capture_output=True).stdout.strip())
+    here = Path(top(None) or os.getcwd()).resolve()
+    for x in [out, *out.parents]:
+        try:
+            if x.is_symlink() and (x == out or x.parent.resolve().is_relative_to(here) or top(x.parent)):
+                return x
+        except (OSError, RuntimeError):  # a loop of links on the way: refused as one
+            return x
+    return None
+
+
 def make_folder(out):
-    """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21)."""
+    """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21).
+    A folder that is a symbolic link is refused, `out` or any folder on its way down from the checkout's top (the cwd's,
+    else the cwd): what is written in it would land in the link's target, outside --out, as a committed link in a
+    checkout (docs/ for --out docs/stills) could aim it (audit cf1)."""
+    linked = linked_on_way(out)
+    if linked is not None:
+        sys.exit(f"{linked} is a symbolic link: name a folder of its own")
     try:
         out.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -492,6 +527,14 @@ def cmd_pin_icons(a):
 _ESCAPE = re.compile(r"\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2}|\\u[dD][89a-fA-F][0-9a-fA-F]{2}|\\[\s\S]|[\ud800-\udfff]")
 
 
+# the deepest nesting a model file may have, on every Python: 3.12 and 3.13 raise RecursionError near 10,000 and 3.14
+# never does, while the module in Node overflows its stack diffing a model about 6,000 deep, and diff --base wrote Node's
+# stack trace into the summary (audit 74). Members nested 2,500 deep (5,003 levels) are drawn and diffed
+DEEPEST = 5500
+_TOKENS = re.compile(r'"(?:[^"\\]+|\\[\s\S])*"?|[\[\]{}]')  # a string (to its end, if it has none: linear), or a bracket
+_STEP = {"[": 1, "{": 1, "]": -1, "}": -1}  # a bracket's step in depth; a string's is 0
+
+
 def _finite(s):
     x = float(s)
     if not math.isfinite(x):
@@ -525,16 +568,20 @@ def load_json(src, where=None):
             return "\\ufffd" if len(t) == 6 else "\ufffd"
         return t
     src = _ESCAPE.sub(fix, src)
+    # deeper than DEEPEST: refused as Python's own parser refuses a nest too deep, which every caller says in one line
+    if src.count("[") + src.count("{") > DEEPEST and max(itertools.accumulate(map(_STEP.get, _TOKENS.findall(src), itertools.repeat(0)))) > DEEPEST:
+        raise RecursionError(f"it nests deeper than {DEEPEST}")
     m = json.loads(src, parse_float=_finite, parse_int=_whole, parse_constant=_no_constant)
     if lone and where:
         print(f"{where}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: read as U+FFFD", file=sys.stderr)
     return m
 
 
-def read_json(path, model=True):
-    """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1."""
+def read_json(path, model=True, read=lambda p: Path(p).read_bytes()):
+    """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1. read: its bytes (the
+    MCP server reads only a regular file, an OSError else)."""
     try:
-        m = load_json(Path(path).read_bytes(), path)  # UTF-8 (a BOM too), UTF-16 and UTF-32, as diff --base and the MCP page read it (audit 31)
+        m = load_json(read(path), path)  # UTF-8 (a BOM too), UTF-16 and UTF-32, as diff --base and the MCP page read it (audit 31)
     except OSError as e:
         sys.exit(f"cannot read {path} ({e.strerror or e})")
     except ValueError as e:
@@ -572,9 +619,15 @@ def page_model(model_path, out, source=None):
     own_media(m, Path(model_path).resolve().parent, source or model_path)  # ENGINE_ONLY keys dropped there too
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
-    root = soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    # bytes, as the file system names the folder: a locale's code page (Latin-1) read a checkout path's letters as mojibake (audit 74)
+    root = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
     base = Path(root or os.getcwd()).resolve()
-    if not Path(out).resolve().is_relative_to(base):
+    # the root visual.py records is the model's own (load_map: the checkout around the model's folder, else that folder),
+    # not the one around the cwd: a model in another tree, rendered into a page in this one, recorded a path up through
+    # the folders above both (../../home/<name>/proj, audit cf1)
+    mdir = Path(model_path).resolve().parent
+    mtop = os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=mdir, capture_output=True).stdout.strip())
+    if not Path(out).resolve().is_relative_to(Path(mtop or mdir).resolve()):
         m.setdefault("meta", {}).setdefault("root", "")
     table = {**icon_table([m]), **packs().table([m])}  # pack keys hold a `/`, logos' never
     if table:  # only this table: own_media dropped the model's own, whose entries name what a page draws through <image> (audit 19)
@@ -731,8 +784,9 @@ def temp_json(m, near, suffix):
     """`m` written to a file of its own next to `near` (hidden), so parallel renders never share one. Its name is
     registered before the file exists, so a stop at any moment leaves nothing behind; the caller removes it (untemp)."""
     d, stem = Path(near).resolve().parent, Path(near).stem
-    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the copy's, 25 bytes longer, overflows (audit 31), cut as still_names does
-        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
+    # the name's bytes as the file system holds them: under C on Linux a non-ASCII letter is a surrogate, which UTF-8 refuses
+    if len(os.fsencode(stem)) > 180:  # a name the disk takes (255 bytes) is one the copy's, 25 bytes longer, overflows (audit 31), cut as still_names does
+        stem = os.fsdecode(os.fsencode(stem)[:180].decode(errors="ignore").encode()) + "-" + hashlib.sha256(os.fsencode(stem)).hexdigest()[:8]
     while True:
         tmp = d / f".{stem}.{os.urandom(4).hex()}{suffix}"
         _temps.add(tmp)
@@ -785,15 +839,44 @@ def icon_table(models):
     return table
 
 
+def node_error(err, status=1):
+    """What a Node run that failed said, in short and in one line: its error and message (an uncaught error's lines from
+    its header, `TypeError: `, `Error [ERR_X]: `, `FooBar [Error]: `, to its stack), or the value it threw, never the
+    stack, the inline script or the paths Node prints with them, which diff --base wrote into the summary, the diff
+    Action's pull request comment (audit 74). Node out of memory says so; a failure in no form known says Node failed,
+    with its exit status and at most its first line that is no stack frame, path or version banner, never its last line,
+    which is Node's version or a native frame with the path of a system library (audit 75)."""
+    how = f"exit status {status}" if status >= 0 else f"signal {-status}"
+    if re.search(r"heap out of memory|^FATAL ERROR: .*out of memory|Fatal (?:JavaScript|process) out of memory", err, re.M | re.I):
+        return f"Node ran out of memory ({how}): the model is too large for Node's heap; NODE_OPTIONS=--max-old-space-size=MB gives it more"
+    head = r"^(?:Uncaught )?(?:\w*(?:Error|Exception|Rejection)(?: \[\w+\])?|\w+ \[\w*Error\])(?:: |:?$)"
+    at = [m.start() for m in re.finditer(head, err, re.M)]
+    caret = list(re.finditer(r"^\s*\^+\s*$\n?", err, re.M))
+    end = r"\n\s+at |\n\s*\nNode\.js v|\n\(Use `node |\nThrown at:| \{\n  (?:code|\[\w+\]|\w+):"
+    if at:
+        said = re.split(end, err[at[-1]:])[0]
+        if said.startswith("Error [ERR_MODULE_NOT_FOUND]"):  # the folder Node ran in, no part of the error
+            said = re.sub(r" imported from \S.*$", "", said.strip(), flags=re.S)
+    elif caret:  # a thrown string or object: Node prints its source line, a caret, then the value
+        said = re.split(r"\n\s*\n|\n\(Use `node |\nThrown at:", err[caret[-1].end():])[0].strip()
+        said = said and "Uncaught " + said
+    else:
+        noise = re.compile(r"^\s*(?:at |\d+: 0x|\^|\[\d+:0x|<--- |----- |Node\.js v)|node:|file:|(?:^|[\s\[(])(?:/|[A-Za-z]:\\)|\[eval")
+        first = next((x.strip() for x in err.splitlines() if x.strip() and not noise.search(x)), "")
+        return f"Node failed ({how})" + (f": {first[:300]}" if first else "" if err.strip() else " and said nothing")
+    said = re.sub(r"\s*\n\s*", " ", said.strip())[:2000]
+    return said or f"Node failed ({how}) and said nothing"
+
+
 def js(fn, *args, module=LIB):
     """One of the module's functions run in Node (for diff, drift, trace, the MCP server's read tools, and import's
     Mermaid class reader, an internal source), so the CLI and the module share one implementation."""
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
-    code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+    code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode:
-        sys.exit(r.stderr.strip()[-2000:])
+        sys.exit(node_error(r.stderr, r.returncode))
     return json.loads(r.stdout)
 
 
@@ -814,7 +897,7 @@ def bpmn(fn, a, *args):
             f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
             "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
             f"const BpmnModdle = B, u = await import({json.dumps(adapter.as_uri())});"
-            "let s = ''; for await (const c of process.stdin) s += c; const a = JSON.parse(s);"
+            "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; const a = JSON.parse(s);"
             # export with no geometry given: the type's layout of the view (lib/umlimator-all.js), a pool's or lane's its band,
             # an expanded sub-process its frame, every other node its box, a line its points (notes/milestone-4b.md §12.3, 4b.5)
             f"if ({json.dumps(fn)} === 'writeBpmnXml' && a[2] == null) {{ const g = (await import({json.dumps((HERE / 'lib' / 'umlimator-all.js').as_uri())})).layout(a[0], a[1]), at = new Map();"
@@ -826,7 +909,7 @@ def bpmn(fn, a, *args):
         why = f"not found in {folder}" if r.returncode == 3 else f"the one in {folder} has no BpmnModdle export: an older or another package"
         sys.exit(f"{a.cmd}: BPMN needs bpmn-moddle: npm install {MODDLE} ({why}; --moddle DIR or UMLIMATOR_BPMN_MODDLE names another folder)")
     if r.returncode:
-        sys.exit(r.stderr.strip()[-2000:])
+        sys.exit(node_error(r.stderr, r.returncode))
     return json.loads(r.stdout)
 
 
@@ -856,7 +939,8 @@ def render(a, model, show=print):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
         docs = getattr(a, "docs", None)  # passed only when given: a test's stand-in for visual_cmd takes (tmp, *args)
-        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})))
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp]), **({"docs": docs} if docs is not None else {})),
+                **(getattr(a, "bound", None) or {}))
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
@@ -885,33 +969,37 @@ def quiet(*a, **k):
     pass
 
 
-def render_model(m, near, out, base=None):
+def render_model(m, near, out, base=None, base_near=None, **bound):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
     the render, so it is drawn as that file would be. base: the model before an edit, which the page draws it against
-    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8)."""
+    (stableFrom): the cards the edit left alone keep their cells (docs/diagrams/notes/layout-flow.md section 8). base_near:
+    the before model's own file (default `near`), whose folder its intake logos are read from, as the page's own are. bound:
+    run()'s timeout and started, for the engine's run (the MCP server stops a render that runs too long, or is cancelled)."""
     tmp = temp_json(m, near, ".change.json")
     try:
         model = page_model(tmp, out, source=near)
         try:
-            rep = render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
+            rep = render(argparse.Namespace(out=str(out), no_check=True, bound=bound), model, show=quiet)
         finally:
             untemp(model)
     finally:
         untemp(tmp)
     if isinstance(base, dict):
-        with_base(Path(rep["out"]), base)
+        with_base(Path(rep["out"]), base, Path(base_near or near).resolve().parent)
     return rep
 
 
-def with_base(page, base):
+def with_base(page, base, folder):
     """The page drawn against base: its JSON in a #umlimator-base script the page's template reads, before the page's own
     script (every '<' in it escaped by script_json, as the page's own data block is, so no text in the model, such as '<!--'
     then '<script', ends the script or opens a state its </script> no longer closes: audit 8, audit 66). The base goes through own_media as every page
     model does: its ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) and any address a browser would fetch never reach
-    the page (risks.md S1, S2, audit 33). Its notes are not said again: the page's own model said the same ones."""
+    the page (risks.md S1, S2, audit 33). Its intake logos are read from `folder`, the before model's own folder, as page_model
+    reads the page's: the page's folder let a before model inline any SVG file under --out's folder (audit bh1). Its notes are
+    not said again: the page's own model said the same ones."""
     base = json.loads(json.dumps(base))
     with contextlib.redirect_stderr(io.StringIO()):
-        own_media(base, page.parent, "base")
+        own_media(base, folder, "base")
     text = page.read_text(encoding="utf-8")
     tag = '<script id="umlimator-base" type="application/json">' + script_json(base) + "</script>\n"
     at = text.find('<script id="visual-data"')
@@ -950,19 +1038,20 @@ def cmd_diff(a):
     before, after = map(read_model, a.files)
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
-    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story)
+    r = diff_page(before, after, a.files[1], a.out, a.stills, stable=a.stable, story=a.story, before_near=a.files[0])
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False):
+def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True, story=False, before_near=None):
     """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
     leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent).
     stable (the default, layout-flow.md section 12 step 14): the page draws the model after against the model before, so the
     cards the change left alone keep their cells; False draws it fresh.
     story: each view that shows a change gets a story of it (storyFromDiff, told on the diff's model), in the page's Stories
-    menu, and the answer names them."""
+    menu, and the answer names them. before_near: the before model's file when it is not `near` (diff BEFORE AFTER), whose
+    folder the page's base reads its intake logos from."""
     d = js("diff", before, after, {"stable": bool(stable)})
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
@@ -982,7 +1071,7 @@ def diff_page(before, after, near, out, stills=None, unchanged=True, stable=True
         if told:
             m["stories"] = [*(m.get("stories") if isinstance(m.get("stories"), list) else []), *told]
     m["title"] = f"{title_of(m, near)}: what changed"
-    rep = render_model(m, near, out, d.get("stableFrom") if stable else None)
+    rep = render_model(m, near, out, d.get("stableFrom") if stable else None, before_near)
     pngs, failed = shots(out, stills, d["views"])
     return {"out": rep["out"], "summary": d["summary"], "views": d["views"], **({"stories": [s["id"] for s in told]} if story else {}),
             "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
@@ -1003,7 +1092,13 @@ def model_of(text, where=None):
 
 def diff_since(a):
     no_git("diff --base")
-    git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
+    # git's output as bytes, each path decoded as the file system names it, never with the locale's code page: under Latin-1
+    # a checkout path or a model name holding a non-ASCII letter was mojibake, so an edited model read as removed or not
+    # changed (audit 74). A pathspec is written to git the same way; what git says (an error) is UTF-8 text
+    def git(*x, env=None, put=None):
+        r = subprocess.run(["git", "-c", "core.quotepath=false", *x], capture_output=True, env=env, input=None if put is None else os.fsencode(put))
+        return subprocess.CompletedProcess(r.args, r.returncode, os.fsdecode(r.stdout), r.stderr.decode("utf-8", "replace"))
+    shown = lambda x: os.fsencode(x).decode("utf-8", "replace")  # a path as the summary writes it: UTF-8, as git stores it
     # --base is a ref, never an option: a value starting with '-' (--output=FILE) went to git diff as its own option and
     # wrote a file (audit 67). It is refused, and the ref is resolved once, after --end-of-options, to the object id each
     # git call below reads, so no call is given the text itself
@@ -1103,7 +1198,7 @@ def diff_since(a):
         # model named a*.json was its version at --base, empty, and no JSON (audit 25)
         old = subprocess.run(["git", "cat-file", "blob", f"{base}:{was}"], capture_output=True)
         # the file's name in the summary: a code span of its own, and the one it moved from
-        span = lambda x: "`" + flat(x.replace("`", "'"), code=True) + "`"
+        span = lambda x: "`" + flat(shown(x).replace("`", "'"), code=True) + "`"
         fname = span(name) + (f" (moved from {span(was)})" if was != name else "")
         # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
@@ -1115,7 +1210,7 @@ def diff_since(a):
             if not linked_model(top / name, old):
                 continue
             why = "it is a symbolic link, or resolves outside the checkout: not read"
-            done.append({"file": name, "error": why})
+            done.append({"file": shown(name), "error": why})
             md += [f"**{fname}**: cannot be read: {why}", ""]
             continue
         # its version now: the file, unless git says it was deleted (a D row), so on a disk that ignores case a model git says
@@ -1136,7 +1231,7 @@ def diff_since(a):
         if not why:  # each version as render reads it, said under its own version (audit 11)
             why = [f"{at}: " + "; ".join(bad) for at, x in ((f"its version at {a.base}", before), ("it", after)) if x and (bad := not_objects(x))]
         if why:
-            done.append({"file": name, "error": "; ".join(why)})
+            done.append({"file": shown(name), "error": "; ".join(why)})
             md += [f"**{fname}**: cannot be read: " + flat("; ".join(why)), ""]
             continue
         if not (before or after):
@@ -1150,15 +1245,15 @@ def diff_since(a):
         # a name holding " : < > | * ? or a control character: the Action's artifact refuses the whole upload (audit 27)
         stem = NOT_IN_NAMES.sub(lambda c: f"%{ord(c[0]):02X}", stem)
         # a deep path: a file name holds 255 bytes, so a long stem is cut and hashed as still_names cuts a view id (audit 26)
-        if len(stem.encode()) > 200:
-            stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(name.encode()).hexdigest()[:8]
+        if len(os.fsencode(stem)) > 200:
+            stem = os.fsdecode(os.fsencode(stem)[:180].decode(errors="ignore").encode()) + "-" + hashlib.sha256(os.fsencode(name)).hexdigest()[:8]
         # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
         # Windows), as still_names does for view ids (audit 21). A stem's names are its page, its stills folder and its
         # copy, none of them one already written: summary.md.json's stills folder was summary.md, and the summary was
         # never written (audit 28); x.json.json's folder was x.json's copy
         mine = lambda x: {x.casefold(), f"{x}.html".casefold(), f"{x}.json".casefold()}
         if mine(stem) & stems:
-            stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
+            stem += "-" + hashlib.sha256(os.fsencode(name)).hexdigest()[:6]
         stems |= mine(stem)
         try:
             # a removed model is drawn from a copy in its own folder while that folder is there, so its intake logos resolve
@@ -1169,12 +1264,12 @@ def diff_since(a):
             r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False, stable=a.stable, story=a.story)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
-            done.append({"file": name, "error": why})
+            done.append({"file": shown(name), "error": why})
             md += [f"**{fname}**: cannot be diffed: {flat(why)}", ""]
             continue
         if not r["summary"]:
             continue
-        done.append({"file": name, **({"movedFrom": was} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
+        done.append({"file": shown(name), **({"movedFrom": shown(was)} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
         md += [f"**{fname}**: " + flat(", ".join(r["views"])) if r["views"] else f"**{fname}**", ""]
         try:  # a sketch that fails costs this file its sketch, never the summary of the rest (audit 54)
             drawn = sketch(r["model"], after=after or {}, before=before or {})
@@ -1690,6 +1785,10 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
     A file another run, or a person, changed since is drawn again, never trusted."""
     stills_folder(out, "--out")  # before Chrome is looked for
+    if (out / ".stills").is_symlink():  # its key files are replaced in place: through a link, in the link's target (audit cf1)
+        sys.exit(f"{out / '.stills'} is a symbolic link: name a folder of its own for the stills")
+    # each file is then written as a new one beside its name and renamed over it (replacing()): a link at a file's name is
+    # replaced, never written through
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped, names = [], {}, [], still_names(views_of(page))
@@ -1703,6 +1802,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
                 continue
         except (OSError, ValueError, KeyError, TypeError):
             pass  # no key file, or one cut short: drawn again
+        make_folder(out)  # again before this view's files: a link put on the way since is refused, not written through (audit cf1)
         try:
             dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={urllib.parse.quote(v, safe='')}&scale={scale}&theme={theme}" + ("&reader=1" if reader else ""))
             meta = re.search(r'data-still="([^"]+)"', dom)
@@ -1720,7 +1820,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
         except (ChromeError, OSError) as e:  # OSError: a file this view's pictures cannot be written to
             failed[v] = str(e)
             continue
-        rec.parent.mkdir(exist_ok=True)
+        make_folder(rec.parent)  # .stills: a link is refused, as out itself, never written through (audit cf1)
         write(rec, json.dumps({"key": keys.get(v), **{k: sha(f) for k, f in files.items()}}))
         done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(files["png"])})
     (out / ".stills.json").unlink(missing_ok=True)  # the one shared record before 0.14.0
@@ -1929,7 +2029,7 @@ def cmd_import(a):
                     "const req = createRequire(process.cwd() + '/'); let at; try { at = req.resolve('@dbml/core') } catch { process.stdout.write('null'); process.exit(0) }"
                     "let P; try { P = req(at).Parser; if (typeof (P && P.parse) !== 'function') throw new Error('it has no Parser.parse') }"
                     " catch (e) { process.stdout.write(JSON.stringify({ broken: at, why: String(e && e.message || e) })); process.exit(0) }"
-                    "let s = ''; for await (const c of process.stdin) s += c; let db;"
+                    "let s = ''; process.stdin.setEncoding('utf8'); for await (const c of process.stdin) s += c; let db;"
                     "try { db = P.parse(s, 'dbmlv2') } catch (e) { process.stdout.write(JSON.stringify({ diags: (Array.isArray(e && e.diags) ? e.diags : [e])"
                     ".map(d => [d && d.location && d.location.start ? d.location.start.line : null, String(d && d.message || d)]) })); process.exit(0) }"
                     "process.stdout.write(JSON.stringify(readDbml(db)));")

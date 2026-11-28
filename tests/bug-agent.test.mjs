@@ -190,6 +190,29 @@ test('bug agent: what the agent wrote is posted defused', () => {
   assert.throws(() => message('merge', r, ''), /unknown/);
 });
 
+// audit bh1 7: the agent read the issue, so what it reports may carry an outsider's links, tags and references; the bot
+// posts them as text, by the diff Action's flat() rules
+test('bug agent: the agent\'s words reach GitHub with no link, image, tag, entity or issue reference', () => {
+  const summary = 'Could not reproduce.\n\n</blockquote>\n\n**Maintainer note:** the fix is in [the patched release](https://evil.example/u.tgz). ' +
+    'Related: #1, zintaen/other-repo#2, GH-3, gh-4. <img src="https://evil.example/p.png" width=1> ![i](http://evil.example/i.png) &#64;zintaen &commat;x ' +
+    '<a href="https://evil.example">CONTRIBUTING.md</a> www.evil.example mailto:a(at)b.c xmpp:a login_https://x\nFixes #4\n> quoted | a | b |\n~~~\n\\[esc]';
+  const J = '⁠';
+  for (const kind of ['not-reproduced', 'reproduced', 'pr-body']) {
+    const m = message(kind, { outcome: 'not-reproduced', summary, test: 'node --test tests/issue-9.test.mjs', issue: 9 }, 'https://run');
+    const said = m.slice(m.indexOf('What the agent reported:'), m.indexOf('\n\nRun:') > 0 ? m.indexOf('\n\nRun:') : m.indexOf('\n\nThis was written'));
+    assert.ok(said.split('\n').slice(2).every(l => l.startsWith('> ')), kind);
+    assert.doesNotMatch(said, /<|(?<!\\)\[|(?<!\\)\]\(|(?<!\\)!(?!\\\[)|(?<!\\)\*|(?<!\\)\||(?<!\\)~|&(?!amp;|lt;|gt;)/, kind);
+    assert.doesNotMatch(said, /(https?|ftp|mailto|xmpp):(?!⁠)|www\.|(#|\bGH-)\d/i, kind);
+    for (const want of [`&amp;#${J}64;zintaen`, `Fixes #${J}4`, `GH-${J}3`, `other-repo#${J}2`, `https:${J}//evil`, `w${J}ww.evil`, '&lt;/blockquote&gt;']) assert.ok(said.includes(want), `${kind}: ${want}`);
+    assert.match(said, /\\\[the patched release\\\]\(https/);
+    assert.match(said, /> \\\\\\\[esc\\\]/); // a backslash of the agent's own is text too
+  }
+  const f = message('failed', { summary: '', reason: '[x](https://e.example) #5' }, '');
+  assert.match(f, new RegExp(`\\\\\\[x\\\\\\]\\(https:${J}//e\\.example\\) #${J}5`));
+  // plain words pass as they are
+  assert.equal(quoteText('The layout of view 2 drew the label twice.'), '> The layout of view 2 drew the label twice.');
+});
+
 // A throwaway repository with a stand-in build (tools/build.mjs copies src/ to lib/) and one test file. edit() writes the
 // agent's changes and returns them as the agent job's diff, then puts the checkout back as the verify job finds it.
 function repo() {
@@ -500,6 +523,50 @@ test('bug agent proxy: the real key goes upstream, the placeholder and other cre
     await post('/v1/messages', { messages: [] }, { 'anthropic-beta': 'search-results-2025-06-09' });
     assert.equal(seen.at(-1).headers['anthropic-beta'], undefined);
     assert.throws(() => createProxy({ key: '' }), /no key/);
+  } finally {
+    proxy.close(); upstream.close();
+  }
+});
+
+test('bug agent proxy: the API gets the object the proxy checked, never other bytes (duplicate keys, bad UTF-8)', async () => {
+  const seen = [];
+  const upstream = createServer((req, res) => {
+    const parts = [];
+    req.on('data', c => parts.push(c));
+    req.on('end', () => { seen.push(Buffer.concat(parts)); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });
+  });
+  await new Promise(ok => upstream.listen(0, '127.0.0.1', ok));
+  const proxy = createProxy({ key: 'sk-real-key-0123456789', upstream: `http://127.0.0.1:${upstream.address().port}` });
+  await new Promise(ok => proxy.listen(0, '127.0.0.1', ok));
+  const base = `http://127.0.0.1:${proxy.address().port}`;
+  const raw = (path, body) => fetch(base + path, { method: 'POST', body, headers: { 'content-type': 'application/json' } });
+  try {
+    const server = '{"type":"web_search_20250305","name":"web_search"}';
+    for (const [name, body] of [
+      ['a server tool hidden by a later empty tools', `{"model":"m","tools":[${server}],"messages":[{"role":"user","content":"hi"}],"tools":[]}`],
+      ['a server tool hidden in a nested duplicate', `{"model":"m","messages":[],"tools":[{"type":"web_search_20250305","type":"custom","name":"x","input_schema":{}}]}`],
+      ['a block type hidden by a later text type', '{"model":"m","messages":[{"role":"user","content":[{"type":"web_fetch_tool_result_X","type":"text","text":"x"}]}]}'],
+    ]) {
+      for (const path of ['/v1/messages', '/v1/messages/count_tokens']) {
+        const before = seen.length;
+        const r = await raw(path, body);
+        if (r.status === 403) continue;
+        assert.equal(r.status, 200, name);
+        assert.equal(seen.length, before + 1, name);
+        const sent = seen.at(-1).toString('utf8');
+        assert.doesNotMatch(sent, /web_search_20250305|web_fetch_tool_result_X/, name + ': the bytes upstream carry what was checked');
+        assert.deepEqual(JSON.parse(sent), JSON.parse(body), name);
+      }
+    }
+    // a body that is not UTF-8 is refused, not decoded with replacement characters
+    const before = seen.length;
+    const bad = Buffer.concat([Buffer.from('{"model":"m","messages":[{"role":"user","content":"'), Buffer.from([0xff, 0xfe]), Buffer.from('"}]}')]);
+    assert.equal((await raw('/v1/messages', bad)).status, 403);
+    assert.equal(seen.length, before);
+    // an ordinary body still goes through with the same meaning
+    const plain = { model: 'm', max_tokens: 10, temperature: 0.7, messages: [{ role: 'user', content: 'h\u00e9llo \ud83d\ude00' }], tools: [{ name: 'Bash', input_schema: {} }] };
+    assert.equal((await raw('/v1/messages', JSON.stringify(plain))).status, 200);
+    assert.deepEqual(JSON.parse(seen.at(-1).toString('utf8')), plain);
   } finally {
     proxy.close(); upstream.close();
   }

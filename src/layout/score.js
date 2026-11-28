@@ -1,10 +1,10 @@
-import { leaveIssues, overlapIssues, routeAudit, throughIssues } from './audit.js';
+import { leaveIssues, overlapIssues, routeAudit, throughBoxes, throughIssues } from './audit.js';
 
 /* The layout quality score (docs/diagrams/notes/layout-flow.md section 4.1): what a finished geometry draws well or badly,
    per view, as one number, lower better. Pure: no clock, no random choice, no DOM. The bench (bench/score.mjs) and the
    tests import it; tools/build.mjs leaves it out of lib/, so no host loads it. The weights a run uses are
    bench/score-weights.json's; WEIGHTS below are the same values, for a caller with no file. */
-const WEIGHTS = Object.freeze({ hard: 1000, cross: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 });
+const WEIGHTS = Object.freeze({ hard: 1000, cross: 100, through: 100, labels: 60, reverse: 40, straight: 30, moved: 200, length: 1 / 15, points: 12, area: 1 / 4e5 });
 
 // the view types whose lines read as a flow (section 5.1): reverse counts on these only; structure, axis and tree types have none
 const FLOW_TYPES = new Set(['map', 'flowchart', 'uml.activity', 'dfd', 'bpmn', 'aws', 'gcp', 'azure']);
@@ -47,14 +47,17 @@ function mainFlowOf(g, model, view) {
   return { lines, cards };
 }
 
-/* The metrics of one view's geometry g (as layout() returns it): hard, cross, labels, straight (null with no main flow),
-   reverse (null on a type with no flow), and scoreGeo's length, points and area. o: { model, view, main } where main, if given,
+/* The metrics of one view's geometry g (as layout() returns it): hard, cross, through (null on a type whose layout runs no box
+   pass), labels, straight (null with no main flow), reverse (null on a type with no flow), and scoreGeo's length, points and area.
+   through (decision D17) counts each line that runs through a box holding neither of its ends, on the class, component,
+   deployment, cloud, requirement and C4 views (audit.js's boxThroughIssues, which check() says with throughBoxes), weighted
+   as a crossing. o: { model, view, main } where main, if given,
    is { lines, cards } in place of the lines marked `flow: "main"`. */
 function viewMetrics(g, o = {}) {
   const { model, view } = o, A = routeAudit(g, ''), count = re => A.filter(m => re.test(m)).length;
   const hard = count(/ share a line$/) + count(/ which it does not hold$/) + count(/^: families .* overlap$/)
     + overlapIssues(g, '').length + throughIssues(g.map ? { ...g, map: false } : g, '').length;
-  const cross = count(/ cross$/);
+  const cross = count(/ cross$/), through = throughBoxes(g, view && view.diagram);
   const labels = count(/^: label .* lies on edge /) + count(/^: label .* sits on the border of family /) + count(/^: name tag .* lies on edge /)
     + leaveIssues(g, '').length - (g.notDrawn || []).length;
   const down = !!g.down, at = n => down ? n.x + n.w / 2 : n.y + n.h / 2, along = n => down ? n.y + n.h / 2 : n.x + n.w / 2, byId = g.byId || Object.fromEntries(g.nodes.map(n => [n.id, n]));
@@ -74,7 +77,7 @@ function viewMetrics(g, o = {}) {
   }
   const length = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0);
   const points = g.edges.reduce((a, e) => a + e.pts.length, 0), area = g.bounds.w * g.bounds.h;
-  return { hard, cross, labels, straight, reverse, length, points, area };
+  return { hard, cross, through, labels, straight, reverse, length, points, area };
 }
 
 /* moved (section 4.1): of the cards drawn before and after an edit and not in `touched`, the share whose cell changed, and
@@ -92,7 +95,7 @@ function moved(before, after, touched = []) {
 // one view's score from its metrics (and moved's share, for an edit pair); a metric that is null counts nothing
 function scoreView(m, w = WEIGHTS, movedShare = 0) {
   const v = k => m[k] || 0;
-  const s = w.hard * v('hard') + w.cross * v('cross') + w.labels * v('labels') + w.reverse * v('reverse') + w.straight * v('straight')
+  const s = w.hard * v('hard') + w.cross * v('cross') + (w.through || 0) * v('through') + w.labels * v('labels') + w.reverse * v('reverse') + w.straight * v('straight')
     + w.moved * movedShare + w.length * v('length') + w.points * v('points') + w.area * v('area');
   return Math.round(s * 100) / 100;
 }

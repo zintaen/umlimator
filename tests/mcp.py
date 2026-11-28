@@ -457,6 +457,18 @@ except mcp.Fail as e:
     raced = str(e)
 ok("edit · a change is not written over a file another editor wrote meanwhile", raced and raced.startswith("the model file changed while the change was made")
    and '"Client"' in mcp.MODEL.read_text(encoding="utf-8") and '"Purchase"' not in mcp.MODEL.read_text(encoding="utf-8"), raced)
+# audit 72: an undo history holding a change that is not an object (or a text that is not a string), a hand-edited or
+# half-merged file, refuses each edit tool before the model is written, in words that name the file; undo and redo too
+bad_h = []
+for hist in ({"done": [1], "undone": []}, {"done": [], "undone": ["x"]}, {"done": [{"before": 7, "after_sha": "", "summary": []}], "undone": []},
+             {"done": [None, {"before": "{}"}], "undone": []}):
+    edit_on("class.json", CLASS)
+    mcp.history_file().write_text(json.dumps(hist), encoding="utf-8")
+    said = [ed("rename", id="order", label="Purchase"), ed("undo"), ed("redo")]
+    bad_h.append((said, mcp.MODEL.read_text(encoding="utf-8") == first, json.loads(mcp.history_file().read_text(encoding="utf-8")) == hist))
+ok("edit · an undo history holding a change that is not an object, or a text that is not a string, refuses the change before anything is written, naming the file (audit 72)",
+   all(all(isinstance(x, str) and x.startswith("FAIL the undo history class.json.undo cannot be read") and "nothing written" in x for x in said) and same and kept_as
+       for said, same, kept_as in bad_h), bad_h)
 # audit 65: a model file in UTF-8 with a BOM, UTF-16 or UTF-32 (a Windows editor, PowerShell 5.1) keeps its encoding and BOM
 # through an edit, and undo() puts it back byte for byte, redo() writes the edit's bytes again
 enc_got = {}
@@ -593,8 +605,23 @@ def state():
     return {"model": {}, "asked": {}, **s, "pages": s.get("pages") or [{}]}
 
 
-url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+url = re.search(r"http://127\.0\.0\.1:\d+/\?k=\w+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                                                "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
+# m8ven.ai's quality report: no tool said whether it reads, writes or destroys; a directory (OpenAI's) refuses a tool without all four hints
+HINTED = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
+listed = rpc("tools/list")["result"]["tools"]
+hinted = {t["name"]: t.get("annotations") for t in listed}
+ok("annotations · every tool says all four hints, each a boolean, and no other",
+   len(listed) == 26 and all(isinstance(h, dict) and set(h) == HINTED and all(type(x) is bool for x in h.values()) for h in hinted.values()), hinted)
+ok("annotations · a read (describe_view, preview) writes nothing; a page tool (show_view) changes the page, not the model; add_card adds, "
+   "remove and apply can take away; none reaches past the model, its page and the files it is given",
+   all(hinted[x]["readOnlyHint"] and not hinted[x]["destructiveHint"] for x in ("describe_view", "preview"))
+   and not hinted["show_view"]["readOnlyHint"] and not hinted["show_view"]["destructiveHint"] and hinted["show_view"]["idempotentHint"]
+   and not hinted["tour"]["idempotentHint"]
+   and not hinted["add_card"]["readOnlyHint"] and not hinted["add_card"]["destructiveHint"] and not hinted["add_card"]["idempotentHint"]
+   and not hinted["remove"]["readOnlyHint"] and hinted["remove"]["destructiveHint"]
+   and hinted["apply"]["destructiveHint"] and not hinted["apply"]["idempotentHint"] and not hinted["undo"]["idempotentHint"]
+   and not any(h["openWorldHint"] for h in hinted.values()), hinted)
 LOOK = """(() => { const m = window.umlimatorMap, host = document.querySelector('#m-canvas .umlimator'),
   svg = host && host.shadowRoot && host.shadowRoot.querySelector('svg'), cards = svg ? [...svg.querySelectorAll('.node')] : [];
   return m && { view: m.view, lit: cards.filter(c => !c.getAttribute('opacity')).map(c => c.dataset.id).sort(), dimmed: cards.filter(c => c.getAttribute('opacity')).length,
@@ -629,7 +656,7 @@ try:
     said = tool("show_view", view="trips")
     ok("a page tool with no page open says so, with the URL", said.startswith("No page is connected") and url in said, said)
     tool("highlight", refs=["fare", "lifecycle"])
-    tab, sid = chrome.open(url + "/")
+    tab, sid = chrome.open(url)
     got = until(lambda: (lambda s: s if s and s["view"] == "trips" and "mcp" in s["overlays"] else None)(chrome.eval(sid, LOOK)))
     ok("mcp-latest-command#1 · a page that opens late shows the view, then the highlight on it", got and got["lit"] == ["fare", "lifecycle"]
        and got["dimmed"] == 10, got)
@@ -684,7 +711,7 @@ try:
     ok("mcp-sse-clients#1 · a closed tab is not counted", said.startswith("No page is connected"), said)
 
     # a tour that has ended is not played again for a page that opens later
-    tab, sid = chrome.open(url + "/")
+    tab, sid = chrome.open(url)
     until(lambda: chrome.eval(sid, "!!(window.umlimatorMap && window.umlimatorMap.view === 'trips')"))
     until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected
     # as C10's highlight (#252): ask again until the server counts the stream. A loaded runner's page may take longer than
@@ -763,7 +790,7 @@ try:
     model.write_text(json.dumps(smaller), encoding="utf-8")
 
     # this server stops, and another model's server takes its port: the tab stays the moped share, and says so
-    port = int(url.rsplit(":", 1)[1])
+    port = int(re.search(r":(\d+)/", url).group(1))
     srv.stdin.close()
     srv.wait(timeout=30)
     shop = work / "shop.json"
@@ -785,16 +812,16 @@ try:
         srv.wait(timeout=30)
         srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(late), "--port", str(port)], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-        return re.search(r"127\.0\.0\.1:(\d+)", rpc("server/discover")["result"]["instructions"]).group(1)
+        return re.search(r"http://127\.0\.0\.1:(\d+)/\?k=\w+", rpc("server/discover")["result"]["instructions"])
     first = again()
-    tab2, sid2 = chrome.open(url + "/")
+    tab2, sid2 = chrome.open(first.group(0))  # late.json's page, at its own address and key (audit cf1)
     waits = until(lambda: chrome.eval(sid2, "document.title") == "The map does not render yet")
     second = again()
     time.sleep(1)  # the page's stream is refused by the new run before the model renders again
     late.write_text(json.dumps(fixture), encoding="utf-8")
     drawn = until(lambda: tool("show_view", view="system") and (chrome.eval(sid2, "document.title") or "").endswith("Moped share, an example"), 30)
     ok("audit 25 · the page shown while the model does not render follows its server across a restart, and draws the map once it renders",
-       first == second == str(port) and waits and drawn, (first, second, waits, chrome.eval(sid2, "document.title")))
+       first.group(0) == second.group(0) and first.group(1) == str(port) and waits and drawn, (first.group(0), second.group(0), waits, chrome.eval(sid2, "document.title")))
 finally:
     chrome.quit()
     srv.stdin.close()
@@ -910,7 +937,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
     stop = threading.Timer(300, srv.kill); stop.daemon = True; stop.start()
     chrome = Chrome()
     try:
-        url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+        url = re.search(r"http://127\.0\.0\.1:\d+/\?k=\w+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                                                      "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
         views = json.loads(tool("list_views"))
         said = tool("describe_view", view=view)
@@ -922,7 +949,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         if f == "checkout-sequence":  # paths() in time order (C10): the messages that carry the shopper's checkout on to the receipt
             got = [r.get("id") or r["ids"][0] for r in json.loads(tool("paths", view=view, **{"from": "lifeline-shopper", "to": "receipt"}))]
             ok("C10 · checkout-sequence: paths runs in time order, message after message", got[5:] == ["m1", "m2", "m4", "m5", "m6"], got)
-        tab, sid = chrome.open(url + "/")
+        tab, sid = chrome.open(url)
         drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: the page draws the diagram: {cards} elements and {boxes} boxes (packages, a subject, composite states and their regions, components, nodes, a collaboration)", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
         until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
@@ -955,4 +982,131 @@ finally:
 ok("a page tool on a model that has never rendered says it does not render yet, never that the page shows a last version that did (audit 28)",
    said28.startswith("The model does not render yet: ") and "ghost" in said28 and "last version" not in said28
    and ps28["model"].get("shown") is None and ps28["model"].get("renders") is False, (said28, ps28.get("model")))
+
+# audit bh1 5: MODEL.json.undo, which a pull request can commit as a symbolic link (to /dev/zero, /dev/stdin) or which can be
+# a FIFO, was read whatever it was: the server filled its memory or hung on the first page tool. Now only a regular file,
+# never through a link and no larger than SHELF, is read; an edit tool refuses to write over one it will not read
+def server(model):
+    return subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+
+def ask(p, *msgs, lines=1, seconds=60):
+    """msgs sent to server p, then the next `lines` lines it writes (each parsed), or None for each that never came in time."""
+    stop = threading.Timer(seconds, p.kill); stop.daemon = True; stop.start()
+    try:
+        for m in msgs:
+            p.stdin.write(json.dumps(m) + "\n"); p.stdin.flush()
+        got = [p.stdout.readline() for _ in range(lines)]
+        return [json.loads(x) if x else None for x in got]
+    finally:
+        stop.cancel()
+
+
+HI = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/mcp.py", "version": "0"}}}
+call = lambda i, name, **a: {"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": name, "arguments": a}}
+text = lambda r: "".join(c["text"] for c in r["result"]["content"]) if r and "content" in r.get("result", {}) else str(r)
+if hasattr(os, "mkfifo"):
+    got5 = {}
+    for how in ("fifo", "link to a fifo", "link to /dev/stdin"):
+        d = Path(tempfile.mkdtemp())
+        shutil.copy(ROOT / "tests" / "fixtures" / "mcp-class.json", d / "model.json")
+        os.mkfifo(d / "pipe")
+        (d / "model.json.undo").symlink_to("/dev/stdin" if "stdin" in how else d / "pipe") if how != "fifo" else os.mkfifo(d / "model.json.undo")
+        p5 = server(d / "model.json")
+        try:
+            r = ask(p5, HI, call(1, "page_state"), {"jsonrpc": "2.0", "id": 2, "method": "ping"}, lines=3, seconds=45)
+            r += ask(p5, call(3, "add_card", view="sales", label="Invoice"), seconds=45) if all(r) else [None]
+        finally:
+            p5.kill(); p5.wait()
+        got5[how] = {x.get("id"): x for x in r if x}  # by id: a ping may be answered before the page_state sent first
+    def fine5(r):
+        try:
+            return (json.loads(text(r.get(1)))["model"].get("renders") is True and 2 in r and r[3]["result"]["isError"]
+                    and "cannot be read" in text(r[3]) and "nothing written" in text(r[3]))
+        except (ValueError, KeyError, TypeError):
+            return False
+    ok("audit bh1 5 · an undo history that is a FIFO, a link to one or a link to /dev/stdin hangs no page tool; an edit tool refuses to write over it",
+       len(got5) == 3 and all(map(fine5, got5.values())), {k: {i: str(x)[:300] for i, x in v.items()} for k, v in got5.items()})
+keep5 = mcp.MODEL
+d = Path(tempfile.mkdtemp())
+mcp.MODEL = d / "model.json"
+shutil.copy(ROOT / "tests" / "fixtures" / "mcp-class.json", mcp.MODEL)
+(d / "real.undo").write_text(json.dumps({"done": [{"before": "{}", "after_sha": "x"}], "undone": []}), encoding="utf-8")
+devices = {}
+try:  # in this process, only what cannot hang it or fill its memory without the fix: /dev/stdin went through the server above
+    mcp.history_file().symlink_to(d / "real.undo")
+    try:
+        mcp.kept_history(); refused = False
+    except mcp.Fail as e:
+        refused = "cannot be read" in str(e) and "nothing written" in str(e)
+    devices["link to a history"] = (mcp.history(), refused)
+    mcp.history_file().unlink()
+    for dev in ("/dev/zero", "/dev/null"):  # regular() follows a link (the model's), and reads only a regular file
+        try:
+            mcp.regular(dev); devices[dev] = "read"
+        except OSError as e:
+            devices[dev] = e.strerror
+    with open(mcp.history_file(), "wb") as f:  # sparse: larger than the largest history kept() writes, and no disk taken
+        f.truncate(mcp.SHELF + 1)
+    devices["too large"] = mcp.history()
+    mcp.history_file().write_text((d / "real.undo").read_text(encoding="utf-8"), encoding="utf-8")
+    devices["regular"] = len(mcp.history()["done"])
+except Exception as e:
+    devices["error"] = repr(e)
+mcp.MODEL = keep5
+ok("audit bh1 5 · a history that is a link (even to a real history) or larger than any kept() writes is an empty one, and the edit tools "
+   "will not write over it; /dev/zero and /dev/null are not read; a regular history is read",
+   devices.get("link to a history") == ({"done": [], "undone": []}, True) and all(str(devices.get(x, "read")).startswith("not a regular file") for x in ("/dev/zero", "/dev/null"))
+   and devices.get("too large") == {"done": [], "undone": []} and devices.get("regular") == 1, devices)
+# audit bh1 6: the server's Node runs had no time limit and notifications/cancelled was not acted on, on the one thread that
+# reads stdin: a 44 KB model of 200 classes held list_views, and every request after it (a ping too), for minutes. Now each
+# run is stopped after LIMIT s (the element counts after COUNTING s), a tools/call runs off that thread, and a cancel stops it
+import random
+rnd = random.Random(6)
+big = {"schemaVersion": 2, "root": "v0", "nodes": [{"id": f"c{i}", "label": f"C{i}", "type": "uml.Class"} for i in range(200)],
+       "edges": [{"id": f"e{i}", "from": f"c{rnd.randrange(200)}", "to": f"c{rnd.randrange(200)}", "type": "uml.Association"} for i in range(400)],
+       "views": [{"id": f"v{k}", "diagram": "uml.class", "nodeIds": [f"c{i}" for i in range(200)]} for k in range(3)]}
+bigf = Path(tempfile.mkdtemp()) / "big.json"
+bigf.write_text(json.dumps(big), encoding="utf-8")
+p6 = server(bigf)
+try:
+    r6 = ask(p6, HI, call(1, "list_views"), {"jsonrpc": "2.0", "id": 2, "method": "ping"}, lines=2, seconds=60)
+    r6 += ask(p6, {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 1, "reason": "too slow"}},
+              call(3, "validate"), seconds=60) if all(r6) else [None]
+finally:
+    p6.kill(); p6.wait()
+ok("audit bh1 6 · a ping is answered while a long list_views runs; cancelled, it is never answered and the next call is",
+   (r6[0] or {}).get("id") == 0 and (r6[1] or {}).get("id") == 2 and (r6[2] or {}).get("id") == 3 and text(r6[2]).startswith("["), [str(x)[:200] for x in r6])
+keep6 = getattr(mcp, "LIMIT", None), getattr(mcp, "COUNTING", None), mcp.MODEL, mcp.counted[:]  # (none before audit bh1 6)
+mcp.MODEL, mcp.LIMIT, mcp.COUNTING = bigf, 0.001, 0.001  # no Node run ends that soon
+t6 = time.monotonic()
+try:
+    mcp.node("validate", big); late = None
+except mcp.Fail as e:
+    late = str(e)
+try:
+    mcp.call("describe_view", {"view": "v0"}) and None; late2 = None
+except mcp.Fail as e:
+    late2 = str(e)
+counts6 = mcp.element_counts(big)
+took6 = time.monotonic() - t6
+mcp.LIMIT, mcp.COUNTING, mcp.MODEL = keep6[:3]; mcp.counted[:] = keep6[3]
+ok("audit bh1 6 · a Node run past its limit is stopped and said in one line; list_views's element counts past theirs are left out",
+   late and late == late2 and late.startswith("stopped after ") and "\n" not in late and counts6 == {} and took6 < 30, (late, late2, counts6, took6))
+# the page's render ran the engine (a layout in Node) with no limit as well: the 44 KB model held page_state two minutes. A
+# render past LIMIT s is stopped, and the page says why it does not render, once for that version (audit bh1 6)
+keep6r = getattr(mcp, "LIMIT", None), mcp.MODEL, mcp.tried, mcp.why, mcp.drawn[:], mcp.MAPID  # (no LIMIT before audit bh1 6)
+d6 = Path(tempfile.mkdtemp())
+shutil.copy(CLASS, d6 / "model.json")
+mcp.MODEL, mcp.LIMIT, mcp.tried, mcp.MAPID = d6 / "model.json", 0.001, None, mcp.MAPID or "map"
+t6 = time.monotonic()
+try:
+    shown6, why6 = mcp.page()
+except Exception as e:
+    shown6, why6 = None, repr(e)
+took6 = time.monotonic() - t6
+mcp.LIMIT, mcp.MODEL, mcp.tried, mcp.why = keep6r[:4]; mcp.drawn[:] = keep6r[4]; mcp.MAPID = keep6r[5]
+ok("audit bh1 6 · a page render past its limit is stopped, and the page says why the model does not render, in one line",
+   isinstance(why6, str) and why6.startswith("stopped after ") and "\n" not in why6 and took6 < 30, (shown6, why6, took6))
 sys.exit(1 if failed else 0)

@@ -31,7 +31,9 @@ test('bug agent jail, api: the API answers the jailed user, nothing else does, a
   }
   // another port on the API's own range is closed too
   assert.equal(status('http://api.anthropic.com'), 'blocked');
-  assert.equal(status('https://api.github.com', mine), '200', 'the runner itself is not held');
+  // any HTTP answer proves the runner reaches the network; GitHub answers an unauthenticated runner 403 once the shared
+  // runner address has used its hourly allowance, so the code itself is not pinned (a held runner gets no answer at all)
+  assert.match(status('https://api.github.com', mine), /^[1-5]\d\d$/, 'the runner itself is not held');
 });
 
 test('bug agent jail: the user has no sudo, and cannot read the runner files', { skip }, () => {

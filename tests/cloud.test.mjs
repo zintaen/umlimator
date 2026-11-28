@@ -83,7 +83,7 @@ test('the legal lines: their two copies, icons/packs.json\'s and the type\'s, ar
 });
 
 test('the three targets (rows 26 to 28) validate clean and lay out clean right and down: every line routed, no overlap, each in its group, ends on outlines; crossings pinned (repair and reroute off, §11)', () => {
-  const got = {}, want = { 'gcp right': 1, 'gcp down': 1, 'azure right': 2, 'azure down': 3, 'aws right': 2, 'aws down': 2 }; // azure right: 2 since audit 27 (a line no longer runs back through its own box)
+  const got = {}, want = { 'gcp right': 0, 'gcp down': 0, 'azure right': 2, 'azure down': 2, 'aws right': 2, 'aws down': 2 }; // azure right: 2 since audit 27 (a line no longer runs back through its own box); gcp 1 and 1, azure down 3 till audit 71 (the box pass routes a line round a group that holds neither of its ends)
   for (const [fam, M, vid] of TARGETS) {
     assert.deepEqual(validate(M), [], fam);
     for (const direction of ['right', 'down']) {
@@ -477,10 +477,13 @@ test('a line break in a cloud card or group name is drawn as a new line (audit 2
   const { svgOf } = await import('../src/draw/svg.js');
   const NL = String.fromCharCode(10), br = x => { if (Array.isArray(x)) return x.forEach(br); if (x && typeof x === 'object') { if (typeof x.label === 'string' && x.label.includes(' ')) x.label = x.label.replace(' ', NL); Object.values(x).forEach(br); } };
   for (const f of ['bookshop-aws', 'bookshop-azure', 'bookshop-gcp']) {
-    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), vid = m.views[0].id, before = check(m, vid).length; br(m.nodes);
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), vid = m.views[0].id, other = m => check(m, vid, { throughBoxes: true }).filter(p => !/ cross$/.test(p.message)).length, before = other(m); br(m.nodes);
     const t = [...svgOf(layout(m, vid)).matchAll(/<text(?:[^>"]|"[^"]*")*>([^<]*)<\/text>/g)].map(x => x[1]);
     assert.deepEqual(t.filter(x => /[\r\n]/.test(x)), [], `${f}: no text holds a break`);
-    assert.ok(check(m, vid).length <= before, `${f}: nothing more in the way`);
+    // (no issue but a crossing, a line through a group counted: since audit 71 the box pass takes a crossing over a line through
+    // a group, and aws's taller broken cards leave it one more crossing, 3 where 2, with none of the eight lines through a group
+    // the view drew before)
+    assert.ok(other(m) <= before, `${f}: nothing more in the way`);
   }
 });
 
@@ -705,10 +708,11 @@ test('audit 61: laid out down, three services, two in one account, a call each w
 // weighs a line along a box's border or a label on a line as check() does, past what the view says with no pin
 test('audit 61: one pin of a card in the AWS view leaves no line along a border and no label on a line', () => {
   const g = JSON.parse(readFileSync(new URL('fixtures/integration.json', import.meta.url))), vid = 'on-aws';
-  assert.deepEqual(check(g, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
+  const other = m => check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x));
+  assert.deepEqual(other(g), []);
   for (const [id, q] of [['aws-users', [1, 1.5]], ['aws-cdn', [2, 2]], ['aws-assets', [1, 3]]]) {
     const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
-    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
+    assert.deepEqual(other(m), [], `${id} ${JSON.stringify(q)}`); }
 });
 
 // audit 62: laid out down, the last resort's line from a GCP service into one that two lines from another reach came in from the
@@ -750,4 +754,46 @@ test('zoneOf: users and clients first, a data or storage service under, a servic
   assert.deepEqual(aws.nodes.map(x => T.aws.zoneOf(x, aws, aws.views[0])), ['first', 'under']);
   const g = layout(m, 'v'), at = id => g.byId[id];
   assert.ok(at('u').col < at('run').col && at('mail').col > at('run').col && at('sql').row > at('run').row, 'users first, the outside service last, the database under');
+});
+
+// audit 71: a line between two cards outside a group ran through the group's box (a VPC, a zone, a subnet), and check() said
+// nothing: the cloud views take layered.js's box pass (shutBoxes 2, as the component view's), and check() given throughBoxes
+// names such a line in every view whose type runs that pass. Each [line, box] where a segment of the line runs inside a box that holds neither
+// of its ends, at any depth
+function throughGroups(g) {
+  const F = g.families, byF = new Map(F.map(f => [f.id, f])), out = [];
+  const ups = id => { const s = new Set([id]); for (const f of F) if ((f.nodeIds || []).includes(id)) for (let x = f; x; x = byF.get(x.parent)) s.add(x.id); for (let x = byF.get(id); x; x = byF.get(x.parent)) s.add(x.id); return s; };
+  for (const e of g.edges) { const a = ups(e.from), b = ups(e.to);
+    for (const f of F) { if (a.has(f.id) || b.has(f.id)) continue;
+      if (e.pts.some((p, k) => k && Math.max(p[0], e.pts[k - 1][0]) > f.x + 1 && Math.min(p[0], e.pts[k - 1][0]) < f.x + f.w - 1 && Math.max(p[1], e.pts[k - 1][1]) > f.y + 1 && Math.min(p[1], e.pts[k - 1][1]) < f.y + f.h - 1)) out.push(`${e.id} in ${f.id}`); } }
+  return out;
+}
+test('audit 71: a cloud view routes no line through a group that holds neither of its ends, right and down, and check() is silent about none', () => {
+  const INT = read('./fixtures/integration.json'), BAWS = read('./fixtures/bookshop-aws.json');
+  const small = { schemaVersion: 2, nodes: [{ id: 'g2', type: 'aws.Group', label: 'Group 2', props: { groupType: 'generic' } },
+    { id: 's1', type: 'aws.Service', label: 'Svc 1' }, { id: 's2', type: 'aws.Service', label: 'Svc 2', parent: 'g2' },
+    { id: 's4', type: 'aws.Service', label: 'Svc 4' }, { id: 's6', type: 'aws.Service', label: 'Svc 6', parent: 'g2' }],
+  edges: [{ id: 'e4', type: 'aws.Connection', from: 's1', to: 's6' }, { id: 'e7', type: 'aws.Connection', from: 's1', to: 's4' }],
+  views: [{ id: 'v', diagram: 'aws', nodeIds: ['g2', 's1', 's2', 's4', 's6'] }] };
+  for (const [m, vid] of [[small, 'v'], [BAWS, 'aws-on-aws'], [INT, 'on-aws'], [INT, 'on-azure'], [INT, 'on-gcp']]) for (const direction of ['right', 'down']) {
+    const c = structuredClone(m); c.views.find(v => v.id === vid).direction = direction;
+    assert.deepEqual(throughGroups(layout(c, vid)), [], `${vid} ${direction}`);
+    assert.deepEqual(check(c, vid, { throughBoxes: true }).map(p => p.message).filter(s => / which holds neither of its ends$/.test(s)), [], `${vid} ${direction}: check()`);
+  }
+});
+test('audit 71: check() names a line through a box that holds neither of its ends in a view with the box pass; one holding an end, its port or a box of it, a map and a view without the pass are left alone', async () => {
+  const { SHUT_BOXES, boxThroughIssues } = await import('../src/layout/audit.js');
+  const card = (id, x, y, more = {}) => ({ id, label: id, type: 't', x, y, w: 40, h: 30, ...more }), A = card('a', 0, 0), B = card('b', 300, 0), P = card('p', 136, 105, { owner: 'in' }), I = card('in', 120, 100);
+  const box = (id, x, more = {}) => ({ id, label: id, type: 't', x, y: -40, w: 100, h: 110, nodeIds: [], ...more });
+  const geo = (edges, families, more = {}) => ({ nodes: [A, B, P, I], byId: { a: A, b: B, p: P, in: I }, edges, families, [SHUT_BOXES]: true, ...more });
+  const line = (s, t, pts) => ({ s, t, from: s.id, to: t.id, pts });
+  const across = line(A, B, [[40, 15], [300, 15]]);
+  assert.deepEqual(boxThroughIssues(geo([across], [box('g', 120)]), 'v'), ['v: edge a→b runs through box "g", which holds neither of its ends']);
+  assert.deepEqual(boxThroughIssues(geo([across], [box('g', 120)], { [SHUT_BOXES]: undefined }), 'v'), [], 'no box pass, nothing said');
+  assert.deepEqual(boxThroughIssues(geo([across], [box('g', 120)], { map: true }), 'v'), [], 'a map\'s groups are crossed');
+  assert.deepEqual(boxThroughIssues(geo([across], [box('g', -20, { w: 120 })]), 'v'), [], 'a box round an end');
+  const toPort = line(A, P, [[40, 15], [151, 15], [151, 105]]), outer = box('o', 100, { y: -40, h: 200, w: 120 });
+  assert.deepEqual(boxThroughIssues(geo([toPort], [outer]), 'v'), [], 'a box round the card a port is on');
+  const toBox = { ...line(A, B, [[40, 15], [300, 15]]), t: { id: 'g' }, to: 'g' };
+  assert.deepEqual(boxThroughIssues(geo([toBox], [box('g', 120)]), 'v'), [], 'the box is an end');
 });

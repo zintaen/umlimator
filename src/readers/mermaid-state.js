@@ -456,7 +456,12 @@ function writeMermaidState(model, viewId) {
   const ins = new Map(), outs = new Map(), push = (map, k, x) => { if (!map.has(k)) map.set(k, []); map.get(k).push(x); };
   for (const t of trans) { push(outs, t.from, t); push(ins, t.to, t); }
   const stars = new Map(), scopeStar = new Set(); // node -> 'start' | 'end'; the scopes whose [*] is taken
-  for (const pass of ['start', 'end']) for (const n of nodes) {
+  // of two that can be one scope's [*], the one with the id the reader gives [*] (start, end, <scope>.start, ...), else the
+  // lowest id, so a write -> read -> write cycle picks the same one (audit 75: node order chose it, and the reader puts
+  // the one written as a state first, so the choice flipped on every cycle)
+  const own = (n, pass) => { const k = keyOf.get(n.id); return n.id === (k ? `${k}.${pass}` : pass) ? 0 : 1; };
+  const rank = pass => [...nodes].sort((a, b) => own(a, pass) - own(b, pass) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const pass of ['start', 'end']) for (const n of rank(pass)) {
     const k = keyOf.get(n.id), initial = pass === 'start';
     if (!(initial ? n.type === 'uml.Pseudostate' && n.props.kind === 'initial' : n.type === 'uml.FinalState') || has(n.label) || n.members || Object.keys(n.props || {}).some(p => p !== 'kind')) continue;
     const mine = initial ? outs.get(n.id) : ins.get(n.id), others = initial ? ins.get(n.id) : outs.get(n.id), key = `${k}\0${pass}`;

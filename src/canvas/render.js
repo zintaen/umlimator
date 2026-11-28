@@ -3,7 +3,7 @@ import { typedEditor } from './edit.js';
 import { hintHTML, hinter, pieces } from './pieces.js';
 import { STYLES } from './styles.js';
 import { esc, hostMeasure, sansW } from '../core/text.js';
-import { cardLook, drawnPts, sidePorts, tabAfter, tabLine } from '../draw/shapes.js';
+import { cardLook, drawnPts, num, sidePorts, tabAfter, tabLine } from '../draw/shapes.js';
 import { hit } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
@@ -57,7 +57,7 @@ export function render(container, model, options = {}) {
   const expanded = O(); // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
   const asked = O(); // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
   // stableFrom: the model before an edit, whose cells the cards it left alone keep in the first picture (layout-flow.md section 8)
-  let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
+  let ctx = mapContext(model, { measure, kinds: !!P.kinds, images: options.images, say: true, expand: expanded, ...(options.stableFrom && options.stableLayout !== false ? { base: options.stableFrom } : {}) }); // kinds: the standalone page guesses line kinds from label words, for its legend
   const root = host.attachShadow({ mode: 'open', delegatesFocus: true }); // host.focus() lands in the map (on the selected card)
   root.adoptedStyleSheets = [sheet()];
   // the standalone page's pieces a host asks for (#99), in a frame around the canvas: the views list left of the map (after
@@ -208,7 +208,7 @@ export function render(container, model, options = {}) {
     const rg = (geo.families || []).filter(f => f.tone).map(f => `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" style="--um-tone:${toneOf(f)}" fill="var(--um-tone, var(--um-slate))" fill-opacity=".14" stroke="var(--um-tone, var(--um-slate))" stroke-width="${bw}" stroke-dasharray="${bw * 4} ${bw * 3}"/>`).join('');
     const ln = (geo.lanes || []).map(l => `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" rx="14" fill="none" stroke="var(--um-border-2)" stroke-width="${Math.max(2, b.w / 300)}"/>`).join('');
     const look = looker(), r = geo.nodes.map(n => { const L = look(n), paint = `fill="var(--um-${KIND[n.k][0]})" opacity="${n.k === 'm-public' ? .95 : .55}"`;
-      return L ? `<path d="${L.S.out(L)}" ${paint}/>` : `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" ${paint}/>`; }).join('');
+      return L ? `<path d="${L.S.out(L)}" ${paint}/>` : `<rect x="${num(n.x)}" y="${num(n.y)}" width="${num(n.w)}" height="${num(n.h)}" rx="8" ${paint}/>`; }).join('');
     const l = geo.edges.map(e => `<polyline points="${e.pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--um-arrow)" stroke-width="${Math.max(2, b.w / 260)}" opacity=".6"/>`).join('');
     el.innerHTML = `<svg viewBox="${b.x} ${b.y} ${b.w} ${b.h}" preserveAspectRatio="xMidYMid meet">${rg}${ln}${l}${r}<rect class="vp" rx="${b.w / 80}"/></svg>`;
     mini.svg = el.firstChild; mini.vp = el.querySelector('.vp');
@@ -256,7 +256,7 @@ export function render(container, model, options = {}) {
     if (tx) tx.paint();
     svg.querySelectorAll('.um-handle').forEach(h => h.remove());
     if (can('add') && sel && sel.type === 'node' && geo.byId[sel.id]) { const n = geo.byId[sel.id];
-      svg.insertAdjacentHTML('beforeend', `<g class="um-edit um-handle" data-from="${esc(n.id)}"><title>Drag to another card to add a line</title><circle cx="${n.x + n.w + 12}" cy="${n.y + n.h / 2}" r="6"/></g>`); }
+      svg.insertAdjacentHTML('beforeend', `<g class="um-edit um-handle" data-from="${esc(n.id)}"><title>Drag to another card to add a line</title><circle cx="${num(n.x + n.w + 12)}" cy="${num(n.y + n.h / 2)}" r="6"/></g>`); }
     svg.querySelectorAll('.sel,.nb,.hot').forEach(g => g.classList.remove('sel', 'nb', 'hot')); stage.classList.remove('focusing');
     const pk = picked(), ns = pk.filter(r => r.type === 'node').map(r => r.id), li = pk.filter(r => r.type === 'edge').map(edgeIndex);
     svg.querySelectorAll('.line-key').forEach(k => k.setAttribute('aria-pressed', li.includes(+k.dataset.i))); svg.querySelectorAll('.node:not([role=img]), .node-key').forEach(g => g.setAttribute('aria-pressed', ns.includes(g.dataset.id ?? g.dataset.node)));
@@ -868,7 +868,7 @@ export function render(container, model, options = {}) {
     const old = ctx, keys = O(), wantNew = selectNew && !own, before = current;
     old.views.forEach(v => { keys[v.id] = relayout ? null : old.viewKey(v.id); });
     current = model2;
-    ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
+    ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, images: options.images, say: true, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
     Object.keys(expanded).forEach(v => { expanded[v] = ctx.unfolded[v] || []; }); // a card or inner view the model no longer has folds
     if (!own) selectNew = false;
     ctx.views.forEach(v => { const id = v.id; if (keys[id] == null || keys[id] !== ctx.viewKey(id)) return;
@@ -953,7 +953,7 @@ export function render(container, model, options = {}) {
     g.nodes.forEach(n => { const m = markOf2(L => own(L.nodes, n.id)), el = cards[n.id]; if (!m || !el) return;
       if (m.level < 1) el.setAttribute('opacity', m.level);
       const sh = (m.tone || m.pulse) && look(n); // a shape's ring: its outline, 5 px out (0.15.0)
-      if (m.tone || m.pulse) under += `<g${op(m)}>${sh ? `<path d="${sh.S.out(sh, 5)}"` : `<rect x="${n.x - 5}" y="${n.y - 5}" width="${n.w + 10}" height="${n.h + 10}" rx="14"`} class="um-ring${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/></g>`;
+      if (m.tone || m.pulse) under += `<g${op(m)}>${sh ? `<path d="${sh.S.out(sh, 5)}"` : `<rect x="${num(n.x - 5)}" y="${num(n.y - 5)}" width="${num(n.w + 10)}" height="${num(n.h + 10)}" rx="14"`} class="um-ring${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/></g>`;
       const b = m.badge == null ? null : badgesOf({ badges: [m.badge] })[0]; if (!b) return; // a tab after the card's own
       const L = look(n), ty = tabLine(n, L), w = b.text.toUpperCase().length * 6.4 + 10; // on the card's tab line, clear of a head and a folder's tab
       const x = tabAfter(n, L, w);

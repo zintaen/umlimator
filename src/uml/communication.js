@@ -5,6 +5,7 @@ import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, settlePins, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
+import { routeAudit } from '../layout/audit.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
 import { IA_GONE, interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
@@ -141,18 +142,51 @@ function commGeo({ model, view, memo }) {
   });
   const at = cmPlace(nodes.map(n => n.id), links, pins);
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
-  // a self connector's loop through its stack, which the router would leave crossing itself: in the same row, straight into
-  // the stack's near side and back over the top into the lifeline's; else from the lifeline's top or bottom into the
-  // stack's near side, and from the stack's side facing the lifeline into the lifeline's far one (sides in the layout's own
-  // axes, which a view laid out down turns)
-  stacks.forEach(({ st, s, t }) => { const [c, r] = at[s], [c2, r2] = at[st.id]; if (s !== t || c === c2) return;
-    const [near, far] = c2 > c ? ['left', 'right'] : ['right', 'left'], [up, down] = r2 < r ? ['top', 'bottom'] : ['bottom', 'top'];
-    const a = edges.find(e => e.to === st.id), b = edges.find(e => e.from === st.id);
-    Object.assign(a, Math.abs(r2 - r) < 1 ? { fromSide: far, toSide: near } : { fromSide: up, toSide: near });
-    Object.assign(b, Math.abs(r2 - r) < 1 ? { fromSide: 'top', toSide: 'top' } : { fromSide: down, toSide: far }); });
+  // a self connector's loop through its stack, which the router would leave crossing itself. Three ways, in the layout's own
+  // axes (which a view laid out down turns): in the same row, straight into the stack's near side and back over the top into
+  // the lifeline's (under the bottom when the stack sits lower than the lifeline: a lifeline centred between it and another
+  // stack sent the loop over the top, round the whole picture and across the other connector, audit 73), else from the
+  // lifeline's top or bottom into the stack's near side and from the stack's side facing the lifeline into the lifeline's far
+  // one; then two parallel lines between the lifeline's side facing the stack and the stack's near side; then back the other
+  // way round. The first is kept unless a loop crosses or shares a line with another connector and a later way has fewer
+  // such (then fewer problems in all): another connector into the same side of the lifeline can leave no room for the first.
+  // A way whose loop runs far from its lifeline and stack, or meets another line end to end, loses too: laid out down, the
+  // first way could take a loop round another lifeline and onto that one's own loop, crossing nothing (audit 74)
+  const loops = [...stacks.values()].filter(({ st, s, t }) => s === t && at[s][0] !== at[st.id][0]).map(({ st, s }) => {
+    const [c, r] = at[s], [c2, r2] = at[st.id], [near, far] = c2 > c ? ['left', 'right'] : ['right', 'left'], [up, down] = r2 < r ? ['top', 'bottom'] : ['bottom', 'top'];
+    const back = r2 > r ? 'bottom' : 'top', other = back === 'top' ? 'bottom' : 'top';
+    return { a: edges.find(e => e.to === st.id), b: edges.find(e => e.from === st.id), ways: Math.abs(r2 - r) < 1
+      ? [[far, near, back, back], [far, near, near, far], [far, near, other, other]] : [[up, near, down, far], [far, near, near, far], [up, near, near, up]] };
+  });
   // no port repair: on the stress fixture it saves a fifth of a layout, which a message edit pays (§10), for 13 crossings, not 11
-  const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 40, repair: false, reroute: false }, memo); // no rip-up pass: P1 on a shared CI runner
-  return cmFinish(g, I, stacks, nums, view);
+  const run = (k, m) => { loops.forEach(({ a, b, ways }, i) => { const v = ways[Array.isArray(k) ? k[i] : k]; Object.assign(a, { fromSide: v[0], toSide: v[1] }); Object.assign(b, { fromSide: v[2], toSide: v[3] }); });
+    return cmFinish(layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 40, repair: false, reroute: false }, m), I, stacks, nums, view); }; // no rip-up pass: P1 on a shared CI runner
+  let best = run(0, memo);
+  if (loops.length) {
+    const ids = new Set(loops.map(l => l.a._id)), mine = h => h.edges.filter(e => ids.has(e.id));
+    // a shared line weighs three crossings: two lines on one track read as one (audit 75: the loops' ways were chosen on
+    // the loops' own problems, so a way that put two other connectors on one track was kept); [5]: some line is shared
+    const shares = x => x.endsWith(' share a line'), weigh = a => a.reduce((k, x) => k + (shares(x) ? 3 : 1), 0);
+    const score = h => { const all = routeAudit({ edges: h.edges }, ''); return [mine(h).reduce((k, e) => k + cmKnots(e.pts, cmBox(h, e)), 0), weigh(routeAudit({ edges: h.edges }, '', new Set(mine(h)))),
+      mine(h).reduce((k, e) => k + cmFar(h, e), 0), mine(h).reduce((k, e) => k + cmMeets(h, e), 0), weigh(all), all.some(shares) ? 1 : 0]; };
+    const better = (q, n) => { const i = q.findIndex((v, j) => v !== n[j]); return i >= 0 && q[i] < n[i]; };
+    let n = score(best);
+    // each other way laid out with a memo of its own, kept on the view's (memo.cmWays), so a redraw of an unchanged view repaints it
+    const bad = q => q[0] || q[1] || q[2] || q[3] || q[5], lay = k => { const m = memo && ((memo.cmWays ||= {})[k] ||= {}); if (m) m.noSwap = memo.noSwap; return run(k, m); };
+    let way = loops.map(() => 0);
+    for (let k = 1; k < 3 && bad(n); k++) { const h = lay(k), q = score(h); if (better(q, n)) { best = h; n = q; way = loops.map(() => k); } }
+    // then, while a loop still strays, crosses or knots, one loop's other ways at a time, the rest kept, never straying
+    // further: two loops can each need a different way (audit 74). The loops in trouble first, then the others (one moved
+    // aside can make room); at most four more layouts, so a view of many loops that stay crossed pays a few, not two a loop
+    const worse = (h, e) => !e || cmKnots(e.pts, cmBox(h, e)) + cmFar(h, e) + cmMeets(h, e) + routeAudit({ edges: h.edges }, '', new Set([e])).length > 0;
+    const near = new Set(); if (n[5]) { const refs = []; routeAudit({ edges: best.edges }, '', null, refs).forEach((x, j) => { if (shares(x)) for (const e of refs[j]) near.add(e.from).add(e.to); }); }
+    const sick = loops.length > 1 && bad(n) ? loops.map(l => (worse(best, best.edges.find(e => e.id === l.a._id)) ? 2 : near.has(l.a.from) ? 1 : 0)) : [];
+    const order = [...sick.keys()].sort((i, j) => sick[j] - sick[i]);
+    for (let o = 0, left = 4; o < order.length && left > 0 && bad(n); o++) { const i = order[o];
+      for (let k = 0; k < 3 && left > 0 && bad(n); k++) { const w = way.map((v, j) => (j === i ? k : v)); if (k === way[i] || w.every(v => v === w[0])) continue;
+        left--; const h = lay(w), q = score(h); if (better(q, n) && q[2] <= n[2] && q[3] <= n[3]) { best = h; n = q; way = w; } } }
+  }
+  return best;
 }
 
 // a line's two runs crossing (not meeting end to end), axis-aligned
@@ -160,6 +194,21 @@ const cmCrosses = P => P.slice(1).some((b, i) => P.slice(i + 3).some((d, k) => {
   if (h === (c[1] === d[1])) return false;
   const [A, B, C, D] = h ? [a, b, c, d] : [c, d, a, b];
   return C[0] > Math.min(A[0], B[0]) && C[0] < Math.max(A[0], B[0]) && A[1] > Math.min(C[1], D[1]) && A[1] < Math.max(C[1], D[1]); }));
+// the points where a line's runs cross each other outside box b (its stack), axis-aligned: a self connector's loop tied in a knot
+const cmKnots = (P, b) => P.slice(1).reduce((k, q, i) => k + P.slice(i + 3).filter((d, j) => { const p = P[i], c = P[i + j + 2], h = p[1] === q[1];
+  if (h === (c[1] === d[1])) return false;
+  const [A, B, C, D] = h ? [p, q, c, d] : [c, d, p, q], x = C[0], y = A[1];
+  return x > Math.min(A[0], B[0]) && x < Math.max(A[0], B[0]) && y > Math.min(C[1], D[1]) && y < Math.max(C[1], D[1]) && !(b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); }).length, 0);
+// the box a connector's stack fills in the finished geometry: its rows
+const cmBox = (g, e) => { const rs = (e.stack || []).map(id => g.byId[id]).filter(Boolean); if (!rs.length) return null;
+  const y = Math.min(...rs.map(r => r.y)); return { x: rs[0].x, y, w: rs[0].w, h: Math.max(...rs.map(r => r.y + r.h)) - y }; };
+// a self connector's loop that strays: 1 when it runs over 40 px past the box of its lifeline and stack
+const cmFar = (g, e) => { const own = [g.byId[e.from], cmBox(g, e)].filter(Boolean); if (!own.length) return 0;
+  const x0 = Math.min(...own.map(n => n.x)) - 40, y0 = Math.min(...own.map(n => n.y)) - 40, x1 = Math.max(...own.map(n => n.x + n.w)) + 40, y1 = Math.max(...own.map(n => n.y + n.h)) + 40;
+  return +!e.pts.every(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1); };
+// the other lines a line meets end to end at a point on no card: two loops drawn as one line between their stacks
+const cmMeets = (g, e) => { const on = ([x, y]) => g.nodes.some(n => x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h);
+  const mine = new Set(e.pts.filter(p => !on(p)).map(p => p.join())); return g.edges.filter(f => f !== e && f.pts.some(p => mine.has(p.join()))).length; };
 // a loop's two ends on one side of its node, each with the first run along it, change places: x on a top or bottom, y on a side
 const cmSwapEnds = (P, side) => { const v = side === 'T' || side === 'B' ? 0 : 1, n = P.length, Q = P.map(r => [...r]), x = P[0][v], y = P[n - 1][v];
   if (P[1][v] !== x || P[n - 2][v] !== y) return P;
