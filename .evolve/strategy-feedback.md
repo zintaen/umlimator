@@ -231,6 +231,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: audit-loop 27a7c869 and 830ad70a (cf1 combine) inside the round 75 combine's baseline run, round 75 merges 5cd67a63, fa255dd4 and 69937cf8; handoff log, 28 Nov 2026, fix round 75 combine.
 - Proposed change: The same as F22 (bh1), seen from the other side. In A3.4, a combine takes a lock before step 1 (for example a file in the integration worktree's git directory naming the round and the time, made with an atomic create) and holds it until it has pushed; another combine that finds it waits, or merges in its own worktree and pushes only after a fresh fetch and merge of origin/audit-loop, with its baseline taken after that merge. In C9, the orchestrator runs one combine at a time, since every combine's gate is a heavy suite. For F10, the combine step alone appends the lanes' changelog lines, from each lane note's Summary, so lanes stop editing that list.
 
+### F24. F9 a fourth time: a lane's new tests read `examples/types/` models, and the lane was reverted at combine
+
+- Date: 2026-11-28
+- Round: fix round 76 (combine)
+- Rule: A3.3, A3.4, A8.6 (same as F9, F12 and F13)
+- What happened: fix76-sysml (audit 76 finding 2, SysML frame headers crossed by port lines) added tests to `tests/internal-block.test.mjs` and `tests/parametric.test.mjs` that read `examples/types/sysml-internal-block.json` and `examples/types/sysml-parametric.json`. Both files are on `tests/showcase.test.mjs`'s legacy list, whose per-file read counts may only shrink, so the guard failed at combine. The lane ran fifteen suites and `bench.py --expect`, but not `tests/showcase.test.mjs`. Its own tests did fail without the fix. The combine bisected (the guard fails on origin/fix76-sysml alone and passes on the merge before it), reverted the merge and returned the lane for a change that copies the two models under `tests/fixtures/`. This is the fourth round in which this one guard has cost a whole lane; F9's proposal is still not in the lane task text.
+- Evidence: lane commit e2284073; audit-loop merge 0cb1fb37 and its revert 2f75c7f6; handoff log, 28 Nov 2026, fix round 76 combine.
+- Proposed change: F9 and F13's proposal, and until it lands upstream, the lane task's serial-suites rule names `tests/showcase.test.mjs`, `tests/docs.test.mjs` and `tests/protected.test.mjs` (the whole-repository guards) as always run, and the combine task's step 2 runs those guards on each lane branch before merging any lane, so a guard failure returns that lane without a bisect, revert and second full gate (about 40 minutes here).
+
 ## Closed
 
 None.
