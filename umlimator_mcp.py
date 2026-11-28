@@ -246,22 +246,53 @@ KEYS = Path(os.environ.get("UMLIMATOR_MCP_KEYS") or Path.home() / ".cache" / "um
 
 def page_key(model):
     """The model's page KEY: an HMAC of its path under a secret kept in KEYS (made on first use, readable by its owner
-    only), so it is the same on each run; a secret of this run's when that file cannot be kept or is not private."""
+    only), so it is the same on each run; a secret of this run's when that file cannot be kept or is not private. A file
+    that holds no secret (empty or cut short: a first run stopped between making it and writing it, or a full disk) is
+    written again, whole, never trusted as a secret of none (audit 77)."""
+    class Loose(Exception):
+        """KEYS is a link, no plain file, or others can read it: not trusted, and left as it is."""
+
+    def kept():  # the secret KEYS holds, or None: a private file of ours (not a link) holding one, as stash writes it
+        st = os.lstat(KEYS)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode) or (os.name != "nt" and (st.st_uid != os.getuid() or st.st_mode & 0o077)):
+            raise Loose()
+        fd = os.open(KEYS, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        with os.fdopen(fd, "rb") as f:
+            text = f.read(257).strip()
+        return text.decode("ascii") if re.fullmatch(rb"[A-Za-z0-9_-]{43,256}", text) else None
+
+    def stash(replace):  # a new secret, written whole into a private file beside KEYS, then put in its place in one step
+        fd, tmp = tempfile.mkstemp(dir=KEYS.parent, prefix=".mcp-key.")
+        try:
+            with os.fdopen(fd, "w", encoding="ascii") as f:
+                f.write(secrets.token_urlsafe(32))
+            if replace:
+                os.replace(tmp, KEYS)  # the file (or a link put there since) is replaced, never written through
+            else:
+                try:
+                    os.link(tmp, KEYS)  # only where none is: two first runs at once keep the one made first
+                except FileExistsError:
+                    pass
+                except OSError:  # a file system with no hard links
+                    if not os.path.lexists(KEYS):
+                        os.replace(tmp, KEYS)
+        finally:
+            if os.path.lexists(tmp):
+                os.unlink(tmp)
+
     secret = None
     try:
         KEYS.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            fd = os.open(KEYS, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
-        except FileExistsError:
-            pass
-        else:
-            with os.fdopen(fd, "w", encoding="ascii") as f:
-                f.write(secrets.token_urlsafe(32))
-        st = os.lstat(KEYS)
-        if not KEYS.is_symlink() and KEYS.is_file() and (os.name == "nt" or (st.st_uid == os.getuid() and not st.st_mode & 0o077)):
-            secret = KEYS.read_text(encoding="ascii").strip() or None
-        else:
-            print(f"{KEYS} is not a private file of yours: the page's URL holds a key of this run's only", file=sys.stderr)
+        if not os.path.lexists(KEYS):
+            stash(replace=False)
+        secret = kept()
+        if secret is None:
+            stash(replace=True)
+            secret = kept()
+        if secret is None:
+            raise ValueError("it holds no key")
+    except Loose:
+        print(f"{KEYS} is not a private file of yours: the page's URL holds a key of this run's only", file=sys.stderr)
     except (OSError, ValueError) as e:
         print(f"cannot keep the page's key in {KEYS} ({getattr(e, 'strerror', None) or e}): the page's URL holds a key of this run's only", file=sys.stderr)
     return hmac.new((secret or secrets.token_urlsafe(32)).encode(), str(model).encode(), hashlib.sha256).hexdigest()[:32]

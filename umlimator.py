@@ -354,15 +354,26 @@ def linked_on_way(out):
     inside() walks them: a committed link could aim what is written there anywhere. A link in a folder outside every
     checkout and above the cwd (the system's /tmp, say) is a way there, not one a checkout put there; `out` itself is
     looked at wherever it is. None if none."""
-    out = Path(os.path.abspath(out))  # not resolved: a link on the way is what is looked for
     top = lambda at: os.fsdecode(soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], cwd=at, capture_output=True).stdout.strip())
     here = Path(top(None) or os.getcwd()).resolve()
-    for x in [out, *out.parents]:
+    # the path walked as the system walks it, never folded by its text first (os.path.abspath would fold docs/../x to x,
+    # while the system takes docs's target's parent for docs/.., audit 77): each folder named is looked at as reached, a
+    # link not refused is followed to where it leads before what comes after it, '..' included, is applied
+    names = (Path.cwd() / out).parts
+    last = max((i for i, x in enumerate(names) if x not in (".", "..")), default=0)  # the folder `out` names, as written
+    at = Path(names[0])
+    for i, name in enumerate(names[1:], 1):
+        if name in (".", ".."):
+            at = at.parent if name == ".." else at
+            continue
+        at = at / name
         try:
-            if x.is_symlink() and (x == out or x.parent.resolve().is_relative_to(here) or top(x.parent)):
-                return x
-        except (OSError, RuntimeError):  # a loop of links on the way: refused as one
-            return x
+            if at.is_symlink():
+                if i == last or at.parent.resolve().is_relative_to(here) or top(at.parent):
+                    return at
+                at = Path(os.path.realpath(at, strict=True))
+        except (OSError, RuntimeError):  # a loop of links, or a link to nothing, on the way: refused as one
+            return at
     return None
 
 
@@ -370,7 +381,7 @@ def make_folder(out):
     """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21).
     A folder that is a symbolic link is refused, `out` or any folder on its way down from the checkout's top (the cwd's,
     else the cwd): what is written in it would land in the link's target, outside --out, as a committed link in a
-    checkout (docs/ for --out docs/stills) could aim it (audit cf1)."""
+    checkout (docs/ for --out docs/stills) could aim it (audit cf1), wherever it sits in --out (docs/../x, audit 77)."""
     linked = linked_on_way(out)
     if linked is not None:
         sys.exit(f"{linked} is a symbolic link: name a folder of its own")
@@ -851,20 +862,22 @@ def node_error(err, status=1):
         return f"Node ran out of memory ({how}): the model is too large for Node's heap; NODE_OPTIONS=--max-old-space-size=MB gives it more"
     head = r"^(?:Uncaught )?(?:\w*(?:Error|Exception|Rejection)(?: \[\w+\])?|\w+ \[\w*Error\])(?:: |:?$)"
     at = [m.start() for m in re.finditer(head, err, re.M)]
-    caret = list(re.finditer(r"^\s*\^+\s*$\n?", err, re.M))
-    end = r"\n\s+at |\n\s*\nNode\.js v|\n\(Use `node |\nThrown at:| \{\n  (?:code|\[\w+\]|\w+):"
+    # each pattern bounded by its line (whitespace but a newline, never \s, which runs across lines): a stderr of many blank lines took a time
+    # growing with the square of its length (audit 77)
+    caret = list(re.finditer(r"^[^\S\n]*\^+[^\S\n]*$\n?", err, re.M))
+    end = r"\n[^\S\n]+at |\n[^\S\n]*\nNode\.js v|\n\(Use `node |\nThrown at:| \{\n  (?:code|\[\w+\]|\w+):"
     if at:
         said = re.split(end, err[at[-1]:])[0]
         if said.startswith("Error [ERR_MODULE_NOT_FOUND]"):  # the folder Node ran in, no part of the error
             said = re.sub(r" imported from \S.*$", "", said.strip(), flags=re.S)
     elif caret:  # a thrown string or object: Node prints its source line, a caret, then the value
-        said = re.split(r"\n\s*\n|\n\(Use `node |\nThrown at:", err[caret[-1].end():])[0].strip()
+        said = re.split(r"\n[^\S\n]*\n|\n\(Use `node |\nThrown at:", err[caret[-1].end():].lstrip())[0].strip()
         said = said and "Uncaught " + said
     else:
         noise = re.compile(r"^\s*(?:at |\d+: 0x|\^|\[\d+:0x|<--- |----- |Node\.js v)|node:|file:|(?:^|[\s\[(])(?:/|[A-Za-z]:\\)|\[eval")
         first = next((x.strip() for x in err.splitlines() if x.strip() and not noise.search(x)), "")
         return f"Node failed ({how})" + (f": {first[:300]}" if first else "" if err.strip() else " and said nothing")
-    said = re.sub(r"\s*\n\s*", " ", said.strip())[:2000]
+    said = " ".join(x.strip() for x in said.strip().split("\n") if x.strip())[:2000]  # its lines as one, no regex: a long run of spaces was quadratic
     return said or f"Node failed ({how}) and said nothing"
 
 
