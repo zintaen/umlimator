@@ -240,6 +240,15 @@ copy of this plan at `.evolve/STRATEGY.md`
 - Evidence: lane commit e2284073; audit-loop merge 0cb1fb37 and its revert 2f75c7f6; handoff log, 28 Nov 2026, fix round 76 combine.
 - Proposed change: F9 and F13's proposal, and until it lands upstream, the lane task's serial-suites rule names `tests/showcase.test.mjs`, `tests/docs.test.mjs` and `tests/protected.test.mjs` (the whole-repository guards) as always run, and the combine task's step 2 runs those guards on each lane branch before merging any lane, so a guard failure returns that lane without a bisect, revert and second full gate (about 40 minutes here).
 
+### F25. Two lanes' new checks at the same spot in a test file cost a whole lane, and a release on main left the changelog's unreleased section with no rule for the combine
+
+- Date: 2026-11-28
+- Round: fix round 77 (combine)
+- Rule: A3.2, A3.4 (conflicts are never resolved in code or tests), A8.6
+- What happened: fix77-owners (audit 77 findings 1, 2, 4, 7, 10, 18, 19) and fix77-state (findings 6, 11, 13) each added one MCP `move_to_box` check to `tests/mcp.py`, right after audit 76's check. Git could not merge the two appended blocks, and the combine rule allows keeping both sides only in lib/ and append-only lists, so fix77-state was returned as not merged with all three of its fixes. Both lanes passed every test alone, and the two blocks share no line. The same round, main had shipped 0.46.0, which renamed `docs/module-api.md`'s "After 0.45.0: changes not yet released" section to the 0.46.0 release section and rewrote its opening. Merging main conflicted on that section, and every lane then conflicted again on the old opening sentence it had reworded ("audits 63 to 77"). The combine had to invent the resolution: take main's 0.46.0 section whole, open a new "After 0.46.0" section, and move audit 76's items into it. One lane's in-place correction inside the now-released section (fix77-layout's note on card geometry) then named "audit 77" there, and `tests/docs.test.mjs` (the heading names the last round its items name) failed the gate; that lane was reverted in any case, for a timed test it slowed.
+- Evidence: lane heads f481ed85 (fix77-owners) and e4b83a54 (fix77-state); audit-loop merge of origin/main 909eb166; the fix77-layout merge b8b0b363 and its revert 95bcb5d2; main's release commit 1c7f18c0 (0.46.0); handoff log, 28 Nov 2026, fix round 77 combine.
+- Proposed change: In A3.4, treat a conflict whose two sides only add lines (no line of the base is changed or removed on either side) in a test file as append-only: keep both, then the lanes' own tests and the gate decide. In A3.2, give each lane a named place to append in shared test files (its own `audit N <lane>` part or block), so such conflicts do not arise. In A4 (release), the release step opens the next "After X: changes not yet released" section on main and merges main back into the integration branch at once, so lanes fork from a changelog that already has it, and a lane's change to a released section names no audit round newer than that release.
+
 ## Closed
 
 None.
