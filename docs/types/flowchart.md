@@ -109,11 +109,11 @@ paste, per-type `diff()` writers, deleting a view.
 
 Layout limits, measured on `examples/returns-flowchart.json` and `tests/flowchart-stress.json`:
 
-- Port repair and rerouting off (`repair: false`, `reroute: false`, §11).
+- Port repair and rerouting off (`repair: false`, `reroute: false`, §11), but two lines that cross after leaving or entering one side of a node side by side swap their ports there when that leaves fewer layout check problems, as in the activity view (audit 78: laid out down, a loop back into a decision came into its bottom between its two exits and crossed one). A view of up to 30 nodes that still crosses is laid out a second time, kept when `check()` finds fewer crossings and nothing more: lines round a node between two on their row go over and under it by turns, a line to the farthest node leaves a full side first, a side's ports slide towards their far ends, and lines out of one side are routed so their turns nest (audit 78). The same second try runs for every graph-laid typed view but the deployment view.
 - The example lays out clean down, right, and down with no direction: `check()` finds nothing.
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (every symbol, two starts, a decision with
   three exits, a loop back, a connector as a junction, a 130-character label, a node no start reaches) is clean both
-  ways. Its generated `all` view (60 nodes, 70 flows) crosses 4 times each way; no line runs through a node.
+  ways. Its generated `all` view (60 nodes, 70 flows) crosses 3 times laid out right (4 till audit 78) and 4 down; no line runs through a node.
 - A label is wrapped to three lines of 180 px, then cut with an ellipsis; its whole text is in the node's accessible
   name, `describe()` and the PDF.
 

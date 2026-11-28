@@ -91,7 +91,7 @@ const PINNED = {
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
   'bookshop-gcp': { 'gcp-on-gcp': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] } }, // 1 and 1 till audit 71: the box pass routes a line round a group that holds neither of its ends
   // audit 27: right, the subnet's line to Logs and alerts ran back through its own subnet box to dodge one crossing; it keeps out of it now
-  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [2, 0, 0, 0] } }, // down: 3 till audit 71 (the box pass)
+  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [1, 0, 0, 0] } }, // down: 3 till audit 71 (the box pass), 2 till audit 78 (FAR)
 };
 
 test('every view of the four fixtures and the three examples (cloud views right and down, with a synthetic icons table): nothing meets, texts inside, no curve through a topic, each element in its group, ends on outlines; check()\'s findings only as pinned', () => {

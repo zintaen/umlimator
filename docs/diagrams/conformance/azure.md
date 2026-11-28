@@ -39,7 +39,7 @@ pointer or `L` (the canvas's handle ends on cards: such a line is written in the
 Layout limits, with port repair and rerouting off (`repair: false`, `reroute: false`, §11), measured on the example and
 `tests/cloud-stress.json`:
 
-- The example crosses twice laid out right (once before audit 27, when the apps subnet's line to Logs and alerts ran back through its own box) and twice down (3 times till audit 71's box pass routed a line round a group that holds neither of its ends); no line runs through a node.
+- The example crosses twice laid out right (once before audit 27, when the apps subnet's line to Logs and alerts ran back through its own box) and once down (3 times till audit 71's box pass routed a line round a group that holds neither of its ends, twice till audit 78's second layout try); no line runs through a node.
 - `tests/m4a-fixtures.test.mjs` pins the stress file's `az-edge-cases` view (five levels of groups, a generic group, a
   subnet in a resource group, a line from a subnet to a service in a sibling group), clean both ways.
 - A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis. A label or full name the author broke (a Mermaid `<br>`, a newline) keeps each of its lines as written, however many, and the card grows to hold them (audit 23); only unbroken text is wrapped and cut. Both are in the card's accessible name, `describe()` and the PDF.

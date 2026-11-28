@@ -571,3 +571,24 @@ test('audit 72: arranged, a use case view draws no more layout check problems th
     const at = mapContext({ schemaVersion: 2, title: 'Bookshop', root: 'v', nodes, edges, views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: nodes.map(n => n.id), direction }] }).cellsOf('v');
     const pin = { member: at.member }; assert.ok(said(direction, 'flow', pin).length <= said(direction, false, pin).length, `${direction}, the member pinned where it is`); }
 });
+
+// audit 78 finding 7: two associations from one actor crossed each other on a five-line view of two actors sharing a use case
+// (right: the actor's line into the shared use case took the port above its middle, over the line to the use case above;
+// down: it turned over the line to the far use case), and laid out down, one actor with three use cases and an include did
+// too. The lines now swap ports where they leave one side side by side, a side's ports slide towards their far ends and lines
+// out of one side are routed so their turns nest (sideSwap, and layoutTyped's second try, FAR). The two actors' lines that
+// cross between the shared use case and the one below it are the layout's (each actor's use cases in the other's order)
+test('audit 78: no two associations of one actor cross, right and down', () => {
+  const As = (id, from, to) => ({ id, type: 'uml.Association', from, to }), U = (id, label) => ({ id, type: 'uml.UseCase', label, parent: 'shop' });
+  const base = [{ id: 'shop', type: 'uml.Subject', label: 'Online shop' }, { id: 'shopper', type: 'uml.Actor', label: 'Shopper' }, U('browse', 'Browse books'), U('order', 'Place an order'), U('pay', 'Pay')];
+  const views = {
+    'two actors sharing a use case': [[...base, { id: 'clerk', type: 'uml.Actor', label: 'Clerk' }], [As('a1', 'shopper', 'browse'), As('a2', 'shopper', 'order'), As('a3', 'clerk', 'order'), As('a4', 'clerk', 'pay'), As('a5', 'shopper', 'pay')]],
+    'one actor, browse includes pay': [base, [As('a1', 'shopper', 'browse'), As('a2', 'shopper', 'order'), As('a3', 'shopper', 'pay'), { id: 'i1', type: 'uml.Include', from: 'browse', to: 'pay' }]],
+  };
+  for (const [k, [nodes, edges]] of Object.entries(views)) for (const direction of ['right', 'down']) {
+    const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.use-case', direction, nodeIds: nodes.map(n => n.id) }] };
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], k);
+    const said = check(m, 'v').map(p => p.message), same = said.filter(s => { const x = /edges (.+?)→.+? and (.+?)→.+? cross$/.exec(s); return x && x[1] === x[2]; });
+    assert.deepEqual(same, [], `${k}, ${direction}: ${JSON.stringify(said)}`);
+    if (k.startsWith('one actor')) assert.deepEqual(said, [], `${k}, ${direction}`); }
+});
