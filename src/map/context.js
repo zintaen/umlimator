@@ -663,10 +663,8 @@ function mapContext(model, opts = {}) {
     if (zoneDefaults(vid)) FLOW_WAYS.forEach(w => add({ ...w, bare: true }));
     if (ways.length < 2) return first;
     const best = [{ score: Infinity }, { score: Infinity }];
-    scouting = true; ways.forEach(([p, b]) => { const g = buildGeo(vid, p), s = scoreGeo(g), B = best[b]; if (!B.g || s < B.score - 0.5) Object.assign(B, { score: s, pos: p, g }); }); scouting = false; // as it will be drawn: with port repair
-    // each kind's first way is kept until one scores lower: drawn[vid] never holds a way with no picture (audit 77: a score of NaN kept none)
+    scouting = true; ways.forEach(([p, b]) => { const g = buildGeo(vid, p), s = scoreGeo(g), B = best[b]; if (s < B.score - 0.5) Object.assign(B, { score: s, pos: p, g }); }); scouting = false; // as it will be drawn: with port repair
     const k = best[1].g && bad(best[1]) < bad(best[0]) ? best[1] : best[0];
-    if (!k.g) return first;
     drawn[vid] = { pos: k.pos, g: k.g };
     if (fanIn(vid)) delete drawn[vid];
     return k.pos;
@@ -1411,8 +1409,7 @@ function mapContext(model, opts = {}) {
     const bends = g.edges.reduce((a, e) => a + e.pts.length, 0), drop = g.edges.filter(e => e.label && !e.lbl).length;
     const st = g.stats || {};
     const W = SCORE_WEIGHTS;
-    const s = bad * W.issue + ((st.cross || 0) + (st.fallback || 0)) * W.cross + drop * W.dropped + len / W.lengthPer + bends * W.corner + g.bounds.w * g.bounds.h / W.areaPer;
-    return Number.isFinite(s) ? s : Number.MAX_VALUE; // a score past any number (a card ever so large) is the worst there is, never NaN, which loses to nothing (audit 77)
+    return bad * W.issue + ((st.cross || 0) + (st.fallback || 0)) * W.cross + drop * W.dropped + len / W.lengthPer + bends * W.corner + g.bounds.w * g.bounds.h / W.areaPer;
   }
   function optimize(vid, budget = 160) {
     budget = Math.max(budget, Math.min(400, 20 * (V[vid].nodeIds || []).length));

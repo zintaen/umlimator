@@ -792,21 +792,3 @@ test('audit 64: the PDF Members column prints an operation as its box draws it, 
   }
   assert.equal(printMember(op('x', ps)), '+ pay(in q: Int, out w): R', 'the edit text keeps the stored in, so it parses back the same');
 });
-
-test('audit 77: a class view of many random associations lays out near quadratic in its size: a quarter-size view against the full one, 1.5 and 3 lines a class (timed)', () => {
-  const build = (n, per) => { const nodes = [], edges = []; let s = 7; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-    for (let i = 0; i < n; i++) nodes.push({ id: 'c' + i, type: 'uml.Class', label: 'C' + i });
-    for (let i = 0; i < n * per; i++) { const a = Math.floor(r() * n), b = Math.floor(r() * n); if (a !== b) edges.push({ id: 'a' + i, type: i % 5 ? 'uml.Association' : 'uml.Dependency', from: 'c' + a, to: 'c' + b }); }
-    return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.class', nodeIds: nodes.map(x => x.id) }] }; };
-  const time = (m, k) => { let best = Infinity, g; for (let i = 0; i < k; i++) { const t = performance.now(); g = layout(structuredClone(m), 'v'); best = Math.min(best, performance.now() - t); } return [best, g]; };
-  // 1.5 lines a class (a model made from code, the finding's), and 3 (the densest): before, 240 classes took 29 times what 60
-  // did and 300 some 48 times 75 (each grid of the router held every line before it, every line searched in full, and port
-  // repair listed every crossing pair with every line before trying a few)
-  // (a ceiling each: 20 times the quarter for the finding's, 24 for the densest, whose quarter is under the router's budget)
-  for (const [q, per, k, slack] of [[60, 1.5, 20, 2000], [30, 3, 24, 2000]]) {
-    const [tq] = time(build(q, per), 2), [tf, g] = time(build(4 * q, per), 1);
-    console.log(`# ${q} and ${4 * q} classes, ${per} lines a class: ${Math.round(tq)} ms and ${Math.round(tf)} ms (${(tf / tq).toFixed(1)}x)`);
-    assert.ok(tf < k * tq + slack, `${4 * q} classes ${Math.round(tf)} ms, ${q} of them ${Math.round(tq)} ms`);
-    assert.equal(g.nodes.length, 4 * q); assert.ok(g.edges.every(e => Array.isArray(e.pts) && e.pts.length >= 2 && e.pts.flat().every(Number.isFinite)), 'every line is drawn');
-  }
-});

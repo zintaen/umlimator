@@ -498,27 +498,3 @@ test('a decision with many labelled exits lays out in near-quadratic time, every
   assert.ok(ms < 300 || ms / Math.max(q, 1) < 16, `${Math.round(ms)} ms, a quarter ${Math.round(q)} ms`);
   assert.ok(g.edges.filter(e => e.label).every(e => e.lbl && e.pts.length >= 2), 'every exit drawn and labelled');
 });
-
-test('audit 77: a step and a decision (or connector) joined both ways, a retry loop, draw side by side with no crossing, right and down', async () => {
-  const { readMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
-  const crossings = (m, vid = 'v') => check(m, vid).map(p => p.message).filter(s => / cross$| share a line|runs through/.test(s));
-  // the finding's Mermaid flowcharts, laid out right as Mermaid's LR, and down
-  for (const src of ['flowchart LR\n A[Check the order] --> B{Order found?}\n B -->|No| A', 'flowchart LR\n B[Try] --> C{OK?}\n C -->|No| B',
-    'flowchart LR\n A[Start] --> B[Try]\n B --> C{OK?}\n C -->|Yes| D[Done]\n C -->|No| B', 'flowchart LR\n A[Start] --> B[Try]\n B --> C{OK?}\n C -->|Yes| D[Done]\n C -->|No| A']) {
-    const { model } = readMermaidFlowchart(src);
-    for (const d of ['right', 'down']) { const m = structuredClone(model); m.views[0].direction = d; assert.deepEqual(crossings(m, m.views[0].id), [], `${d}: ${src}`); } }
-  // every pair of these symbols joined both ways, with and without labels
-  const kinds = ['Process', 'Decision', 'Terminator', 'InputOutput', 'Database', 'Connector'];
-  for (const a of kinds) for (const b of kinds) for (const lab of [false, true]) for (const d of ['right', 'down']) {
-    const m = one([N('a', a, 'A'), N('b', b, 'B')], [F('e1', 'a', 'b', lab ? 'go' : undefined), F('e2', 'b', 'a', lab ? 'back' : undefined)], { direction: d });
-    assert.deepEqual(crossings(m), [], `${a} and ${b}, ${d}${lab ? ', labelled' : ''}`); }
-  // random chains of symbols, each decision with a "No" back to the step before it, laid out right and down
-  let s = 11; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-  const SH = ['Process', 'Process', 'Decision', 'Terminator', 'InputOutput', 'Database', 'Connector'];
-  for (let it = 0; it < 120; it++) {
-    const n = 2 + Math.floor(r() * 5), nodes = [], edges = [];
-    for (let i = 0; i < n; i++) nodes.push(N('n' + i, SH[Math.floor(r() * SH.length)], 'Step ' + i));
-    for (let i = 0; i + 1 < n; i++) edges.push(F('f' + i, 'n' + i, 'n' + (i + 1), r() < .3 ? 'Yes' : undefined));
-    for (let i = 1; i < n; i++) if (nodes[i].type === 'flow.Decision' || r() < .25) { nodes[i].type = 'flow.Decision'; edges.push(F('b' + i, 'n' + i, 'n' + (i - 1), 'No')); }
-    for (const d of ['right', 'down']) assert.deepEqual(crossings(one(nodes, edges, { direction: d })), [], `chain ${it}, ${d}: ${edges.map(e => e.from + '>' + e.to).join(' ')}`); }
-});

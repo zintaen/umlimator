@@ -3,7 +3,7 @@ import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
-import { CARD_MAX, mainFlow } from '../layout/layered.js';
+import { mainFlow } from '../layout/layered.js';
 import { boxHolds, mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
 
@@ -122,9 +122,7 @@ export function validate(model) {
     list(n, at, 'verbs');
     shapeIs(n, at);
   };
-  const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`);
-    // a size over CARD_MAX is drawn at CARD_MAX (layered.js layoutPass, audit 77: w 1e306 threw in layout())
-    if (n) ['w', 'h'].forEach(k => { if (Number.isFinite(n[k]) && n[k] > CARD_MAX) warn(`${at}.${k}`, `${k} ${n[k]} is over ${CARD_MAX} px: drawn as ${CARD_MAX}`); }); };
+  const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
   // a field that must be a list and is not: drawn as if missing (a view's cards: none)
   // a view's edges that is not a list is read as none named: every line between its cards drawn, not the ones it names (audit 65)
   const list = (x, at, k, box) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' || k == 'edges' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k == 'edges' ? 'read as not given, so the view draws the lines between its cards' : k != 'nodeIds' ? 'ignored' : box ? 'the box holds no cards' : 'the view draws no cards'}`); };
