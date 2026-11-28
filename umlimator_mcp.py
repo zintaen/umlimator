@@ -606,8 +606,7 @@ def change(steps):
     except ValueError:
         out = None
     if out is None:
-        said = r.stderr.strip()[-2000:]
-        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said or "the editor ended with no answer"])[-1])
+        raise Fail(cli.node_error(r.stderr, r.returncode) if r.stderr.strip() else "the editor ended with no answer")  # in one line, as the CLI says it (audit 76)
     if "error" in out:
         raise Fail((f"step {out['step'] + 1} of {len(steps)}: " if len(steps) > 1 else "") + out["error"] + "; nothing written")
     out["before"], out["form"] = text, form
@@ -870,8 +869,7 @@ def script(body, *args):
             f"const a = JSON.parse(s); process.stdout.write(JSON.stringify((() => {{ {body} }})()));")
     r = run([nodejs, "--input-type=module", "-e", code], json.dumps(args))
     if r.returncode:
-        said = r.stderr.strip()[-2000:]
-        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
+        raise Fail(cli.node_error(r.stderr, r.returncode))  # in one line, no stack, banner or path, as the CLI says it (audit 76)
     return json.loads(r.stdout)
 
 
