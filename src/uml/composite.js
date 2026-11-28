@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, trimDash, widest } from '../core/text.js';
+import { esc, fit, linesW, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines, goneIn } from '../typed/draw.js';
@@ -245,6 +245,11 @@ function csGeo({ model, view, pos: pins, memo, head }) {
   // the nodes, each as big as its ports need (portFit)
   const count = Object.create(null); P.lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.port) count[x.port] = (count[x.port] || 0) + 1; }));
   const fit = portFit([...partPorts, ...(sBox ? [] : P.sPorts.map(q => ({ id: q.id, owner: P.sid })))].map(p => ({ ...p, lines: count[p.id] })), sides);
+  // a subject a type dresses as a frame (head, below): its ports on the top with no line go right of the header as drawn (clear:
+  // px from its left they keep past) and it grows for them, a box by bareHead (layered.js headPorts), a card holding no part by
+  // its width; audit 78: one moved to the top by Alt + Up sat on the tag
+  const bareTop = typeof head === 'string' ? P.sPorts.filter(q => sides[q.id] === 'T' && !count[q.id]).map(q => q.id) : [];
+  const clear = bareTop.length ? 8 + linesW(head, brLines(csName(P.S)).length > 1 ? 12 : 11) + 16 + 8 : 0;
   const nodes = Object.keys(pos).filter(id => !P.boxed.has(id)).map(id => { const x = P.el(id), st = csStereo(x), part = P.partOf.has(id);
     const shape = part ? { shape: 'part', label: csPartSaid(x), stereotypes: st, shared: CS_PROPS(x).aggregation === 'shared' } : x.type === 'uml.Comment' ? { shape: 'note' }
       : x.type === 'uml.CollaborationUse' ? { shape: 'collab-use', label: csUseText(x), stereotypes: st } : x.type === 'uml.Collaboration' ? { shape: 'collab-use', stereotypes: st }
@@ -252,7 +257,7 @@ function csGeo({ model, view, pos: pins, memo, head }) {
           // another kind: a classifier with its kind's keyword (a class has none), as it is named and as the class view draws it (audit 34)
           : { shape: 'classifier', stereotypes: [...(x.type !== 'uml.Class' && typeof x.type === 'string' && x.type.startsWith('uml.') ? [snKindWord(x.type)] : []), ...st], compartments: [] };
     const d = { id, label: csName(x), type: x.type, kind: 'file', ...shape, aria: csNodeName(P, id), col: pos[id][0], row: pos[id][1] }, s = SHAPE[d.shape].size(d), m = (Object.hasOwn(fit, id) && fit[id]) || { w: 0, h: 0 };
-    return { ...d, w: Math.max(s.w, m.w), h: Math.max(s.h, m.h) }; });
+    return { ...d, w: Math.max(s.w, m.w, id === P.sid && bareTop.length ? Math.ceil(clear + 20 * bareTop.length) : 0), h: Math.max(s.h, m.h) }; });
   // each line: its ports, the side each leaves by (in the layout's own axes: a view laid out down is laid out turned), inner
   // ends leaving the other way (§5), and the port's place among its owner's ports (portRank)
   const rankOf = x => (x.part != null ? P.partPorts.get(x.part) : P.sPorts).findIndex(q => q.id === x.id);
@@ -279,11 +284,12 @@ function csGeo({ model, view, pos: pins, memo, head }) {
   const containers = [...(sBox ? [P.S] : []), ...P.collabs.map(c => c.x)].map(x => ({ id: x.id, label: csName(x), title: x === P.S && dressed ? head : csTitle(x), ...(x === P.S && dressed ? { fit: csTitle(x) } : {}),
     ...(brLines(csName(x)).length > 1 ? { head: (brLines(csName(x)).length - 1) * 16 } : {}),
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
-    ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
+    ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}),
+    ...(x === P.S && dressed && bareTop.length ? { bareHead: bareTop.length } : {}) }));
   // labelGaps (§8, decision 9): the role names on role bindings, which span the subject's columns, else find no spot
   const run = ns => layoutTyped({ nodes: ns, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   const g = run(nodes);
-  const ports = [...P.sPorts.map(q => ({ q, id: q.id, owner: P.sid })), ...partPorts].map(p => ({ id: p.id, owner: p.owner, side: sides[p.id], label: csName(p.q), valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q),
+  const ports = [...P.sPorts.map(q => ({ q, id: q.id, owner: P.sid, ...(bareTop.includes(q.id) ? { clear } : {}) })), ...partPorts].map(p => ({ id: p.id, owner: p.owner, side: sides[p.id], ...(p.clear ? { clear: p.clear } : {}), label: csName(p.q), valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q),
     aria: SN_SAY.port(csName(p.q), csName(P.el(p.owner)), { valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q) }) }));
   // a copy: what layoutTyped returned is never edited (§2.4); a part that could not hold a port with no line grows and is laid out
   // once more while one is still held (portRoom, audit 52; portsHeld, audit 53, as the component view)

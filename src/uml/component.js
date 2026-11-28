@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, clashes, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember, rowMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, modelLines, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
@@ -405,13 +405,14 @@ function cpRemove(model, view, ids, fromModel) {
 }
 // the Owner field: a component's components and packages; an interface's, an artifact's or a comment's packages. An element of
 // no type is a component here, as drawn, owned and a box for one (audit 31)
-function cpOwners(model, x) {
+function cpOwners(model, x, view) {
   if (!CP_OBJ(x) || x.from != null || !['uml.Component', 'uml.Interface', 'uml.Artifact', 'uml.Package', 'uml.Comment'].includes(cpKindOf(x))) return null;
   const kinds = cpKindOf(x) === 'uml.Component' ? ['uml.Component', 'uml.Package'] : ['uml.Package'];
   const I = cpIndex(model); // not itself nor what it holds: apply() refuses a move inside itself
-  // nor one a connector of it would then break (cpBlocks, audit 76)
-  const B = cpBlocks(model, x.id);
-  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id) && B(n.id) == null).map(n => ({ id: n.id, label: cpName(n) }));
+  // nor one a connector of it would then break (cpBlocks, audit 76), nor one holding a classifier or package of its name (the
+  // class view's clashes: classifier-names, package-names, audit 78)
+  const B = cpBlocks(model, x.id), C = clashes(model, view, x.id);
+  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id) && B(n.id) == null && !C(n.id)).map(n => ({ id: n.id, label: cpName(n) }));
 }
 // what blocks a new owner for id (null: none): the first connector (the model's, or any view's own: the owner is the model's)
 // at id, what it holds or their ports, whose ends delegation-ends or assembly-ends accepts now and would not once id is in
@@ -425,10 +426,12 @@ function cpBlocks(model, id) {
     return L.find(e => !cpEndsOk(I, e, (a, b) => chain(I.comp(a)).includes(I.comp(b)))) || null; };
 }
 // owner: the Owner field's choice, and a drop into a box (src/typed/edit.js asks it where moveTo, for a port alone, gives
-// null), refused where a connector would break, in its rule's words; else the default reparent (audit 76)
+// null), refused where a connector would break, in its rule's words (audit 76), or where the owner holds a classifier or package
+// of its name, as the class view refuses it (clashes, audit 78); else the default reparent
 function cpOwner(model, view, id, parent) {
   const e = cpBlocks(model, id)(parent);
-  return !e ? null : { error: cpProps(e).kind === 'delegation' ? 'A delegation joins a component\'s port with a component or port inside it' : 'An assembly joins two components or their ports, neither inside the other' };
+  if (!e) { const c = clashes(model, view, id)(parent); return c ? { error: c } : null; }
+  return { error: cpProps(e).kind === 'delegation' ? 'A delegation joins a component\'s port with a component or port inside it' : 'An assembly joins two components or their ports, neither inside the other' };
 }
 
 const cpClashOwner = o => (CP_OBJ(o) && CLASSIFIERS.includes(o.type) ? o : null); // the owners member-names judges (classProblems)

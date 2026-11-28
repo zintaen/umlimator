@@ -1202,4 +1202,24 @@ took6 = time.monotonic() - t6
 mcp.LIMIT, mcp.MODEL, mcp.tried, mcp.why = keep6r[:4]; mcp.drawn[:] = keep6r[4]; mcp.MAPID = keep6r[5]
 ok("audit bh1 6 · a page render past its limit is stopped, and the page says why the model does not render, in one line",
    isinstance(why6, str) and why6.startswith("stopped after ") and "\n" not in why6 and took6 < 30, (shown6, why6, took6))
+# ---- fix78-typed (audit 78): move_to_box in a component view refuses an interface into a package holding an interface of its
+# name, and a class or profile view refuses a stereotype into a profile holding one whose name differs in first-letter case,
+# as the class and profile views' Owner fields and drops do (the page block above leaves MAPID unset: set here, then put back)
+keep78 = mcp.MAPID
+mcp.MAPID = mcp.MAPID or "map"
+own_model("comp78.json", [{"id": "billing", "type": "uml.Package", "label": "Billing"}, {"id": "pay1", "type": "uml.Interface", "label": "Payments", "parent": "billing"},
+                          {"id": "pay2", "type": "uml.Interface", "label": "Payments"}, {"id": "other", "type": "uml.Package", "label": "Other"}], [],
+          {"id": "c", "diagram": "uml.component", "nodeIds": ["billing", "pay1", "pay2", "other"]})
+cp78_in, cp78_ok = ed("move_to_box", view="c", id="pay2", box="billing"), ed("move_to_box", view="c", id="pay2", box="other")
+sty78 = {}
+for diag in ("uml.class", "uml.profile"):
+    own_model("sty78.json", [{"id": "p1", "type": "uml.Profile", "label": "Web"}, {"id": "p2", "type": "uml.Profile", "label": "Data"}, {"id": "p3", "type": "uml.Profile", "label": "Misc"},
+                             {"id": "s1", "type": "uml.Stereotype", "label": "Entity", "parent": "p1"}, {"id": "s2", "type": "uml.Stereotype", "label": "entity", "parent": "p2"}], [],
+              {"id": "v", "diagram": diag, "nodeIds": ["p1", "p2", "p3", "s1", "s2"]})
+    sty78[diag] = (ed("move_to_box", view="v", id="s2", box="p1"), ed("move_to_box", view="v", id="s2", box="p3"))
+ok("edit · move_to_box refuses an interface into a package holding an interface of its name in a component view, and a stereotype into a profile holding one of its name in either first-letter case (audit 78)",
+   cp78_in == "FAIL move_to_box: Billing has a classifier named Payments already; nothing written" and isinstance(cp78_ok, dict) and cp78_ok.get("written") is True
+   and all(r[0] == "FAIL move_to_box: Web has a stereotype entity already: names meet with the first letter in either case; nothing written"
+           and isinstance(r[1], dict) and r[1].get("written") is True for r in sty78.values()), [cp78_in, cp78_ok, sty78])
+mcp.MAPID = keep78
 sys.exit(1 if failed else 0)

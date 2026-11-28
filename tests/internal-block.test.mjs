@@ -8,6 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { textW } from '../src/core/text.js';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -532,4 +533,30 @@ test('audit 76: no line crosses the frame\'s SysML header after one Alt + arrow 
       assert.deepEqual(check(m, v.id).filter(p => / header crossed by /.test(p.message)).map(p => p.message), [], `${v.id} ${dir}: ${n.id} ${by}`); }
   }
   assert.ok(edits > 40, String(edits));
+});
+
+// audit 78: the header room of audit 76 counted only ports with lines: a port with no line moved to the frame's top by Alt + Up
+// sat on the SysML tag, a frame of no part (its card) and one with parts alike. Each port on the top now sits right of the tag
+// and within the frame, the frame growing for it, one to three ports, right and down
+const tagEnd78 = f => f.x + textW(String(f.title), 11) + 14; // the pentagon tag as frameTag draws it (src/uml/frame.js)
+const topClear78 = (g, owner, k) => { const F = g.families.find(f => f.shape === 'sysml-frame'), top = g.nodes.filter(n => n.owner === owner && n.side === 'T').sort((a, b) => a.x - b.x);
+  top.forEach((n, i) => { assert.ok(n.x > tagEnd78(F), `${k}: ${n.id} at ${n.x}, the tag ends at ${tagEnd78(F)}`); assert.ok(n.x + n.w <= F.x + F.w, `${k}: ${n.id} past the frame's end`);
+    if (i) assert.ok(n.x >= top[i - 1].x + top[i - 1].w, `${k}: ${n.id} over ${top[i - 1].id}`); });
+  return top.length; };
+test('audit 78: a port with no line on the frame\'s top sits right of the SysML header, the frame growing for it, right and down', () => {
+  let seen = 0;
+  for (const dir of ['right', 'down']) for (const parts of [0, 1]) for (const n of [1, 2, 3]) {
+    const ports = Array.from({ length: n }, (_, i) => ({ id: `bp.p${i}`, type: 'sysml.Port', label: `port${i}` }));
+    const m0 = { schemaVersion: 2, nodes: [{ id: 'cell', type: 'sysml.Block', label: 'Cell' }, { id: 'bp', type: 'sysml.Block', label: 'BatteryPack',
+      members: [...(parts ? [{ id: 'bp.c', type: 'sysml.PartProperty', label: 'c', props: { type: 'cell' } }] : []), ...ports] }],
+    views: [{ id: 'v', diagram: 'sysml.internal-block', title: 'Inside the battery pack', subject: 'bp', nodeIds: ['bp', 'cell'], direction: dir }] };
+    // each port by Alt + Up, one after another, as the page moves them
+    let m = m0; for (const p of ports) { const r = T.edits.moveTo(m, m.views[0], p.id, { by: [0, -1], geo: layout(m, 'v') }); m = run(m, r); }
+    seen += topClear78(layout(m, 'v'), 'bp', `${dir}, ${parts} part, ${n} ports`); }
+  // the stress file's frame of ports only, each port by Alt + Up
+  const S = JSON.parse(readFileSync(new URL('internal-block-stress.json', import.meta.url)));
+  for (const dir of ['right', 'down']) { const m0 = structuredClone(S), v0 = m0.views.find(v => v.id === 'ec-ports-only'); v0.direction = dir; const g0 = layout(m0, v0.id);
+    for (const p of g0.nodes.filter(x => x.owner === 'ec-bare')) { const r = T.edits.moveTo(m0, v0, p.id, { by: [0, -1], geo: g0 }), c = r && (Array.isArray(r) ? r : r.commands); if (!c || !c.length) continue;
+      seen += topClear78(layout(apply(m0, c), v0.id), 'ec-bare', `ec-ports-only ${dir}: ${p.id}`); } }
+  assert.ok(seen >= 2 * 2 * 6 + 4, String(seen));
 });
